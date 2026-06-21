@@ -27,3 +27,6 @@ actions from a project's `tasks.md`.
 - Add acceptance notes when a task will become a `/goal`.
 - Do not silently delete tasks; move stale items to `Later` or ask.
 - Do not create separate todo files.
+- Report to the user in the user's language while preserving code, commands,
+  paths, package names, skill names, API names, model names, abbreviations, and
+  Git commit messages in English.

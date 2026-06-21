@@ -46,5 +46,8 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
 - Do not automatically create worktrees; follow the goal and project worktree
   policy first.
 - Keep subagent ownership explicit and non-overlapping.
+- Report to the user in the user's language while preserving code, commands,
+  paths, package names, skill names, API names, model names, abbreviations, and
+  Git commit messages in English.
 - Stop if the goal conflicts with repo instructions, production constraints, or
   newer user instructions.

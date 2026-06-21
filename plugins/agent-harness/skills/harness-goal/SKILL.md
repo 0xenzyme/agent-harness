@@ -64,4 +64,7 @@ Every generated goal should include:
 - Do not automatically start Codex sessions from a prepared run packet.
 - If user instructions conflict with config, user instructions win for the
   current run and the config should not be changed without permission.
+- Report to the user in the user's language while preserving code, commands,
+  paths, package names, skill names, API names, model names, abbreviations, and
+  Git commit messages in English.
 - Update `tasks.md` and `.agent-harness/status.md` after completing work.

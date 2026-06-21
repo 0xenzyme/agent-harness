@@ -7,6 +7,9 @@
     "goals": ".agent-harness/goals",
     "runs": ".agent-harness/runs"
   },
+  "language": {
+    "default": "auto"
+  },
   "worktree": {
     "defaultPolicy": "ask",
     "autoRules": [

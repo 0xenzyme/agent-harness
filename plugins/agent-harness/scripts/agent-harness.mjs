@@ -19,7 +19,7 @@ const contract = {
 
 function parseArgs(argv) {
   const args = { _: [] };
-  const valueOptions = new Set(["cwd", "goal", "projectName", "project-name", "run", "task"]);
+  const valueOptions = new Set(["cwd", "goal", "lang", "projectName", "project-name", "run", "task"]);
   const booleanOptions = new Set(["dryRun", "dry-run", "force", "help"]);
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -73,6 +73,125 @@ function buildConfig(projectName) {
   return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
+const messages = {
+  en: {
+    usage: `Usage:
+  agent-harness init [--cwd PATH] [--project-name NAME] [--force] [--lang CODE]
+  agent-harness doctor [--cwd PATH] [--lang CODE]
+  agent-harness print-contract
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--dry-run] [--force]
+  agent-harness run prepare --goal <goal-file> [--cwd PATH]
+  agent-harness run status --run <run-dir> [--cwd PATH]`,
+    initDone: "Agent Harness initialized in {cwd}",
+    initCreated: "Created: {files}",
+    initNoChanges: "No files changed.",
+    doctorProject: "Project",
+    doctorGitRoot: "Git root",
+    doctorNoGit: "not a git repository",
+    doctorHarnessFiles: "Harness files",
+    doctorMissing: "missing {files}",
+    doctorOk: "ok",
+    doctorGitStatus: "Git status",
+    doctorDirty: "dirty",
+    doctorClean: "clean or unavailable",
+    doctorWorktrees: "Worktrees"
+  },
+  "zh-CN": {
+    usage: `用法:
+  agent-harness init [--cwd PATH] [--project-name NAME] [--force] [--lang CODE]
+  agent-harness doctor [--cwd PATH] [--lang CODE]
+  agent-harness print-contract
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--dry-run] [--force]
+  agent-harness run prepare --goal <goal-file> [--cwd PATH]
+  agent-harness run status --run <run-dir> [--cwd PATH]`,
+    initDone: "Agent Harness 已初始化: {cwd}",
+    initCreated: "已创建: {files}",
+    initNoChanges: "没有文件变更。",
+    doctorProject: "项目",
+    doctorGitRoot: "Git 根目录",
+    doctorNoGit: "不是 Git 仓库",
+    doctorHarnessFiles: "Harness 文件",
+    doctorMissing: "缺少 {files}",
+    doctorOk: "ok",
+    doctorGitStatus: "Git 状态",
+    doctorDirty: "dirty",
+    doctorClean: "clean or unavailable",
+    doctorWorktrees: "Worktree 数量"
+  }
+};
+
+function formatMessage(template, vars = {}) {
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => vars[key] ?? "");
+}
+
+function t(lang, key, vars = {}) {
+  const template = messages[lang]?.[key] || messages.en[key] || key;
+  return formatMessage(template, vars);
+}
+
+function normalizeLanguageCode(value) {
+  if (!value) {
+    return "auto";
+  }
+
+  const raw = String(value).trim();
+  if (!raw || raw.toLowerCase() === "auto") {
+    return "auto";
+  }
+
+  const code = raw
+    .split(".")[0]
+    .replace(/_/g, "-")
+    .toLowerCase();
+
+  if (code === "en" || code.startsWith("en-") || code === "c" || code === "posix") {
+    return "en";
+  }
+  if (code === "zh" || code.startsWith("zh-")) {
+    return "zh-CN";
+  }
+  return "en";
+}
+
+function languageFromConfig(cwd) {
+  const configPath = join(cwd, contract.config);
+  if (!existsSync(configPath)) {
+    return "";
+  }
+
+  try {
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    return config.language?.default || "";
+  } catch {
+    return "";
+  }
+}
+
+function resolveLanguage(args) {
+  const cwd = targetCwd(args);
+  const candidates = [
+    args.lang,
+    process.env.AGENT_HARNESS_LANG,
+    languageFromConfig(cwd),
+    process.env.LC_ALL,
+    process.env.LC_MESSAGES,
+    process.env.LANG
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    const lang = normalizeLanguageCode(candidate);
+    if (lang !== "auto") {
+      return lang;
+    }
+  }
+
+  return "en";
+}
+
 function loadProjectConfig(cwd) {
   const configPath = join(cwd, contract.config);
   if (!existsSync(configPath)) {
@@ -100,6 +219,7 @@ function projectPaths(cwd) {
 
 function init(args) {
   const cwd = targetCwd(args);
+  const lang = args.language;
   const projectName = args.projectName || basename(cwd);
   const created = [];
 
@@ -122,8 +242,8 @@ function init(args) {
     mkdirSync(join(cwd, dir), { recursive: true });
   }
 
-  console.log(`Agent Harness initialized in ${cwd}`);
-  console.log(created.length ? `Created: ${created.join(", ")}` : "No files changed.");
+  console.log(t(lang, "initDone", { cwd }));
+  console.log(created.length ? t(lang, "initCreated", { files: created.join(", ") }) : t(lang, "initNoChanges"));
 }
 
 function git(args, gitArgs) {
@@ -140,22 +260,23 @@ function git(args, gitArgs) {
 
 function doctor(args) {
   const cwd = targetCwd(args);
+  const lang = args.language;
   const required = [contract.tasks, contract.config, contract.status, contract.goals, contract.runs];
   const missing = required.filter((path) => !existsSync(join(cwd, path)));
   const gitRoot = git(args, ["rev-parse", "--show-toplevel"]);
   const status = git(args, ["status", "--short"]);
   const worktrees = git(args, ["worktree", "list", "--porcelain"]);
 
-  console.log(`Project: ${cwd}`);
-  console.log(`Git root: ${gitRoot || "not a git repository"}`);
-  console.log(`Harness files: ${missing.length ? `missing ${missing.join(", ")}` : "ok"}`);
-  console.log(`Git status: ${status ? "dirty" : "clean or unavailable"}`);
+  console.log(`${t(lang, "doctorProject")}: ${cwd}`);
+  console.log(`${t(lang, "doctorGitRoot")}: ${gitRoot || t(lang, "doctorNoGit")}`);
+  console.log(`${t(lang, "doctorHarnessFiles")}: ${missing.length ? t(lang, "doctorMissing", { files: missing.join(", ") }) : t(lang, "doctorOk")}`);
+  console.log(`${t(lang, "doctorGitStatus")}: ${status ? t(lang, "doctorDirty") : t(lang, "doctorClean")}`);
   if (status) {
     console.log(status);
   }
   if (worktrees) {
     const count = worktrees.split("\n").filter((line) => line.startsWith("worktree ")).length;
-    console.log(`Worktrees: ${count}`);
+    console.log(`${t(lang, "doctorWorktrees")}: ${count}`);
   }
 }
 
@@ -704,24 +825,19 @@ function runStatus(args) {
   console.log(`Files: ${missing.length ? `missing ${missing.join(", ")}` : "ok"}`);
 }
 
-function usage() {
-  console.log(`Usage:
-  agent-harness init [--cwd PATH] [--project-name NAME] [--force]
-  agent-harness doctor [--cwd PATH]
-  agent-harness print-contract
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--dry-run] [--force]
-  agent-harness run prepare --goal <goal-file> [--cwd PATH]
-  agent-harness run status --run <run-dir> [--cwd PATH]`);
+function usage(lang = "en") {
+  console.log(t(lang, "usage"));
 }
 
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
+    args.language = resolveLanguage(args);
     const command = args._[0] || "help";
     const subcommand = args._[1] || "";
 
     if (args.help || command === "help") {
-      usage();
+      usage(args.language);
     } else if (command === "init") {
       init(args);
     } else if (command === "doctor") {
@@ -735,7 +851,7 @@ function main() {
     } else if (command === "run" && subcommand === "status") {
       runStatus(args);
     } else {
-      usage();
+      usage(args.language);
       process.exitCode = 1;
     }
   } catch (error) {

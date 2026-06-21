@@ -33,3 +33,6 @@ node <plugin-root>/scripts/agent-harness.mjs init --cwd <project>
 - Keep `tasks.md` at the project root.
 - Keep machine-readable state under `.agent-harness/`.
 - Do not create alternate todo files in `docs/`, `.codex/`, or nested folders.
+- Report to the user in the user's language while preserving code, commands,
+  paths, package names, skill names, API names, model names, abbreviations, and
+  Git commit messages in English.

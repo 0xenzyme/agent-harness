@@ -50,6 +50,12 @@ Check a downstream project:
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 ```
 
+Use Chinese command output:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
+```
+
 Create a goal handoff from `tasks.md`:
 
 ```bash
@@ -80,6 +86,21 @@ init -> tasks -> goal create -> run prepare -> execute -> verify -> update tasks
 `run prepare` writes `run.md`, `prompt.md`, `subagents.md`, `status.json`, and
 `logs/` under `.agent-harness/runs/<timestamp>-<slug>/`. It does not start
 Codex, create a daemon, push, deploy, or open a PR.
+
+## Command Language
+
+Human-facing CLI output supports `en` and `zh-CN` for `init`, `doctor`, and
+help/usage. The language is resolved in this order:
+
+1. `--lang <code>`
+2. `AGENT_HARNESS_LANG`
+3. `.agent-harness/config.json` `language.default`
+4. system locale from `LC_ALL`, `LC_MESSAGES`, or `LANG`
+5. fallback `en`
+
+Use `auto` to continue to the next source. Unknown language codes fall back to
+`en`. Machine output, JSON from `print-contract`, paths, command names, package
+names, skill names, and Git output remain unchanged.
 
 ## Install In Codex
 

@@ -35,6 +35,14 @@ directly from a checked-out copy:
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project
 ```
 
+For Chinese human-facing command output, pass `--lang zh-CN` or set
+`AGENT_HARNESS_LANG=zh-CN`:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
+AGENT_HARNESS_LANG=zh-CN node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
+```
+
 Then create and prepare controlled handoffs:
 
 ```bash
