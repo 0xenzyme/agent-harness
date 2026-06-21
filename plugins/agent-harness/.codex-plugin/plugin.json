@@ -1,0 +1,22 @@
+{
+  "name": "agent-harness",
+  "version": "0.1.0",
+  "description": "Reusable project harness for Codex task control, goal handoffs, and loop engineering.",
+  "author": {
+    "name": "Agent Harness Maintainers"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agent Harness",
+    "shortDescription": "Standardize project tasks, goals, and worktree decisions.",
+    "longDescription": "Agent Harness provides a reusable workflow contract for Codex projects: a root tasks.md backlog, a .agent-harness control directory, goal handoff rules, and worktree policy guidance.",
+    "developerName": "Agent Harness Maintainers",
+    "category": "Productivity",
+    "capabilities": [
+      "Project task control",
+      "Goal handoff",
+      "Loop engineering"
+    ],
+    "defaultPrompt": "Use Agent Harness to inspect this project, update tasks.md, and recommend the next goal."
+  }
+}

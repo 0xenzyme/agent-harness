@@ -1,0 +1,16 @@
+{
+  "name": "agent-harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reusable Codex workflow harness for project task control and loop engineering.",
+  "type": "module",
+  "bin": {
+    "agent-harness": "./plugins/agent-harness/scripts/agent-harness.mjs"
+  },
+  "scripts": {
+    "doctor": "node plugins/agent-harness/scripts/agent-harness.mjs doctor",
+    "print-contract": "node plugins/agent-harness/scripts/agent-harness.mjs print-contract",
+    "validate:plugin": "python3 \"${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py\" plugins/agent-harness"
+  },
+  "license": "MIT"
+}

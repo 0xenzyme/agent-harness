@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "projectName": "agent-harness",
+  "paths": {
+    "tasks": "tasks.md",
+    "status": ".agent-harness/status.md",
+    "goals": ".agent-harness/goals",
+    "runs": ".agent-harness/runs"
+  },
+  "worktree": {
+    "defaultPolicy": "ask",
+    "autoRules": [
+      {
+        "when": "user_explicitly_requests_no_branch_or_worktree",
+        "use": "local"
+      },
+      {
+        "when": "local_checkout_has_unrelated_changes",
+        "use": "worktree"
+      },
+      {
+        "when": "parallel_or_unattended_work",
+        "use": "worktree"
+      },
+      {
+        "when": "destructive_or_production_action",
+        "use": "ask"
+      }
+    ]
+  },
+  "loops": {
+    "defaultMode": "report-only",
+    "maxIterations": 3,
+    "requiresVerification": true
+  }
+}
