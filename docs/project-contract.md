@@ -51,6 +51,29 @@ Loop run logs and automation outputs.
 
 Use this for report-only runs, CI triage output, and recurring checks.
 
+Each prepared run uses a separate directory:
+
+```text
+.agent-harness/runs/
+  YYYYMMDD-HHMMSS-<slug>/
+    run.md
+    prompt.md
+    subagents.md
+    status.json
+    logs/
+```
+
+Rules:
+
+- `run.md` records source goal, work mode, manual checkpoints, and verification.
+- `prompt.md` is the ready-to-use prompt for `/goal` or a new Codex session.
+- `subagents.md` gives bounded split guidance for `small`, `medium`, `large`,
+  and `ask` tasks.
+- `status.json` stores machine-readable run state.
+- `logs/` is reserved for command output summaries and automation logs.
+- `run prepare` must not start daemons, spawn Codex sessions, push, deploy, or
+  open PRs.
+
 ## Default Task Format
 
 ```md

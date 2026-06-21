@@ -50,6 +50,37 @@ Check a downstream project:
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 ```
 
+Create a goal handoff from `tasks.md`:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
+```
+
+Prepare a run packet from a goal:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal .agent-harness/goals/YYYY-MM-DD-task-title.md
+```
+
+Inspect a prepared run:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .agent-harness/runs/YYYYMMDD-HHMMSS-task-title
+```
+
+## Workflow
+
+The intended manual workflow is:
+
+```text
+init -> tasks -> goal create -> run prepare -> execute -> verify -> update tasks/status
+```
+
+`goal create` writes a durable handoff under `.agent-harness/goals/`.
+`run prepare` writes `run.md`, `prompt.md`, `subagents.md`, `status.json`, and
+`logs/` under `.agent-harness/runs/<timestamp>-<slug>/`. It does not start
+Codex, create a daemon, push, deploy, or open a PR.
+
 ## Install In Codex
 
 During local development, add this repo as a marketplace root:
