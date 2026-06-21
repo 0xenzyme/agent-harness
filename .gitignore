@@ -1,5 +1,6 @@
 .DS_Store
 node_modules/
 *.log
+.worktree/
 .agent-harness/runs/
 .agent-harness/state.json

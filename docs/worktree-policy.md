@@ -37,3 +37,7 @@ Ask before choosing when:
 
 The default policy is `ask`. A harnessed project can opt into `auto`, but the
 agent must still report the reason for the selected mode before editing files.
+
+`agent-harness run prepare` records the recommended mode from the goal and
+project config. It does not create a worktree by itself; the executing agent or
+user still chooses and explains the actual work mode before editing files.

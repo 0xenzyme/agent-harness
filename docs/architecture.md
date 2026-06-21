@@ -18,6 +18,12 @@ tasks.md
   status.md
   goals/
   runs/
+    YYYYMMDD-HHMMSS-<slug>/
+      run.md
+      prompt.md
+      subagents.md
+      status.json
+      logs/
 ```
 
 ## Loop Model
@@ -30,6 +36,18 @@ A development loop should always have:
 - verification: tests, typecheck, browser proof, logs, or manual review
 - state update: tasks, status, goal file, or run log
 - stop condition: done, blocked, budget reached, or decision needed
+
+## Goal And Run Boundary
+
+`goal` and `run` are separate steps:
+
+- `goal`: create a durable handoff under `.agent-harness/goals/`.
+- `run`: prepare or record execution for one goal under `.agent-harness/runs/`.
+
+The first run implementation is intentionally manual. `agent-harness run
+prepare` creates a packet with a ready prompt and subagent guidance, but it does
+not start Codex or launch background sessions. Direct execution should wait
+until the local Codex CLI has a stable file-prompt or stdin contract.
 
 ## Worktree Policy
 
