@@ -1,6 +1,6 @@
 # Complete Goal Toolchain Design
 
-Status: Confirmed for goal handoff.
+Status: Implemented.
 
 ## 背景
 
@@ -23,7 +23,7 @@ Status: Confirmed for goal handoff.
 Goal toolchain 应该覆盖这条链路：
 
 ```text
-harness/tasks.md -> confirmed spec -> goal handoff -> validated run packet -> manual execution -> verification evidence -> run/status/task update
+harness/tasks.md -> confirmed spec -> goal handoff -> validated run packet -> manual execution -> verification evidence -> run record -> state sync
 ```
 
 工具要补强的是可观察、可验证、可停止、可恢复，而不是让 agent 无限循环或自动启动后台执行。
@@ -70,6 +70,15 @@ agent-harness run status --cwd <project> --run <run-dir>
 
 `--json` 输出应稳定，便于后续 automation 读取。
 
+## Implementation Decisions
+
+- Adapter `goal create` requires `--spec`; fixed-contract `goal create` keeps
+  the legacy no-spec behavior for compatibility, but `run prepare` now rejects
+  goals that do not satisfy validation.
+- `run record` intentionally updates only the target run directory
+  (`status.json` and `logs/`). Task/status state sync remains a separate
+  foreground update by the executing agent or user.
+
 ## Run Recording Contract
 
 `agent-harness run record` 应只更新目标 run directory 下的文件，不自动改源码、不自动推送、不自动创建 PR。
@@ -81,7 +90,7 @@ agent-harness run status --cwd <project> --run <run-dir>
 - 支持 `completed` 和 `blocked` 两类停止状态。
 - 保留后续扩展到 `failed`、`needs-review`、`budget-exhausted` 的空间。
 
-是否自动更新 `harness/tasks.md` 和 `harness/status.md` 可以作为实现中的明确决定；如果自动更新风险过高，先输出 next-step instructions，不要猜测任务迁移。
+是否自动更新 `harness/tasks.md` 和 `harness/status.md` 的实现决策是：不自动更新。`run record` 记录执行证据，随后由执行 agent 按 adapter state-sync requirements 更新 task/status。
 
 ## 非目标
 
@@ -126,8 +135,6 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd . --run <p
 
 ## 暂停条件
 
-- 需要决定是否把 `goal create` 无 spec 的旧行为改成 hard error。
-- 需要决定是否让 `run record` 自动修改 `harness/tasks.md` 或 `harness/status.md`。
 - 需要启动 Codex session、daemon、watcher、push、PR、deploy、发布、凭证、付费 API 或生产访问。
 - 发现本 spec 与现有 project contract、plugin manifest、Codex plugin 行为或用户新指令冲突。
 - 需要判断某个 downstream repo 的特殊流程是否应该进入 core contract。

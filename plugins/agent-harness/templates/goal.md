@@ -1,13 +1,13 @@
 # Goal: {Task Name}
 
 Spec:
-Status: Draft goal handoff.
+Status: Ready for execution from confirmed spec.
 
-## Current Goal
+## Source Task
 
 -
 
-## Must Read
+## Read First
 
 - `AGENTS.md`
 - Project adapter
@@ -18,11 +18,11 @@ Status: Draft goal handoff.
 
 Use `ask` until scope, ownership, and checkout state are clear.
 
-## Allowed Scope
+## Scope
 
 -
 
-## Forbidden Scope
+## Non-Goals
 
 - Do not push, deploy, publish, open a PR, start a daemon, or launch additional
   sessions unless explicitly requested.

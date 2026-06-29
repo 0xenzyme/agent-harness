@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -62,13 +62,16 @@ function parseArgs(argv) {
     "lang",
     "contract",
     "mode",
+    "phase",
     "projectName",
     "project-name",
     "run",
+    "summary",
     "spec",
     "taskIndex",
     "task-index",
     "task",
+    "verification",
     "workMode",
     "work-mode"
   ]);
@@ -163,7 +166,11 @@ const messages = {
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
   agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--work-mode local|worktree|ask] [--dry-run] [--force]
+  agent-harness goal list [--cwd PATH] [--json]
+  agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
+  agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
+  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH]`,
     initDone: "Agent Harness initialized in {cwd}",
     initCreated: "Created: {files}",
@@ -197,7 +204,11 @@ const messages = {
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
   agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--work-mode local|worktree|ask] [--dry-run] [--force]
+  agent-harness goal list [--cwd PATH] [--json]
+  agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
+  agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
+  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH]`,
     initDone: "Agent Harness 已初始化: {cwd}",
     initCreated: "已创建: {files}",
@@ -1692,7 +1703,7 @@ function buildGoalContent({ task, context, specPath, workMode }) {
   return `# Goal: ${heading}
 
 Spec: ${spec}
-Status: Draft goal handoff; execute only after the spec is confirmed by the user.
+Status: ${spec !== "TBD" ? "Ready for execution from confirmed spec." : "Draft goal handoff; execute only after the spec is confirmed by the user."}
 
 ## Source Task
 
@@ -1724,6 +1735,7 @@ ${notes ? `- Notes: ${notes}\n` : ""}${projectAdapterRequirementList.length ? `\
 ## Verification
 
 Run the smallest relevant deterministic checks for the files changed by this goal.
+If no deterministic command exists, document the manual verification evidence before completion.
 
 ## Completion Conditions
 
@@ -1733,7 +1745,7 @@ Run the smallest relevant deterministic checks for the files changed by this goa
 
 ## Pause Conditions
 
-- The spec has not been confirmed by the user.
+- The referenced spec is missing, unconfirmed, or conflicts with code, production constraints, or newer user instructions.
 - The work requires credentials, paid APIs, production access, destructive commands, push, PR, or release.
 - Product direction, file ownership, or worktree policy is unclear.
 - User gives new instructions that conflict with this goal.
@@ -1789,6 +1801,291 @@ function goalCreate(args) {
   mkdirSync(dirname(goalPath), { recursive: true });
   writeFileSync(goalPath, content);
   console.log(`Created ${goalRelPath}`);
+}
+
+function goalTitle(content, goalPath) {
+  const match = content.match(/^#\s+(.+?)\s*$/m);
+  return match ? match[1].trim().replace(/^Goal:\s*/i, "") : basename(goalPath, extname(goalPath));
+}
+
+function extractStatusLine(content) {
+  const match = content.match(/^Status:\s+(.+?)\s*$/m);
+  return match ? match[1].trim() : "";
+}
+
+function resolveProjectPath(cwd, relPath) {
+  const cleaned = cleanLinkedTarget(relPath);
+  return cleaned ? resolve(cwd, cleaned) : "";
+}
+
+function isInsideProject(cwd, absPath) {
+  const rel = relative(cwd, absPath);
+  return rel === "" || Boolean(rel && !rel.startsWith("..") && !rel.startsWith("/"));
+}
+
+function readFileIfExists(path) {
+  return existsSync(path) ? readFileSync(path, "utf8") : "";
+}
+
+function specStatus(content) {
+  return extractStatusLine(content);
+}
+
+function isDraftStatus(status) {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  if (!normalizedStatus) {
+    return true;
+  }
+  return [
+    "draft",
+    "draft goal handoff",
+    "spec-draft",
+    "tbd",
+    "todo",
+    "proposed",
+    "in progress",
+    "wip"
+  ].some((value) => normalizedStatus === value || normalizedStatus.includes(value));
+}
+
+function extractGoalWorkModeRaw(goalContent) {
+  const section = extractSection(goalContent, "Work Mode Recommendation");
+  const match = section.match(/Use\s+`([^`]+)`/i);
+  return match ? match[1].trim() : "";
+}
+
+function sectionHasManualVerification(section) {
+  return /\b(manual|human|review|evidence|document|not automated|cannot be automated)\b/i.test(section);
+}
+
+function goalMetadata(cwd, goalPath) {
+  const content = readFileIfExists(goalPath);
+  const spec = extractInlinePath(content, "Spec");
+  const specAbs = resolveProjectPath(cwd, spec);
+  const specInProject = Boolean(specAbs && isInsideProject(cwd, specAbs));
+  const specExists = Boolean(specInProject && existsSync(specAbs));
+  const specContent = specExists ? readFileSync(specAbs, "utf8") : "";
+  const workMode = extractGoalWorkModeRaw(content);
+
+  return {
+    path: displayPath(cwd, goalPath),
+    title: goalTitle(content, goalPath),
+    status: extractStatusLine(content),
+    spec,
+    specPath: specInProject && specAbs ? displayPath(cwd, specAbs) : spec,
+    specExists,
+    specStatus: specStatus(specContent),
+    workMode,
+    sections: {
+      sourceTask: Boolean(extractSection(content, "Source Task")),
+      readFirst: Boolean(extractSection(content, "Read First")),
+      workModeRecommendation: Boolean(extractSection(content, "Work Mode Recommendation")),
+      scope: Boolean(extractSection(content, "Scope")),
+      nonGoals: Boolean(extractSection(content, "Non-Goals")),
+      verification: Boolean(extractSection(content, "Verification")),
+      completionConditions: Boolean(extractSection(content, "Completion Conditions")),
+      pauseConditions: Boolean(extractSection(content, "Pause Conditions"))
+    }
+  };
+}
+
+function validateGoal(cwd, goalPath) {
+  const errors = [];
+  const warnings = [];
+  const content = readFileIfExists(goalPath);
+
+  if (!content) {
+    return {
+      ok: false,
+      errors: [`Goal file not found: ${displayPath(cwd, goalPath)}`],
+      warnings,
+      metadata: {
+        path: displayPath(cwd, goalPath)
+      }
+    };
+  }
+
+  const metadata = goalMetadata(cwd, goalPath);
+  const spec = metadata.spec;
+  if (!spec || spec.toLowerCase() === "tbd") {
+    errors.push("Spec must point to a repo-local spec file, not TBD.");
+  } else {
+    const specAbs = resolveProjectPath(cwd, spec);
+    if (!isInsideProject(cwd, specAbs)) {
+      errors.push(`Spec must stay inside the project: ${spec}`);
+    } else if (!existsSync(specAbs)) {
+      errors.push(`Spec file not found: ${spec}`);
+    } else if (isDraftStatus(metadata.specStatus)) {
+      errors.push(`Spec status is not confirmed: ${metadata.specStatus || "(missing)"}`);
+    }
+  }
+
+  const requiredSections = [
+    ["Source Task", "sourceTask"],
+    ["Read First", "readFirst"],
+    ["Work Mode Recommendation", "workModeRecommendation"],
+    ["Scope", "scope"],
+    ["Non-Goals", "nonGoals"],
+    ["Verification", "verification"],
+    ["Completion Conditions", "completionConditions"],
+    ["Pause Conditions", "pauseConditions"]
+  ];
+  for (const [title, key] of requiredSections) {
+    if (!metadata.sections[key]) {
+      errors.push(`Missing required section: ${title}`);
+    }
+  }
+
+  const readFirst = extractSection(content, "Read First");
+  if (spec && spec.toLowerCase() !== "tbd" && !readFirst.includes(spec)) {
+    errors.push("Read First must include the referenced spec path.");
+  }
+
+  if (!validWorkModes.has(metadata.workMode)) {
+    errors.push(`Work Mode Recommendation must use one of local, worktree, or ask; found ${metadata.workMode || "(missing)"}.`);
+  }
+
+  const verification = extractSection(content, "Verification");
+  const verificationCommands = extractVerificationCommands(verification);
+  if (!verificationCommands.length && !sectionHasManualVerification(verification)) {
+    errors.push("Verification must include executable commands or explain the manual verification evidence.");
+  }
+
+  const pauseConditions = extractSection(content, "Pause Conditions");
+  const pauseLower = pauseConditions.toLowerCase();
+  const requiredPauseSignals = [
+    ["spec conflict or newer instructions", ["spec", "conflict", "instruction"]],
+    ["credentials or paid APIs", ["credential", "paid"]],
+    ["destructive or production action", ["destructive", "production"]],
+    ["product direction", ["product"]]
+  ];
+  for (const [label, signals] of requiredPauseSignals) {
+    if (!signals.some((signal) => pauseLower.includes(signal))) {
+      errors.push(`Pause Conditions must cover ${label}.`);
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    warnings,
+    metadata: {
+      ...metadata,
+      verificationCommands
+    }
+  };
+}
+
+function goalFiles(cwd, goalsRelPath) {
+  const goalsDir = join(cwd, goalsRelPath);
+  if (!existsSync(goalsDir)) {
+    return [];
+  }
+  return readdirSync(goalsDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .map((entry) => join(goalsDir, entry.name))
+    .sort();
+}
+
+function goalList(args) {
+  const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
+  const files = goalFiles(cwd, context.paths.goals || fixedContract.goals);
+  const goals = files.map((file) => {
+    const metadata = goalMetadata(cwd, file);
+    const validation = validateGoal(cwd, file);
+    return {
+      ...metadata,
+      valid: validation.ok,
+      errorCount: validation.errors.length
+    };
+  });
+  const payload = {
+    cwd,
+    contract: context.contract,
+    goalsPath: context.paths.goals || fixedContract.goals,
+    goals
+  };
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log(`Goals: ${payload.goalsPath}`);
+  if (!goals.length) {
+    console.log("- none");
+    return;
+  }
+  for (const goal of goals) {
+    console.log(`- ${goal.path} | ${goal.valid ? "valid" : `invalid:${goal.errorCount}`} | ${goal.spec || "Spec:TBD"} | ${goal.workMode || "workMode:missing"}`);
+  }
+}
+
+function goalInspect(args) {
+  const cwd = targetCwd(args);
+  if (!args.goal) {
+    throw new Error("Usage: agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]");
+  }
+
+  const goalPath = resolve(cwd, args.goal);
+  const validation = validateGoal(cwd, goalPath);
+  const payload = {
+    ...validation.metadata,
+    validation: {
+      ok: validation.ok,
+      errors: validation.errors,
+      warnings: validation.warnings
+    }
+  };
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log(`Goal: ${payload.path}`);
+  console.log(`Title: ${payload.title || "unknown"}`);
+  console.log(`Status: ${payload.status || "unknown"}`);
+  console.log(`Spec: ${payload.spec || "missing"}`);
+  console.log(`Spec status: ${payload.specStatus || "unknown"}`);
+  console.log(`Work mode: ${payload.workMode || "missing"}`);
+  console.log(`Validation: ${validation.ok ? "ok" : "failed"}`);
+  for (const error of validation.errors) {
+    console.log(`- ${error}`);
+  }
+}
+
+function goalValidate(args) {
+  const cwd = targetCwd(args);
+  if (!args.goal) {
+    throw new Error("Usage: agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]");
+  }
+
+  const goalPath = resolve(cwd, args.goal);
+  const validation = validateGoal(cwd, goalPath);
+  const payload = {
+    ok: validation.ok,
+    errors: validation.errors,
+    warnings: validation.warnings,
+    goal: validation.metadata
+  };
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+  } else {
+    console.log(`Goal validation: ${validation.ok ? "ok" : "failed"}`);
+    for (const error of validation.errors) {
+      console.log(`- ${error}`);
+    }
+    for (const warning of validation.warnings) {
+      console.log(`Warning: ${warning}`);
+    }
+  }
+
+  if (!validation.ok) {
+    process.exitCode = 1;
+  }
 }
 
 function extractSection(content, title) {
@@ -2079,6 +2376,11 @@ function runPrepare(args) {
     throw new Error(`Goal file not found: ${args.goal}`);
   }
 
+  const validation = validateGoal(cwd, goalPath);
+  if (!validation.ok) {
+    throw new Error(`Goal validation failed:\n${validation.errors.map((error) => `- ${error}`).join("\n")}`);
+  }
+
   const goalContent = readFileSync(goalPath, "utf8");
   const createdAt = new Date().toISOString();
   const workMode = extractWorkMode(goalContent, cwd);
@@ -2119,6 +2421,75 @@ function runPrepare(args) {
   console.log(`Prepared run packet: ${displayPath(cwd, runDir)}`);
   console.log(`Prompt: ${displayPath(cwd, join(runDir, "prompt.md"))}`);
   console.log("Next: open prompt.md in a new Codex session or paste it into /goal when ready.");
+}
+
+const recordableRunPhases = new Set(["completed", "blocked"]);
+
+function runRecord(args) {
+  const cwd = targetCwd(args);
+  if (!args.run) {
+    throw new Error("Usage: agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--cwd PATH] [--json]");
+  }
+  if (!recordableRunPhases.has(args.phase)) {
+    throw new Error(`Invalid --phase: ${args.phase || "(missing)"}`);
+  }
+  if (!args.summary) {
+    throw new Error("Missing --summary <text>");
+  }
+
+  const runDir = resolve(cwd, args.run);
+  const statusPath = join(runDir, "status.json");
+  if (!existsSync(statusPath)) {
+    throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
+  }
+
+  const now = new Date().toISOString();
+  const status = JSON.parse(readFileSync(statusPath, "utf8"));
+  const nextStatus = {
+    ...status,
+    phase: args.phase,
+    updatedAt: now,
+    summary: args.summary,
+    verificationSummary: args.verification || status.verificationSummary || ""
+  };
+  const logsDir = join(runDir, "logs");
+  mkdirSync(logsDir, { recursive: true });
+  const logPath = join(logsDir, `${runTimestamp()}-${args.phase}.md`);
+  const logContent = `# Run ${titleCase(args.phase)} Summary
+
+Updated: ${now}
+Run: \`${displayPath(cwd, runDir)}\`
+Goal: \`${status.goalPath || "unknown"}\`
+
+## Summary
+
+${args.summary}
+
+## Verification
+
+${args.verification || "Not recorded."}
+`;
+
+  writeFileSync(statusPath, `${JSON.stringify(nextStatus, null, 2)}\n`);
+  writeFileSync(logPath, logContent);
+
+  const payload = {
+    run: displayPath(cwd, runDir),
+    status: displayPath(cwd, statusPath),
+    log: displayPath(cwd, logPath),
+    phase: args.phase,
+    summary: args.summary,
+    verificationSummary: nextStatus.verificationSummary
+  };
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log(`Recorded run ${args.phase}: ${displayPath(cwd, runDir)}`);
+  console.log(`Status: ${displayPath(cwd, statusPath)}`);
+  console.log(`Log: ${displayPath(cwd, logPath)}`);
 }
 
 function runStatus(args) {
@@ -2179,8 +2550,16 @@ function main() {
       worktreeRecommend(args);
     } else if (command === "goal" && subcommand === "create") {
       goalCreate(args);
+    } else if (command === "goal" && subcommand === "list") {
+      goalList(args);
+    } else if (command === "goal" && subcommand === "inspect") {
+      goalInspect(args);
+    } else if (command === "goal" && subcommand === "validate") {
+      goalValidate(args);
     } else if (command === "run" && subcommand === "prepare") {
       runPrepare(args);
+    } else if (command === "run" && subcommand === "record") {
+      runRecord(args);
     } else if (command === "run" && subcommand === "status") {
       runStatus(args);
     } else {

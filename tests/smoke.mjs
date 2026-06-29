@@ -73,8 +73,11 @@ try {
   assert(existsSync(join(fixed, ".harness/config.json")), "fixed init should create config");
   assert(existsSync(join(fixed, "harness/status.md")), "fixed init should create status");
   assertIncludes(run(["doctor", "--cwd", fixed]), "Harness contract: fixed", "fixed doctor should report fixed mode");
-  run(["goal", "create", "--cwd", fixed, "--task", "Define the next concrete task"]);
+  write(join(fixed, "harness/specs/fixed.md"), "# Fixed Spec\n\nStatus: accepted\n");
+  run(["goal", "create", "--cwd", fixed, "--task", "Define the next concrete task", "--spec", "harness/specs/fixed.md"]);
   const fixedGoal = latestFile(join(fixed, "harness/goals"));
+  const fixedGoalValidation = JSON.parse(run(["goal", "validate", "--cwd", fixed, "--goal", fixedGoal, "--json"]));
+  assert(fixedGoalValidation.ok === true, "fixed goal with confirmed spec should validate");
   run(["run", "prepare", "--cwd", fixed, "--goal", fixedGoal]);
   assert(readdirSync(join(fixed, ".harness/runs")).length > 0, "fixed run packet should use fixed runs dir");
 
@@ -88,7 +91,7 @@ try {
   assert(existsSync(join(adapter, "harness/mental-models/02-work-unit.md")), "adapter default init should create work unit model");
   assert(existsSync(join(adapter, "harness/mental-models/03-control-loop-handoff.md")), "adapter default init should create control loop model");
   assert(existsSync(join(adapter, "harness/mental-models/04-ownership-boundary.md")), "adapter default init should create ownership model");
-  write(join(adapter, "harness/specs/default.md"), "# Spec\n");
+  write(join(adapter, "harness/specs/default.md"), "# Spec\n\nStatus: accepted\n");
   const adapterInspect = JSON.parse(run(["config", "inspect", "--cwd", adapter, "--json"]));
   assert(adapterInspect.contract === "adapter", "adapter inspect should report adapter contract");
   assert(adapterInspect.paths.taskIndex === "harness/tasks.md", "adapter default task index should be harness/tasks.md");
@@ -154,7 +157,7 @@ try {
   }, null, 2)}\n`);
   write(join(custom, "harness/README.md"), "# Harness Adapter\n");
   write(join(custom, "custom/status.md"), "# Status\n");
-  write(join(custom, "harness/specs/custom.md"), "# Custom Spec\n");
+  write(join(custom, "harness/specs/custom.md"), "# Custom Spec\n\nStatus: accepted\n");
   write(join(custom, "harness/goals/context.md"), "# Linked Context\n");
   mkdirSync(join(custom, "harness/milestones"), { recursive: true });
   mkdirSync(join(custom, "custom/runs"), { recursive: true });
@@ -207,11 +210,120 @@ try {
     "harness/specs/custom.md"
   ]);
   const customGoal = latestFile(join(custom, "custom/goals"));
+  const customGoalList = JSON.parse(run(["goal", "list", "--cwd", custom, "--json"]));
+  assert(customGoalList.goals.length === 1, "goal list should include generated custom goal");
+  assert(customGoalList.goals[0].valid === true, "goal list should expose validation state");
+  const customGoalInspect = JSON.parse(run(["goal", "inspect", "--cwd", custom, "--goal", customGoal, "--json"]));
+  assert(customGoalInspect.spec === "harness/specs/custom.md", "goal inspect should expose referenced spec");
+  assert(customGoalInspect.validation.ok === true, "goal inspect should include validation result");
+  const customGoalValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", customGoal, "--json"]));
+  assert(customGoalValidate.ok === true, "goal validate should pass for generated custom goal");
   run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
-  const customRuns = readdirSync(join(custom, "custom/runs"));
+  const customRuns = readdirSync(join(custom, "custom/runs")).sort();
   assert(customRuns.length > 0, "adapter run packet should use custom runs dir");
   const customRunStatus = readJson(join(custom, "custom/runs", customRuns[0], "status.json"));
   assert(customRunStatus.harnessContract === "adapter", "run status should record adapter mode");
+  const completedRecord = JSON.parse(run([
+    "run",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    join("custom/runs", customRuns[0]),
+    "--phase",
+    "completed",
+    "--summary",
+    "custom run completed",
+    "--verification",
+    "smoke verification passed",
+    "--json"
+  ]));
+  assert(completedRecord.phase === "completed", "run record should report completed phase");
+  assert(existsSync(join(custom, completedRecord.log)), "run record should write completed log");
+  const completedRunStatus = readJson(join(custom, "custom/runs", customRuns[0], "status.json"));
+  assert(completedRunStatus.phase === "completed", "run record should update status phase");
+  assert(completedRunStatus.summary === "custom run completed", "run record should update summary");
+  assert(completedRunStatus.verificationSummary === "smoke verification passed", "run record should update verification summary");
+  run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
+  const blockedRun = readdirSync(join(custom, "custom/runs")).sort().at(-1);
+  const blockedRecord = JSON.parse(run([
+    "run",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    join("custom/runs", blockedRun),
+    "--phase",
+    "blocked",
+    "--summary",
+    "custom run blocked",
+    "--json"
+  ]));
+  assert(blockedRecord.phase === "blocked", "run record should report blocked phase");
+  assert(existsSync(join(custom, blockedRecord.log)), "run record should write blocked log");
+
+  const invalidGoalDir = join(custom, "custom/goals");
+  write(join(invalidGoalDir, "missing-spec.md"), `# Goal: Missing Spec
+
+Spec: harness/specs/missing.md
+Status: Ready for execution from confirmed spec.
+
+## Source Task
+- test
+
+## Read First
+1. \`harness/specs/missing.md\`
+
+## Work Mode Recommendation
+Use \`local\`.
+
+## Scope
+- test
+
+## Non-Goals
+- test
+
+## Verification
+Manual verification evidence only.
+
+## Completion Conditions
+- test
+
+## Pause Conditions
+- Pause on spec conflicts or newer instructions.
+- Pause for credentials or paid APIs.
+- Pause for destructive or production actions.
+- Pause for product direction.
+`);
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/missing-spec.md", "--json"]),
+    "\"ok\": false",
+    "missing spec should fail validation"
+  );
+  write(join(custom, "harness/specs/draft.md"), "# Draft Spec\n\nStatus: draft\n");
+  write(join(invalidGoalDir, "draft-spec.md"), readFileSync(join(invalidGoalDir, "missing-spec.md"), "utf8").replace("harness/specs/missing.md", "harness/specs/draft.md"));
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/draft-spec.md", "--json"]),
+    "Spec status is not confirmed",
+    "draft spec should fail validation"
+  );
+  write(join(invalidGoalDir, "invalid-work-mode.md"), readFileSync(customGoal, "utf8").replace("Use `ask`", "Use `invalid`"));
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/invalid-work-mode.md", "--json"]),
+    "Work Mode Recommendation",
+    "invalid work mode should fail validation"
+  );
+  write(join(invalidGoalDir, "missing-section.md"), readFileSync(customGoal, "utf8").replace("## Completion Conditions", "## Completion Conditions Removed"));
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/missing-section.md", "--json"]),
+    "Missing required section",
+    "missing required section should fail validation"
+  );
+  assertIncludes(
+    runFails(["run", "prepare", "--cwd", custom, "--goal", "custom/goals/missing-spec.md"]),
+    "Goal validation failed",
+    "run prepare should reject invalid goals"
+  );
 
   const configuredInit = join(suiteDir, "configured-init-custom");
   mkdirSync(configuredInit, { recursive: true });

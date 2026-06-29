@@ -64,13 +64,21 @@ node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task 
 node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task "<task title>" --spec <spec-path>
 ```
 
-11. After a confirmed goal exists, prepare an execution packet with:
+11. List, inspect, and validate goals before preparing a run:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs goal list --cwd <project>
+node <plugin-root>/scripts/agent-harness.mjs goal inspect --cwd <project> --goal <goal-file>
+node <plugin-root>/scripts/agent-harness.mjs goal validate --cwd <project> --goal <goal-file>
+```
+
+12. After a confirmed, valid goal exists, prepare an execution packet with:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
 ```
 
-12. Include verification, constraints, completion conditions, and pause
+13. Include verification, constraints, completion conditions, and pause
    conditions in every goal.
 
 ## Goal Shape
@@ -95,6 +103,7 @@ Every generated goal should include:
 - Explain the work mode choice before edits.
 - Keep `goal` and `run` separate: goal writes durable handoff files, run writes
   execution packets under the configured runs directory.
+- `run prepare` must reject malformed goals instead of silently preparing them.
 - Do not automatically start Codex sessions from a prepared run packet.
 - If user instructions conflict with config, user instructions win for the
   current run and the config should not be changed without permission.

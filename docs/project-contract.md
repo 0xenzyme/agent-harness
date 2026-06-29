@@ -206,8 +206,14 @@ Common artifacts:
   and `ask` tasks.
 - `status.json` stores machine-readable run state.
 - `logs/` is reserved for command output summaries and automation logs.
+- `goal validate` is the gate before `run prepare`: executable goals must
+  reference a repo-local confirmed spec, include required execution sections,
+  name a valid work mode, and provide verification or manual evidence guidance.
 - `run prepare` must not start daemons, spawn Codex sessions, push, deploy, or
   open PRs.
+- `run record` updates only the target run directory's `status.json` and
+  `logs/`; it does not update source files, task indexes, PRs, deployments, or
+  releases.
 
 ## Compatibility
 

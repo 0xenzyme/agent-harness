@@ -2,13 +2,6 @@
 
 ## Now
 
-- [ ] P1 Complete the goal toolchain
-  - Source: User identified that the loop engineering skeleton exists, but goal-related tooling is still insufficient.
-  - Acceptance: CLI and skills cover goal generation from a confirmed spec, goal listing/inspection/validation, run preparation, and recording execution outcomes with deterministic state updates.
-  - Spec: `harness/specs/2026-06-21-complete-goal-toolchain-design.md`
-  - Goal: `harness/goals/2026-06-21-complete-goal-toolchain.md`
-  - Notes: Do not add auto Codex session launch, daemons, push/PR/deploy, or downstream-repo-specific assumptions.
-
 ## Next
 
 - [ ] P2 Add idea / requirement intake flow.
@@ -45,6 +38,18 @@
 
 ## Done
 
+- [x] Complete the goal toolchain
+  - Completed: Added `goal list`, `goal inspect`, `goal validate`, and
+    `run record`; `run prepare` now validates goal handoffs before writing a
+    run packet. Goal validation checks confirmed repo-local specs, required
+    sections, valid work mode, verification/manual evidence, and pause
+    coverage. Run recording updates only the target run directory.
+  - Spec: `harness/specs/2026-06-21-complete-goal-toolchain-design.md`
+  - Goal: `harness/goals/2026-06-21-complete-goal-toolchain.md`
+  - Run: `.harness/runs/20260629-185515-complete-goal-toolchain/`
+  - Verification: `git diff --check`, `npm run validate:plugin`,
+    `npm run test:smoke`, `goal list`, `goal inspect`, `goal validate`,
+    `run prepare`, `run status`, and `run record`.
 - [x] Define Agent Harness activation and next-action workflow.
   - Completed: Added `agent-harness activation snippet` for non-mutating
     `AGENTS.md` activation previews and `agent-harness orient next` for

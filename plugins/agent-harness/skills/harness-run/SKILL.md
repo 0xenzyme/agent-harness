@@ -34,25 +34,36 @@ git worktree list --porcelain
 node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
 ```
 
+   `run prepare` validates the goal before writing a packet.
 8. Inspect an existing run packet with:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <run-dir>
 ```
 
-9. Use `subagents.md` as bounded guidance:
+9. Record a completed or blocked outcome after execution:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <run-dir> --phase completed --summary "<summary>" --verification "<verification summary>"
+node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <run-dir> --phase blocked --summary "<blocker summary>"
+```
+
+   `run record` updates only `status.json` and `logs/` under the run directory.
+10. Use `subagents.md` as bounded guidance:
    - `small`: keep the task in the main context.
    - `medium`: split explorer/worker or worker/verification only when useful.
    - `large`: split by non-overlapping file ownership.
    - `ask`: pause before splitting.
-10. Execute the goal manually in the selected checkout or worktree.
-11. Run verification and update configured state records when the adapter
+11. Execute the goal manually in the selected checkout or worktree.
+12. Run verification and update configured state records when the adapter
     requires state sync.
 
 ## Rules
 
 - `run prepare` does not start Codex, create daemons, push, deploy, publish, or
   open PRs.
+- `run record` does not edit task/status files automatically; update configured
+  state records separately when the adapter requires state sync.
 - Do not automatically create worktrees; follow the goal and project worktree
   policy first.
 - Preserve fixed path behavior for `contract: "fixed"`.

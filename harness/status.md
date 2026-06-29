@@ -2,9 +2,8 @@
 
 ## Focus
 
-- Current focus: Activation snippet and read-only orientation / next-action
-  workflow are implemented and verified. Next recommended P1 is completing the
-  goal toolchain unless the user selects a different follow-up.
+- Current focus: Goal toolchain is implemented and verified. There is no active
+  P1 in `Now`; next work should be selected from `Next` or a new user request.
 
 ## Git
 
@@ -21,13 +20,16 @@
   - `git diff --check`
   - `npm run validate:plugin`
   - `npm run test:smoke`
-  - `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`
-  - `node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd .`
-- Result: passed. `agent-harness activation snippet` prints an `AGENTS.md`
-  preview without writing files, and `agent-harness orient next` summarizes
-  status/tasks with a recommended next action and confirmation check. Current
-  project resolves as `contract: "adapter"` with required and optional harness
-  paths present.
+  - `node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd . --json`
+  - `node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md --json`
+  - `node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md --json`
+  - `node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md`
+  - `node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd . --run .harness/runs/20260629-185515-complete-goal-toolchain`
+  - `node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd . --run .harness/runs/20260629-185515-complete-goal-toolchain --phase completed --summary "Implemented goal list/inspect/validate, run prepare validation gate, and run record." --verification "git diff --check, npm run validate:plugin, npm run test:smoke, goal list, goal validate, run prepare, and run status passed." --json`
+- Result: passed. Goal lifecycle now covers list, inspect, validate, validated
+  run preparation, run status, and completed/blocked run recording. `run record`
+  writes only run-local status/log evidence; task/status sync remains a
+  foreground harness update.
 
 ## Blockers
 

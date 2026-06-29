@@ -141,6 +141,14 @@ The adapter contract requires an accepted spec:
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
 
+List, inspect, and validate goals before preparing a run:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
+```
+
 Prepare a run packet from a goal:
 
 ```bash
@@ -151,6 +159,13 @@ Inspect a prepared run:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
+```
+
+Record a run outcome without modifying source files, pushing, or opening PRs:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
+node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
 ```
 
 ## Workflow
@@ -164,7 +179,7 @@ approval, credentials, production access, or unblocking decisions are needed.
 The intended adapter workflow is:
 
 ```text
-init/import -> activation snippet -> orient next -> goal create -> worktree recommend -> run prepare -> execute -> verify -> update state records
+init/import -> activation snippet -> orient next -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> update state records
 ```
 
 `activation snippet` prints an `AGENTS.md` section; it does not modify project
@@ -172,9 +187,12 @@ instructions. `orient next` is read-only; it summarizes status and task state,
 then reports what confirmation is needed before execution.
 
 `goal create` writes a durable handoff under the configured goals directory.
-`run prepare` writes `run.md`, `prompt.md`, `subagents.md`, `status.json`, and
-`logs/` under the configured runs directory. It does not start Codex, create a
-daemon, push, deploy, or open a PR.
+`goal validate` checks that a goal references a confirmed repo-local spec and
+contains the required execution sections. `run prepare` runs that validation
+gate before writing `run.md`, `prompt.md`, `subagents.md`, `status.json`, and
+`logs/` under the configured runs directory. `run record` updates only the run
+directory with a final or blocked outcome. These commands do not start Codex,
+create a daemon, push, deploy, or open a PR.
 
 ## Command Language
 

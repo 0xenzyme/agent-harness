@@ -1,7 +1,7 @@
 # Goal: Complete The Goal Toolchain
 
 Spec: harness/specs/2026-06-21-complete-goal-toolchain-design.md
-Status: Ready for execution from confirmed spec.
+Status: Completed.
 
 ## Source Task
 
@@ -24,7 +24,9 @@ Status: Ready for execution from confirmed spec.
 
 ## Work Mode Recommendation
 
-Use `worktree` unless the user explicitly confirms local checkout execution. The current checkout is dirty, and this goal changes core CLI, skill, docs, and state-management behavior.
+Use `local`. The current checkout is clean, the project adapter says to use the
+current checkout unless the user explicitly asks for an isolated worktree, and
+the user asked this thread to execute the next step.
 
 Before editing, run:
 
@@ -77,12 +79,17 @@ Also cover these temporary-project cases with deterministic commands:
 ## Completion Conditions
 
 - The source task acceptance is satisfied.
-- The spec's command surface is implemented or any intentional deviation is documented in the final response and project docs.
-- Goal validation catches missing spec, draft spec, missing required sections, invalid work mode, and missing stop/verification conditions.
-- Run outcome recording writes machine-readable status and human-readable log evidence.
-- `README.md`, `docs/project-contract.md`, `plugins/agent-harness/skills/harness-goal/SKILL.md`, and `plugins/agent-harness/skills/harness-run/SKILL.md` describe the completed workflow.
+- The spec's command surface is implemented.
+- Goal validation catches missing spec, draft spec, missing required sections,
+  invalid work mode, and missing stop/verification conditions.
+- Run outcome recording writes machine-readable status and human-readable log
+  evidence.
+- `README.md`, `docs/project-contract.md`,
+  `plugins/agent-harness/skills/harness-goal/SKILL.md`, and
+  `plugins/agent-harness/skills/harness-run/SKILL.md` describe the completed
+  workflow.
 - `harness/tasks.md` and `harness/status.md` are updated.
-- Verification commands pass, or any failure is documented with exact next steps.
+- Verification commands pass.
 
 ## Pause Conditions
 

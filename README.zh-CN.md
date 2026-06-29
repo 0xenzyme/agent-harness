@@ -126,6 +126,14 @@ adapter contract 要求 goal 引用已确认的 spec：
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
 
+准备 run 之前，列出、查看并验证 goals：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
+```
+
 从 goal 准备 run packet：
 
 ```bash
@@ -138,6 +146,13 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
 ```
 
+记录 run 结果，不修改源码、不 push、不 open PR：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
+node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
+```
+
 ## Workflow
 
 人负责 steering：目标、产品方向和约束。Harness 在 adapter 边界内作为执行引擎自动推进；当需要验收、授权、凭证、生产访问或解除阻塞时，再升级到 Human Gate。
@@ -147,13 +162,13 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 推荐的 adapter workflow：
 
 ```text
-init/import -> activation snippet -> orient next -> goal create -> worktree recommend -> run prepare -> execute -> verify -> update state records
+init/import -> activation snippet -> orient next -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> update state records
 ```
 
 `activation snippet` 只打印 `AGENTS.md` 片段，不修改项目 instructions。
 `orient next` 是只读命令：它汇总 status 和 task state，并说明进入执行前需要哪些确认。
 
-`goal create` 会把 durable handoff 写到配置的 goals 目录。`run prepare` 会把 `run.md`、`prompt.md`、`subagents.md`、`status.json` 和 `logs/` 写到配置的 runs 目录。它不会启动 Codex、创建 daemon、push、deploy 或 open PR。
+`goal create` 会把 durable handoff 写到配置的 goals 目录。`goal validate` 检查 goal 是否引用 repo 内已确认 spec，并包含执行所需 sections。`run prepare` 会先通过这个 validation gate，再把 `run.md`、`prompt.md`、`subagents.md`、`status.json` 和 `logs/` 写到配置的 runs 目录。`run record` 只更新 run 目录，记录 completed 或 blocked 结果。这些命令不会启动 Codex、创建 daemon、push、deploy 或 open PR。
 
 ## Command Language
 
