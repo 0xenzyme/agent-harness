@@ -81,11 +81,24 @@ node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/t
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 ```
 
+打印用于 `AGENTS.md` 的 project-scope activation snippet，不写文件：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs activation snippet --cwd /path/to/project
+```
+
 查看解析后的 config 和 adapter 路径：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
 node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
+```
+
+只读汇总当前状态并推荐下一步，不开始执行：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
 ```
 
 推荐当前任务应该继续使用当前 checkout、切到 worktree，还是先询问：
@@ -134,14 +147,17 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 推荐的 adapter workflow：
 
 ```text
-init/import -> task index -> goal create -> worktree recommend -> run prepare -> execute -> verify -> update state records
+init/import -> activation snippet -> orient next -> goal create -> worktree recommend -> run prepare -> execute -> verify -> update state records
 ```
+
+`activation snippet` 只打印 `AGENTS.md` 片段，不修改项目 instructions。
+`orient next` 是只读命令：它汇总 status 和 task state，并说明进入执行前需要哪些确认。
 
 `goal create` 会把 durable handoff 写到配置的 goals 目录。`run prepare` 会把 `run.md`、`prompt.md`、`subagents.md`、`status.json` 和 `logs/` 写到配置的 runs 目录。它不会启动 Codex、创建 daemon、push、deploy 或 open PR。
 
 ## Command Language
 
-面向人的 CLI 输出支持 `en` 和 `zh-CN`，覆盖 `init`、`doctor`、`worktree recommend` 和 help/usage。语言解析顺序：
+面向人的 CLI 输出支持 `en` 和 `zh-CN`，覆盖 `init`、`doctor`、`worktree recommend` 和 help/usage。activation 和 orientation 输出当前是稳定英文文本。语言解析顺序：
 
 1. `--lang <code>`
 2. `AGENT_HARNESS_LANG`

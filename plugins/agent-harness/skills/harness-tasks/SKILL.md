@@ -16,17 +16,25 @@ actions from a project's harness task index.
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 ```
 
-2. Read `.harness/config.json` when it exists.
-3. In the adapter contract, read the configured project adapter.
-4. Read the configured task index.
-5. Inspect only the project files needed to understand task status.
-6. Update the task index according to its configured format. Fixed
+2. For read-only state or next-action requests, use the orientation command
+   before manual task interpretation:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project>
+```
+
+   Report its recommendation without starting implementation.
+3. Read `.harness/config.json` when it exists.
+4. In the adapter contract, read the configured project adapter.
+5. Read the configured task index.
+6. Inspect only the project files needed to understand task status.
+7. Update the task index according to its configured format. Fixed
    `harness/tasks.md` uses:
    - current `Now` tasks;
    - accepted follow-ups in `Next`;
    - lower-priority ideas in `Later`;
    - completed items in `Done`.
-7. If work was performed, update configured state records when state sync is
+8. If work was performed, update configured state records when state sync is
    required.
 
 ## Rules
@@ -34,6 +42,9 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 - Treat `harness/tasks.md` as the fixed source of truth.
 - In the adapter contract, treat the configured task index, such as `todolist.md`,
   as the source of truth.
+- Treat `agent-harness orient next` as read-only. Do not convert its
+  recommendation into implementation, goal creation, or task edits unless the
+  user asks.
 - Keep task `kind` separate from task `state`. `observe` tasks use the
   harness-defined observation lifecycle rather than the development lifecycle.
 - Keep task titles short and concrete.

@@ -84,10 +84,26 @@ try {
   assert(existsSync(join(adapter, "harness/tasks.md")), "adapter default init should create harness/tasks.md");
   assert(existsSync(join(adapter, "harness/README.md")), "adapter default init should create adapter docs");
   assert(existsSync(join(adapter, "harness/mental-models/README.md")), "adapter default init should create mental model index");
+  assert(existsSync(join(adapter, "harness/mental-models/01-user-scenario.md")), "adapter default init should create user/scenario model");
+  assert(existsSync(join(adapter, "harness/mental-models/02-work-unit.md")), "adapter default init should create work unit model");
+  assert(existsSync(join(adapter, "harness/mental-models/03-control-loop-handoff.md")), "adapter default init should create control loop model");
+  assert(existsSync(join(adapter, "harness/mental-models/04-ownership-boundary.md")), "adapter default init should create ownership model");
   write(join(adapter, "harness/specs/default.md"), "# Spec\n");
   const adapterInspect = JSON.parse(run(["config", "inspect", "--cwd", adapter, "--json"]));
   assert(adapterInspect.contract === "adapter", "adapter inspect should report adapter contract");
   assert(adapterInspect.paths.taskIndex === "harness/tasks.md", "adapter default task index should be harness/tasks.md");
+  const adapterActivation = run(["activation", "snippet", "--cwd", adapter]);
+  assertIncludes(adapterActivation, "Agent Harness activation snippet", "activation snippet should print heading");
+  assertIncludes(adapterActivation, "harness/tasks.md", "activation snippet should include default task index");
+  assertIncludes(adapterActivation, "harness/status.md", "activation snippet should include default status");
+  assert(!existsSync(join(adapter, "AGENTS.md")), "activation snippet should not write AGENTS.md");
+  const adapterOrient = run(["orient", "next", "--cwd", adapter]);
+  assertIncludes(adapterOrient, "Agent Harness orientation", "orient next should print heading");
+  assertIncludes(adapterOrient, "Define the next concrete task", "orient next should include default ready task");
+  assertIncludes(adapterOrient, "This command is read-only", "orient next should report read-only behavior");
+  const adapterOrientJson = JSON.parse(run(["orient", "next", "--cwd", adapter, "--json"]));
+  assert(adapterOrientJson.tasks.ready[0].title === "Define the next concrete task", "orient json should expose ready task");
+  assert(adapterOrientJson.recommendation.title === "Define the next concrete task", "orient json should recommend ready task");
   const adapterDryRun = run([
     "goal",
     "create",
@@ -147,7 +163,22 @@ try {
 | Task | Type | Status | Priority | Doc |
 | --- | --- | --- | --- | --- |
 | Ship custom path behavior | dev | todo | P1 | [harness/specs/custom.md](harness/specs/custom.md) / [harness/goals/context.md](harness/goals/context.md) |
+| Wait for upstream decision | dev | blocked | P2 |  |
 `);
+  const customActivation = run(["activation", "snippet", "--cwd", custom]);
+  assertIncludes(customActivation, "todolist.md", "custom activation should include custom task index");
+  assertIncludes(customActivation, "custom/status.md", "custom activation should include custom status file");
+  assert(!existsSync(join(custom, "AGENTS.md")), "custom activation snippet should not write AGENTS.md");
+  const customActivationJson = JSON.parse(run(["activation", "snippet", "--cwd", custom, "--json"]));
+  assert(customActivationJson.writesFiles === false, "activation json should report writesFiles=false");
+  assertIncludes(customActivationJson.snippet, "todolist.md", "activation json snippet should include custom task index");
+  const customOrient = run(["orient", "next", "--cwd", custom]);
+  assertIncludes(customOrient, "Ship custom path behavior", "custom orient should include ready custom task");
+  assertIncludes(customOrient, "Wait for upstream decision", "custom orient should include blocked custom task");
+  const customOrientJson = JSON.parse(run(["orient", "next", "--cwd", custom, "--json"]));
+  assert(customOrientJson.paths.taskIndex === "todolist.md", "orient json should use custom task index");
+  assert(customOrientJson.recommendation.title === "Ship custom path behavior", "orient json should recommend custom ready task");
+  assert(customOrientJson.tasks.blocked[0].title === "Wait for upstream decision", "orient json should expose blocked tasks");
   const customGoalDryRun = run([
     "goal",
     "create",
@@ -213,6 +244,10 @@ try {
   assert(existsSync(join(configuredInit, "project/milestones")), "init should create configured milestones dir");
   assert(existsSync(join(configuredInit, "runs")), "init should create configured runs dir");
   assert(existsSync(join(configuredInit, "project/mental-models/README.md")), "init should create configured mental model index");
+  assert(existsSync(join(configuredInit, "project/mental-models/01-user-scenario.md")), "init should create configured user/scenario model");
+  assert(existsSync(join(configuredInit, "project/mental-models/02-work-unit.md")), "init should create configured work unit model");
+  assert(existsSync(join(configuredInit, "project/mental-models/03-control-loop-handoff.md")), "init should create configured control loop model");
+  assert(existsSync(join(configuredInit, "project/mental-models/04-ownership-boundary.md")), "init should create configured ownership model");
   assert(!existsSync(join(configuredInit, "harness/tasks.md")), "init should not create default harness/tasks.md with existing custom config");
   assert(!existsSync(join(configuredInit, "harness/status.md")), "init should not create default status with existing custom config");
   assert(!existsSync(join(configuredInit, "harness/README.md")), "init should not create default adapter with existing custom config");
@@ -267,6 +302,10 @@ try {
   assert(existsSync(join(discovered, "harness/status.md")), "import should create configured status file");
   assert(existsSync(join(discovered, ".harness/runs")), "import should create configured runs dir");
   assert(existsSync(join(discovered, "harness/mental-models/README.md")), "import should create mental model index");
+  assert(existsSync(join(discovered, "harness/mental-models/01-user-scenario.md")), "import should create user/scenario model");
+  assert(existsSync(join(discovered, "harness/mental-models/02-work-unit.md")), "import should create work unit model");
+  assert(existsSync(join(discovered, "harness/mental-models/03-control-loop-handoff.md")), "import should create control loop model");
+  assert(existsSync(join(discovered, "harness/mental-models/04-ownership-boundary.md")), "import should create ownership model");
   assert(!existsSync(join(discovered, "harness/tasks.md")), "import should not create a second task index");
   assertIncludes(run(["doctor", "--cwd", discovered]), "Harness files: ok", "imported project should still pass doctor");
 

@@ -96,11 +96,24 @@ Check a downstream project:
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 ```
 
+Print a project-scope activation snippet for `AGENTS.md` without writing files:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs activation snippet --cwd /path/to/project
+```
+
 Inspect resolved config and adapter paths:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
 node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
+```
+
+Summarize current status and recommend the next action without starting work:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
 ```
 
 Recommend whether to use the current checkout, a worktree, or ask first:
@@ -151,8 +164,12 @@ approval, credentials, production access, or unblocking decisions are needed.
 The intended adapter workflow is:
 
 ```text
-init/import -> task index -> goal create -> worktree recommend -> run prepare -> execute -> verify -> update state records
+init/import -> activation snippet -> orient next -> goal create -> worktree recommend -> run prepare -> execute -> verify -> update state records
 ```
+
+`activation snippet` prints an `AGENTS.md` section; it does not modify project
+instructions. `orient next` is read-only; it summarizes status and task state,
+then reports what confirmation is needed before execution.
 
 `goal create` writes a durable handoff under the configured goals directory.
 `run prepare` writes `run.md`, `prompt.md`, `subagents.md`, `status.json`, and
@@ -161,8 +178,9 @@ daemon, push, deploy, or open a PR.
 
 ## Command Language
 
-Human-facing CLI output supports `en` and `zh-CN` for `init`, `doctor`, and
-`worktree recommend`, and help/usage. The language is resolved in this order:
+Human-facing CLI output supports `en` and `zh-CN` for `init`, `doctor`,
+`worktree recommend`, and help/usage. Activation and orientation output is
+currently stable English text. The language is resolved in this order:
 
 1. `--lang <code>`
 2. `AGENT_HARNESS_LANG`

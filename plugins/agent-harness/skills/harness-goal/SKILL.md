@@ -23,7 +23,14 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
    `task-routing`, and `work-mode-policy`.
 5. Read the configured task index, linked `Doc` entries, and any configured
    state files that exist.
-6. Inspect git state with:
+6. If the user asks what to do next, orient first and wait for an explicit
+   execution request before creating a goal:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project>
+```
+
+7. Inspect git state with:
 
 ```bash
 git status --short
@@ -36,16 +43,16 @@ git worktree list --porcelain
 agent-harness worktree recommend --cwd <project>
 ```
 
-7. Decide the work mode:
+8. Decide the work mode:
    - `local` when the user explicitly wants no branch/worktree or the task is
      small foreground work.
    - `worktree` when local checkout is dirty, the work is parallel, the change
      is broad, or the goal should become a separate PR.
    - `ask` when production, destructive actions, paid APIs, or product direction
      decisions are involved.
-8. Create a goal handoff under the configured goals directory when the user
+9. Create a goal handoff under the configured goals directory when the user
    wants a durable prompt.
-9. The CLI can draft a goal from the configured task index with:
+10. The CLI can draft a goal from the configured task index with:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task "<task title>"
@@ -57,13 +64,13 @@ node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task 
 node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task "<task title>" --spec <spec-path>
 ```
 
-10. After a confirmed goal exists, prepare an execution packet with:
+11. After a confirmed goal exists, prepare an execution packet with:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
 ```
 
-11. Include verification, constraints, completion conditions, and pause
+12. Include verification, constraints, completion conditions, and pause
    conditions in every goal.
 
 ## Goal Shape
@@ -83,6 +90,8 @@ Every generated goal should include:
 ## Rules
 
 - Do not assume Codex should create a new branch for every goal.
+- Do not turn an orientation recommendation into implementation unless the user
+  clearly asks to execute that work.
 - Explain the work mode choice before edits.
 - Keep `goal` and `run` separate: goal writes durable handoff files, run writes
   execution packets under the configured runs directory.

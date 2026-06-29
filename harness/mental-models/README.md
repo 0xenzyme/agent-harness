@@ -1,4 +1,32 @@
-# Agent Harness Mental Model
+# Agent Harness Mental Models
+
+Agent Harness is a file-based control plane for Codex work. It does not own a
+product domain, start workers, or execute release actions by itself. Its job is
+to make task state, execution context, handoffs, gates, and evidence explicit
+enough that another Codex session or human can safely continue the loop.
+
+The reusable adapter formula is:
+
+```text
+adapter contract = task with status + spec + DAG + goal + gate
+```
+
+The core rule is:
+
+```text
+Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
+```
+
+## Model Index
+
+| Model | Question It Answers | Path |
+| --- | --- | --- |
+| User / Scenario Model | How should a first-time user adopt, activate, and use the harness in a new or existing project? | `01-user-scenario.md` |
+| Work Unit Model | What is one harness-managed unit of work? | `02-work-unit.md` |
+| Control Loop / Handoff Model | How does Codex enter, execute, verify, update state, stop, and hand off? | `03-control-loop-handoff.md` |
+| Ownership / Boundary Model | What belongs to plugin core, project adapters, artifacts, and pause rules? | `04-ownership-boundary.md` |
+
+## Layers
 
 Agent Harness has three layers:
 
@@ -7,96 +35,24 @@ Agent Harness has three layers:
 2. Project adapter: project-specific artifact paths, source-of-truth rules,
    hard boundaries, validation commands, and enabled gates.
 3. Documentation artifacts: task indexes, specs, goals, milestones, gate
-   records, run logs, status files, and deferred registers.
-
-The core rule is:
-
-```text
-Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
-```
+   records, run logs, status files, mental models, and deferred registers.
 
 Fixed-contract projects keep the original fixed file contract.
 Adapter-contract projects resolve artifact paths through
 `.harness/config.json` and the project adapter.
 
-## Control Plane
+## Reading Order
 
-The project control plane is intentionally file-based. Files are easy for
-humans to review, easy for Codex to read, and portable across machines.
+Read `01-user-scenario.md` first when deciding how a new user should initialize
+the harness in a new project, migrate an existing project into the harness
+system, activate harness instructions, or trigger normal post-activation
+workflows.
 
-Fixed contract:
+Read `02-work-unit.md` when deciding which artifacts a task needs.
 
-```text
-harness/
-  tasks.md
-  status.md
-  goals/
-.harness/
-  config.json
-  runs/
-    YYYYMMDD-HHMMSS-<slug>/
-      run.md
-      prompt.md
-      subagents.md
-      status.json
-      logs/
-```
+Read `03-control-loop-handoff.md` when creating goals, preparing runs,
+recording verification, or passing work to another session.
 
-Adapter contract uses the configured equivalents:
-
-```text
-task index
-project adapter
-specs/
-goals/
-milestones/
-runs/
-status file
-gate records
-deferred register
-```
-
-The default adapter paths are supplied by the plugin template, but projects
-may override them in `.harness/config.json`.
-
-Existing adapter projects can be discovered before `.harness/config.json`
-exists when they already have a project adapter and a known task index such as
-`todolist.md`. `config import` persists that mapping without creating another
-task source.
-
-## Loop Model
-
-A development loop should always have:
-
-- input: task from the configured task index or explicit user request
-- context: repo instructions, adapter, config, relevant files, current git state
-- action: implementation, review, triage, or report-only check
-- verification: tests, typecheck, browser proof, logs, or manual review
-- state update: tasks, status, goal file, or run log
-- stop condition: done, blocked, budget reached, or decision needed
-
-## Goal And Run Boundary
-
-`goal` and `run` are separate steps:
-
-- `goal`: create a durable handoff under the configured goals directory.
-- `run`: prepare or record execution for one goal under `.harness/runs/`.
-
-In the adapter contract, these are the configured goals and runs directories rather
-than mandatory literal paths.
-
-The first run implementation is intentionally manual. `agent-harness run
-prepare` creates a packet with a ready prompt and subagent guidance, but it does
-not start Codex or launch background sessions. Direct execution should wait
-until the local Codex CLI has a stable file-prompt or stdin contract.
-
-## Worktree Policy
-
-The harness does not assume a branch or worktree for every goal. It classifies
-work by risk and context:
-
-- `local`: small, foreground, user explicitly wants no branch/worktree
-- `worktree`: parallel work, dirty checkout, broad code change, automation
-- `ask`: destructive action, production impact, unclear product direction
-
-Codex should explain the chosen mode before making edits.
+Read `04-ownership-boundary.md` when changing plugin core, adapter rules,
+artifact paths, or anything with safety, cost, production, credentials,
+destructive actions, push, PR, deploy, release, daemon, or automation impact.

@@ -38,12 +38,21 @@ node <plugin-root>/scripts/agent-harness.mjs config import --cwd <project> --tas
 node <plugin-root>/scripts/agent-harness.mjs init --cwd <project> --contract adapter
 ```
 
-6. Read `.harness/config.json` when it exists.
-7. In the adapter contract, read the configured project adapter and relevant
+6. Print the project-scope activation snippet when the user is adopting or
+   migrating a project:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs activation snippet --cwd <project>
+```
+
+   Report that the command does not write `AGENTS.md`; the user must explicitly
+   approve any instruction-file edit.
+7. Read `.harness/config.json` when it exists.
+8. In the adapter contract, read the configured project adapter and relevant
    installed plugin references.
-8. Read the configured task index and any configured state files that exist.
-9. Report harness contract, created paths, missing optional paths, and the next
-   goal candidate.
+9. Read the configured task index and any configured state files that exist.
+10. Report harness contract, created paths, missing optional paths, activation
+   status, and the next goal candidate.
 
 ## Rules
 
@@ -56,6 +65,8 @@ node <plugin-root>/scripts/agent-harness.mjs init --cwd <project> --contract ada
   `.harness/config.json` and the project adapter.
 - Keep plugin rules in canonical references; keep project-specific boundaries
   in the adapter.
+- Do not modify `AGENTS.md` during init/import unless the user explicitly asks
+  for that edit after seeing the activation snippet.
 - Report to the user in the user's language while preserving code, commands,
   paths, package names, skill names, API names, model names, abbreviations, and
   Git commit messages in English.

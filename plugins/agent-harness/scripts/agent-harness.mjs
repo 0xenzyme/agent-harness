@@ -39,6 +39,13 @@ const adapterContract = {
   mentalModelIndex: "harness/mental-models/README.md"
 };
 
+const mentalModelTemplates = [
+  ["01-user-scenario.md", "mental-model-user-scenario.md"],
+  ["02-work-unit.md", "mental-model-work-unit.md"],
+  ["03-control-loop-handoff.md", "mental-model-control-loop-handoff.md"],
+  ["04-ownership-boundary.md", "mental-model-ownership-boundary.md"]
+];
+
 const commonTaskIndexCandidates = [
   "harness/tasks.md",
   "todolist.md",
@@ -149,6 +156,8 @@ const messages = {
   agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--project-name NAME] [--force] [--lang CODE]
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
+  agent-harness activation snippet [--cwd PATH] [--json]
+  agent-harness orient next [--cwd PATH] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
@@ -181,6 +190,8 @@ const messages = {
   agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--project-name NAME] [--force] [--lang CODE]
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
+  agent-harness activation snippet [--cwd PATH] [--json]
+  agent-harness orient next [--cwd PATH] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
@@ -546,6 +557,29 @@ function ensureDir(cwd, relPath, created) {
   mkdirSync(absPath, { recursive: true });
 }
 
+function mentalModelArtifactPaths(paths) {
+  const mentalModelsDir = paths.mentalModels || dirname(paths.mentalModelIndex || adapterContract.mentalModelIndex);
+  return [
+    paths.mentalModelIndex,
+    ...mentalModelTemplates.map(([fileName]) => join(mentalModelsDir, fileName))
+  ].filter(Boolean);
+}
+
+function ensureMentalModelArtifacts(cwd, paths, created, force = false) {
+  const mentalModelsDir = paths.mentalModels || dirname(paths.mentalModelIndex || adapterContract.mentalModelIndex);
+
+  if (paths.mentalModelIndex && writeIfMissing(join(cwd, paths.mentalModelIndex), readTemplate("mental-models.md"), force)) {
+    created.push(paths.mentalModelIndex);
+  }
+
+  for (const [fileName, templateName] of mentalModelTemplates) {
+    const relPath = join(mentalModelsDir, fileName);
+    if (writeIfMissing(join(cwd, relPath), readTemplate(templateName), force)) {
+      created.push(relPath);
+    }
+  }
+}
+
 function ensureImportSupportArtifacts(cwd, paths, created) {
   if (writeIfMissing(join(cwd, paths.status), readTemplate("status.md"))) {
     created.push(paths.status);
@@ -553,9 +587,7 @@ function ensureImportSupportArtifacts(cwd, paths, created) {
   for (const dir of [paths.specs, paths.goals, paths.milestones, paths.runs, paths.mentalModels]) {
     ensureDir(cwd, dir, created);
   }
-  if (paths.mentalModelIndex && writeIfMissing(join(cwd, paths.mentalModelIndex), readTemplate("mental-models.md"))) {
-    created.push(paths.mentalModelIndex);
-  }
+  ensureMentalModelArtifacts(cwd, paths, created);
 }
 
 function initPlan(args, cwd, projectName) {
@@ -641,9 +673,7 @@ function init(args) {
   }
 
   if (mode === "adapter" && paths.mentalModelIndex) {
-    if (writeIfMissing(join(cwd, paths.mentalModelIndex), readTemplate("mental-models.md"), args.force)) {
-      created.push(paths.mentalModelIndex);
-    }
+    ensureMentalModelArtifacts(cwd, paths, created, args.force);
   }
 
   console.log(t(lang, "initDone", { cwd }));
@@ -688,7 +718,7 @@ function configImport(args) {
       paths.milestones,
       paths.runs,
       paths.mentalModels,
-      paths.mentalModelIndex
+      ...mentalModelArtifactPaths(paths)
     ].filter((relPath) => relPath && !existsSync(join(cwd, relPath))),
     created: [],
     contract: "adapter",
@@ -1088,6 +1118,273 @@ function adapterInspect(args) {
   console.log(`Exists: ${exists ? "yes" : "no"}`);
 }
 
+function activationSnippet(context) {
+  const paths = context.paths;
+  const configPath = paths.config || configRelPath;
+  const taskIndex = paths.taskIndex || paths.tasks || fixedContract.taskIndex;
+  const statusPath = paths.status || fixedContract.status;
+  const adapterPath = context.contract === "adapter" ? paths.adapterDocs : "";
+  const specsPath = paths.specs || "";
+  const goalsPath = paths.goals || fixedContract.goals;
+
+  return `## Agent Harness
+
+If \`${configPath}\` exists, read it before substantial project work.
+
+- Resolve the harness contract and artifact paths with \`agent-harness config inspect --cwd .\` when the project state is unclear.
+${adapterPath ? `- For \`contract: "adapter"\`, read the project adapter at \`${adapterPath}\` before goal, run, or implementation work.\n` : ""}- Read the configured task index at \`${taskIndex}\` and status file at \`${statusPath}\` before choosing or executing tasks.
+${specsPath ? `- Read relevant specs under \`${specsPath}\` and goals under \`${goalsPath}\` before implementation.\n` : `- Read relevant goals under \`${goalsPath}\` before implementation.\n`}- For orientation or next-action requests, summarize current status and task state first; do not start implementation unless the user asks.
+- Use \`agent-harness doctor --cwd .\`, \`agent-harness orient next --cwd .\`, \`agent-harness goal create --cwd . --task "<task>"\`, and \`agent-harness run prepare --cwd . --goal <goal-file>\` when they fit the task.
+- Preserve existing project instructions. Pause before product-direction decisions, \`AGENTS.md\` changes, credentials, paid APIs, production access, destructive operations, branch/worktree changes, push, PR, deploy, release, daemons, watchers, or background automation.
+`;
+}
+
+function activationSnippetCommand(args) {
+  const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
+  const snippet = activationSnippet(context);
+  const payload = {
+    cwd,
+    contract: context.contract,
+    target: "AGENTS.md",
+    writesFiles: false,
+    snippet
+  };
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log("Agent Harness activation snippet");
+  console.log("Target: AGENTS.md");
+  console.log("Writes files: no");
+  console.log("");
+  console.log(snippet.trimEnd());
+}
+
+function statusFocus(content) {
+  const focus = extractSection(content, "Focus");
+  if (!focus) {
+    return "";
+  }
+  const lines = focus
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^-+\s*/, "").trim())
+    .filter(Boolean);
+  return lines.join(" ").replace(/^Current focus:\s*/i, "").trim();
+}
+
+function taskStatus(task) {
+  const explicit = detailValue(task, "Status").toLowerCase();
+  if (explicit) {
+    return explicit;
+  }
+  if (task.done) {
+    return "done";
+  }
+  const section = String(task.section || "").toLowerCase();
+  if (section === "done") {
+    return "done";
+  }
+  if (section === "now") {
+    return "todo";
+  }
+  return "";
+}
+
+function taskKind(task) {
+  return detailValue(task, "Type").toLowerCase();
+}
+
+function taskSummary(task) {
+  const status = taskStatus(task);
+  const kind = taskKind(task);
+  const parts = [
+    task.priority,
+    status ? `status=${status}` : "",
+    kind ? `type=${kind}` : "",
+    task.section ? `section=${task.section}` : "",
+    `line=${task.line}`
+  ].filter(Boolean);
+  return {
+    title: task.title,
+    priority: task.priority,
+    status,
+    type: kind,
+    section: task.section || "",
+    line: task.line,
+    summary: `${task.priority ? `${task.priority} ` : ""}${task.title}${parts.length ? ` (${parts.join(", ")})` : ""}`
+  };
+}
+
+function isBlockedTask(task) {
+  const status = taskStatus(task);
+  return ["blocked", "paused", "action-needed"].includes(status);
+}
+
+function isDoneTask(task) {
+  const status = taskStatus(task);
+  return task.done || ["done", "cancelled", "closed"].includes(status);
+}
+
+function isInProgressTask(task) {
+  const status = taskStatus(task);
+  return ["doing", "review", "triage", "watching", "signal"].includes(status);
+}
+
+function isReadyTask(task) {
+  if (isDoneTask(task) || isBlockedTask(task) || isInProgressTask(task)) {
+    return false;
+  }
+  const status = taskStatus(task);
+  return !status || ["todo", "spec-ready", "goal-ready", "spec-draft", "action-needed"].includes(status);
+}
+
+function priorityRank(priority) {
+  const match = String(priority || "").match(/^P(\d+)$/i);
+  return match ? Number(match[1]) : 99;
+}
+
+function taskSort(a, b) {
+  const priorityDiff = priorityRank(a.priority) - priorityRank(b.priority);
+  if (priorityDiff) {
+    return priorityDiff;
+  }
+  return a.line - b.line;
+}
+
+function firstLines(value, limit = 6) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function orientationPayload(args) {
+  const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
+  const taskIndex = context.paths.taskIndex || context.paths.tasks;
+  const statusPath = context.paths.status;
+  const taskIndexAbs = taskIndex ? join(cwd, taskIndex) : "";
+  const statusAbs = statusPath ? join(cwd, statusPath) : "";
+  const taskContent = taskIndexAbs && existsSync(taskIndexAbs) ? readFileSync(taskIndexAbs, "utf8") : "";
+  const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
+  const tasks = taskContent ? parseTasks(taskContent) : [];
+  const ready = tasks.filter(isReadyTask).sort(taskSort);
+  const blocked = tasks.filter(isBlockedTask).sort(taskSort);
+  const inProgress = tasks.filter(isInProgressTask).sort(taskSort);
+  const done = tasks.filter(isDoneTask).sort(taskSort);
+  const recommendationTask = ready[0] || inProgress[0] || blocked[0] || null;
+  const recommendation = recommendationTask
+    ? {
+      title: recommendationTask.title,
+      reason: ready[0] === recommendationTask
+        ? "highest-priority ready task from the configured task index"
+        : inProgress[0] === recommendationTask
+          ? "no ready task found; continue the active in-progress task"
+          : "no ready or in-progress task found; unblock the highest-priority blocked task",
+      startPrompt: `Use harness to work on: ${recommendationTask.title}`,
+      goalCommand: `agent-harness goal create --cwd . --task "${recommendationTask.title}"`
+    }
+    : {
+      title: "",
+      reason: "no parsed tasks found in the configured task index",
+      startPrompt: "",
+      goalCommand: ""
+    };
+
+  return {
+    cwd,
+    contract: context.contract,
+    configSource: context.configSource,
+    paths: {
+      taskIndex,
+      status: statusPath,
+      adapter: context.paths.adapterDocs || "",
+      config: context.paths.config || ""
+    },
+    status: {
+      exists: Boolean(statusContent),
+      focus: statusFocus(statusContent),
+      blockers: firstLines(extractSection(statusContent, "Blockers"), 5)
+    },
+    tasks: {
+      exists: Boolean(taskContent),
+      total: tasks.length,
+      ready: ready.map(taskSummary),
+      blocked: blocked.map(taskSummary),
+      inProgress: inProgress.map(taskSummary),
+      done: done.slice(0, 5).map(taskSummary)
+    },
+    recommendation,
+    confirmation: {
+      canContinueWithoutConfirmation: [
+        "read harness artifacts",
+        "summarize status and task state",
+        "draft a spec or goal preview",
+        "run local read-only inspection commands"
+      ],
+      needsUserConfirmation: [
+        "choose product direction",
+        "move from shaping into implementation when scope is ambiguous",
+        "modify AGENTS.md or activation behavior",
+        "create branches or worktrees",
+        "push, PR, deploy, release, daemon, watcher, credentials, paid API, production, or destructive actions"
+      ]
+    },
+    warnings: context.warnings
+  };
+}
+
+function formatTaskSummaries(tasks, emptyText) {
+  if (!tasks.length) {
+    return `- ${emptyText}`;
+  }
+  return tasks.slice(0, 5).map((task) => `- ${task.summary}`).join("\n");
+}
+
+function orientNext(args) {
+  const payload = orientationPayload(args);
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log("Agent Harness orientation");
+  console.log(`Harness contract: ${payload.contract}`);
+  console.log(`Task index: ${payload.paths.taskIndex || "not configured"}`);
+  console.log(`Status file: ${payload.paths.status || "not configured"}`);
+  console.log("");
+  console.log("Current focus:");
+  console.log(`- ${payload.status.focus || "not recorded"}`);
+  console.log("");
+  console.log("Ready tasks:");
+  console.log(formatTaskSummaries(payload.tasks.ready, "none detected"));
+  console.log("");
+  console.log("In progress:");
+  console.log(formatTaskSummaries(payload.tasks.inProgress, "none detected"));
+  console.log("");
+  console.log("Blocked:");
+  console.log(formatTaskSummaries(payload.tasks.blocked, "none detected"));
+  console.log("");
+  console.log("Recommended next action:");
+  if (payload.recommendation.title) {
+    console.log(`- ${payload.recommendation.title}`);
+    console.log(`- Reason: ${payload.recommendation.reason}`);
+    console.log(`- To start: ${payload.recommendation.startPrompt}`);
+    console.log(`- Goal command: ${payload.recommendation.goalCommand}`);
+  } else {
+    console.log(`- ${payload.recommendation.reason}`);
+  }
+  console.log("");
+  console.log("Confirmation check:");
+  console.log("- This command is read-only and did not start implementation.");
+  console.log("- Ask before moving into implementation, activation changes, branch/worktree changes, push/PR/deploy/release, credentials, paid APIs, production, destructive operations, daemons, or automation.");
+}
+
 function todayStamp(date = new Date()) {
   return [
     date.getFullYear(),
@@ -1138,15 +1435,23 @@ function parseTasks(content) {
   const lines = content.split(/\r?\n/);
   const tasks = [];
   let current = null;
+  let section = "";
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
+    const sectionMatch = line.match(/^##\s+(.+?)\s*$/);
+    if (sectionMatch) {
+      section = sectionMatch[1];
+      current = null;
+    }
+
     const match = line.match(/^- \[( |x|X)\]\s+(?:(P\d+)\s+)?(.+?)\s*$/);
     if (match) {
       current = {
         done: match[1].toLowerCase() === "x",
         priority: match[2] || "",
         title: match[3],
+        section,
         line: index + 1,
         details: []
       };
@@ -1172,6 +1477,7 @@ function parseTasks(content) {
             done: ["done", "cancelled", "closed"].includes(status.toLowerCase()),
             priority,
             title,
+            section,
             line: index + 1,
             details: [
               `Type: ${type}`,
@@ -1859,6 +2165,10 @@ function main() {
       doctor(args);
     } else if (command === "print-contract") {
       printContract(args);
+    } else if (command === "activation" && subcommand === "snippet") {
+      activationSnippetCommand(args);
+    } else if (command === "orient" && subcommand === "next") {
+      orientNext(args);
     } else if (command === "config" && subcommand === "inspect") {
       configInspect(args);
     } else if (command === "config" && subcommand === "import") {

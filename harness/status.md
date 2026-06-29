@@ -2,8 +2,9 @@
 
 ## Focus
 
-- Current focus: Harness directory naming and observe task protocol are aligned
-  across plugin defaults, references, and the current project adapter.
+- Current focus: Activation snippet and read-only orientation / next-action
+  workflow are implemented and verified. Next recommended P1 is completing the
+  goal toolchain unless the user selects a different follow-up.
 
 ## Git
 
@@ -17,12 +18,16 @@
 
 - Last checked: 2026-06-29
 - Last commands:
+  - `git diff --check`
   - `npm run validate:plugin`
   - `npm run test:smoke`
   - `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`
-- Result: passed. Current project resolves as `contract: "adapter"` with
-  required paths under `harness/`, machine paths under `.harness/`, and
-  `observe` task state semantics defined in harness references.
+  - `node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd .`
+- Result: passed. `agent-harness activation snippet` prints an `AGENTS.md`
+  preview without writing files, and `agent-harness orient next` summarizes
+  status/tasks with a recommended next action and confirmation check. Current
+  project resolves as `contract: "adapter"` with required and optional harness
+  paths present.
 
 ## Blockers
 
