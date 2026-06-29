@@ -13,11 +13,11 @@ mental models, yet Codex will only use them when instructed through project
 scope, an explicit user request, a harness skill, a CLI command, or a plugin
 bootstrap.
 
-Superpowers solves this differently: it installs a session-start hook that
-injects a global bootstrap into each session. That is appropriate for a global
-development methodology. Agent Harness should be more conservative because it
-is a project control plane. It should activate strongly for opted-in projects
-without forcing harness behavior on unrelated projects.
+A hook-capable reference plugin solves this differently: it installs a
+session-start hook that injects a global bootstrap into each session. That is
+appropriate for a global development methodology. Agent Harness should be more
+conservative because it is a project control plane. It should activate strongly
+for opted-in projects without forcing harness behavior on unrelated projects.
 
 The user also identified a common post-activation scenario: they may not want
 implementation yet. They may want to see the current todolist, current status,

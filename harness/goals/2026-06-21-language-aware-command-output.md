@@ -1,6 +1,6 @@
 # Goal: Add Language-Aware Command Output
 
-Spec: `harness/specs/superpowers/2026-06-21-language-aware-command-output-design.md`
+Spec: `harness/specs/2026-06-21-language-aware-command-output-design.md`
 Status: Draft goal handoff; execute only after the spec is confirmed by the user.
 
 ## Source Task
@@ -10,7 +10,7 @@ Status: Draft goal handoff; execute only after the spec is confirmed by the user
 ## Read First
 
 1. `AGENTS.md`
-2. `harness/specs/superpowers/2026-06-21-language-aware-command-output-design.md`
+2. `harness/specs/2026-06-21-language-aware-command-output-design.md`
 3. `harness/tasks.md`
 4. `.harness/config.json`
 5. `harness/status.md`

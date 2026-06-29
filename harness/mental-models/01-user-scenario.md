@@ -162,10 +162,10 @@ approve any `AGENTS.md` edit.
 
 ### Plugin-Scope Bootstrap
 
-Superpowers uses a stronger mechanism: its plugin manifest declares a
-`SessionStart` hook, the hook injects the full `using-superpowers` bootstrap as
-additional session context, and that bootstrap tells the agent to check and use
-skills before acting.
+A hook-capable reference plugin can use a stronger mechanism: its plugin
+manifest declares a `SessionStart` hook, the hook injects bootstrap text as
+additional session context, and that bootstrap tells the agent to follow a
+global workflow before acting.
 
 That shape is:
 
@@ -177,8 +177,8 @@ plugin install
 -> relevant skills activate during the session
 ```
 
-This is appropriate for Superpowers because it is a global development
-methodology. It is intentionally more invasive than project instructions.
+This can be appropriate for a global development methodology. It is
+intentionally more invasive than project instructions.
 
 Agent Harness should be more conservative by default. It is a project control
 plane, not a universal coding methodology. A global bootstrap that forces
@@ -198,8 +198,21 @@ contract before substantial project work.
 That would make harness discovery automatic for opted-in projects without
 forcing harness behavior on projects that have no harness config.
 
-The current mental model treats conditional bootstrap as a possible future
-activation mechanism, not current behavior.
+Validation on 2026-06-29 found that this should remain deferred. A local
+hook-capable reference plugin outside this repository uses a hook manifest plus
+a `SessionStart` script to inject `additionalContext`, but the current Agent
+Harness plugin validation gate rejects `hooks` in `.codex-plugin/plugin.json`.
+A temporary Agent Harness manifest with a hook path fails validation, and the
+same validator rejects the external reference manifest for the same field.
+
+Therefore the current Agent Harness plugin must stay hook-free. This is the
+current non-harness-project guarantee: installing the plugin does not inject
+harness instructions into sessions unless the project activates harness through
+`AGENTS.md`, an explicit user request, a harness skill, or a CLI command.
+
+Conditional bootstrap can be reconsidered only after plugin validation accepts
+hook manifests and Codex App / Codex CLI runtime tests prove that the hook emits
+no additional context when `.harness/config.json` is absent.
 
 ## Human / Agent Division
 
@@ -422,6 +435,16 @@ The user may ask:
 In this scenario, Codex should not jump directly to implementation. It should
 first turn the raw idea into harness-shaped project state.
 
+The current command entry is:
+
+```bash
+agent-harness intake idea --cwd . --idea "new idea text"
+agent-harness intake idea --cwd . --idea "new idea text" --record
+```
+
+The first form is preview-only. The second form appends a candidate task only
+for supported markdown task indexes.
+
 Codex should:
 
 - read the current task index, status, adapter, and relevant mental models
@@ -458,6 +481,64 @@ This scenario is different from `Orient`: orientation starts from existing
 state, while intake starts from a new external idea. It is different from
 `Execute`: intake decides how the idea should enter the harness before anyone
 implements it.
+
+## Idea Inbox Thread Scenario
+
+A user may want to keep a separate Codex thread open only for capturing ideas
+while another thread acts as the main control thread.
+
+This model treats that thread as an Idea Inbox Thread, also called a Capture
+Thread. It is not an execution thread.
+
+The thread split is:
+
+- Master / Control Thread: drives the current spec, goal, implementation,
+  verification, and state sync.
+- Idea Inbox Thread: captures new ideas, requirements, doubts, and improvement
+  notes without interrupting the control thread.
+- Intake Step: turns captured ideas into harness-shaped candidates through
+  `intake idea`.
+- Promotion: moves only accepted candidates into the configured task index,
+  specs, or goals.
+
+The Idea Inbox Thread should preserve raw context and avoid turning every note
+into a task immediately. A raw idea becomes harness work only after intake
+classifies it as duplicate, related, spec-needed, goal-ready, task-candidate,
+or ask.
+
+Codex should not implement from the Idea Inbox Thread by default. It should
+capture, clarify when needed, and later promote through intake when the user
+asks to organize or accept the idea.
+
+## Evaluation Project Scenario
+
+Another adoption question is whether Agent Harness itself is suitable for a
+given class of projects. That should be evaluated with fixture projects rather
+than by relying only on this repository's own dogfooding.
+
+The recommended first evaluation shape is an `evals/` fixture suite, not one
+large application. Initial fixtures should cover:
+
+- New Project Fixture: empty or small repo used to test adapter initialization,
+  activation snippet, `doctor`, and `orient next`.
+- Legacy Project Fixture: repo with an existing `todolist.md`, `AGENTS.md`,
+  README, specs, and status notes, used to test non-invasive migration.
+- Non-Harness Project Fixture: normal repo without `.harness/config.json`, used
+  to verify Agent Harness does not affect unrelated projects.
+- Messy Realistic Project Fixture: repo with dirty git state, mixed language
+  docs, table task indexes, ready / blocked / done tasks, and custom paths.
+
+The evaluation should measure agent behavior, not only CLI exit codes. Key
+scenarios include:
+
+- asking for current state should trigger read-only orientation, not execution
+- a new idea should go through intake before entering the task index
+- legacy migration should preserve the existing task source of truth
+- non-harness projects should not receive harness behavior
+- goals, runs, status, and tasks should remain consistent across multiple turns
+
+The first version can be semi-automatic: fixture repos, scenario prompts, and
+expected outcomes. Fully automated agent-runner scoring can come later.
 
 ## Who Uses It
 

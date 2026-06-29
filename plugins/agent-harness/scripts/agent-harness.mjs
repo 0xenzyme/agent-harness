@@ -59,13 +59,16 @@ function parseArgs(argv) {
     "adapter-docs",
     "cwd",
     "goal",
+    "idea",
     "lang",
     "contract",
     "mode",
     "phase",
+    "priority",
     "projectName",
     "project-name",
     "run",
+    "section",
     "summary",
     "spec",
     "taskIndex",
@@ -75,7 +78,7 @@ function parseArgs(argv) {
     "workMode",
     "work-mode"
   ]);
-  const booleanOptions = new Set(["dryRun", "dry-run", "force", "help", "json"]);
+  const booleanOptions = new Set(["dryRun", "dry-run", "force", "help", "json", "record"]);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -161,6 +164,7 @@ const messages = {
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
   agent-harness orient next [--cwd PATH] [--json]
+  agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
@@ -199,6 +203,7 @@ const messages = {
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
   agent-harness orient next [--cwd PATH] [--json]
+  agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
@@ -1396,6 +1401,351 @@ function orientNext(args) {
   console.log("- Ask before moving into implementation, activation changes, branch/worktree changes, push/PR/deploy/release, credentials, paid APIs, production, destructive operations, daemons, or automation.");
 }
 
+const validIntakePriorities = new Set(["P1", "P2", "P3"]);
+const validIntakeSections = new Set(["Now", "Next", "Later"]);
+
+function oneLine(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function sentenceTitle(value) {
+  const cleaned = oneLine(value)
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/[.!?。！？]+$/g, "");
+  if (cleaned.length <= 80) {
+    return cleaned || "Untitled intake idea";
+  }
+  const shortened = cleaned.slice(0, 80);
+  const lastSpace = shortened.lastIndexOf(" ");
+  return `${(lastSpace > 40 ? shortened.slice(0, lastSpace) : shortened).trim()}...`;
+}
+
+function wordTokens(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+}
+
+function overlapScore(a, b) {
+  const aTokens = new Set(wordTokens(a));
+  const bTokens = new Set(wordTokens(b));
+  if (!aTokens.size || !bTokens.size) {
+    return 0;
+  }
+  let overlap = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) {
+      overlap += 1;
+    }
+  }
+  return overlap / aTokens.size;
+}
+
+function taskSearchText(task) {
+  return [
+    task.title,
+    task.priority,
+    task.section,
+    ...task.details
+  ].filter(Boolean).join(" ");
+}
+
+function intakeTaskMatches(tasks, idea) {
+  const ideaText = normalized(idea);
+  return tasks
+    .filter((task) => !isDoneTask(task))
+    .map((task) => {
+      const taskText = taskSearchText(task);
+      const taskTitle = normalized(task.title);
+      const score = overlapScore(idea, taskText);
+      const exact = Boolean(ideaText && (taskTitle.includes(ideaText) || ideaText.includes(taskTitle)));
+      return {
+        task: taskSummary(task),
+        score: exact ? 1 : score,
+        kind: exact ? "duplicate" : score >= 0.35 ? "related" : ""
+      };
+    })
+    .filter((match) => match.kind)
+    .sort((a, b) => b.score - a.score || a.task.line - b.task.line)
+    .slice(0, 5);
+}
+
+function collectMarkdownFiles(cwd, relPath, limit = 80) {
+  const root = relPath ? join(cwd, relPath) : "";
+  if (!root || !existsSync(root)) {
+    return [];
+  }
+  const files = [];
+  const stack = [root];
+  while (stack.length && files.length < limit) {
+    const current = stack.pop();
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const absPath = join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(absPath);
+      } else if (entry.isFile() && entry.name.endsWith(".md")) {
+        files.push(displayPath(cwd, absPath));
+      }
+    }
+  }
+  return files.sort();
+}
+
+function artifactMatches(cwd, paths, idea) {
+  const files = [
+    ...collectMarkdownFiles(cwd, paths.specs),
+    ...collectMarkdownFiles(cwd, paths.goals)
+  ];
+  return files
+    .map((file) => {
+      const content = readFileIfExists(join(cwd, file));
+      const title = goalTitle(content, file);
+      const score = Math.max(overlapScore(idea, file), overlapScore(idea, title));
+      return {
+        path: file,
+        title,
+        score
+      };
+    })
+    .filter((match) => match.score >= 0.35)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+}
+
+function intakeSignals(idea) {
+  const text = String(idea || "").toLowerCase();
+  const tokens = wordTokens(idea);
+  const asksQuestion = /(\?|？|should we|can we|whether|能不能|是否|要不要)/i.test(idea);
+  const broad = /(workflow|architecture|system|migration|bootstrap|policy|mental model|roadmap|体系|流程|架构|迁移|策略|心智模型)/i.test(idea);
+  const risky = /(production|credential|paid|destructive|deploy|release|database|prod|凭证|付费|生产|破坏|发布|部署|数据库)/i.test(idea);
+  const concrete = /^(add|fix|update|rename|document|write|validate|record|list|inspect|create|支持|新增|修复|更新|记录|验证)/i.test(oneLine(idea));
+  return {
+    asksQuestion,
+    broad,
+    risky,
+    concrete,
+    long: tokens.length > 14 || oneLine(idea).length > 140
+  };
+}
+
+function classifyIntakeIdea({ idea, taskMatches }) {
+  if (taskMatches.some((match) => match.kind === "duplicate")) {
+    return "duplicate";
+  }
+  if (taskMatches.length) {
+    return "related";
+  }
+  const signals = intakeSignals(idea);
+  if (signals.asksQuestion || signals.risky) {
+    return "ask";
+  }
+  if (signals.broad || signals.long) {
+    return "spec-needed";
+  }
+  if (signals.concrete) {
+    return "goal-ready";
+  }
+  return "task-candidate";
+}
+
+function intakeAcceptance(classification) {
+  if (classification === "duplicate" || classification === "related") {
+    return "Decide whether to merge this idea with existing work or record a separate task.";
+  }
+  if (classification === "spec-needed") {
+    return "Draft or confirm a spec that defines scope, non-goals, validation, and pause conditions.";
+  }
+  if (classification === "goal-ready") {
+    return "Create a goal from the accepted task, implement the bounded change, verify it, and sync harness state.";
+  }
+  if (classification === "ask") {
+    return "Clarify product direction, priority, scope, and acceptance before recording or executing.";
+  }
+  return "Define scope, implement the accepted change, verify it, and update harness state.";
+}
+
+function intakeNeedsSpec(classification) {
+  return ["spec-needed", "ask"].includes(classification);
+}
+
+function intakeRecommendedAction(classification) {
+  if (classification === "duplicate" || classification === "related") {
+    return "Review related tasks before recording a new task.";
+  }
+  if (classification === "spec-needed") {
+    return "Record as a task candidate, then draft a spec before goal creation.";
+  }
+  if (classification === "goal-ready") {
+    return "Record the task, confirm priority, then create a goal when ready.";
+  }
+  if (classification === "ask") {
+    return "Ask the user to confirm product direction and priority before recording.";
+  }
+  return "Record as a task candidate after user confirmation.";
+}
+
+function intakePayload(args) {
+  const cwd = targetCwd(args);
+  const idea = oneLine(args.idea);
+  if (!idea) {
+    throw new Error("Usage: agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]");
+  }
+  const priority = (args.priority || "P2").toUpperCase();
+  if (!validIntakePriorities.has(priority)) {
+    throw new Error(`Invalid --priority: ${args.priority}`);
+  }
+  const section = args.section || "Next";
+  if (!validIntakeSections.has(section)) {
+    throw new Error(`Invalid --section: ${args.section}`);
+  }
+
+  const context = resolveHarnessContext(cwd);
+  const taskIndex = context.paths.taskIndex || context.paths.tasks;
+  const statusPath = context.paths.status;
+  const taskIndexAbs = taskIndex ? join(cwd, taskIndex) : "";
+  const statusAbs = statusPath ? join(cwd, statusPath) : "";
+  const taskContent = taskIndexAbs && existsSync(taskIndexAbs) ? readFileSync(taskIndexAbs, "utf8") : "";
+  const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
+  const tasks = taskContent ? parseTasks(taskContent) : [];
+  const taskMatches = intakeTaskMatches(tasks, idea);
+  const artifacts = artifactMatches(cwd, context.paths, idea);
+  const classification = classifyIntakeIdea({ idea, taskMatches });
+  const needsSpec = intakeNeedsSpec(classification);
+  const title = sentenceTitle(idea);
+  const confirmationNeeded = args.record
+    ? "record flag supplied; no implementation will start"
+    : "pass --record to append this candidate to the configured task index";
+
+  return {
+    cwd,
+    contract: context.contract,
+    writesFiles: false,
+    idea,
+    taskIndex,
+    status: {
+      path: statusPath,
+      focus: statusFocus(statusContent)
+    },
+    suggested: {
+      classification,
+      title,
+      priority,
+      section,
+      why: `Intake candidate from user idea: ${idea}`,
+      acceptance: intakeAcceptance(classification),
+      needsSpec,
+      dependencies: [
+        ...taskMatches.map((match) => `Related task: ${match.task.title}`),
+        ...artifacts.map((match) => `Related artifact: ${match.path}`)
+      ],
+      risks: needsSpec
+        ? ["Scope or product direction may be ambiguous."]
+        : ["Confirm this belongs in the task index before recording."],
+      validationQuestions: [
+        `Is ${priority} the right priority?`,
+        `Should this be recorded under ${section}?`,
+        needsSpec ? "What are the non-goals and validation commands for the spec?" : "What is the smallest deterministic verification?",
+        taskMatches.length ? "Should this merge with an existing task instead of creating a new one?" : ""
+      ].filter(Boolean),
+      recommendedNextAction: intakeRecommendedAction(classification),
+      confirmationNeeded
+    },
+    related: {
+      tasks: taskMatches,
+      artifacts
+    },
+    record: {
+      requested: Boolean(args.record),
+      supported: Boolean(taskContent && !isTableTaskIndex(taskContent)),
+      path: taskIndex,
+      section
+    },
+    warnings: context.warnings
+  };
+}
+
+function isTableTaskIndex(content) {
+  return /^\|\s*Task\s*\|/im.test(content);
+}
+
+function intakeTaskEntry(payload) {
+  const item = payload.suggested;
+  return `- [ ] ${item.priority} ${item.title}
+  - Source: Intake idea: ${payload.idea}
+  - Acceptance: ${item.acceptance}
+  - Notes: Classification=${item.classification}; Needs spec=${item.needsSpec ? "yes" : "no"}; Confirmation=${item.confirmationNeeded}
+`;
+}
+
+function appendTaskToSection(content, section, entry) {
+  const sectionPattern = new RegExp(`^##\\s+${escapeRegExp(section)}\\s*$`, "m");
+  const match = content.match(sectionPattern);
+  if (!match || match.index === undefined) {
+    return `${content.trimEnd()}\n\n## ${section}\n\n${entry}`;
+  }
+  const start = match.index + match[0].length;
+  const rest = content.slice(start);
+  const nextSection = rest.search(/^##\s+/m);
+  const insertAt = nextSection === -1 ? content.length : start + nextSection;
+  const before = content.slice(0, insertAt).trimEnd();
+  const after = content.slice(insertAt).replace(/^\n+/, "");
+  return `${before}\n\n${entry}${after ? `\n${after}` : ""}`;
+}
+
+function recordIntake(payload) {
+  const taskIndexAbs = join(payload.cwd, payload.taskIndex);
+  if (!existsSync(taskIndexAbs)) {
+    throw new Error(`Task index not found: ${payload.taskIndex}`);
+  }
+  const content = readFileSync(taskIndexAbs, "utf8");
+  if (isTableTaskIndex(content)) {
+    throw new Error(`Refusing to record into table-based task index: ${payload.taskIndex}`);
+  }
+  const nextContent = appendTaskToSection(content, payload.suggested.section, intakeTaskEntry(payload));
+  writeFileSync(taskIndexAbs, nextContent);
+  payload.writesFiles = true;
+  payload.record.written = true;
+  payload.record.entry = intakeTaskEntry(payload).trimEnd();
+}
+
+function intakeIdea(args) {
+  const payload = intakePayload(args);
+  if (args.record) {
+    recordIntake(payload);
+  }
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log("Agent Harness intake");
+  console.log(`Task index: ${payload.taskIndex || "not configured"}`);
+  console.log(`Writes files: ${payload.writesFiles ? "yes" : "no"}`);
+  console.log("");
+  console.log("Suggested classification:");
+  console.log(`- ${payload.suggested.classification}`);
+  console.log("Suggested task title:");
+  console.log(`- ${payload.suggested.title}`);
+  console.log("Priority / section:");
+  console.log(`- ${payload.suggested.priority} / ${payload.suggested.section}`);
+  console.log("Acceptance:");
+  console.log(`- ${payload.suggested.acceptance}`);
+  console.log("Needs spec:");
+  console.log(`- ${payload.suggested.needsSpec ? "yes" : "no"}`);
+  console.log("Recommended next action:");
+  console.log(`- ${payload.suggested.recommendedNextAction}`);
+  console.log("Confirmation needed:");
+  console.log(`- ${payload.suggested.confirmationNeeded}`);
+  if (payload.related.tasks.length) {
+    console.log("Related tasks:");
+    console.log(payload.related.tasks.map((match) => `- ${match.task.summary}`).join("\n"));
+  }
+}
+
 function todayStamp(date = new Date()) {
   return [
     date.getFullYear(),
@@ -2540,6 +2890,8 @@ function main() {
       activationSnippetCommand(args);
     } else if (command === "orient" && subcommand === "next") {
       orientNext(args);
+    } else if (command === "intake" && subcommand === "idea") {
+      intakeIdea(args);
     } else if (command === "config" && subcommand === "inspect") {
       configInspect(args);
     } else if (command === "config" && subcommand === "import") {

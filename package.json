@@ -1,6 +1,6 @@
 {
   "name": "agent-harness",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Reusable Codex workflow harness for project task control and loop engineering.",
   "type": "module",

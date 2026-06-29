@@ -1,72 +1,48 @@
 ---
 name: harness-init
-description: Initialize or audit Agent Harness fixed and adapter contracts without overwriting existing project context.
+description: Legacy compatibility wrapper for Agent Harness setup. Prefer harness:init for new-project initialization, existing-project migration, doctor, import, and activation preview.
 ---
 
 # Harness Init
 
-Use this skill when the user wants to install, initialize, repair, or inspect
-Agent Harness in a software project.
+This is a compatibility wrapper for the older setup entry. Prefer the shorter
+`harness:init` skill for adoption and migration work.
 
-## Workflow
+## Compatibility Workflow
 
 1. Identify the target project directory.
-2. Run the doctor first:
+2. Run doctor:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs doctor --cwd <project>
 ```
 
-3. Inspect resolved config when available:
+3. For a new adapter-contract project:
 
 ```bash
-node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
+node <plugin-root>/scripts/agent-harness.mjs init --cwd <project> --contract adapter
 ```
 
-4. For an existing adapter project with `harness/README.md` and a task
-   index such as `todolist.md`, persist discovered paths without creating a
-   second task index:
+4. For an existing project with a task index:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs config import --cwd <project> --task-index todolist.md --dry-run
 node <plugin-root>/scripts/agent-harness.mjs config import --cwd <project> --task-index todolist.md
 ```
 
-5. For a new adapter-contract project, initialize explicitly:
-
-```bash
-node <plugin-root>/scripts/agent-harness.mjs init --cwd <project> --contract adapter
-```
-
-6. Print the project-scope activation snippet when the user is adopting or
-   migrating a project:
+5. Preview activation instead of editing project instructions:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs activation snippet --cwd <project>
 ```
 
-   Report that the command does not write `AGENTS.md`; the user must explicitly
-   approve any instruction-file edit.
-7. Read `.harness/config.json` when it exists.
-8. In the adapter contract, read the configured project adapter and relevant
-   installed plugin references.
-9. Read the configured task index and any configured state files that exist.
-10. Report harness contract, created paths, missing optional paths, activation
-   status, and the next goal candidate.
-
 ## Rules
 
-- Do not overwrite existing files unless the user explicitly asks or `--force`
-  is clearly safe.
-- Preserve fixed `contract: "fixed"` behavior for old projects.
-- Treat `harness/tasks.md` as the fixed default task index, not the universal adapter
-  contract.
-- In the adapter contract, use configured artifact paths from
-  `.harness/config.json` and the project adapter.
-- Keep plugin rules in canonical references; keep project-specific boundaries
-  in the adapter.
-- Do not modify `AGENTS.md` during init/import unless the user explicitly asks
-  for that edit after seeing the activation snippet.
+- Do not overwrite existing files unless the user explicitly asks or a dry-run
+  makes the change safe and clear.
+- Do not modify `AGENTS.md` without explicit approval after preview.
+- Preserve fixed-contract projects and adapter-configured artifact paths.
+- Do not add plugin-level hooks until conditional bootstrap is validated.
 - Report to the user in the user's language while preserving code, commands,
   paths, package names, skill names, API names, model names, abbreviations, and
   Git commit messages in English.

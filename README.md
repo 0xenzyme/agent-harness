@@ -62,6 +62,23 @@ This repo is both a source project and a Codex local marketplace:
 - `plugins/agent-harness/templates/` contains starter templates.
 - `plugins/agent-harness/scripts/agent-harness.mjs` provides a small CLI.
 
+## Plugin Skills
+
+Codex exposes the plugin as `harness`. The primary workflow skills are:
+
+- `harness:orient`: read-only project state, current todo, blockers, and next
+  route recommendation.
+- `harness:intake`: capture and triage a new idea, requirement, bug, or Idea
+  Inbox Thread note; record only after explicit approval.
+- `harness:execute`: implement a confirmed task, spec, goal, or run packet,
+  then verify and sync task/status/run evidence.
+- `harness:init`: initialize a new project, migrate an existing project, run
+  doctor/import, and preview activation instructions.
+
+The older `harness-init`, `harness-adapter`, `harness-tasks`, `harness-goal`,
+and `harness-run` entries remain as compatibility wrappers. New usage should
+prefer the workflow skills above.
+
 ## First Commands
 
 Validate the plugin:
@@ -102,6 +119,11 @@ Print a project-scope activation snippet for `AGENTS.md` without writing files:
 node plugins/agent-harness/scripts/agent-harness.mjs activation snippet --cwd /path/to/project
 ```
 
+Plugin-level `SessionStart` bootstrap is intentionally not enabled yet. Local
+validation shows the current plugin validator rejects `hooks` in
+`.codex-plugin/plugin.json`; keeping the manifest hook-free is the current
+boundary that prevents Agent Harness from affecting non-harness projects.
+
 Inspect resolved config and adapter paths:
 
 ```bash
@@ -114,6 +136,20 @@ Summarize current status and recommend the next action without starting work:
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
+```
+
+Preview a new idea or requirement before modifying the task index:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
+```
+
+Append the candidate to a supported markdown task index only after explicit
+confirmation:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
 ```
 
 Recommend whether to use the current checkout, a worktree, or ask first:
@@ -179,12 +215,18 @@ approval, credentials, production access, or unblocking decisions are needed.
 The intended adapter workflow is:
 
 ```text
-init/import -> activation snippet -> orient next -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> update state records
+init/import -> activation snippet -> orient/intake -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> update state records
 ```
 
 `activation snippet` prints an `AGENTS.md` section; it does not modify project
-instructions. `orient next` is read-only; it summarizes status and task state,
-then reports what confirmation is needed before execution.
+instructions. `orient next` is read-only; it summarizes status and task state.
+`intake idea` is also read-only by default; it classifies a new idea and only
+appends to a supported markdown task index when `--record` is passed. Both
+commands report what confirmation is needed before execution.
+
+Conditional plugin bootstrap remains deferred. The validated plugin manifest
+does not declare a session hook, so installed Agent Harness skills do not
+inject harness instructions into unrelated projects.
 
 `goal create` writes a durable handoff under the configured goals directory.
 `goal validate` checks that a goal references a confirmed repo-local spec and
@@ -197,8 +239,9 @@ create a daemon, push, deploy, or open a PR.
 ## Command Language
 
 Human-facing CLI output supports `en` and `zh-CN` for `init`, `doctor`,
-`worktree recommend`, and help/usage. Activation and orientation output is
-currently stable English text. The language is resolved in this order:
+`worktree recommend`, and help/usage. Activation, orientation, and intake
+output is currently stable English text. The language is resolved in this
+order:
 
 1. `--lang <code>`
 2. `AGENT_HARNESS_LANG`
@@ -224,8 +267,8 @@ After publishing this repo to GitHub, install it on another machine with:
 codex plugin marketplace add <owner>/<repo>
 ```
 
-Codex will read `.agents/plugins/marketplace.json` and expose the
-`agent-harness` plugin.
+Codex will read `.agents/plugins/marketplace.json` and expose the `harness`
+plugin.
 
 ## Current Design Bias
 

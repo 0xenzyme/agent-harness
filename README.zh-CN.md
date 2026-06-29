@@ -51,6 +51,23 @@ adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 
 - `plugins/agent-harness/templates/` 包含 starter templates。
 - `plugins/agent-harness/scripts/agent-harness.mjs` 提供一个小型 CLI。
 
+## Plugin Skills
+
+Codex 会把这个 plugin 暴露为 `harness`。主要 workflow skills 是：
+
+- `harness:orient`：只读理解项目状态、当前 todo、blockers，并推荐下一步
+  route。
+- `harness:intake`：捕获和 triage 新想法、新需求、bug 或 Idea Inbox
+  Thread notes；只有明确确认后才 record。
+- `harness:execute`：执行已确认的 task、spec、goal 或 run packet，然后验
+  证并同步 task/status/run evidence。
+- `harness:init`：初始化新项目、迁移旧项目、运行 doctor/import，并预览
+  activation instructions。
+
+旧的 `harness-init`、`harness-adapter`、`harness-tasks`、`harness-goal`
+和 `harness-run` 仍作为 compatibility wrappers 保留。新的使用方式应优先
+使用上面的 workflow skills。
+
 ## First Commands
 
 验证 plugin：
@@ -87,6 +104,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/proje
 node plugins/agent-harness/scripts/agent-harness.mjs activation snippet --cwd /path/to/project
 ```
 
+当前没有启用 plugin-level `SessionStart` bootstrap。本地验证显示，当前
+plugin validator 会拒绝 `.codex-plugin/plugin.json` 里的 `hooks` 字段；保
+持 manifest hook-free 是当前边界，用来避免 Agent Harness 影响没有接入
+harness 的项目。
+
 查看解析后的 config 和 adapter 路径：
 
 ```bash
@@ -99,6 +121,19 @@ node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
+```
+
+预览一个新想法或新需求，不修改 task index：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
+```
+
+用户明确确认后，才把候选项追加到支持的 markdown task index：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
 ```
 
 推荐当前任务应该继续使用当前 checkout、切到 worktree，还是先询问：
@@ -162,17 +197,21 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 推荐的 adapter workflow：
 
 ```text
-init/import -> activation snippet -> orient next -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> update state records
+init/import -> activation snippet -> orient/intake -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> update state records
 ```
 
 `activation snippet` 只打印 `AGENTS.md` 片段，不修改项目 instructions。
-`orient next` 是只读命令：它汇总 status 和 task state，并说明进入执行前需要哪些确认。
+`orient next` 是只读命令：它汇总 status 和 task state。`intake idea` 默认也是只读：它分类新想法，只有传入 `--record` 时才会追加到支持的 markdown task index。两个命令都会说明进入执行前需要哪些确认。
+
+Conditional plugin bootstrap 仍然 defer。当前通过校验的 plugin manifest 不
+声明 session hook，因此安装 Agent Harness skills 不会向无 harness 项目注入
+harness instructions。
 
 `goal create` 会把 durable handoff 写到配置的 goals 目录。`goal validate` 检查 goal 是否引用 repo 内已确认 spec，并包含执行所需 sections。`run prepare` 会先通过这个 validation gate，再把 `run.md`、`prompt.md`、`subagents.md`、`status.json` 和 `logs/` 写到配置的 runs 目录。`run record` 只更新 run 目录，记录 completed 或 blocked 结果。这些命令不会启动 Codex、创建 daemon、push、deploy 或 open PR。
 
 ## Command Language
 
-面向人的 CLI 输出支持 `en` 和 `zh-CN`，覆盖 `init`、`doctor`、`worktree recommend` 和 help/usage。activation 和 orientation 输出当前是稳定英文文本。语言解析顺序：
+面向人的 CLI 输出支持 `en` 和 `zh-CN`，覆盖 `init`、`doctor`、`worktree recommend` 和 help/usage。activation、orientation 和 intake 输出当前是稳定英文文本。语言解析顺序：
 
 1. `--lang <code>`
 2. `AGENT_HARNESS_LANG`
@@ -196,7 +235,7 @@ codex plugin marketplace add <path-to-agent-harness-repo>
 codex plugin marketplace add <owner>/<repo>
 ```
 
-Codex 会读取 `.agents/plugins/marketplace.json` 并暴露 `agent-harness` plugin。
+Codex 会读取 `.agents/plugins/marketplace.json` 并暴露 `harness` plugin。
 
 ## Current Design Bias
 

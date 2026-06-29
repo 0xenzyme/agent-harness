@@ -4,40 +4,130 @@
 
 ## Next
 
-- [ ] P2 Add idea / requirement intake flow.
-  - Source: User identified that new ideas or requirements should enter the
-    harness as intake before implementation, but this does not need to be part
-    of the current activation / next-action implementation.
-  - Acceptance: When the user brings a new idea, Codex can compare it with
-    current tasks/specs/goals/deferred work, classify it, draft a candidate
-    task or spec path, and ask before modifying the task index.
-- [ ] P2 Validate conditional Agent Harness bootstrap.
-  - Source: Conditional plugin bootstrap would make harness activation
-    automatic for opted-in projects, but session-start hook behavior has a
-    broader blast radius than the activation snippet and needs separate
-    validation.
-  - Acceptance: Decide and test whether the plugin can add a lightweight
-    SessionStart bootstrap that only activates when `.harness/config.json`
-    exists in the current project, and verify it does not affect non-harness
-    projects in Codex App or Codex CLI.
-- [ ] P2 Redesign Agent Harness skills around workflow controllers.
-  - Source: Current skills are split by artifact (`init`, `adapter`, `tasks`,
-    `goal`, `run`), but the harness mental model now centers user workflows:
-    adopt, orient, and execute.
-  - Acceptance: Produce a blueprint for a smaller skill architecture, likely
-    `harness-adopt`, `harness-orient`, and `harness-execute`, with migration /
-    compatibility guidance for existing skills.
-  - Notes: Keep this separate from the current activation / next-action spec
-    unless implementation directly requires skill changes.
 - [ ] P2 Add automated task maintenance from recent git diff and run logs.
 
 ## Later
 
+- [ ] P2 Add b3ehive-inspired design principles to Agent Harness contracts.
+  - Source: The b3ehive review identified five principles worth adopting:
+    optional proposal competition, inspectable evidence trail, packaging
+    discipline, project-neutral docs, and lightweight route explanation.
+  - Acceptance: Update Agent Harness contracts, docs, templates, and skill
+    redesign blueprint so these principles are explicit requirements rather
+    than informal notes.
+- [ ] P3 Explore optional competition skill for high-ambiguity harness shaping.
+  - Source: b3ehive includes a proposal-competition skill pattern that may be
+    useful when Agent Harness needs multiple agents or routes to compare
+    ambiguous designs, risks, migrations, or repair strategies.
+  - Acceptance: Define when a competition mode should be recommended, what it
+    may output, what it must not execute directly, how it fits `Shape` before
+    `Execute`, and whether it should become an optional `harness-compete` skill
+    or stay a documented protocol.
+- [ ] P2 Design Agent Harness evaluation fixture suite.
+  - Source: Agent Harness needs a way to evaluate whether the plugin is
+    suitable across project shapes, not only in this repository.
+  - Acceptance: Produce an `evals/` blueprint covering new-project,
+    legacy-project, non-harness-project, and messy-realistic fixtures, with
+    scenario prompts, expected outcomes, and an initial semi-automatic scoring
+    plan for agent behavior.
+- [ ] P2 Define Idea Inbox Thread workflow support.
+  - Source: Users may keep a separate Codex thread open for capturing ideas
+    while the control thread continues current spec / goal execution.
+  - Acceptance: Define the capture-thread workflow, prompts, and promotion
+    rules so raw ideas are recorded without execution and enter the task index,
+    specs, or goals only after intake / triage.
+- [ ] P3 Revisit conditional Agent Harness bootstrap after hook validation support.
+  - Source: Conditional bootstrap validation found that the current plugin
+    validation gate rejects `hooks` in `.codex-plugin/plugin.json`; Agent
+    Harness must remain hook-free until the plugin contract and runtime tests
+    can prove non-harness projects receive no injected context.
+  - Acceptance: If hook manifests become supported, add a conditional
+    `SessionStart` bootstrap only with Codex App and Codex CLI runtime tests
+    covering both harness and non-harness projects.
 - [ ] P3 Add JSON schema validation for `.harness/config.json`.
 - [ ] P3 Add examples for representative downstream project shapes.
 
 ## Done
 
+- [x] Implement Agent Harness workflow-controller skills.
+  - Completed: Added short workflow skills `harness:orient`,
+    `harness:intake`, `harness:execute`, and `harness:init`; renamed the
+    installed plugin metadata to `harness`; converted legacy `harness-*`
+    artifact skills to compatibility wrappers; updated README, Chinese README,
+    install docs, marketplace metadata, smoke guards, and the skill
+    architecture blueprint.
+  - Spec: `harness/specs/2026-06-29-agent-harness-skill-architecture-blueprint.md`
+  - Version: `0.2.0`
+  - Verification: `quick_validate.py` for all plugin skills,
+    `npm run validate:plugin`, `node --check`, `git diff --check`,
+    external-methodology keyword guard, `npm run test:smoke`, and
+    `doctor --lang zh-CN`.
+- [x] Apply blueprint-driven versioning to the workflow-controller blueprint.
+  - Completed: Treated the implemented workflow-controller skill blueprint as
+    one pre-1.0 version unit and aligned `package.json` plus
+    `plugins/agent-harness/.codex-plugin/plugin.json` at `0.2.0`.
+  - Policy: `docs/versioning.md`
+  - Verification: `npm run validate:plugin` and `npm run test:smoke`.
+- [x] Redesign Agent Harness skills around workflow controllers.
+  - Completed: Replaced the artifact-first skill architecture with a workflow
+    model based on usage frequency and skill necessity. The implemented
+    blueprint defines `orient`, `intake`, `execute`, and `init` as primary
+    entries; leaves eval, maintain, and compete outside core V1; and records
+    migration guidance for legacy skills.
+  - Spec: `harness/specs/2026-06-29-agent-harness-skill-architecture-blueprint.md`
+  - Verification: `quick_validate.py` for all plugin skills,
+    `npm run validate:plugin`, and `npm run test:smoke`.
+- [x] Review b3ehive as Agent Harness design reference.
+  - Completed: Inspected `~/project/skills/b3ehive` docs, skill index, core
+    concepts, blueprint model, execution pattern, gate rules, plugin packaging,
+    and loop-control references. Captured which concepts should influence
+    Agent Harness, which should not be copied, and what this implies for
+    `harness-orient`, `harness-execute`, optional `harness-intake`, and
+    non-skill adoption/eval/maintenance flows.
+  - Review: `harness/specs/2026-06-29-b3ehive-design-reference-review.md`
+  - Verification: `git diff --check`, `npm run validate:plugin`, and
+    `npm run test:smoke`.
+- [x] Organize eval and idea-inbox concepts.
+  - Completed: Added the Idea Inbox Thread / Capture Thread model and the
+    Evaluation Project Scenario to the user/scenario mental model and template.
+    Recorded follow-up tasks for an evaluation fixture suite and inbox-thread
+    workflow support.
+  - Verification: `git diff --check`, `npm run validate:plugin`, and
+    `npm run test:smoke`.
+- [x] Remove project-local external methodology plugin naming residue.
+  - Completed: Removed direct reference names, absolute local paths, and the
+    old nested specs directory naming so Agent Harness does not appear to
+    depend on an external methodology plugin. Historical specs now live
+    directly under `harness/specs/`, and conditional bootstrap docs describe
+    hook evidence as external reference evidence rather than a dependency.
+  - Verification: external-methodology keyword search returned no matches,
+    filename search returned no matches, `node --check`, `git diff --check`,
+    `npm run validate:plugin`, `npm run test:smoke`, `goal validate`, and
+    `doctor`.
+- [x] Validate conditional Agent Harness bootstrap.
+  - Completed: Validated an external hook-capable reference manifest and tested
+    a temporary Agent Harness manifest with `hooks`. The current plugin
+    validation gate rejects `hooks` in `.codex-plugin/plugin.json`, so do not
+    add `SessionStart` bootstrap now; keep the Agent Harness plugin manifest
+    hook-free so non-harness projects receive no injected harness context.
+  - Spec: `harness/specs/2026-06-29-conditional-bootstrap-validation-design.md`
+  - Goal: `harness/goals/2026-06-29-conditional-bootstrap-validation.md`
+  - Verification: temporary hook-manifest validation failed as expected,
+    external hook-manifest validation failed as expected, `node --check`, `git
+    diff --check`, `npm run validate:plugin`, `npm run test:smoke`, `goal
+    validate`, and `doctor`.
+- [x] Add idea / requirement intake flow.
+  - Completed: Added `agent-harness intake idea` for read-only idea /
+    requirement preview and explicit `--record` append to supported markdown
+    task indexes. The command classifies ideas, detects related tasks/artifacts,
+    suggests title/priority/section/acceptance/spec need, refuses table-based
+    writes safely, and never starts implementation.
+  - Spec: `harness/specs/2026-06-29-idea-requirement-intake-flow-design.md`
+  - Goal: `harness/goals/2026-06-29-idea-requirement-intake-flow.md`
+  - Run: `.harness/runs/20260629-190656-idea-requirement-intake-flow/`
+  - Verification: `node --check`, `git diff --check`,
+    `npm run validate:plugin`, `npm run test:smoke`, `goal validate`,
+    `run prepare`, `run record`, and intake preview.
 - [x] Complete the goal toolchain
   - Completed: Added `goal list`, `goal inspect`, `goal validate`, and
     `run record`; `run prepare` now validates goal handoffs before writing a
@@ -100,7 +190,7 @@
     `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`.
 - [x] Add a smarter worktree recommendation command
   - Completed: `agent-harness worktree recommend` reports `local`, `worktree`, or `ask` with git/config reasons and optional `--json` output.
-  - Spec: `harness/specs/superpowers/2026-06-21-smarter-worktree-recommendation-command-design.md`
+  - Spec: `harness/specs/2026-06-21-smarter-worktree-recommendation-command-design.md`
   - Goal: `harness/goals/2026-06-21-add-a-smarter-worktree-recommendation-command.md`
   - Run: `.harness/runs/20260621-215607-add-a-smarter-worktree-recommendation-command/`
   - Verification: `npm run validate:plugin`, current-repo recommend/doctor checks, and temporary-project checks for `local`, `worktree`, `ask`, non-git, and invalid config.

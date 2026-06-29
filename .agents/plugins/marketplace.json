@@ -5,7 +5,7 @@
   },
   "plugins": [
     {
-      "name": "agent-harness",
+      "name": "harness",
       "source": {
         "source": "local",
         "path": "./plugins/agent-harness"

@@ -10,7 +10,7 @@ From any directory:
 codex plugin marketplace add <path-to-agent-harness-repo>
 ```
 
-Then restart Codex and install `agent-harness` from the plugin directory.
+Then restart Codex and install `harness` from the plugin directory.
 
 ## GitHub Distribution
 
@@ -28,7 +28,7 @@ The marketplace entry points to:
 
 ## Downstream Project Setup
 
-Once installed, use `$harness-init` in the target project, or run the CLI
+Once installed, use `harness:init` in the target project, or run the CLI
 directly from a checked-out copy:
 
 ```bash
@@ -76,3 +76,15 @@ In the adapter contract, create goals from confirmed specs:
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
+
+## Skill Entry Points
+
+Primary skills:
+
+- `harness:orient` for read-only project state and next-step recommendation.
+- `harness:intake` for ideas, requirements, bugs, and capture-thread notes.
+- `harness:execute` for confirmed implementation, verification, and state sync.
+- `harness:init` for setup, migration, import, doctor, and activation preview.
+
+Legacy `harness-*` skill names remain as compatibility wrappers, but new usage
+should prefer the workflow skills.

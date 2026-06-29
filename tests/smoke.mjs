@@ -63,6 +63,24 @@ function assertExcludes(value, needle, message) {
   assert(!value.includes(needle), message || `Expected output not to include ${needle}`);
 }
 
+const pluginManifest = readJson(join(repoRoot, "plugins/agent-harness/.codex-plugin/plugin.json"));
+const packageManifest = readJson(join(repoRoot, "package.json"));
+assert(pluginManifest.name === "harness", "plugin manifest should expose the short harness plugin name");
+assert(
+  pluginManifest.version === packageManifest.version,
+  "plugin manifest version should stay aligned with package.json"
+);
+assert(
+  pluginManifest.hooks === undefined,
+  "agent-harness plugin manifest should stay hook-free until conditional bootstrap has validation and runtime coverage"
+);
+for (const skillName of ["orient", "execute", "intake", "init"]) {
+  assert(
+    existsSync(join(repoRoot, "plugins/agent-harness/skills", skillName, "SKILL.md")),
+    `short workflow skill should exist: ${skillName}`
+  );
+}
+
 const suiteDir = mkdtempSync(join(tmpdir(), "agent-harness-smoke-"));
 
 try {
@@ -80,6 +98,27 @@ try {
   assert(fixedGoalValidation.ok === true, "fixed goal with confirmed spec should validate");
   run(["run", "prepare", "--cwd", fixed, "--goal", fixedGoal]);
   assert(readdirSync(join(fixed, ".harness/runs")).length > 0, "fixed run packet should use fixed runs dir");
+  const fixedRecordIntake = JSON.parse(run([
+    "intake",
+    "idea",
+    "--cwd",
+    fixed,
+    "--idea",
+    "Add user-facing import wizard",
+    "--priority",
+    "P1",
+    "--section",
+    "Now",
+    "--record",
+    "--json"
+  ]));
+  assert(fixedRecordIntake.writesFiles === true, "intake record should write markdown task index");
+  assert(fixedRecordIntake.record.written === true, "intake record should report written=true");
+  assertIncludes(
+    readFileSync(join(fixed, "harness/tasks.md"), "utf8"),
+    "- [ ] P1 Add user-facing import wizard",
+    "intake record should append markdown task entry"
+  );
 
   const adapter = join(suiteDir, "adapter-default");
   mkdirSync(adapter, { recursive: true });
@@ -107,6 +146,40 @@ try {
   const adapterOrientJson = JSON.parse(run(["orient", "next", "--cwd", adapter, "--json"]));
   assert(adapterOrientJson.tasks.ready[0].title === "Define the next concrete task", "orient json should expose ready task");
   assert(adapterOrientJson.recommendation.title === "Define the next concrete task", "orient json should recommend ready task");
+  const adapterTasksBeforeIntake = readFileSync(join(adapter, "harness/tasks.md"), "utf8");
+  const adapterIntakePreview = JSON.parse(run([
+    "intake",
+    "idea",
+    "--cwd",
+    adapter,
+    "--idea",
+    "Add user-facing import wizard",
+    "--json"
+  ]));
+  assert(adapterIntakePreview.writesFiles === false, "intake preview should not write files");
+  assert(adapterIntakePreview.suggested.title === "Add user-facing import wizard", "intake should suggest title from idea");
+  assert(
+    readFileSync(join(adapter, "harness/tasks.md"), "utf8") === adapterTasksBeforeIntake,
+    "intake preview should leave task index unchanged"
+  );
+  const adapterDuplicateIntake = JSON.parse(run([
+    "intake",
+    "idea",
+    "--cwd",
+    adapter,
+    "--idea",
+    "Define the next concrete task",
+    "--json"
+  ]));
+  assert(
+    ["duplicate", "related"].includes(adapterDuplicateIntake.suggested.classification),
+    "intake should detect duplicate or related tasks"
+  );
+  assertIncludes(
+    runFails(["intake", "idea", "--cwd", adapter, "--idea", "Add table-backed intake record", "--record"]),
+    "Refusing to record into table-based task index",
+    "intake record should refuse default adapter table task index"
+  );
   const adapterDryRun = run([
     "goal",
     "create",
@@ -182,6 +255,11 @@ try {
   assert(customOrientJson.paths.taskIndex === "todolist.md", "orient json should use custom task index");
   assert(customOrientJson.recommendation.title === "Ship custom path behavior", "orient json should recommend custom ready task");
   assert(customOrientJson.tasks.blocked[0].title === "Wait for upstream decision", "orient json should expose blocked tasks");
+  assertIncludes(
+    runFails(["intake", "idea", "--cwd", custom, "--idea", "Add table-backed intake record", "--record"]),
+    "Refusing to record into table-based task index",
+    "intake record should refuse table-based task indexes"
+  );
   const customGoalDryRun = run([
     "goal",
     "create",

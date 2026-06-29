@@ -173,6 +173,28 @@ Common artifacts:
 - project status
 - mental models / invariants
 
+## Activation Rules
+
+Adapter files do not automatically inject instructions into Codex. Agent
+Harness currently activates through project-scope `AGENTS.md` instructions,
+explicit user requests, harness skills, and CLI commands.
+
+The plugin manifest intentionally does not declare `hooks`. Conditional
+`SessionStart` bootstrap is deferred until plugin validation accepts hook
+manifests and runtime tests prove that non-harness projects receive no
+additional context.
+
+## Intake Rules
+
+- `intake idea` turns a new idea or requirement into a candidate harness entry.
+- Preview is read-only by default and must not start implementation.
+- `--record` appends to the configured task index only for supported markdown
+  task lists.
+- Table-based or unknown task-index formats must refuse automatic recording
+  rather than risk corrupting project state.
+- Intake must not create specs, goals, runs, branches, PRs, deployments, or
+  background automation.
+
 ## Default Fixed Task Format
 
 ```md

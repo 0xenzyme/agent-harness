@@ -2,8 +2,11 @@
 
 ## Focus
 
-- Current focus: Goal toolchain is implemented and verified. There is no active
-  P1 in `Now`; next work should be selected from `Next` or a new user request.
+- Current focus: Workflow-controller skill architecture has been implemented
+  and verified for `0.2.0`. The installed plugin metadata now exposes
+  `harness`, with primary skills `harness:orient`, `harness:intake`,
+  `harness:execute`, and `harness:init`. Legacy `harness-*` skills remain as
+  compatibility wrappers.
 
 ## Git
 
@@ -17,19 +20,31 @@
 
 - Last checked: 2026-06-29
 - Last commands:
-  - `git diff --check`
+  - Implemented short workflow skills:
+    `plugins/agent-harness/skills/orient/SKILL.md`,
+    `plugins/agent-harness/skills/intake/SKILL.md`,
+    `plugins/agent-harness/skills/execute/SKILL.md`, and
+    `plugins/agent-harness/skills/init/SKILL.md`
+  - Converted legacy skills to compatibility wrappers:
+    `harness-init`, `harness-adapter`, `harness-tasks`, `harness-goal`, and
+    `harness-run`
+  - Renamed installed plugin metadata from `agent-harness` to `harness`
+  - Bumped `package.json` and
+    `plugins/agent-harness/.codex-plugin/plugin.json` to `0.2.0`
+  - Updated README, Chinese README, install docs, marketplace metadata, and
+    smoke guards
+  - Marked skill architecture blueprint as implemented:
+    `harness/specs/2026-06-29-agent-harness-skill-architecture-blueprint.md`
+  - `quick_validate.py` for all plugin skills
   - `npm run validate:plugin`
+  - `node --check plugins/agent-harness/scripts/agent-harness.mjs`
+  - `git diff --check`
+  - External-methodology keyword search returned no matches
   - `npm run test:smoke`
-  - `node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd . --json`
-  - `node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md --json`
-  - `node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md --json`
-  - `node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md`
-  - `node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd . --run .harness/runs/20260629-185515-complete-goal-toolchain`
-  - `node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd . --run .harness/runs/20260629-185515-complete-goal-toolchain --phase completed --summary "Implemented goal list/inspect/validate, run prepare validation gate, and run record." --verification "git diff --check, npm run validate:plugin, npm run test:smoke, goal list, goal validate, run prepare, and run status passed." --json`
-- Result: passed. Goal lifecycle now covers list, inspect, validate, validated
-  run preparation, run status, and completed/blocked run recording. `run record`
-  writes only run-local status/log evidence; task/status sync remains a
-  foreground harness update.
+  - `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`
+- Result: passed. Workflow-controller skills are implemented and verified.
+  The worktree is dirty as expected because the current control thread has
+  accumulated this implementation plus earlier uncommitted harness changes.
 
 ## Blockers
 

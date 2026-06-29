@@ -39,6 +39,7 @@ initialize or import adapter
 - Project-scope activation through `AGENTS.md`:
 - Plugin-scope bootstrap through a session-start hook:
 - Conditional bootstrap when `.harness/config.json` exists:
+- Current conditional-bootstrap status and validation evidence:
 - Config and adapter files Codex should read:
 - CLI commands Codex may use:
 - Existing rules that must not be weakened:
@@ -146,6 +147,9 @@ automation for these modes are separate implementation work.
 ## Idea / Requirement Intake Scenario
 
 - Read current task/status/adapter context:
+- Preview with `intake idea --idea "<idea text>"`:
+- Record with `intake idea --idea "<idea text>" --record` only after user
+  confirmation:
 - Compare new idea with existing tasks/specs/goals/deferred work:
 - Classify as note, task candidate, spec needed, goal ready, defer, reject, or
   ask:
@@ -153,6 +157,24 @@ automation for these modes are separate implementation work.
 - Suggest priority, acceptance, risks, dependencies, and validation questions:
 - Ask before modifying task state when product direction or scope is unclear:
 - Do not start implementation unless the user asks:
+
+## Idea Inbox Thread Scenario
+
+- Master / Control Thread responsibilities:
+- Idea Inbox / Capture Thread responsibilities:
+- Intake step:
+- Promotion into task index, spec, or goal:
+- What the inbox thread must not execute by default:
+
+## Evaluation Project Scenario
+
+- Fixture suite purpose:
+- New project fixture:
+- Legacy project fixture:
+- Non-harness project fixture:
+- Messy realistic fixture:
+- Scenario prompts:
+- Expected outcomes:
 
 ## Who Uses It
 

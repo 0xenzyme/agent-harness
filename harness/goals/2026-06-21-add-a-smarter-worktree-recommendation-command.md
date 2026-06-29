@@ -1,6 +1,6 @@
 # Goal: Add A Smarter Worktree Recommendation Command
 
-Spec: harness/specs/superpowers/2026-06-21-smarter-worktree-recommendation-command-design.md
+Spec: harness/specs/2026-06-21-smarter-worktree-recommendation-command-design.md
 Status: Completed.
 
 ## Source Task
@@ -13,7 +13,7 @@ Status: Completed.
 2. `harness/tasks.md`
 3. `.harness/config.json`
 4. `harness/status.md`
-5. `harness/specs/superpowers/2026-06-21-smarter-worktree-recommendation-command-design.md`
+5. `harness/specs/2026-06-21-smarter-worktree-recommendation-command-design.md`
 
 ## Work Mode Recommendation
 
