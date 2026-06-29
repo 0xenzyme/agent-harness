@@ -4,5 +4,8 @@ node_modules/
 __pycache__/
 *.pyc
 .worktree/
+.harness/runs/*
+!.harness/runs/.gitkeep
+.harness/state.json
 .agent-harness/runs/
 .agent-harness/state.json

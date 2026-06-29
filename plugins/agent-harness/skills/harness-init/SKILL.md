@@ -23,7 +23,7 @@ node <plugin-root>/scripts/agent-harness.mjs doctor --cwd <project>
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 ```
 
-4. For an existing adapter project with `docs/harness/README.md` and a task
+4. For an existing adapter project with `harness/README.md` and a task
    index such as `todolist.md`, persist discovered paths without creating a
    second task index:
 
@@ -38,7 +38,7 @@ node <plugin-root>/scripts/agent-harness.mjs config import --cwd <project> --tas
 node <plugin-root>/scripts/agent-harness.mjs init --cwd <project> --contract adapter
 ```
 
-6. Read `.agent-harness/config.json` when it exists.
+6. Read `.harness/config.json` when it exists.
 7. In the adapter contract, read the configured project adapter and relevant
    installed plugin references.
 8. Read the configured task index and any configured state files that exist.
@@ -50,10 +50,10 @@ node <plugin-root>/scripts/agent-harness.mjs init --cwd <project> --contract ada
 - Do not overwrite existing files unless the user explicitly asks or `--force`
   is clearly safe.
 - Preserve fixed `contract: "fixed"` behavior for old projects.
-- Treat `tasks.md` as the fixed default task index, not the universal adapter
+- Treat `harness/tasks.md` as the fixed default task index, not the universal adapter
   contract.
 - In the adapter contract, use configured artifact paths from
-  `.agent-harness/config.json` and the project adapter.
+  `.harness/config.json` and the project adapter.
 - Keep plugin rules in canonical references; keep project-specific boundaries
   in the adapter.
 - Report to the user in the user's language while preserving code, commands,

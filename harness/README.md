@@ -8,23 +8,24 @@ Generic protocol lives in the plugin references under
 
 ## Artifact Paths
 
-- Task index: `tasks.md`
-- Status file: `.agent-harness/status.md`
-- Specs: `docs/specs/`
-- Goals: `docs/goals/`
-- Milestones: `docs/milestones/`
-- Runs / logs: `.agent-harness/runs/`
-- Gate records: `.agent-harness/runs/`
-- Deferred register: `docs/milestones/`
-- Mental model / invariants: `docs/mental-model.md`
+- Task index: `harness/tasks.md`
+- Status file: `harness/status.md`
+- Specs: `harness/specs/`
+- Goals: `harness/goals/`
+- Milestones: `harness/milestones/`
+- Runs / logs: `.harness/runs/`
+- Gate records: `.harness/runs/`
+- Deferred register: `harness/milestones/`
+- Mental models: `harness/mental-models/`
+- Mental model index: `harness/mental-models/README.md`
 
 ## Source Of Truth
 
 - Public package shape and first-use workflow: `README.md`
 - Project contracts: `docs/project-contract.md`
-- Mental model and loop boundaries: `docs/mental-model.md`
-- Task state: `tasks.md`
-- Current execution status: `.agent-harness/status.md`
+- Mental model and loop boundaries: `harness/mental-models/README.md`
+- Task state: `harness/tasks.md`
+- Current execution status: `harness/status.md`
 
 ## Hard Boundaries
 
@@ -39,14 +40,14 @@ Generic protocol lives in the plugin references under
 ## Preflight Requirements
 
 - Read `AGENTS.md` before editing.
-- Inspect `.agent-harness/config.json` and this adapter before goal or run work.
+- Inspect `.harness/config.json` and this adapter before goal or run work.
 - Use the current checkout unless the user explicitly asks for an isolated
   worktree.
 
 ## State Sync Requirements
 
-- Update `tasks.md` after meaningful task state changes.
-- Update `.agent-harness/status.md` after execution or verification.
+- Update `harness/tasks.md` after meaningful task state changes.
+- Update `harness/status.md` after execution or verification.
 - Keep docs, skills, templates, CLI help, and tests aligned when changing the
   public command surface.
 
@@ -67,6 +68,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd .
 - spec
 - execution
 - integration
+
+## Task Kinds
+
+- `development`: scoped implementation, review, repair, or documentation work.
+- `observe`: harness-defined ongoing observation. This repository currently
+  has no project-specific observe sources configured.
 
 ## Adapter-Owned Overrides
 

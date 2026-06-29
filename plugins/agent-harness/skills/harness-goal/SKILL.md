@@ -17,7 +17,7 @@ whether a goal should run in local checkout or a worktree.
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 ```
 
-3. Read `.agent-harness/config.json` when it exists.
+3. Read `.harness/config.json` when it exists.
 4. In the adapter contract, read the configured project adapter and relevant
    installed plugin references by name: `adapter-harness`,
    `task-routing`, and `work-mode-policy`.

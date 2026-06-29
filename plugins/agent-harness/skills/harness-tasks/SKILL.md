@@ -16,12 +16,12 @@ actions from a project's harness task index.
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 ```
 
-2. Read `.agent-harness/config.json` when it exists.
+2. Read `.harness/config.json` when it exists.
 3. In the adapter contract, read the configured project adapter.
 4. Read the configured task index.
 5. Inspect only the project files needed to understand task status.
 6. Update the task index according to its configured format. Fixed
-   `tasks.md` uses:
+   `harness/tasks.md` uses:
    - current `Now` tasks;
    - accepted follow-ups in `Next`;
    - lower-priority ideas in `Later`;
@@ -31,9 +31,11 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 
 ## Rules
 
-- Treat `tasks.md` as the fixed source of truth.
+- Treat `harness/tasks.md` as the fixed source of truth.
 - In the adapter contract, treat the configured task index, such as `todolist.md`,
   as the source of truth.
+- Keep task `kind` separate from task `state`. `observe` tasks use the
+  harness-defined observation lifecycle rather than the development lifecycle.
 - Keep task titles short and concrete.
 - Add acceptance notes when a task will become a `/goal`.
 - Do not silently delete tasks; move stale items to `Later` or ask.

@@ -49,7 +49,7 @@ user still chooses and explains the actual work mode before editing files.
 Use `agent-harness worktree recommend --cwd <project>` before execution when
 the current checkout state matters. The command is read-only: it reports
 `local`, `worktree`, or `ask` with reasons from `git status` and
-`.agent-harness/config.json`, but it does not create branches, create
+`.harness/config.json`, but it does not create branches, create
 worktrees, modify files, or start Codex sessions.
 
 For automation, use `--json` to get a stable machine-readable result. The

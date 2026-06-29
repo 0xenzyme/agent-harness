@@ -1,6 +1,6 @@
 # Goal: Agent Harness Adapter Contract
 
-Spec: `docs/specs/2026-06-29-agent-harness-adapter-contract-design.md`
+Spec: `harness/specs/2026-06-29-agent-harness-adapter-contract-design.md`
 Status: Completed.
 
 ## Current Goal
@@ -16,11 +16,11 @@ contracts, then make this repository use the adapter contract itself.
 ## Read First
 
 1. `AGENTS.md`
-2. `.agent-harness/config.json`
-3. `docs/harness/README.md`
-4. `docs/specs/2026-06-29-agent-harness-adapter-contract-design.md`
+2. `.harness/config.json`
+3. `harness/README.md`
+4. `harness/specs/2026-06-29-agent-harness-adapter-contract-design.md`
 5. `README.md`
-6. `docs/mental-model.md`
+6. `harness/mental-models/README.md`
 7. `docs/project-contract.md`
 8. `docs/worktree-policy.md`
 9. `plugins/agent-harness/scripts/agent-harness.mjs`
@@ -39,9 +39,9 @@ create a worktree unless the user explicitly asks.
   contract terminology.
 - Update docs, skills, references, templates, CLI help, tests, and plugin
   metadata to use the new public terms.
-- Convert this repository's `.agent-harness/config.json` to the adapter
+- Convert this repository's `.harness/config.json` to the adapter
   contract.
-- Add this repository's project adapter under `docs/harness/README.md`.
+- Add this repository's project adapter under `harness/README.md`.
 - Keep no-daemon, no-push, no-PR, no-deploy behavior.
 - Run deterministic validation.
 
@@ -70,7 +70,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd .
   - `npm run validate:plugin`
   - `npm run test:smoke`
   - `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`
-- `tasks.md` and `.agent-harness/status.md` are updated.
+- `harness/tasks.md` and `harness/status.md` are updated.
 
 ## Pause Conditions
 

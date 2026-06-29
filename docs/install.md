@@ -35,7 +35,7 @@ directly from a checked-out copy:
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
 ```
 
-For an existing adapter project that already has `docs/harness/README.md`
+For an existing adapter project that already has `harness/README.md`
 and a task index such as `todolist.md`, import the adapter config without
 creating a second task index:
 
@@ -44,7 +44,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/t
 node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
 ```
 
-The real import writes `.agent-harness/config.json` and creates missing
+The real import writes `.harness/config.json` and creates missing
 support artifacts such as the configured status file and runs directory. It
 does not create a second task index.
 
@@ -67,12 +67,12 @@ Then create and prepare controlled handoffs:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal docs/goals/YYYY-MM-DD-task-title.md
-node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .agent-harness/runs/YYYYMMDD-HHMMSS-task-title
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
 ```
 
 In the adapter contract, create goals from confirmed specs:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec docs/specs/task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```

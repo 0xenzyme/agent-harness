@@ -6,11 +6,11 @@ Status: Confirmed for goal handoff.
 
 当前 Agent Harness 的 loop engineering 骨架已经成立：
 
-- `tasks.md` 作为项目任务状态的 source of truth。
-- `.agent-harness/config.json` 记录项目策略。
-- `docs/goals/` 保存 goal handoff。
-- `.agent-harness/runs/` 保存 run packet 和执行证据。
-- `agent-harness goal create` 可以从 `tasks.md` 生成 goal。
+- `harness/tasks.md` 作为项目任务状态的 source of truth。
+- `.harness/config.json` 记录项目策略。
+- `harness/goals/` 保存 goal handoff。
+- `.harness/runs/` 保存 run packet 和执行证据。
+- `agent-harness goal create` 可以从 `harness/tasks.md` 生成 goal。
 - `agent-harness run prepare` / `run status` 可以准备和查看 run packet。
 - `agent-harness worktree recommend` 可以在执行前给出 checkout/worktree 建议。
 
@@ -23,7 +23,7 @@ Status: Confirmed for goal handoff.
 Goal toolchain 应该覆盖这条链路：
 
 ```text
-tasks.md -> confirmed spec -> goal handoff -> validated run packet -> manual execution -> verification evidence -> run/status/task update
+harness/tasks.md -> confirmed spec -> goal handoff -> validated run packet -> manual execution -> verification evidence -> run/status/task update
 ```
 
 工具要补强的是可观察、可验证、可停止、可恢复，而不是让 agent 无限循环或自动启动后台执行。
@@ -33,7 +33,7 @@ tasks.md -> confirmed spec -> goal handoff -> validated run packet -> manual exe
 - 让用户能用 CLI 清楚地生成、查看、验证和准备执行 goal。
 - 让 executable goal 必须引用 confirmed spec，并要求执行前先读 spec。
 - 让 malformed goal 在进入 run prepare 前就能被检测出来。
-- 让 run 的完成、阻塞和验证摘要能写回 `.agent-harness/runs/` 的 machine-readable 状态。
+- 让 run 的完成、阻塞和验证摘要能写回 `.harness/runs/` 的 machine-readable 状态。
 - 更新相关 skills 和 docs，让“怎么生成 goal、怎么执行 goal、怎么收尾”成为稳定工作流。
 
 ## 建议命令面
@@ -81,7 +81,7 @@ agent-harness run status --cwd <project> --run <run-dir>
 - 支持 `completed` 和 `blocked` 两类停止状态。
 - 保留后续扩展到 `failed`、`needs-review`、`budget-exhausted` 的空间。
 
-是否自动更新 `tasks.md` 和 `.agent-harness/status.md` 可以作为实现中的明确决定；如果自动更新风险过高，先输出 next-step instructions，不要猜测任务迁移。
+是否自动更新 `harness/tasks.md` 和 `harness/status.md` 可以作为实现中的明确决定；如果自动更新风险过高，先输出 next-step instructions，不要猜测任务迁移。
 
 ## 非目标
 
@@ -99,9 +99,9 @@ agent-harness run status --cwd <project> --run <run-dir>
 ```bash
 npm run validate:plugin
 node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd . --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md
+node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd . --run <prepared-run-dir>
 ```
 
@@ -118,16 +118,16 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd . --run <p
 ## 完成条件
 
 - 用户不用读源码就能知道当前有哪些 goal、每个 goal 的 spec/status/work mode/validation 状态。
-- 从 `tasks.md` + confirmed spec 生成的新 goal 默认满足项目 `/goal` contract。
+- 从 `harness/tasks.md` + confirmed spec 生成的新 goal 默认满足项目 `/goal` contract。
 - `run prepare` 不再默默接受明显 malformed goal。
-- 执行完成或阻塞后，run 结果能写回 `.agent-harness/runs/`。
+- 执行完成或阻塞后，run 结果能写回 `.harness/runs/`。
 - `README.md`、`docs/project-contract.md`、`plugins/agent-harness/skills/harness-goal/SKILL.md`、`plugins/agent-harness/skills/harness-run/SKILL.md` 描述新的稳定 workflow。
 - `npm run validate:plugin` 通过。
 
 ## 暂停条件
 
 - 需要决定是否把 `goal create` 无 spec 的旧行为改成 hard error。
-- 需要决定是否让 `run record` 自动修改 `tasks.md` 或 `.agent-harness/status.md`。
+- 需要决定是否让 `run record` 自动修改 `harness/tasks.md` 或 `harness/status.md`。
 - 需要启动 Codex session、daemon、watcher、push、PR、deploy、发布、凭证、付费 API 或生产访问。
 - 发现本 spec 与现有 project contract、plugin manifest、Codex plugin 行为或用户新指令冲突。
 - 需要判断某个 downstream repo 的特殊流程是否应该进入 core contract。

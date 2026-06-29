@@ -7,15 +7,16 @@ the Agent Harness plugin references.
 
 ## Artifact Paths
 
-- Task index: `tasks.md`
-- Status file: `.agent-harness/status.md`
-- Specs: `docs/specs/`
-- Goals: `docs/goals/`
-- Milestones: `docs/milestones/`
-- Runs / logs: `.agent-harness/runs/`
-- Gate records: `.agent-harness/runs/`
-- Deferred register: `docs/milestones/`
-- Mental model / invariants:
+- Task index: `harness/tasks.md`
+- Status file: `harness/status.md`
+- Specs: `harness/specs/`
+- Goals: `harness/goals/`
+- Milestones: `harness/milestones/`
+- Runs / logs: `.harness/runs/`
+- Gate records: `.harness/runs/`
+- Deferred register: `harness/milestones/`
+- Mental models: `harness/mental-models/`
+- Mental model index: `harness/mental-models/README.md`
 
 ## Source Of Truth
 
@@ -47,6 +48,12 @@ the Agent Harness plugin references.
 - spec
 - execution
 - integration
+
+## Task Kinds
+
+- `development`: scoped implementation, review, repair, or documentation work.
+- `observe`: ongoing monitoring that records signals and may produce follow-up
+  tasks after triage.
 
 ## Adapter-Owned Overrides
 

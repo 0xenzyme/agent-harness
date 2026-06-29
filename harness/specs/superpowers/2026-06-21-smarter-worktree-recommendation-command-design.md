@@ -5,7 +5,7 @@ Status: Confirmed and implemented.
 ## 背景
 
 当前 Agent Harness 已经有 `docs/worktree-policy.md` 和
-`.agent-harness/config.json` 的 `worktree.defaultPolicy` / `worktree.autoRules`
+`.harness/config.json` 的 `worktree.defaultPolicy` / `worktree.autoRules`
 配置，但实际执行前仍主要依赖 goal 文件里的静态 `Work Mode Recommendation`。
 这会让 Codex 是否应该在当前 checkout 继续、切到新 worktree、或暂停询问变得不够显式。
 
@@ -17,7 +17,7 @@ Status: Confirmed and implemented.
 
 - 新增一个 worktree recommendation CLI command。
 - 命令只报告 `local`、`worktree` 或 `ask`，并列出具体原因。
-- 原因必须来自可观察的 git 状态和 `.agent-harness/config.json` 的 worktree 配置。
+- 原因必须来自可观察的 git 状态和 `.harness/config.json` 的 worktree 配置。
 - 输出要能被人类阅读，也要能用于 deterministic verification。
 - 不创建 branch，不创建 worktree，不修改文件，不启动 Codex session。
 - 保持 core project contract 稳定，不把某个 downstream repo 的特殊规则写进通用逻辑。
@@ -110,7 +110,7 @@ recommendWorkMode({ cwd, config, gitState })
 
 规则顺序：
 
-1. 读取 `.agent-harness/config.json`。
+1. 读取 `.harness/config.json`。
    - 缺失配置时使用内置默认：`worktree.defaultPolicy = "ask"`，`autoRules = []`。
    - 配置 JSON 无法解析时，命令失败并返回非零退出码；不要猜测。
 2. 读取 git 状态。
@@ -141,7 +141,7 @@ recommendWorkMode({ cwd, config, gitState })
 
 - `doctor` 继续只做 harness health check，不承担 worktree recommendation。
 - `run prepare` 第一阶段不自动调用 `worktree recommend`，避免改变现有 run packet contract。
-- 后续如果要让 `run prepare` 写入动态 recommendation，必须另起 spec，因为这会改变 `.agent-harness/runs/*/status.json` 的含义。
+- 后续如果要让 `run prepare` 写入动态 recommendation，必须另起 spec，因为这会改变 `.harness/runs/*/status.json` 的含义。
 - `goal create` 仍可生成静态 `Work Mode Recommendation`；本命令用于执行前根据真实 repo 状态复核。
 
 ## 文件范围
@@ -162,7 +162,7 @@ recommendWorkMode({ cwd, config, gitState })
 不应触碰：
 
 - plugin manifest 的核心能力描述，除非只是补充短文案。
-- `.agent-harness/config.json` contract 的 required path。
+- `.harness/config.json` contract 的 required path。
 - 任何 downstream repo 特定路径或规则。
 
 ## 验证

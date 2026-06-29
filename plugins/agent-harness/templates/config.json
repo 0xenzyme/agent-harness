@@ -2,10 +2,10 @@
   "contract": "fixed",
   "projectName": "",
   "paths": {
-    "tasks": "tasks.md",
-    "status": ".agent-harness/status.md",
-    "goals": ".agent-harness/goals",
-    "runs": ".agent-harness/runs"
+    "tasks": "harness/tasks.md",
+    "status": "harness/status.md",
+    "goals": "harness/goals",
+    "runs": ".harness/runs"
   },
   "language": {
     "default": "auto"

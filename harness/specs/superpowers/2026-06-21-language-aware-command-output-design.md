@@ -21,7 +21,7 @@ Status: Draft; requires user confirmation before implementation.
 
 1. CLI 显式参数：`--lang <code>`，例如 `--lang zh-CN`、`--lang en`、`--lang auto`。
 2. 环境变量：`AGENT_HARNESS_LANG`。
-3. 项目配置：`.agent-harness/config.json` 中可选的 `language.default`。
+3. 项目配置：`.harness/config.json` 中可选的 `language.default`。
 4. 系统 locale：`LANG`、`LC_ALL`、`LC_MESSAGES`。
 5. 回退：`en`。
 
@@ -65,7 +65,7 @@ Status: Draft; requires user confirmation before implementation.
 ## 暂停条件
 
 - 发现 spec 与现有代码 contract、plugin manifest、Codex plugin 行为冲突。
-- 需要决定是否本地化生成的 `tasks.md` / `.agent-harness/status.md` 模板内容。
+- 需要决定是否本地化生成的 `harness/tasks.md` / `harness/status.md` 模板内容。
 - 需要引入第三方 i18n 依赖。
 - 需要破坏性操作、发布、push、付费 API、凭证或生产环境访问。
 - 用户给出新的产品方向指令，与本 spec 冲突。

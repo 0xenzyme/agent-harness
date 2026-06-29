@@ -13,6 +13,48 @@ Task routing chooses the lightest harness flow that is still safe.
 - Existing coverage by a spec, adapter, helper, or gate.
 - User intent: question, discussion, review, or implementation.
 
+## Task Kinds
+
+`kind` describes the work pattern. It is separate from `state`.
+
+- `development`: scoped implementation, review, repair, or documentation work
+  with a concrete completion condition.
+- `observe`: ongoing monitoring that records signals before deciding whether
+  follow-up action is needed.
+- `research`: bounded investigation that produces findings, recommendations,
+  or a spec.
+- `ops`: operational work such as maintenance, release coordination, or manual
+  checks.
+- `docs`: documentation-only work.
+
+Adapter projects may add project-specific labels, but they should preserve the
+generic meaning of `development` and `observe`.
+
+## Observe Tasks
+
+Observe tasks are first-class harness tasks. They model:
+
+```text
+observe -> signal -> triage -> action
+```
+
+Use `observe` when the task is not complete after one implementation pass and
+instead monitors a source over time. Examples include SEO indexing, traffic
+changes, error rates, provider status, or recurring content quality checks.
+
+Observe task states:
+
+- `watching`: observation is active.
+- `signal`: a notable signal has been recorded.
+- `triage`: the signal is being evaluated.
+- `action-needed`: follow-up work should be created or linked.
+- `paused`: observation is intentionally paused.
+- `closed`: observation is no longer active.
+
+Harness core defines the observe protocol. Project adapters declare the
+project's observe sources, signal records, triage gates, and whether follow-up
+tasks may be created automatically.
+
 ## Levels
 
 ### Level 0: Fast Path

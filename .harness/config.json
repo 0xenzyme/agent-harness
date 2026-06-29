@@ -1,11 +1,17 @@
 {
   "contract": "adapter",
-  "projectName": "",
+  "projectName": "agent-harness",
   "adapter": {
     "docs": "harness/README.md",
     "machineReadable": ".harness/config.json",
-    "preflight": [],
-    "stateSync": []
+    "preflight": [
+      "Read AGENTS.md before editing repository files.",
+      "Validate plugin changes with npm run validate:plugin."
+    ],
+    "stateSync": [
+      "Update harness/tasks.md after meaningful task state changes.",
+      "Update harness/status.md after execution or verification."
+    ]
   },
   "paths": {
     "taskIndex": "harness/tasks.md",

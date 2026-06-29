@@ -15,10 +15,10 @@ goal handoffs, and loop engineering.
 
 ## File Contract
 
-- Fixed `contract: "fixed"` projects use `tasks.md`,
-  `.agent-harness/config.json`, `.agent-harness/status.md`,
-  `.agent-harness/goals/`, and `.agent-harness/runs/`.
-- Adapter `contract: "adapter"` projects use `.agent-harness/config.json` plus a
+- Fixed `contract: "fixed"` projects use `harness/tasks.md`,
+  `.harness/config.json`, `harness/status.md`,
+  `harness/goals/`, and `.harness/runs/`.
+- Adapter `contract: "adapter"` projects use `.harness/config.json` plus a
   project adapter to declare task index, specs, goals, milestones, runs, gates,
   status, and deferred-register paths.
 - Plugin core defines protocol; project adapters define project-specific

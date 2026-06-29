@@ -11,7 +11,7 @@ Status: Draft goal handoff.
 
 - `AGENTS.md`
 - Project adapter
-- `.agent-harness/config.json`
+- `.harness/config.json`
 - Spec
 
 ## Work Mode Recommendation

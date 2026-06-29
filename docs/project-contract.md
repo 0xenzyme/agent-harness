@@ -12,17 +12,17 @@ Agent Harness supports two project contracts:
 
 Fixed projects use these paths:
 
-### `tasks.md`
+### `harness/tasks.md`
 
 The human-readable project backlog and task source of truth.
 
 Rules:
 
-- Keep it at the repository root in the fixed contract.
+- Keep it under `harness/` in the fixed contract.
 - Codex should read it before proposing or executing a new goal.
 - Codex should update it after meaningful work when state sync is required.
 
-### `.agent-harness/config.json`
+### `.harness/config.json`
 
 Machine-readable project settings.
 
@@ -33,7 +33,7 @@ Required fields:
 - `paths`
 - `worktree`
 
-### `.agent-harness/status.md`
+### `harness/status.md`
 
 Human-readable project status:
 
@@ -42,18 +42,18 @@ Human-readable project status:
 - last verification
 - known blockers
 
-### `.agent-harness/goals/`
+### `harness/goals/`
 
 Generated goal handoff files.
 
-### `.agent-harness/runs/`
+### `.harness/runs/`
 
 Loop run logs and automation outputs.
 
 Prepared runs use:
 
 ```text
-.agent-harness/runs/
+.harness/runs/
   YYYYMMDD-HHMMSS-<slug>/
     run.md
     prompt.md
@@ -64,9 +64,9 @@ Prepared runs use:
 
 ## Adapter Contract
 
-Adapter projects use `.agent-harness/config.json` as the machine entry point
+Adapter projects use `.harness/config.json` as the machine entry point
 when present, but artifact paths come from config and the project adapter.
-Projects that already have `docs/harness/README.md` plus a known task index
+Projects that already have `harness/README.md` plus a known task index
 such as `todolist.md` can be discovered as adapter projects before config is
 imported.
 
@@ -77,21 +77,22 @@ Minimum config:
   "contract": "adapter",
   "projectName": "",
   "adapter": {
-    "docs": "docs/harness/README.md",
-    "machineReadable": ".agent-harness/config.json",
+    "docs": "harness/README.md",
+    "machineReadable": ".harness/config.json",
     "preflight": [],
     "stateSync": []
   },
   "paths": {
-    "taskIndex": "tasks.md",
-    "status": ".agent-harness/status.md",
-    "specs": "docs/specs",
-    "goals": "docs/goals",
-    "milestones": "docs/milestones",
-    "runs": ".agent-harness/runs",
-    "gateRecords": ".agent-harness/runs",
-    "deferredRegister": "docs/milestones",
-    "mentalModel": "docs/mental-model.md"
+    "taskIndex": "harness/tasks.md",
+    "status": "harness/status.md",
+    "specs": "harness/specs",
+    "goals": "harness/goals",
+    "milestones": "harness/milestones",
+    "runs": ".harness/runs",
+    "gateRecords": ".harness/runs",
+    "deferredRegister": "harness/milestones",
+    "mentalModels": "harness/mental-models",
+    "mentalModelIndex": "harness/mental-models/README.md"
   }
 }
 ```
@@ -118,6 +119,44 @@ The adapter should declare:
 - enabled gates and project-specific gate details
 - UI harness or mental model locations when relevant
 
+## Task Kinds And States
+
+`kind` describes the work pattern. `state` describes where the task is in that
+pattern.
+
+Default task kinds:
+
+- `development`
+- `observe`
+- `research`
+- `ops`
+- `docs`
+
+Default development states:
+
+- `todo`
+- `spec-draft`
+- `spec-ready`
+- `goal-ready`
+- `doing`
+- `review`
+- `blocked`
+- `done`
+- `cancelled`
+
+Observe tasks use a separate harness-defined lifecycle:
+
+- `watching`
+- `signal`
+- `triage`
+- `action-needed`
+- `paused`
+- `closed`
+
+Harness core defines the `observe` protocol. Project adapters declare observe
+sources, signal records, triage gates, and whether follow-up tasks may be
+created automatically.
+
 ## Adapter Artifacts
 
 Adapter artifacts record facts; they are not plugin rules.
@@ -132,7 +171,7 @@ Common artifacts:
 - gate results
 - deferred / follow-up register
 - project status
-- mental model / invariants
+- mental models / invariants
 
 ## Default Fixed Task Format
 

@@ -9,34 +9,38 @@ const __filename = fileURLToPath(import.meta.url);
 const pluginRoot = resolve(dirname(__filename), "..");
 const templateRoot = join(pluginRoot, "templates");
 
-const configRelPath = ".agent-harness/config.json";
+const configRelPath = ".harness/config.json";
+const agentHarnessConfigRelPath = ".agent-harness/config.json";
+const configRelPathCandidates = [configRelPath, agentHarnessConfigRelPath];
 
 const fixedContract = {
   contract: "fixed",
-  tasks: "tasks.md",
-  taskIndex: "tasks.md",
+  tasks: "harness/tasks.md",
+  taskIndex: "harness/tasks.md",
   config: configRelPath,
-  status: ".agent-harness/status.md",
-  goals: ".agent-harness/goals",
-  runs: ".agent-harness/runs"
+  status: "harness/status.md",
+  goals: "harness/goals",
+  runs: ".harness/runs"
 };
 
 const adapterContract = {
   contract: "adapter",
-  taskIndex: "tasks.md",
+  taskIndex: "harness/tasks.md",
   config: configRelPath,
-  adapterDocs: "docs/harness/README.md",
-  status: ".agent-harness/status.md",
-  specs: "docs/specs",
-  goals: "docs/goals",
-  milestones: "docs/milestones",
-  runs: ".agent-harness/runs",
-  gateRecords: ".agent-harness/runs",
-  deferredRegister: "docs/milestones",
-  mentalModel: "docs/mental-model.md"
+  adapterDocs: "harness/README.md",
+  status: "harness/status.md",
+  specs: "harness/specs",
+  goals: "harness/goals",
+  milestones: "harness/milestones",
+  runs: ".harness/runs",
+  gateRecords: ".harness/runs",
+  deferredRegister: "harness/milestones",
+  mentalModels: "harness/mental-models",
+  mentalModelIndex: "harness/mental-models/README.md"
 };
 
 const commonTaskIndexCandidates = [
+  "harness/tasks.md",
   "todolist.md",
   "tasks.md"
 ];
@@ -239,14 +243,18 @@ function normalizeLanguageCode(value) {
   return "en";
 }
 
+function findConfigRelPath(cwd) {
+  return configRelPathCandidates.find((candidate) => existsSync(join(cwd, candidate))) || "";
+}
+
 function languageFromConfig(cwd) {
-  const configPath = join(cwd, configRelPath);
-  if (!existsSync(configPath)) {
+  const relPath = findConfigRelPath(cwd);
+  if (!relPath) {
     return "";
   }
 
   try {
-    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    const config = JSON.parse(readFileSync(join(cwd, relPath), "utf8"));
     return config.language?.default || "";
   } catch {
     return "";
@@ -279,20 +287,24 @@ function resolveLanguage(args) {
 }
 
 function loadProjectConfig(cwd) {
-  const configPath = join(cwd, configRelPath);
-  if (!existsSync(configPath)) {
+  const relPath = findConfigRelPath(cwd);
+  if (!relPath) {
     return {};
   }
 
   try {
-    return JSON.parse(readFileSync(configPath, "utf8"));
+    return JSON.parse(readFileSync(join(cwd, relPath), "utf8"));
   } catch (error) {
-    throw new Error(`Could not parse ${configRelPath}: ${error.message}`);
+    throw new Error(`Could not parse ${relPath}: ${error.message}`);
   }
 }
 
 function pathExists(cwd, relPath) {
   return Boolean(relPath && existsSync(join(cwd, relPath)));
+}
+
+function firstExistingPath(cwd, candidates) {
+  return candidates.find((candidate) => pathExists(cwd, candidate)) || "";
 }
 
 function existingTaskIndexCandidates(cwd) {
@@ -315,11 +327,11 @@ function chooseExistingTaskIndex(cwd, explicitTaskIndex = "") {
 
 function discoverAdapterProject(cwd, options = {}) {
   const adapterDocs = options.adapterDocs
-    || (pathExists(cwd, adapterContract.adapterDocs) ? adapterContract.adapterDocs : "");
+    || firstExistingPath(cwd, [adapterContract.adapterDocs, "docs/harness/README.md"]);
   const taskIndex = chooseExistingTaskIndex(cwd, options.taskIndex || "");
-  const specs = pathExists(cwd, adapterContract.specs) ? adapterContract.specs : "";
-  const goals = pathExists(cwd, adapterContract.goals) ? adapterContract.goals : "";
-  const milestones = pathExists(cwd, adapterContract.milestones) ? adapterContract.milestones : "";
+  const specs = firstExistingPath(cwd, [adapterContract.specs, "docs/specs"]);
+  const goals = firstExistingPath(cwd, [adapterContract.goals, "docs/goals"]);
+  const milestones = firstExistingPath(cwd, [adapterContract.milestones, "docs/milestones"]);
   const hasAdapterArtifacts = Boolean(adapterDocs && (taskIndex || specs || goals || milestones));
 
   return {
@@ -347,7 +359,8 @@ function buildAdapterConfigPayload(projectName, discovery = {}) {
   payload.paths.runs = discovery.runs || payload.paths.runs || adapterContract.runs;
   payload.paths.gateRecords = discovery.gateRecords || payload.paths.gateRecords || payload.paths.runs || adapterContract.gateRecords;
   payload.paths.deferredRegister = discovery.deferredRegister || payload.paths.deferredRegister || payload.paths.milestones || adapterContract.deferredRegister;
-  payload.paths.mentalModel = discovery.mentalModel || payload.paths.mentalModel || adapterContract.mentalModel;
+  payload.paths.mentalModels = discovery.mentalModels || payload.paths.mentalModels || adapterContract.mentalModels;
+  payload.paths.mentalModelIndex = discovery.mentalModelIndex || payload.paths.mentalModelIndex || adapterContract.mentalModelIndex;
 
   return payload;
 }
@@ -371,13 +384,14 @@ function normalizeHarnessContract(config) {
   return "fixed";
 }
 
-function resolvedAdapterPaths(config) {
+function resolvedAdapterPaths(config, activeConfigRelPath = configRelPath) {
   const paths = config.paths || {};
   const adapter = config.adapter || {};
+  const mentalModelIndex = paths.mentalModelIndex || paths.mentalModel || adapterContract.mentalModelIndex;
   return {
     taskIndex: paths.taskIndex || paths.tasks || adapterContract.taskIndex,
     tasks: paths.taskIndex || paths.tasks || adapterContract.taskIndex,
-    config: configRelPath,
+    config: adapter.machineReadable || activeConfigRelPath || configRelPath,
     adapterDocs: adapter.docs || adapterContract.adapterDocs,
     status: paths.status || adapterContract.status,
     specs: paths.specs || adapterContract.specs,
@@ -386,11 +400,14 @@ function resolvedAdapterPaths(config) {
     runs: paths.runs || adapterContract.runs,
     gateRecords: paths.gateRecords || paths.runs || adapterContract.gateRecords,
     deferredRegister: paths.deferredRegister || paths.milestones || adapterContract.deferredRegister,
-    mentalModel: paths.mentalModel || adapterContract.mentalModel
+    mentalModels: paths.mentalModels || adapterContract.mentalModels,
+    mentalModelIndex,
+    mentalModel: mentalModelIndex
   };
 }
 
 function resolveHarnessContext(cwd) {
+  const activeConfigRelPath = findConfigRelPath(cwd);
   let config = loadProjectConfig(cwd);
   let configSource = "file";
   const warnings = [];
@@ -410,7 +427,7 @@ function resolveHarnessContext(cwd) {
   const paths = config.paths || {};
 
   if (contract === "adapter") {
-    const resolvedPaths = resolvedAdapterPaths(config);
+    const resolvedPaths = resolvedAdapterPaths(config, activeConfigRelPath || configRelPath);
     const requiredPaths = uniqueList(configSource === "discovered"
       ? [
         resolvedPaths.adapterDocs,
@@ -436,12 +453,14 @@ function resolveHarnessContext(cwd) {
         resolvedPaths.runs,
         resolvedPaths.gateRecords,
         resolvedPaths.deferredRegister,
-        resolvedPaths.mentalModel
+        resolvedPaths.mentalModels,
+        resolvedPaths.mentalModelIndex
       ]
       : [
         resolvedPaths.gateRecords,
         resolvedPaths.deferredRegister,
-        resolvedPaths.mentalModel
+        resolvedPaths.mentalModels,
+        resolvedPaths.mentalModelIndex
       ]);
 
     return {
@@ -460,7 +479,7 @@ function resolveHarnessContext(cwd) {
   const resolvedPaths = {
     taskIndex: paths.tasks || paths.taskIndex || fixedContract.taskIndex,
     tasks: paths.tasks || paths.taskIndex || fixedContract.taskIndex,
-    config: configRelPath,
+    config: activeConfigRelPath || configRelPath,
     status: paths.status || fixedContract.status,
     goals: paths.goals || fixedContract.goals,
     runs: paths.runs || fixedContract.runs
@@ -485,11 +504,11 @@ function resolveHarnessContext(cwd) {
   };
 }
 
-function fixedPathsFromConfig(config) {
+function fixedPathsFromConfig(config, activeConfigRelPath = configRelPath) {
   const paths = config.paths || {};
   return {
     taskIndex: paths.tasks || paths.taskIndex || fixedContract.taskIndex,
-    config: configRelPath,
+    config: activeConfigRelPath,
     status: paths.status || fixedContract.status,
     goals: paths.goals || fixedContract.goals,
     runs: paths.runs || fixedContract.runs
@@ -497,19 +516,21 @@ function fixedPathsFromConfig(config) {
 }
 
 function configExists(cwd) {
-  return existsSync(join(cwd, configRelPath));
+  return Boolean(findConfigRelPath(cwd));
 }
 
 function renderAdapterTemplate(paths) {
   return readTemplate("adapter.md")
-    .replace("- Task index: `tasks.md`", `- Task index: \`${paths.taskIndex}\``)
-    .replace("- Status file: `.agent-harness/status.md`", `- Status file: \`${paths.status}\``)
-    .replace("- Specs: `docs/specs/`", `- Specs: \`${paths.specs}/\``)
-    .replace("- Goals: `docs/goals/`", `- Goals: \`${paths.goals}/\``)
-    .replace("- Milestones: `docs/milestones/`", `- Milestones: \`${paths.milestones}/\``)
-    .replace("- Runs / logs: `.agent-harness/runs/`", `- Runs / logs: \`${paths.runs}/\``)
-    .replace("- Gate records: `.agent-harness/runs/`", `- Gate records: \`${paths.gateRecords}/\``)
-    .replace("- Deferred register: `docs/milestones/`", `- Deferred register: \`${paths.deferredRegister}/\``);
+    .replace("- Task index: `harness/tasks.md`", `- Task index: \`${paths.taskIndex}\``)
+    .replace("- Status file: `harness/status.md`", `- Status file: \`${paths.status}\``)
+    .replace("- Specs: `harness/specs/`", `- Specs: \`${paths.specs}/\``)
+    .replace("- Goals: `harness/goals/`", `- Goals: \`${paths.goals}/\``)
+    .replace("- Milestones: `harness/milestones/`", `- Milestones: \`${paths.milestones}/\``)
+    .replace("- Runs / logs: `.harness/runs/`", `- Runs / logs: \`${paths.runs}/\``)
+    .replace("- Gate records: `.harness/runs/`", `- Gate records: \`${paths.gateRecords}/\``)
+    .replace("- Deferred register: `harness/milestones/`", `- Deferred register: \`${paths.deferredRegister}/\``)
+    .replace("- Mental models: `harness/mental-models/`", `- Mental models: \`${paths.mentalModels}/\``)
+    .replace("- Mental model index: `harness/mental-models/README.md`", `- Mental model index: \`${paths.mentalModelIndex}\``);
 }
 
 function ensureDir(cwd, relPath, created) {
@@ -529,12 +550,16 @@ function ensureImportSupportArtifacts(cwd, paths, created) {
   if (writeIfMissing(join(cwd, paths.status), readTemplate("status.md"))) {
     created.push(paths.status);
   }
-  for (const dir of [paths.specs, paths.goals, paths.milestones, paths.runs]) {
+  for (const dir of [paths.specs, paths.goals, paths.milestones, paths.runs, paths.mentalModels]) {
     ensureDir(cwd, dir, created);
+  }
+  if (paths.mentalModelIndex && writeIfMissing(join(cwd, paths.mentalModelIndex), readTemplate("mental-models.md"))) {
+    created.push(paths.mentalModelIndex);
   }
 }
 
 function initPlan(args, cwd, projectName) {
+  const activeConfigRelPath = findConfigRelPath(cwd);
   if (configExists(cwd)) {
     const config = loadProjectConfig(cwd);
     const existingMode = normalizeHarnessContract(config);
@@ -542,7 +567,7 @@ function initPlan(args, cwd, projectName) {
       const requested = requestedContract(args);
       if (requested !== existingMode) {
         throw new Error(
-          `Existing ${configRelPath} is ${existingMode}; requested init contract is ${requested}. Use a migration command instead of init.`
+          `Existing ${activeConfigRelPath} is ${existingMode}; requested init contract is ${requested}. Use a migration command instead of init.`
         );
       }
     }
@@ -550,8 +575,8 @@ function initPlan(args, cwd, projectName) {
       mode: existingMode,
       configPayload: config,
       paths: existingMode === "adapter"
-        ? resolvedAdapterPaths(config)
-        : fixedPathsFromConfig(config),
+        ? resolvedAdapterPaths(config, activeConfigRelPath)
+        : fixedPathsFromConfig(config, activeConfigRelPath),
       writeConfig: false
     };
   }
@@ -609,10 +634,16 @@ function init(args) {
   }
 
   const dirs = mode === "adapter"
-    ? [paths.specs, paths.goals, paths.milestones, paths.runs]
+    ? [paths.specs, paths.goals, paths.milestones, paths.runs, paths.mentalModels]
     : [paths.goals, paths.runs];
   for (const dir of dirs) {
     mkdirSync(join(cwd, dir), { recursive: true });
+  }
+
+  if (mode === "adapter" && paths.mentalModelIndex) {
+    if (writeIfMissing(join(cwd, paths.mentalModelIndex), readTemplate("mental-models.md"), args.force)) {
+      created.push(paths.mentalModelIndex);
+    }
   }
 
   console.log(t(lang, "initDone", { cwd }));
@@ -623,6 +654,7 @@ function configImport(args) {
   const cwd = targetCwd(args);
   const projectName = args.projectName || basename(cwd);
   const configPath = join(cwd, configRelPath);
+  const activeConfigRelPath = findConfigRelPath(cwd);
   const discovery = discoverAdapterProject(cwd, {
     taskIndex: args.taskIndex,
     adapterDocs: args.adapterDocs
@@ -630,7 +662,7 @@ function configImport(args) {
 
   if (!discovery.detected) {
     throw new Error(
-      `No existing project adapter found. Expected ${adapterContract.adapterDocs} plus an existing task index such as todolist.md or tasks.md.`
+      `No existing project adapter found. Expected ${adapterContract.adapterDocs} plus an existing task index such as harness/tasks.md, todolist.md, or tasks.md.`
     );
   }
   if (!discovery.adapterDocs || !existsSync(join(cwd, discovery.adapterDocs))) {
@@ -639,12 +671,12 @@ function configImport(args) {
   if (!discovery.taskIndex || !existsSync(join(cwd, discovery.taskIndex))) {
     throw new Error("Could not find an existing task index. Pass --task-index <path> to import one explicitly.");
   }
-  if (existsSync(configPath) && !args.force) {
-    throw new Error(`${configRelPath} already exists. Use --force to overwrite.`);
+  if (activeConfigRelPath && !args.force) {
+    throw new Error(`${activeConfigRelPath} already exists. Use --force to overwrite.`);
   }
 
   const configPayload = buildAdapterConfigPayload(projectName, discovery);
-  const paths = resolvedAdapterPaths(configPayload);
+  const paths = resolvedAdapterPaths(configPayload, configRelPath);
 
   const payload = {
     dryRun: Boolean(args.dryRun),
@@ -654,7 +686,9 @@ function configImport(args) {
       paths.specs,
       paths.goals,
       paths.milestones,
-      paths.runs
+      paths.runs,
+      paths.mentalModels,
+      paths.mentalModelIndex
     ].filter((relPath) => relPath && !existsSync(join(cwd, relPath))),
     created: [],
     contract: "adapter",
@@ -1135,7 +1169,7 @@ function parseTasks(content) {
         const [title, type, status, priority, doc] = cells;
         if (title) {
           current = {
-            done: ["done", "cancelled"].includes(status.toLowerCase()),
+            done: ["done", "cancelled", "closed"].includes(status.toLowerCase()),
             priority,
             title,
             line: index + 1,
@@ -1158,7 +1192,7 @@ function normalized(value) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function findTask(tasks, query, taskIndexPath = "tasks.md") {
+function findTask(tasks, query, taskIndexPath = "harness/tasks.md") {
   const needle = normalized(query);
   const activeTasks = tasks.filter((task) => !task.done);
   const exactMatches = activeTasks.filter((task) => {

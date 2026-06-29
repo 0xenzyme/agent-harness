@@ -17,11 +17,12 @@ goals, milestones, gates, project adapters, or adapter Agent Harness behavior.
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 ```
 
-3. Read `.agent-harness/config.json` when it exists.
+3. Read `.harness/config.json` when it exists.
 4. If contract is `adapter`, read the configured project adapter.
 5. Read only the relevant installed plugin references by name:
    `adapter-harness`, `task-routing`, `controller-communication`,
-   `gate-results`, and `work-mode-policy`.
+   `gate-results`, and `work-mode-policy`. Include `task-routing` when task
+   kinds such as `observe` are relevant.
 6. Read the configured task index, spec, goal, milestone, status, or run files
    needed for the user's request.
 7. Keep generic protocol in plugin references, project-specific rules in the

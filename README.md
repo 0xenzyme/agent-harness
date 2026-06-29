@@ -33,7 +33,7 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 
 ## Artifact Map
 
-Adapter projects use `.agent-harness/config.json` plus a project adapter to
+Adapter projects use `.harness/config.json` plus a project adapter to
 resolve artifact paths. The plugin does not need to know project-specific
 product names, database boundaries, production rules, ports, credentials, or
 release policy.
@@ -86,7 +86,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/t
 ```
 
 If a project already has `todolist.md`, `init --contract adapter` preserves it
-instead of creating a parallel `tasks.md`. A real `config import` writes the
+instead of creating a parallel `harness/tasks.md`. A real `config import` writes the
 machine config and creates missing support artifacts such as the configured
 status file and runs directory.
 
@@ -125,19 +125,19 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/
 The adapter contract requires an accepted spec:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec docs/specs/task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
 
 Prepare a run packet from a goal:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal docs/goals/YYYY-MM-DD-task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
 ```
 
 Inspect a prepared run:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .agent-harness/runs/YYYYMMDD-HHMMSS-task-title
+node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
 ```
 
 ## Workflow
@@ -166,7 +166,7 @@ Human-facing CLI output supports `en` and `zh-CN` for `init`, `doctor`, and
 
 1. `--lang <code>`
 2. `AGENT_HARNESS_LANG`
-3. `.agent-harness/config.json` `language.default`
+3. `.harness/config.json` `language.default`
 4. system locale from `LC_ALL`, `LC_MESSAGES`, or `LANG`
 5. fallback `en`
 

@@ -26,7 +26,7 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 
 ## Artifact Map
 
-adapter contract 项目通过 `.agent-harness/config.json` 和 project adapter 解析 artifact paths。plugin core 不需要写入具体项目的产品名、数据库边界、生产规则、端口、凭证或发布策略。
+adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 artifact paths。plugin core 不需要写入具体项目的产品名、数据库边界、生产规则、端口、凭证或发布策略。
 
 常见 adapter artifacts 包括：
 
@@ -73,7 +73,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/t
 node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
 ```
 
-如果项目已经有 `todolist.md`，`init --contract adapter` 会沿用它，不会再创建并行的 `tasks.md`。真实执行 `config import` 会写入 machine config，并创建缺失的支持产物，例如配置的 status 文件和 runs 目录。
+如果项目已经有 `todolist.md`，`init --contract adapter` 会沿用它，不会再创建并行的 `harness/tasks.md`。真实执行 `config import` 会写入 machine config，并创建缺失的支持产物，例如配置的 status 文件和 runs 目录。
 
 检查下游项目：
 
@@ -110,19 +110,19 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/
 adapter contract 要求 goal 引用已确认的 spec：
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec docs/specs/task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
 
 从 goal 准备 run packet：
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal docs/goals/YYYY-MM-DD-task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
 ```
 
 查看已准备的 run：
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .agent-harness/runs/YYYYMMDD-HHMMSS-task-title
+node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
 ```
 
 ## Workflow
@@ -145,7 +145,7 @@ init/import -> task index -> goal create -> worktree recommend -> run prepare ->
 
 1. `--lang <code>`
 2. `AGENT_HARNESS_LANG`
-3. `.agent-harness/config.json` 里的 `language.default`
+3. `.harness/config.json` 里的 `language.default`
 4. 系统 locale：`LC_ALL`、`LC_MESSAGES` 或 `LANG`
 5. fallback `en`
 

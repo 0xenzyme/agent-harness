@@ -1,19 +1,19 @@
 # Goal: Add A Smarter Worktree Recommendation Command
 
-Spec: docs/superpowers/specs/2026-06-21-smarter-worktree-recommendation-command-design.md
+Spec: harness/specs/superpowers/2026-06-21-smarter-worktree-recommendation-command-design.md
 Status: Completed.
 
 ## Source Task
 
-- `tasks.md`: `P1 Add a smarter worktree recommendation command`
+- `harness/tasks.md`: `P1 Add a smarter worktree recommendation command`
 
 ## Read First
 
 1. `AGENTS.md`
-2. `tasks.md`
-3. `.agent-harness/config.json`
-4. `.agent-harness/status.md`
-5. `docs/superpowers/specs/2026-06-21-smarter-worktree-recommendation-command-design.md`
+2. `harness/tasks.md`
+3. `.harness/config.json`
+4. `harness/status.md`
+5. `harness/specs/superpowers/2026-06-21-smarter-worktree-recommendation-command-design.md`
 
 ## Work Mode Recommendation
 
@@ -48,7 +48,7 @@ Also cover `local`, `worktree`, `ask`, non-git, and invalid-config cases with te
 
 - The source task acceptance is satisfied.
 - Verification commands pass or any failure is documented with next steps.
-- `tasks.md` and `.agent-harness/status.md` are updated.
+- `harness/tasks.md` and `harness/status.md` are updated.
 
 ## Pause Conditions
 

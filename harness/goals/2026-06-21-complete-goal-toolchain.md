@@ -1,19 +1,19 @@
 # Goal: Complete The Goal Toolchain
 
-Spec: docs/specs/2026-06-21-complete-goal-toolchain-design.md
+Spec: harness/specs/2026-06-21-complete-goal-toolchain-design.md
 Status: Ready for execution from confirmed spec.
 
 ## Source Task
 
-- `tasks.md`: `P1 Complete the goal toolchain`
+- `harness/tasks.md`: `P1 Complete the goal toolchain`
 
 ## Read First
 
-1. `docs/specs/2026-06-21-complete-goal-toolchain-design.md`
+1. `harness/specs/2026-06-21-complete-goal-toolchain-design.md`
 2. `AGENTS.md`
-3. `tasks.md`
-4. `.agent-harness/config.json`
-5. `.agent-harness/status.md`
+3. `harness/tasks.md`
+4. `.harness/config.json`
+5. `harness/status.md`
 6. `README.md`
 7. `docs/project-contract.md`
 8. `docs/worktree-policy.md`
@@ -58,9 +58,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd .
 ```bash
 npm run validate:plugin
 node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd . --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md
+node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal harness/goals/2026-06-21-complete-goal-toolchain.md
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd . --run <prepared-run-dir>
 ```
 
@@ -81,7 +81,7 @@ Also cover these temporary-project cases with deterministic commands:
 - Goal validation catches missing spec, draft spec, missing required sections, invalid work mode, and missing stop/verification conditions.
 - Run outcome recording writes machine-readable status and human-readable log evidence.
 - `README.md`, `docs/project-contract.md`, `plugins/agent-harness/skills/harness-goal/SKILL.md`, and `plugins/agent-harness/skills/harness-run/SKILL.md` describe the completed workflow.
-- `tasks.md` and `.agent-harness/status.md` are updated.
+- `harness/tasks.md` and `harness/status.md` are updated.
 - Verification commands pass, or any failure is documented with exact next steps.
 
 ## Pause Conditions
@@ -89,5 +89,5 @@ Also cover these temporary-project cases with deterministic commands:
 - The spec conflicts with code, existing project contract, plugin manifest behavior, production constraints, or newer user instructions.
 - The implementation requires credentials, paid APIs, production access, destructive commands, push, PR, deploy, publish, daemon behavior, or automatic Codex session launch.
 - A decision is needed on whether `goal create` without `--spec` remains allowed.
-- A decision is needed on whether `run record` should automatically update `tasks.md` or `.agent-harness/status.md`.
+- A decision is needed on whether `run record` should automatically update `harness/tasks.md` or `harness/status.md`.
 - Product direction, file ownership, or worktree policy is unclear.

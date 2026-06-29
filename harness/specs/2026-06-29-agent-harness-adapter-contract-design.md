@@ -8,11 +8,11 @@ Updated: 2026-06-29
 
 Agent Harness started with a fixed-path control plane:
 
-- `tasks.md`
-- `.agent-harness/config.json`
-- `.agent-harness/status.md`
-- `.agent-harness/goals/`
-- `.agent-harness/runs/`
+- `harness/tasks.md`
+- `.harness/config.json`
+- `harness/status.md`
+- `harness/goals/`
+- `.harness/runs/`
 
 That shape remains useful for small projects, but it is too narrow for projects
 that already have their own task index, specs, goals, milestones, gate records,
@@ -67,7 +67,7 @@ rules, Admin CLI rules, or route lists.
 ## Project Adapter Layer
 
 Each adapter-contract project owns a thin adapter, typically
-`docs/harness/README.md`. The adapter declares:
+`harness/README.md`. The adapter declares:
 
 - artifact paths and source-of-truth files;
 - task index format;
@@ -104,26 +104,34 @@ Minimum adapter config:
   "contract": "adapter",
   "projectName": "",
   "adapter": {
-    "docs": "docs/harness/README.md",
-    "machineReadable": ".agent-harness/config.json",
+    "docs": "harness/README.md",
+    "machineReadable": ".harness/config.json",
     "preflight": [],
     "stateSync": []
   },
   "paths": {
-    "taskIndex": "tasks.md",
-    "status": ".agent-harness/status.md",
-    "specs": "docs/specs",
-    "goals": "docs/goals",
-    "milestones": "docs/milestones",
-    "runs": ".agent-harness/runs",
-    "gateRecords": ".agent-harness/runs",
-    "deferredRegister": "docs/milestones",
-    "mentalModel": "docs/mental-model.md"
+    "taskIndex": "harness/tasks.md",
+    "status": "harness/status.md",
+    "specs": "harness/specs",
+    "goals": "harness/goals",
+    "milestones": "harness/milestones",
+    "runs": ".harness/runs",
+    "gateRecords": ".harness/runs",
+    "deferredRegister": "harness/milestones",
+    "mentalModels": "harness/mental-models",
+    "mentalModelIndex": "harness/mental-models/README.md"
   },
   "workMode": {
     "defaultPolicy": "ask"
   },
   "lifecycle": {
+    "taskKinds": [
+      "development",
+      "observe",
+      "research",
+      "ops",
+      "docs"
+    ],
     "taskStates": [
       "todo",
       "spec-draft",
@@ -134,6 +142,14 @@ Minimum adapter config:
       "blocked",
       "done",
       "cancelled"
+    ],
+    "observeStates": [
+      "watching",
+      "signal",
+      "triage",
+      "action-needed",
+      "paused",
+      "closed"
     ]
   },
   "gates": {
@@ -175,7 +191,7 @@ The CLI should:
 Skills should instruct Codex to read:
 
 1. repo instructions;
-2. `.agent-harness/config.json`;
+2. `.harness/config.json`;
 3. the project adapter when the contract is `adapter`;
 4. the plugin reference relevant to the task;
 5. referenced specs, goals, milestones, task index, and status files.
@@ -183,7 +199,7 @@ Skills should instruct Codex to read:
 ## What Not To Do
 
 - Do not migrate downstream repos automatically.
-- Do not make `docs/specs/` or `docs/goals/` mandatory for fixed-contract
+- Do not make `harness/specs/` or `harness/goals/` mandatory for fixed-contract
   projects.
 - Do not add daemons, watchers, network services, automatic thread spawning,
   deploys, pushes, PRs, or releases.

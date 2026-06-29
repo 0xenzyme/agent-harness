@@ -2,9 +2,18 @@
 
 | Task | Type | Status | Priority | Doc |
 | --- | --- | --- | --- | --- |
-| Define the next concrete task | docs | todo | P1 |  |
+| Define the next concrete task | development | todo | P1 |  |
 
-## Status Values
+## Task Kinds
+
+- `development`: scoped implementation, review, repair, or documentation work.
+- `observe`: ongoing monitoring that records signals and may produce follow-up
+  tasks after triage.
+- `research`
+- `ops`
+- `docs`
+
+## Development Status Values
 
 - `todo`
 - `spec-draft`
@@ -15,3 +24,12 @@
 - `blocked`
 - `done`
 - `cancelled`
+
+## Observe Status Values
+
+- `watching`
+- `signal`
+- `triage`
+- `action-needed`
+- `paused`
+- `closed`

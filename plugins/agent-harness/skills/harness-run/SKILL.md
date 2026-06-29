@@ -17,7 +17,7 @@ goal run using Agent Harness.
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 ```
 
-3. Read `.agent-harness/config.json` when it exists.
+3. Read `.harness/config.json` when it exists.
 4. In the adapter contract, read the configured project adapter and relevant
    installed plugin references.
 5. Read the configured task index and any configured state files that exist.
@@ -57,7 +57,7 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
   policy first.
 - Preserve fixed path behavior for `contract: "fixed"`.
 - In the adapter contract, use configured artifact paths instead of assuming
-  `.agent-harness/goals/` or `.agent-harness/runs/`.
+  `harness/goals/` or `.harness/runs/`.
 - Keep subagent ownership explicit and non-overlapping.
 - Report to the user in the user's language while preserving code, commands,
   paths, package names, skill names, API names, model names, abbreviations, and

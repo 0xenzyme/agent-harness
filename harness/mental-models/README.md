@@ -17,7 +17,7 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 
 Fixed-contract projects keep the original fixed file contract.
 Adapter-contract projects resolve artifact paths through
-`.agent-harness/config.json` and the project adapter.
+`.harness/config.json` and the project adapter.
 
 ## Control Plane
 
@@ -27,11 +27,12 @@ humans to review, easy for Codex to read, and portable across machines.
 Fixed contract:
 
 ```text
-tasks.md
-.agent-harness/
-  config.json
+harness/
+  tasks.md
   status.md
   goals/
+.harness/
+  config.json
   runs/
     YYYYMMDD-HHMMSS-<slug>/
       run.md
@@ -56,9 +57,9 @@ deferred register
 ```
 
 The default adapter paths are supplied by the plugin template, but projects
-may override them in `.agent-harness/config.json`.
+may override them in `.harness/config.json`.
 
-Existing adapter projects can be discovered before `.agent-harness/config.json`
+Existing adapter projects can be discovered before `.harness/config.json`
 exists when they already have a project adapter and a known task index such as
 `todolist.md`. `config import` persists that mapping without creating another
 task source.
@@ -79,7 +80,7 @@ A development loop should always have:
 `goal` and `run` are separate steps:
 
 - `goal`: create a durable handoff under the configured goals directory.
-- `run`: prepare or record execution for one goal under `.agent-harness/runs/`.
+- `run`: prepare or record execution for one goal under `.harness/runs/`.
 
 In the adapter contract, these are the configured goals and runs directories rather
 than mandatory literal paths.

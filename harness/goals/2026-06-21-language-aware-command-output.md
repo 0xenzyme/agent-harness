@@ -1,19 +1,19 @@
 # Goal: Add Language-Aware Command Output
 
-Spec: `docs/superpowers/specs/2026-06-21-language-aware-command-output-design.md`
+Spec: `harness/specs/superpowers/2026-06-21-language-aware-command-output-design.md`
 Status: Draft goal handoff; execute only after the spec is confirmed by the user.
 
 ## Source Task
 
-- `tasks.md`: `P1 Add language-aware command output`
+- `harness/tasks.md`: `P1 Add language-aware command output`
 
 ## Read First
 
 1. `AGENTS.md`
-2. `docs/superpowers/specs/2026-06-21-language-aware-command-output-design.md`
-3. `tasks.md`
-4. `.agent-harness/config.json`
-5. `.agent-harness/status.md`
+2. `harness/specs/superpowers/2026-06-21-language-aware-command-output-design.md`
+3. `harness/tasks.md`
+4. `.harness/config.json`
+5. `harness/status.md`
 6. `plugins/agent-harness/scripts/agent-harness.mjs`
 7. `plugins/agent-harness/templates/config.json`
 8. `plugins/agent-harness/skills/*/SKILL.md`
@@ -31,7 +31,7 @@ Reason: the change touches CLI behavior, docs, templates, and skill instructions
 - Add deterministic language resolution for the CLI:
   - `--lang <code>`
   - `AGENT_HARNESS_LANG`
-  - optional `.agent-harness/config.json` `language.default`
+  - optional `.harness/config.json` `language.default`
   - system locale
   - fallback `en`
 - Localize human-facing output for `doctor`, `init`, and help/usage.
@@ -43,7 +43,7 @@ Reason: the change touches CLI behavior, docs, templates, and skill instructions
 ## Non-Goals
 
 - Do not build a full i18n framework.
-- Do not localize generated `tasks.md` or `.agent-harness/status.md` templates unless the confirmed spec is updated.
+- Do not localize generated `harness/tasks.md` or `harness/status.md` templates unless the confirmed spec is updated.
 - Do not change the core Agent Harness file contract.
 - Do not deploy, publish, push, or open a PR unless separately requested.
 
@@ -74,7 +74,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd "$tmpdir" --la
 - `print-contract` remains stable JSON.
 - Documentation describes language precedence and examples.
 - `npm run validate:plugin` passes.
-- `tasks.md` and `.agent-harness/status.md` are updated after implementation.
+- `harness/tasks.md` and `harness/status.md` are updated after implementation.
 
 ## Pause Conditions
 

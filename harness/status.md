@@ -2,8 +2,8 @@
 
 ## Focus
 
-- Current focus: Current repository adapter paths now match the adapter
-  template defaults and can serve as the reference example.
+- Current focus: Harness directory naming and observe task protocol are aligned
+  across plugin defaults, references, and the current project adapter.
 
 ## Git
 
@@ -21,7 +21,8 @@
   - `npm run test:smoke`
   - `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`
 - Result: passed. Current project resolves as `contract: "adapter"` with
-  required paths under `docs/specs`, `docs/goals`, and `docs/mental-model.md`.
+  required paths under `harness/`, machine paths under `.harness/`, and
+  `observe` task state semantics defined in harness references.
 
 ## Blockers
 
