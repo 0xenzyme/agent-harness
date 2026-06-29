@@ -136,6 +136,20 @@ node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
 ```
 
+从当前 git state 和 recent run records 预览确定性的 task/status maintenance：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --json
+```
+
+把保守的 maintenance snapshot 写入配置的 status 文件；只有当 completed run
+提供精确证据且 task index 可安全写入时，才应用 task 更新：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
+```
+
 推荐当前任务应该继续使用当前 checkout、切到 worktree，还是先询问：
 
 ```bash
@@ -197,11 +211,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 推荐的 adapter workflow：
 
 ```text
-init/import -> activation snippet -> orient/intake -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> update state records
+init/import -> activation snippet -> orient/intake -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> maintain tasks -> update state records
 ```
 
 `activation snippet` 只打印 `AGENTS.md` 片段，不修改项目 instructions。
 `orient next` 是只读命令：它汇总 status 和 task state。`intake idea` 默认也是只读：它分类新想法，只有传入 `--record` 时才会追加到支持的 markdown task index。两个命令都会说明进入执行前需要哪些确认。
+`maintain tasks` 默认只读；传入 `--record` 时，它会写入保守的 status snapshot，并且只应用有精确证据、可安全写入的 task-index 更新。
 
 Conditional plugin bootstrap 仍然 defer。当前通过校验的 plugin manifest 不
 声明 session hook，因此安装 Agent Harness skills 不会向无 harness 项目注入
@@ -211,7 +226,7 @@ harness instructions。
 
 ## Command Language
 
-面向人的 CLI 输出支持 `en` 和 `zh-CN`，覆盖 `init`、`doctor`、`worktree recommend` 和 help/usage。activation、orientation 和 intake 输出当前是稳定英文文本。语言解析顺序：
+面向人的 CLI 输出支持 `en` 和 `zh-CN`，覆盖 `init`、`doctor`、`worktree recommend` 和 help/usage。activation、orientation、intake 和 maintenance 输出当前是稳定英文文本。语言解析顺序：
 
 1. `--lang <code>`
 2. `AGENT_HARNESS_LANG`

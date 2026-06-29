@@ -165,6 +165,7 @@ const messages = {
   agent-harness activation snippet [--cwd PATH] [--json]
   agent-harness orient next [--cwd PATH] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
+  agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
@@ -204,6 +205,7 @@ const messages = {
   agent-harness activation snippet [--cwd PATH] [--json]
   agent-harness orient next [--cwd PATH] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
+  agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
@@ -1746,6 +1748,436 @@ function intakeIdea(args) {
   }
 }
 
+function lines(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+}
+
+function parseBranchLine(line) {
+  const raw = String(line || "").replace(/^##\s*/, "").trim();
+  const aheadMatch = raw.match(/\bahead\s+(\d+)/i);
+  const behindMatch = raw.match(/\bbehind\s+(\d+)/i);
+  const branchPart = raw.replace(/\s+\[.+?\]\s*$/, "");
+  const [branch, upstream = ""] = branchPart.includes("...")
+    ? branchPart.split("...", 2)
+    : [branchPart.replace(/^No commits yet on\s+/i, ""), ""];
+  return {
+    raw,
+    branch: branch || "",
+    upstream,
+    ahead: aheadMatch ? Number(aheadMatch[1]) : 0,
+    behind: behindMatch ? Number(behindMatch[1]) : 0
+  };
+}
+
+function parseStatusPath(line) {
+  const raw = String(line || "");
+  const match = raw.match(/^(.{1,2})\s+(.+)$/);
+  const pathPart = (match ? match[2] : raw.slice(3)).trim();
+  if (!pathPart) {
+    return "";
+  }
+  if (pathPart.includes(" -> ")) {
+    return pathPart.split(" -> ").at(-1).trim();
+  }
+  return pathPart;
+}
+
+function parseNameStatus(value) {
+  return lines(value).map((line) => {
+    const parts = line.split(/\t+/);
+    const status = parts[0] || "";
+    const path = parts.at(-1) || "";
+    return {
+      status,
+      path
+    };
+  }).filter((entry) => entry.path);
+}
+
+function gitMaintenanceSummary(args) {
+  const root = git(args, ["rev-parse", "--show-toplevel"]);
+  if (!root) {
+    return {
+      isRepo: false,
+      root: "",
+      branch: "",
+      upstream: "",
+      ahead: 0,
+      behind: 0,
+      dirty: false,
+      changedPathCount: 0,
+      changedFiles: [],
+      staged: [],
+      unstaged: [],
+      statusShort: []
+    };
+  }
+
+  const statusWithBranch = git(args, ["status", "--short", "--branch"]);
+  const statusShort = git(args, ["status", "--short"]);
+  const statusLines = lines(statusShort);
+  const branchLine = lines(statusWithBranch).find((line) => line.startsWith("## ")) || "";
+  const branch = parseBranchLine(branchLine);
+  const staged = parseNameStatus(git(args, ["diff", "--cached", "--name-status"]));
+  const unstaged = parseNameStatus(git(args, ["diff", "--name-status"]));
+  const changedFiles = uniqueList(statusLines.map(parseStatusPath));
+
+  return {
+    isRepo: true,
+    root,
+    branch: branch.branch,
+    upstream: branch.upstream,
+    ahead: branch.ahead,
+    behind: branch.behind,
+    dirty: statusLines.length > 0,
+    changedPathCount: changedFiles.length,
+    changedFiles,
+    staged,
+    unstaged,
+    statusShort: statusLines
+  };
+}
+
+function readRecentRuns(cwd, runsRelPath, limit = 5) {
+  const runsAbs = runsRelPath ? join(cwd, runsRelPath) : "";
+  if (!runsAbs || !existsSync(runsAbs)) {
+    return [];
+  }
+
+  return readdirSync(runsAbs, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .reverse()
+    .slice(0, limit)
+    .map((name) => {
+      const runDir = join(runsRelPath, name);
+      const statusPath = join(cwd, runDir, "status.json");
+      if (!existsSync(statusPath)) {
+        return {
+          runDir,
+          phase: "missing-status",
+          goalPath: "",
+          updatedAt: "",
+          summary: "",
+          verificationSummary: ""
+        };
+      }
+      try {
+        const status = JSON.parse(readFileSync(statusPath, "utf8"));
+        return {
+          runDir,
+          phase: status.phase || "unknown",
+          goalPath: status.goalPath || "",
+          updatedAt: status.updatedAt || status.createdAt || "",
+          summary: status.summary || "",
+          verificationSummary: status.verificationSummary || ""
+        };
+      } catch (error) {
+        return {
+          runDir,
+          phase: "invalid-status",
+          goalPath: "",
+          updatedAt: "",
+          summary: `Could not parse status.json: ${error.message}`,
+          verificationSummary: ""
+        };
+      }
+    });
+}
+
+function stripTaskPriority(value) {
+  return String(value || "").replace(/^P\d+\s+/i, "").trim();
+}
+
+function normalizedTaskTitle(value) {
+  return normalized(stripTaskPriority(value).replace(/[.!?]+$/g, ""));
+}
+
+function goalSourceTask(content) {
+  const sourceTask = extractSection(content, "Source Task");
+  const match = sourceTask.match(/`([^`]+)`:\s+`([^`]+)`/);
+  if (!match) {
+    return {
+      path: "",
+      title: ""
+    };
+  }
+  return {
+    path: match[1],
+    title: stripTaskPriority(match[2])
+  };
+}
+
+function taskCompletionActions(cwd, tasks, runs, taskIndexContent) {
+  if (!taskIndexContent) {
+    return [];
+  }
+
+  const canRecord = !isTableTaskIndex(taskIndexContent);
+  const activeTasks = tasks.filter((task) => !isDoneTask(task));
+  const actions = [];
+  for (const run of runs) {
+    if (run.phase !== "completed" || !run.goalPath) {
+      continue;
+    }
+    const goalPath = resolveProjectPath(cwd, run.goalPath);
+    if (!goalPath || !existsSync(goalPath)) {
+      continue;
+    }
+    const source = goalSourceTask(readFileSync(goalPath, "utf8"));
+    if (!source.title) {
+      continue;
+    }
+    const match = activeTasks.find((task) => normalizedTaskTitle(task.title) === normalizedTaskTitle(source.title));
+    if (!match || actions.some((action) => action.task.line === match.line)) {
+      continue;
+    }
+    actions.push({
+      kind: "task-completion",
+      action: "move-to-done",
+      title: match.title,
+      evidence: `completed run ${run.runDir}`,
+      canRecord,
+      task: match
+    });
+  }
+  return actions;
+}
+
+function maintenancePayload(args) {
+  const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
+  const taskIndex = context.paths.taskIndex || context.paths.tasks;
+  const statusPath = context.paths.status;
+  const runsPath = context.paths.runs;
+  const taskIndexAbs = taskIndex ? join(cwd, taskIndex) : "";
+  const statusAbs = statusPath ? join(cwd, statusPath) : "";
+  const taskIndexContent = taskIndexAbs && existsSync(taskIndexAbs) ? readFileSync(taskIndexAbs, "utf8") : "";
+  const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
+  const tasks = taskIndexContent ? parseTasks(taskIndexContent) : [];
+  const recentRuns = readRecentRuns(cwd, runsPath);
+  const gitSummary = gitMaintenanceSummary(args);
+  const completionActions = taskCompletionActions(cwd, tasks, recentRuns, taskIndexContent);
+  const actions = [
+    {
+      kind: "status-snapshot",
+      action: "update-status",
+      title: "Record maintenance snapshot in configured status file",
+      evidence: "task index, current git state, and recent run records",
+      canRecord: Boolean(statusPath)
+    },
+    ...completionActions
+  ];
+
+  return {
+    cwd,
+    contract: context.contract,
+    writesFiles: false,
+    paths: {
+      taskIndex,
+      status: statusPath,
+      runs: runsPath
+    },
+    git: gitSummary,
+    tasks: {
+      exists: Boolean(taskIndexContent),
+      tableBased: Boolean(taskIndexContent && isTableTaskIndex(taskIndexContent)),
+      total: tasks.length,
+      ready: tasks.filter(isReadyTask).map(taskSummary),
+      inProgress: tasks.filter(isInProgressTask).map(taskSummary),
+      blocked: tasks.filter(isBlockedTask).map(taskSummary),
+      done: tasks.filter(isDoneTask).slice(0, 5).map(taskSummary)
+    },
+    status: {
+      exists: Boolean(statusContent),
+      focus: statusFocus(statusContent)
+    },
+    runs: {
+      exists: Boolean(runsPath && existsSync(join(cwd, runsPath))),
+      recent: recentRuns
+    },
+    proposed: {
+      actions
+    },
+    record: {
+      requested: Boolean(args.record),
+      statusWritten: false,
+      taskIndexWritten: false,
+      taskIndexRefused: false,
+      taskIndexRefusalReason: ""
+    },
+    warnings: context.warnings
+  };
+}
+
+function formatRunSummary(run) {
+  const parts = [
+    run.phase,
+    run.goalPath ? `goal=${run.goalPath}` : "",
+    run.summary ? `summary=${run.summary}` : ""
+  ].filter(Boolean);
+  return `${run.runDir}${parts.length ? ` (${parts.join(", ")})` : ""}`;
+}
+
+function maintenanceSnapshot(payload) {
+  const gitSummary = payload.git.isRepo
+    ? `${payload.git.branch || "(detached)"}${payload.git.upstream ? `...${payload.git.upstream}` : ""}; ahead=${payload.git.ahead}; behind=${payload.git.behind}; dirty=${payload.git.dirty ? "yes" : "no"}; changedPaths=${payload.git.changedPathCount}`
+    : "not a git repository";
+  const changedFiles = payload.git.changedFiles.length
+    ? payload.git.changedFiles.slice(0, 12).map((file) => `  - ${file}`).join("\n")
+    : "  - none detected";
+  const runs = payload.runs.recent.length
+    ? payload.runs.recent.slice(0, 5).map((run) => `  - ${formatRunSummary(run)}`).join("\n")
+    : "  - none detected";
+  const actions = payload.proposed.actions.length
+    ? payload.proposed.actions.map((action) => `  - ${action.action}: ${action.title || action.evidence}`).join("\n")
+    : "  - none";
+
+  return `- Generated: ${new Date().toISOString()}
+- Task index: \`${payload.paths.taskIndex || "not configured"}\`
+- Status file: \`${payload.paths.status || "not configured"}\`
+- Runs: \`${payload.paths.runs || "not configured"}\`
+- Git: ${gitSummary}
+- Ready tasks: ${payload.tasks.ready.length}
+- In-progress tasks: ${payload.tasks.inProgress.length}
+- Blocked tasks: ${payload.tasks.blocked.length}
+- Recent changed files:
+${changedFiles}
+- Recent runs:
+${runs}
+- Proposed sync actions:
+${actions}
+- Record result: statusWritten=${payload.record.statusWritten ? "yes" : "no"}; taskIndexWritten=${payload.record.taskIndexWritten ? "yes" : "no"}${payload.record.taskIndexRefused ? `; taskIndexRefused=${payload.record.taskIndexRefusalReason}` : ""}
+`;
+}
+
+function replaceMarkdownSection(content, title, body) {
+  const sectionHeading = `## ${title}`;
+  const sourceLines = String(content || "").split(/\r?\n/);
+  const start = sourceLines.findIndex((line) => line.trim() === sectionHeading);
+  const nextSectionIndex = (from) => {
+    for (let index = from + 1; index < sourceLines.length; index += 1) {
+      if (/^##\s+/.test(sourceLines[index])) {
+        return index;
+      }
+    }
+    return sourceLines.length;
+  };
+
+  if (start === -1) {
+    return `${String(content || "").trimEnd()}\n\n${sectionHeading}\n\n${body.trimEnd()}\n`;
+  }
+
+  const end = nextSectionIndex(start);
+  const before = sourceLines.slice(0, start).join("\n").trimEnd();
+  const after = sourceLines.slice(end).join("\n").replace(/^\n+/, "");
+  return `${before ? `${before}\n\n` : ""}${sectionHeading}\n\n${body.trimEnd()}${after ? `\n\n${after.trimStart()}` : "\n"}`;
+}
+
+function taskBlockRange(linesValue, task) {
+  const start = task.line - 1;
+  let end = start + 1;
+  while (end < linesValue.length) {
+    const line = linesValue[end];
+    if (/^##\s+/.test(line) || /^- \[( |x|X)\]\s+/.test(line)) {
+      break;
+    }
+    end += 1;
+  }
+  return { start, end };
+}
+
+function moveTaskToDone(content, task) {
+  const sourceLines = content.split(/\r?\n/);
+  const range = taskBlockRange(sourceLines, task);
+  const block = sourceLines.slice(range.start, range.end);
+  if (!block.length || !/^- \[ \]\s+/.test(block[0])) {
+    return content;
+  }
+  block[0] = block[0].replace(/^- \[ \]/, "- [x]");
+  const remaining = [
+    ...sourceLines.slice(0, range.start),
+    ...sourceLines.slice(range.end)
+  ].join("\n");
+  return appendTaskToSection(remaining, "Done", `${block.join("\n")}\n`);
+}
+
+function recordMaintenance(payload) {
+  const statusPath = payload.paths.status;
+  if (!statusPath) {
+    throw new Error("Status path is not configured.");
+  }
+  const statusAbs = join(payload.cwd, statusPath);
+  const statusContent = existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "# Project Status\n";
+
+  const taskCompletions = payload.proposed.actions.filter((action) => action.kind === "task-completion");
+  if (taskCompletions.length) {
+    if (payload.tasks.tableBased) {
+      payload.record.taskIndexRefused = true;
+      payload.record.taskIndexRefusalReason = "table-based task index";
+    } else if (payload.paths.taskIndex) {
+      const taskIndexAbs = join(payload.cwd, payload.paths.taskIndex);
+      let taskContent = readFileSync(taskIndexAbs, "utf8");
+      for (const action of taskCompletions) {
+        taskContent = moveTaskToDone(taskContent, action.task);
+      }
+      writeFileSync(taskIndexAbs, taskContent);
+      payload.record.taskIndexWritten = true;
+      payload.writesFiles = true;
+    }
+  }
+
+  payload.record.statusWritten = true;
+  payload.writesFiles = true;
+  writeFileSync(statusAbs, replaceMarkdownSection(statusContent, "Maintenance Snapshot", maintenanceSnapshot(payload)));
+}
+
+function maintainTasks(args) {
+  const payload = maintenancePayload(args);
+  if (args.record) {
+    recordMaintenance(payload);
+  }
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log("Agent Harness task maintenance");
+  console.log(`Task index: ${payload.paths.taskIndex || "not configured"}`);
+  console.log(`Status file: ${payload.paths.status || "not configured"}`);
+  console.log(`Runs: ${payload.paths.runs || "not configured"}`);
+  console.log(`Writes files: ${payload.writesFiles ? "yes" : "no"}`);
+  console.log("");
+  console.log("Git:");
+  if (payload.git.isRepo) {
+    console.log(`- ${payload.git.branch || "(detached)"}${payload.git.upstream ? `...${payload.git.upstream}` : ""}; ahead=${payload.git.ahead}; behind=${payload.git.behind}; dirty=${payload.git.dirty ? "yes" : "no"}; changed paths=${payload.git.changedPathCount}`);
+  } else {
+    console.log("- not a git repository");
+  }
+  console.log("Recent runs:");
+  if (payload.runs.recent.length) {
+    console.log(payload.runs.recent.map((run) => `- ${formatRunSummary(run)}`).join("\n"));
+  } else {
+    console.log("- none detected");
+  }
+  console.log("Proposed sync actions:");
+  if (payload.proposed.actions.length) {
+    console.log(payload.proposed.actions.map((action) => `- ${action.action}: ${action.title || action.evidence}`).join("\n"));
+  } else {
+    console.log("- none");
+  }
+  console.log("Record:");
+  console.log(`- requested=${payload.record.requested ? "yes" : "no"}; statusWritten=${payload.record.statusWritten ? "yes" : "no"}; taskIndexWritten=${payload.record.taskIndexWritten ? "yes" : "no"}`);
+  if (payload.record.taskIndexRefused) {
+    console.log(`- taskIndexRefused=${payload.record.taskIndexRefusalReason}`);
+  }
+}
+
 function todayStamp(date = new Date()) {
   return [
     date.getFullYear(),
@@ -2892,6 +3324,8 @@ function main() {
       orientNext(args);
     } else if (command === "intake" && subcommand === "idea") {
       intakeIdea(args);
+    } else if (command === "maintain" && subcommand === "tasks") {
+      maintainTasks(args);
     } else if (command === "config" && subcommand === "inspect") {
       configInspect(args);
     } else if (command === "config" && subcommand === "import") {

@@ -38,15 +38,25 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea "<idea text>" --record
 ```
 
-5. After confirmed execution, update the configured task index and status file
-   according to the project adapter.
+5. After confirmed execution, preview deterministic task/status maintenance:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project>
+```
+
+6. Record maintenance only when the user or control thread explicitly accepts
+   the state-sync write:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project> --record
+```
 
 ## Rules
 
 - Treat the configured task index as the source of truth; in fixed-contract
   projects this is `harness/tasks.md`.
-- Treat `orient next` and `intake idea` as read-only unless explicit record or
-  edit intent is present.
+- Treat `orient next`, `intake idea`, and `maintain tasks` as read-only unless
+  explicit record or edit intent is present.
 - Do not silently delete tasks or create alternate task files.
 - Preserve task `kind` separately from task `state`.
 - Report to the user in the user's language while preserving code, commands,

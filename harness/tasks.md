@@ -4,8 +4,6 @@
 
 ## Next
 
-- [ ] P2 Add automated task maintenance from recent git diff and run logs.
-
 ## Later
 
 - [ ] P2 Add b3ehive-inspired design principles to Agent Harness contracts.
@@ -49,6 +47,17 @@
 
 ## Done
 
+- [x] Add automated task maintenance from recent git diff and run logs.
+  - Completed: Added `agent-harness maintain tasks` for deterministic task /
+    status maintenance from configured harness paths, current git state, and
+    recent run records. Preview is read-only by default; `--record` writes a
+    conservative status snapshot and only moves exact completed-run markdown
+    tasks to Done when safe.
+  - Spec: `harness/specs/2026-06-29-automated-task-maintenance-design.md`
+  - Goal: `harness/goals/2026-06-29-add-automated-task-maintenance-from-recent-git-diff-and-run-logs.md`
+  - Verification: `node --check`, `git diff --check`,
+    `npm run validate:plugin`, `npm run test:smoke`, `goal validate`, and
+    `maintain tasks --json` / `maintain tasks --record --json`.
 - [x] Implement Agent Harness workflow-controller skills.
   - Completed: Added short workflow skills `harness:orient`,
     `harness:intake`, `harness:execute`, and `harness:init`; renamed the

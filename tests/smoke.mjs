@@ -98,6 +98,46 @@ try {
   assert(fixedGoalValidation.ok === true, "fixed goal with confirmed spec should validate");
   run(["run", "prepare", "--cwd", fixed, "--goal", fixedGoal]);
   assert(readdirSync(join(fixed, ".harness/runs")).length > 0, "fixed run packet should use fixed runs dir");
+  const fixedRun = readdirSync(join(fixed, ".harness/runs")).sort().at(-1);
+  run([
+    "run",
+    "record",
+    "--cwd",
+    fixed,
+    "--run",
+    join(".harness/runs", fixedRun),
+    "--phase",
+    "completed",
+    "--summary",
+    "fixed run completed",
+    "--verification",
+    "fixed smoke verification passed"
+  ]);
+  const fixedStatusBeforeMaintain = readFileSync(join(fixed, "harness/status.md"), "utf8");
+  const fixedMaintainPreview = JSON.parse(run(["maintain", "tasks", "--cwd", fixed, "--json"]));
+  assert(fixedMaintainPreview.writesFiles === false, "maintain preview should not write files");
+  assert(
+    fixedMaintainPreview.proposed.actions.some((action) => action.kind === "task-completion"),
+    "maintain should propose exact completed-run task completion"
+  );
+  assert(
+    readFileSync(join(fixed, "harness/status.md"), "utf8") === fixedStatusBeforeMaintain,
+    "maintain preview should leave status unchanged"
+  );
+  const fixedMaintainRecord = JSON.parse(run(["maintain", "tasks", "--cwd", fixed, "--record", "--json"]));
+  assert(fixedMaintainRecord.writesFiles === true, "maintain record should write files");
+  assert(fixedMaintainRecord.record.statusWritten === true, "maintain record should write status snapshot");
+  assert(fixedMaintainRecord.record.taskIndexWritten === true, "maintain record should update exact markdown task completion");
+  assertIncludes(
+    readFileSync(join(fixed, "harness/tasks.md"), "utf8"),
+    "- [x] P1 Define the next concrete task",
+    "maintain record should move exact completed task to Done"
+  );
+  assertIncludes(
+    readFileSync(join(fixed, "harness/status.md"), "utf8"),
+    "## Maintenance Snapshot",
+    "maintain record should append status maintenance snapshot"
+  );
   const fixedRecordIntake = JSON.parse(run([
     "intake",
     "idea",
@@ -322,6 +362,17 @@ try {
   assert(completedRunStatus.phase === "completed", "run record should update status phase");
   assert(completedRunStatus.summary === "custom run completed", "run record should update summary");
   assert(completedRunStatus.verificationSummary === "smoke verification passed", "run record should update verification summary");
+  const customMaintainRecord = JSON.parse(run(["maintain", "tasks", "--cwd", custom, "--record", "--json"]));
+  assert(customMaintainRecord.paths.taskIndex === "todolist.md", "maintain should use custom task index");
+  assert(customMaintainRecord.paths.status === "custom/status.md", "maintain should use custom status path");
+  assert(customMaintainRecord.paths.runs === "custom/runs", "maintain should use custom runs path");
+  assert(customMaintainRecord.record.statusWritten === true, "maintain should write custom status snapshot");
+  assert(customMaintainRecord.record.taskIndexRefused === true, "maintain should refuse unsafe table task-index completion writes");
+  assertIncludes(
+    readFileSync(join(custom, "custom/status.md"), "utf8"),
+    "custom/runs",
+    "maintain status snapshot should mention custom runs path"
+  );
   run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
   const blockedRun = readdirSync(join(custom, "custom/runs")).sort().at(-1);
   const blockedRecord = JSON.parse(run([

@@ -44,7 +44,14 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
 
 8. Implement only the authorized scope.
 9. Run verification, then update configured task/status/run evidence and record
-   deferred work.
+   deferred work. When deterministic maintenance is useful, preview or record
+   it explicitly:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project>
+node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project> --record
+```
+
 10. Record a run outcome when a run packet exists:
 
 ```bash

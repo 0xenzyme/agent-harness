@@ -36,12 +36,20 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <run-dir> --phase blocked --summary "<blocker summary>"
 ```
 
+6. When the adapter requires state sync, preview and explicitly record
+   deterministic task/status maintenance:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project>
+node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project> --record
+```
+
 ## Rules
 
 - `run prepare` does not start Codex, create daemons, push, deploy, publish, or
   open PRs.
-- `run record` updates only the run directory; update task/status state
-  separately when the adapter requires state sync.
+- `run record` updates only the run directory; use explicit state sync when
+  the adapter requires task/status updates.
 - Keep subagent ownership explicit and non-overlapping.
 - Preserve fixed-contract behavior and adapter-configured paths.
 - Stop if the goal conflicts with repo instructions, production constraints, or

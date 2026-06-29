@@ -152,6 +152,21 @@ confirmation:
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
 ```
 
+Preview deterministic task/status maintenance from current git state and recent
+run records:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --json
+```
+
+Record a conservative maintenance snapshot in the configured status file, and
+only apply exact completed-run task updates when they can be written safely:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
+```
+
 Recommend whether to use the current checkout, a worktree, or ask first:
 
 ```bash
@@ -215,7 +230,7 @@ approval, credentials, production access, or unblocking decisions are needed.
 The intended adapter workflow is:
 
 ```text
-init/import -> activation snippet -> orient/intake -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> update state records
+init/import -> activation snippet -> orient/intake -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> maintain tasks -> update state records
 ```
 
 `activation snippet` prints an `AGENTS.md` section; it does not modify project
@@ -223,6 +238,8 @@ instructions. `orient next` is read-only; it summarizes status and task state.
 `intake idea` is also read-only by default; it classifies a new idea and only
 appends to a supported markdown task index when `--record` is passed. Both
 commands report what confirmation is needed before execution.
+`maintain tasks` is read-only by default; with `--record` it writes a
+conservative status snapshot and only applies exact task-index updates.
 
 Conditional plugin bootstrap remains deferred. The validated plugin manifest
 does not declare a session hook, so installed Agent Harness skills do not
@@ -239,8 +256,8 @@ create a daemon, push, deploy, or open a PR.
 ## Command Language
 
 Human-facing CLI output supports `en` and `zh-CN` for `init`, `doctor`,
-`worktree recommend`, and help/usage. Activation, orientation, and intake
-output is currently stable English text. The language is resolved in this
+`worktree recommend`, and help/usage. Activation, orientation, intake, and
+maintenance output is currently stable English text. The language is resolved in this
 order:
 
 1. `--lang <code>`

@@ -71,6 +71,14 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
 ```
 
+After execution, preview deterministic state sync from git state and recent
+run records before writing:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
+```
+
 In the adapter contract, create goals from confirmed specs:
 
 ```bash
