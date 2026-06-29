@@ -14,6 +14,8 @@ task with status + spec + DAG + goal + gate
 - DAG:
 - goal:
 - gate:
+- route explanation:
+- evidence:
 
 ## Artifact Mapping
 

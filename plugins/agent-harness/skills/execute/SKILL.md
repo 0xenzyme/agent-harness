@@ -22,6 +22,8 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 4. Confirm the executable scope, non-goals, verification commands, completion
    conditions, and pause conditions. If any of these are missing and the choice
    affects risk, cost, or product direction, pause and ask.
+   Briefly record why this is `shape`, `goal`, `execute`, `competition`, or
+   `ask` when the route affects scope or acceptance.
 5. If the user asks what to do next before authorizing work, switch to orient:
 
 ```bash
@@ -70,6 +72,10 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 - Treat subagents, inbox threads, automation, and proposal competition as
   candidate evidence sources. The active control thread owns final acceptance
   after validation.
+- Keep accepted state inspectable: cite concrete task entries, specs, goals,
+  run records, gate records, command summaries, or human review notes.
+- Keep plugin core docs and templates project-neutral; put local facts in the
+  project adapter and project artifacts.
 - Preserve fixed-contract behavior and adapter-configured paths.
 - Report to the user in the user's language while preserving code, commands,
   paths, package names, skill names, API names, model names, abbreviations, and

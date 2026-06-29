@@ -78,6 +78,36 @@ coverage.
 Use for milestone work, multi-task DAGs, high-risk operations, or parallel
 execution. Require milestone gates and explicit state sync.
 
+## Optional Competition
+
+Use proposal competition only as an optional Shape protocol for ambiguous
+route selection, broad audits, repeated repair failure, or high-risk design
+choices. Competition should return candidate routes, tradeoffs, coverage union,
+risks, and a recommendation. It must not directly execute the selected route;
+execution starts only after the control lane accepts a route.
+
+Competition must not create branches/worktrees, write task/status state, start
+daemons, prepare runs, push, open PRs, deploy, or mark tasks done. This package
+documents the protocol; it does not install `harness:compete` as a workflow
+skill.
+
+## Idea Inbox Routing
+
+Use `intake` when the source is a rough idea, capture-thread note, requirement,
+bug report, or question that has not been accepted as executable scope.
+
+Idea Inbox routing should return:
+
+- the raw idea or summary
+- duplicate or related tasks/artifacts
+- suggested priority and section
+- whether a spec is likely needed
+- the confirmation needed before recording or execution
+
+Do not route directly from Idea Inbox to `execute` unless the control lane has
+accepted scope, non-goals, verification, completion conditions, and pause
+conditions.
+
 ## Route Decision Format
 
 ```text
@@ -92,5 +122,9 @@ Validation:
 Escalation triggers:
 ```
 
+Keep route decisions lightweight. The useful part is the reason and the
+confirmation boundary, not a heavy ledger.
+
 Escalate or pause when implementation discovers broader scope, unclear source
-of truth, production risk, missing approval, or conflicting instructions.
+of truth, production risk, missing approval, conflicting instructions, or a
+need for optional competition before implementation.

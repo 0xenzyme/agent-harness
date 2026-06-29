@@ -3,6 +3,15 @@
 Use these packet formats when a controller thread coordinates execution
 threads or records gate outcomes.
 
+The controller thread is the acceptance lane. Other threads, automation,
+proposal competition, and inbox notes may produce candidate evidence, but they
+do not update accepted task/status/run state until the controller validates the
+evidence and records the decision.
+
+Idea Inbox notes should return raw context plus intake recommendations.
+Competition notes should return route candidates plus risks. Neither packet is
+an execution order until the controller accepts it and records the next state.
+
 ## Status Snapshot
 
 ```text
@@ -82,6 +91,9 @@ Deferred items:
 
 Validation and known risks must be concrete. If nothing was found, write
 `None identified` instead of leaving fields blank.
+
+State changes should point to inspectable evidence: changed files, command
+summaries, run records, gate reports, or human review notes.
 
 ## Integration Gate Report
 

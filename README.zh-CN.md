@@ -24,6 +24,22 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 
 ![Agent Harness Adapter Model](docs/assets/readme/adapter-model.png)
 
+## Design Principles
+
+Agent Harness 保持控制平面小而可检查：
+
+- Proposal competition 是可选的 Shape protocol。它可以比较路线和风险，但
+  不直接执行被选中的路线。
+- 已接受的状态应留下 evidence trail，例如 task entries、specs、goals、
+  runs、gate records、command summaries 或 review notes。
+- Packaging 保持 disciplined：docs、skills、templates、marketplace
+  metadata、validation commands 和 version metadata 应描述同一套真实暴露的
+  行为。
+- Plugin docs 和 templates 保持 project-neutral。本地产品规则、凭证、端
+  口、provider policies 和生产流程属于 project adapters 与 artifacts。
+- Route explanations 保持 lightweight：Codex 应简短说明为什么正在
+  orient、shape、execute、ask、使用 worktree 或留在 local checkout。
+
 ## Artifact Map
 
 adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 artifact paths。plugin core 不需要写入具体项目的产品名、数据库边界、生产规则、端口、凭证或发布策略。
@@ -48,8 +64,10 @@ adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 
 - `plugins/agent-harness/` 是可安装的 Codex plugin。
 - `plugins/agent-harness/skills/` 包含 Codex skills。
 - `plugins/agent-harness/references/` 包含 canonical harness protocols。
+- `plugins/agent-harness/schemas/` 包含 machine-readable contract schemas。
 - `plugins/agent-harness/templates/` 包含 starter templates。
 - `plugins/agent-harness/scripts/agent-harness.mjs` 提供一个小型 CLI。
+- `evals/` 包含 project-neutral evaluation fixture blueprints。
 
 ## Plugin Skills
 
@@ -113,6 +131,7 @@ harness 的项目。
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
 ```
 
@@ -217,10 +236,19 @@ init/import -> activation snippet -> orient/intake -> goal create -> goal valida
 `activation snippet` 只打印 `AGENTS.md` 片段，不修改项目 instructions。
 `orient next` 是只读命令：它汇总 status 和 task state。`intake idea` 默认也是只读：它分类新想法，只有传入 `--record` 时才会追加到支持的 markdown task index。两个命令都会说明进入执行前需要哪些确认。
 `maintain tasks` 默认只读；传入 `--record` 时，它会写入保守的 status snapshot，并且只应用有精确证据、可安全写入的 task-index 更新。
+`config validate` 会用 plugin schema 检查当前 `.harness/config.json` 或 legacy `.agent-harness/config.json`，并报告可操作的 schema errors。
 
 Conditional plugin bootstrap 仍然 defer。当前通过校验的 plugin manifest 不
 声明 session hook，因此安装 Agent Harness skills 不会向无 harness 项目注入
 harness instructions。
+
+Idea Inbox Thread 是 capture lane，不是 execution lane。使用
+`harness:intake` 或 `intake idea` 先 preview 并在确认后 record 原始 notes；
+只有 control thread 接受 route 后，才把它们提升为 spec、goal 或 execution。
+
+Proposal competition 仍是 documented Shape protocol。它可以为模糊任务比较
+routes、risks 和 coverage，但不执行被选中的路线；当前 package 也不会安装
+新的 `harness:compete` skill。
 
 `goal create` 会把 durable handoff 写到配置的 goals 目录。`goal validate` 检查 goal 是否引用 repo 内已确认 spec，并包含执行所需 sections。`run prepare` 会先通过这个 validation gate，再把 `run.md`、`prompt.md`、`subagents.md`、`status.json` 和 `logs/` 写到配置的 runs 目录。`run record` 只更新 run 目录，记录 completed 或 blocked 结果。这些命令不会启动 Codex、创建 daemon、push、deploy 或 open PR。
 
@@ -235,6 +263,18 @@ harness instructions。
 5. fallback `en`
 
 使用 `auto` 会继续检查下一个来源。未知语言会 fallback 到 `en`。机器输出、`print-contract` 的 JSON、路径、命令名、package names、skill names 和 Git 输出保持英文不翻译。
+
+## Evaluation And Examples
+
+Project-neutral adoption examples 位于
+[`docs/examples/downstream-project-shapes.md`](docs/examples/downstream-project-shapes.md)。
+它覆盖 new adapter projects、existing adapter imports、fixed compatibility
+projects、non-harness projects 和 messy realistic projects。
+
+Evaluation blueprint 位于 [`evals/`](evals/)。它定义 fixture shapes、scenario
+prompts、expected outcomes 和 semi-automatic scoring plan，用来评价不同项目
+形态下的 agent behavior。这些 fixtures 评价 route choice、evidence quality、
+boundary preservation 和 state discipline，不依赖真实下游仓库。
 
 ## Install In Codex
 

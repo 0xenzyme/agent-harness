@@ -2,7 +2,7 @@
 
 Status: implemented in `0.2.0`
 Created: 2026-06-29
-Updated: 2026-06-29
+Updated: 2026-06-30
 
 ## Purpose
 
@@ -229,6 +229,13 @@ enough to justify a separate natural-language entry point.
 
 ## Shared Contracts
 
+### Optional Proposal Competition
+
+Proposal competition is optional Shape behavior for ambiguous or high-risk
+route selection. It may produce candidate routes, tradeoffs, coverage union,
+risks, and a recommendation. It must not directly execute the selected route
+or update accepted task/status/run state.
+
 ### Blueprint-Driven Versioning
 
 This blueprint ships as `0.2.0`.
@@ -237,6 +244,13 @@ The following version fields are aligned:
 
 - `package.json`
 - `plugins/agent-harness/.codex-plugin/plugin.json`
+
+### Packaging Discipline
+
+Docs, install instructions, marketplace metadata, skill files, templates,
+validation commands, and version metadata should describe the same shipped
+behavior. When public skill or command surfaces change, update these surfaces
+together and verify with plugin validation and smoke coverage.
 
 ### Inspectable Evidence Trail
 

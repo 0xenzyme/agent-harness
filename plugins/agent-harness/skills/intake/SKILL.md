@@ -35,6 +35,9 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
    entry to add and leave execution to a later confirmed task.
 7. If the user wants to implement the idea immediately, route to `execute`
    only after the scope and confirmation boundary are clear.
+8. For Idea Inbox Thread promotion, preserve the raw note, summarize only what
+   is needed for the task index, and make the control thread accept the route
+   before spec, goal, run, or execution work starts.
 
 ## Boundaries
 

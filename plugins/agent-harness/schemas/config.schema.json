@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-harness.local/schemas/config.schema.json",
+  "title": "Agent Harness Config",
+  "type": "object",
+  "anyOf": [
+    {
+      "required": [
+        "contract"
+      ]
+    },
+    {
+      "required": [
+        "mode"
+      ]
+    }
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "adapter"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "adapter"
+      ]
+    },
+    "projectName": {
+      "type": "string"
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "docs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "machineReadable": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preflight": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "stateSync": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tasks": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taskIndex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "specs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "goals": {
+          "type": "string",
+          "minLength": 1
+        },
+        "milestones": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gateRecords": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deferredRegister": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mentalModels": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mentalModel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mentalModelIndex": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "worktree": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultPolicy": {
+          "type": "string",
+          "enum": [
+            "local",
+            "worktree",
+            "ask"
+          ]
+        },
+        "autoRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "when": {
+                "type": "string",
+                "minLength": 1
+              },
+              "use": {
+                "type": "string",
+                "enum": [
+                  "local",
+                  "worktree",
+                  "ask"
+                ]
+              }
+            },
+            "required": [
+              "when",
+              "use"
+            ]
+          }
+        }
+      }
+    },
+    "workMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultPolicy": {
+          "type": "string",
+          "enum": [
+            "local",
+            "worktree",
+            "ask"
+          ]
+        }
+      }
+    },
+    "loops": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultMode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maxIterations": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requiresVerification": {
+          "type": "boolean"
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "taskKinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "taskStates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "observeStates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "optional": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preflight": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "stateSync": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -33,6 +33,13 @@ Required fields:
 - `paths`
 - `worktree`
 
+The config is validated against
+`plugins/agent-harness/schemas/config.schema.json` by:
+
+```bash
+agent-harness config validate --cwd <project>
+```
+
 ### `harness/status.md`
 
 Human-readable project status:
@@ -109,6 +116,12 @@ The real import also creates required support artifacts that do not split
 project state, including the configured status file and runs/specs/goals/
 milestones directories when missing.
 
+Use `agent-harness config validate --cwd <project>` after initialization or
+import. Validation checks the active `.harness/config.json` or legacy
+`.agent-harness/config.json` against the plugin-owned schema and reports
+invalid contract values, unknown keys, required adapter/fixed paths, and unsafe
+absolute or parent-relative paths.
+
 The adapter should declare:
 
 - artifact paths and source-of-truth files
@@ -118,6 +131,30 @@ The adapter should declare:
 - validation commands
 - enabled gates and project-specific gate details
 - UI harness or mental model locations when relevant
+
+## Design Principles
+
+Agent Harness contracts, adapters, templates, and skills should preserve these
+principles:
+
+- optional proposal competition: use competition only as a Shape protocol for
+  ambiguous or high-risk route selection; it proposes routes and tradeoffs but
+  does not execute the chosen route.
+- inspectable evidence trail: accepted task, status, goal, run, and gate state
+  must point to concrete evidence such as specs, command summaries, run logs,
+  gate records, or human review notes.
+- packaging discipline: public docs, install docs, marketplace metadata, skill
+  files, templates, validation commands, and version metadata must stay aligned
+  with the behavior the plugin actually exposes.
+- project-neutral docs: plugin core docs, examples, and templates must avoid
+  private repository names, local absolute paths, customer names, provider-only
+  rules, ports, credentials, and downstream production procedures.
+- lightweight route explanation: at workflow transitions, Codex should briefly
+  state why it is choosing orientation, intake, shape, goal, execute,
+  competition, local, worktree, or ask.
+
+These principles are protocol constraints. Project adapters may add local
+policy, but plugin core must not absorb downstream-specific facts.
 
 ## Task Kinds And States
 
@@ -194,6 +231,38 @@ additional context.
   rather than risk corrupting project state.
 - Intake must not create specs, goals, runs, branches, PRs, deployments, or
   background automation.
+- Idea Inbox Threads are capture lanes. They preserve raw notes, questions,
+  and rough requirements while a control thread continues the active goal.
+- Promotion from Idea Inbox to accepted state requires intake / triage. The
+  promoted result may become a task candidate, spec draft, goal-ready task, or
+  clarification question, but raw capture notes are not executable scope.
+
+## Optional Competition Rules
+
+- Competition is a Shape protocol for ambiguous, broad, high-risk, or
+  repeatedly failing work.
+- Competition may output candidate routes, tradeoffs, coverage union, risks,
+  verification plans, and a recommendation.
+- Competition must not directly edit files, prepare runs, mark tasks done,
+  start daemons, create branches/worktrees, push, open PRs, deploy, or accept
+  state.
+- The control thread must validate the recommendation before routing to goal
+  creation or execution.
+- This package currently documents the protocol; it does not install a
+  separate `harness:compete` skill.
+
+## Evaluation Fixtures And Examples
+
+- `evals/` defines fixture blueprints for new-project, legacy-project,
+  non-harness-project, and messy-realistic scenarios.
+- `docs/examples/downstream-project-shapes.md` describes representative
+  project shapes and route choices.
+- Evaluation should score agent behavior: contract detection, artifact
+  reading, route choice, boundary preservation, state discipline, and evidence
+  quality.
+- Examples and fixtures must stay project-neutral. They should describe
+  harness artifact shapes and workflows without copying private downstream
+  facts into plugin core.
 
 ## Default Fixed Task Format
 

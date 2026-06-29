@@ -15,6 +15,22 @@ adapter contract = task with status + spec + DAG + goal + gate
 3. Documentation artifacts: task indexes, specs, goals, milestones, run logs,
    gate records, and deferred registers.
 
+## Design Principles
+
+- Optional proposal competition: use competition only for Shape decisions when
+  ambiguity or risk justifies comparing routes. Competition output is candidate
+  evidence, not accepted implementation.
+- Inspectable evidence trail: accepted state should name concrete artifacts,
+  commands, reviews, gate records, or run logs that another thread can inspect.
+- Packaging discipline: plugin docs, install docs, skills, templates,
+  marketplace metadata, validation commands, and version metadata should not
+  describe behavior the package does not expose.
+- Project-neutral docs: plugin core examples and templates should not contain
+  private repo names, local absolute paths, customer names, provider-specific
+  rules, ports, credentials, or downstream production procedures.
+- Lightweight route explanation: when Codex changes workflow mode or work
+  mode, it should briefly say why and name the confirmation boundary.
+
 ## Default Lifecycle
 
 - `todo`: recorded but not started.
@@ -61,3 +77,33 @@ production safety, or compatibility.
 - `.harness/runs/`
 
 Fixed paths are compatibility defaults, not the universal adapter contract.
+
+## Config Schema
+
+The machine config contract is published as
+`plugins/agent-harness/schemas/config.schema.json`. Use:
+
+```bash
+agent-harness config validate --cwd <project>
+```
+
+Validation should run after init/import and before treating a custom adapter
+config as accepted evidence. It checks known keys, contract values, required
+fixed/adapter paths, work mode values, and repo-relative path safety.
+
+## Idea Inbox And Competition
+
+Idea Inbox Threads are capture lanes. They can preserve raw ideas and rough
+requirements while another thread continues the active goal, but promotion
+requires intake / triage before task, spec, goal, or execution state changes.
+
+Proposal competition is a Shape protocol. It can compare routes and risks for
+ambiguous work, but it is not an execution launcher and is not accepted state
+until the control lane validates the recommendation.
+
+## Evaluation Fixtures
+
+Use `evals/` fixture blueprints and `docs/examples/downstream-project-shapes.md`
+to test whether Agent Harness works across new, legacy, non-harness, and messy
+realistic project shapes. These examples are contract fixtures, not downstream
+project policy.

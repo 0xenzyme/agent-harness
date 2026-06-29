@@ -6,34 +6,6 @@
 
 ## Later
 
-- [ ] P2 Add b3ehive-inspired design principles to Agent Harness contracts.
-  - Source: The b3ehive review identified five principles worth adopting:
-    optional proposal competition, inspectable evidence trail, packaging
-    discipline, project-neutral docs, and lightweight route explanation.
-  - Acceptance: Update Agent Harness contracts, docs, templates, and skill
-    redesign blueprint so these principles are explicit requirements rather
-    than informal notes.
-- [ ] P3 Explore optional competition skill for high-ambiguity harness shaping.
-  - Source: b3ehive includes a proposal-competition skill pattern that may be
-    useful when Agent Harness needs multiple agents or routes to compare
-    ambiguous designs, risks, migrations, or repair strategies.
-  - Acceptance: Define when a competition mode should be recommended, what it
-    may output, what it must not execute directly, how it fits `Shape` before
-    `Execute`, and whether it should become an optional `harness-compete` skill
-    or stay a documented protocol.
-- [ ] P2 Design Agent Harness evaluation fixture suite.
-  - Source: Agent Harness needs a way to evaluate whether the plugin is
-    suitable across project shapes, not only in this repository.
-  - Acceptance: Produce an `evals/` blueprint covering new-project,
-    legacy-project, non-harness-project, and messy-realistic fixtures, with
-    scenario prompts, expected outcomes, and an initial semi-automatic scoring
-    plan for agent behavior.
-- [ ] P2 Define Idea Inbox Thread workflow support.
-  - Source: Users may keep a separate Codex thread open for capturing ideas
-    while the control thread continues current spec / goal execution.
-  - Acceptance: Define the capture-thread workflow, prompts, and promotion
-    rules so raw ideas are recorded without execution and enter the task index,
-    specs, or goals only after intake / triage.
 - [ ] P3 Revisit conditional Agent Harness bootstrap after hook validation support.
   - Source: Conditional bootstrap validation found that the current plugin
     validation gate rejects `hooks` in `.codex-plugin/plugin.json`; Agent
@@ -42,11 +14,38 @@
   - Acceptance: If hook manifests become supported, add a conditional
     `SessionStart` bootstrap only with Codex App and Codex CLI runtime tests
     covering both harness and non-harness projects.
-- [ ] P3 Add JSON schema validation for `.harness/config.json`.
-- [ ] P3 Add examples for representative downstream project shapes.
 
 ## Done
 
+- [x] Complete Agent Harness maintenance batch.
+  - Completed: Added `config validate` and
+    `plugins/agent-harness/schemas/config.schema.json`; created `evals/`
+    fixture blueprints for new-project, legacy-project, non-harness-project,
+    and messy-realistic scenarios; added representative downstream project
+    shape examples; documented Idea Inbox promotion and optional competition
+    routing as Shape/control-lane contracts.
+  - Source tasks: `P2 Design Agent Harness evaluation fixture suite`, `P2
+    Define Idea Inbox Thread workflow support`, `P3 Explore optional
+    competition skill for high-ambiguity harness shaping`, `P3 Add JSON schema
+    validation for .harness/config.json`, and `P3 Add examples for
+    representative downstream project shapes`.
+  - Spec: `harness/specs/2026-06-30-agent-harness-maintenance-batch.md`
+  - Goal: `harness/goals/2026-06-30-agent-harness-maintenance-batch.md`
+  - Verification: `node --check`, `git diff --check`,
+    `npm run validate:plugin`, `npm run test:smoke`, `config validate`,
+    `doctor`, `goal validate`, and public-doc neutrality grep.
+  - Deferred: Conditional bootstrap / hooks remains a separate Later task.
+- [x] Add b3ehive-inspired design principles to Agent Harness contracts.
+  - Completed: Added optional proposal competition, inspectable evidence
+    trail, packaging discipline, project-neutral docs, and lightweight route
+    explanation as explicit Agent Harness contract principles across core
+    docs, plugin references, templates, workflow skills, public docs, and
+    smoke guards.
+  - Spec: `harness/specs/2026-06-30-b3ehive-inspired-design-principles-contracts.md`
+  - Goal: `harness/goals/2026-06-30-add-b3ehive-inspired-design-principles-to-agent-harness-contracts.md`
+  - Verification: `node --check`, `git diff --check`,
+    `npm run validate:plugin`, `npm run test:smoke`, `doctor`, `goal
+    validate`, and public-doc neutrality grep.
 - [x] Add automated task maintenance from recent git diff and run logs.
   - Completed: Added `agent-harness maintain tasks` for deterministic task /
     status maintenance from configured harness paths, current git state, and

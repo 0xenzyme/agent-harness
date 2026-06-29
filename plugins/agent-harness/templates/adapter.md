@@ -22,6 +22,33 @@ the Agent Harness plugin references.
 
 -
 
+## Design Principles
+
+- Optional proposal competition:
+- Inspectable evidence trail:
+- Packaging / validation discipline:
+- Project-neutral public docs:
+- Lightweight route explanation:
+
+## Config Validation
+
+- Schema: `plugins/agent-harness/schemas/config.schema.json`
+- Command: `agent-harness config validate --cwd .`
+- Result:
+
+## Idea Inbox Policy
+
+- Capture thread:
+- Promotion rule:
+- Non-execution boundary:
+
+## Optional Competition Policy
+
+- Recommended when:
+- Allowed outputs:
+- Forbidden actions:
+- Control-lane acceptance:
+
 ## Hard Boundaries
 
 - Do not use credentials, paid APIs, production data, destructive operations,

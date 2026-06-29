@@ -31,6 +31,23 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 
 ![Agent Harness Adapter Model](docs/assets/readme/adapter-model.png)
 
+## Design Principles
+
+Agent Harness keeps the control plane small and inspectable:
+
+- Proposal competition is optional and belongs to Shape work. It can compare
+  routes and risks, but it does not execute the selected route.
+- Accepted state should leave an evidence trail through task entries, specs,
+  goals, runs, gate records, command summaries, or review notes.
+- Packaging stays disciplined: docs, skills, templates, marketplace metadata,
+  validation commands, and version metadata should describe the same exposed
+  behavior.
+- Plugin docs and templates stay project-neutral. Local product rules,
+  credentials, ports, provider policies, and production procedures belong in
+  project adapters and artifacts.
+- Route explanations stay lightweight: Codex should briefly say why it is
+  orienting, shaping, executing, asking, using a worktree, or staying local.
+
 ## Artifact Map
 
 Adapter projects use `.harness/config.json` plus a project adapter to
@@ -59,8 +76,10 @@ This repo is both a source project and a Codex local marketplace:
 - `plugins/agent-harness/` contains the installable Codex plugin.
 - `plugins/agent-harness/skills/` contains reusable Codex skills.
 - `plugins/agent-harness/references/` contains canonical harness protocols.
+- `plugins/agent-harness/schemas/` contains machine-readable contract schemas.
 - `plugins/agent-harness/templates/` contains starter templates.
 - `plugins/agent-harness/scripts/agent-harness.mjs` provides a small CLI.
+- `evals/` contains project-neutral evaluation fixture blueprints.
 
 ## Plugin Skills
 
@@ -128,6 +147,7 @@ Inspect resolved config and adapter paths:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
 ```
 
@@ -240,10 +260,23 @@ appends to a supported markdown task index when `--record` is passed. Both
 commands report what confirmation is needed before execution.
 `maintain tasks` is read-only by default; with `--record` it writes a
 conservative status snapshot and only applies exact task-index updates.
+`config validate` checks the active `.harness/config.json` or legacy
+`.agent-harness/config.json` against the plugin schema and reports actionable
+schema errors.
 
 Conditional plugin bootstrap remains deferred. The validated plugin manifest
 does not declare a session hook, so installed Agent Harness skills do not
 inject harness instructions into unrelated projects.
+
+Idea Inbox Threads are capture lanes, not execution lanes. Use
+`harness:intake` or `intake idea` to preview and optionally record raw notes;
+promote them to specs, goals, or execution only after the control thread
+accepts the route.
+
+Proposal competition remains a documented Shape protocol. It may compare
+routes, risks, and coverage for ambiguous work, but it does not execute the
+selected route and is not an installed `harness:compete` skill in this
+package.
 
 `goal create` writes a durable handoff under the configured goals directory.
 `goal validate` checks that a goal references a confirmed repo-local spec and
@@ -269,6 +302,19 @@ order:
 Use `auto` to continue to the next source. Unknown language codes fall back to
 `en`. Machine output, JSON from `print-contract`, paths, command names, package
 names, skill names, and Git output remain unchanged.
+
+## Evaluation And Examples
+
+Project-neutral adoption examples live in
+[`docs/examples/downstream-project-shapes.md`](docs/examples/downstream-project-shapes.md).
+They cover new adapter projects, existing adapter imports, fixed compatibility
+projects, non-harness projects, and messy realistic projects.
+
+The evaluation blueprint lives under [`evals/`](evals/). It defines fixture
+shapes, scenario prompts, expected outcomes, and a semi-automatic scoring plan
+for agent behavior across project shapes. These fixtures evaluate route
+choice, evidence quality, boundary preservation, and state discipline; they do
+not require live downstream repositories.
 
 ## Install In Codex
 

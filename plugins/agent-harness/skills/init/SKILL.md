@@ -20,6 +20,7 @@ node <plugin-root>/scripts/agent-harness.mjs doctor --cwd <project>
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
+node <plugin-root>/scripts/agent-harness.mjs config validate --cwd <project>
 ```
 
 4. For a new adapter-contract project, initialize explicitly:
@@ -44,7 +45,7 @@ node <plugin-root>/scripts/agent-harness.mjs activation snippet --cwd <project>
 ```
 
 7. Report contract, created paths, missing optional paths, activation status,
-   and the recommended first orientation command.
+   config schema validation, and the recommended first orientation command.
 
 ## Boundaries
 

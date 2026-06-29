@@ -8,10 +8,12 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const pluginRoot = resolve(dirname(__filename), "..");
 const templateRoot = join(pluginRoot, "templates");
+const schemaRoot = join(pluginRoot, "schemas");
 
 const configRelPath = ".harness/config.json";
 const agentHarnessConfigRelPath = ".agent-harness/config.json";
 const configRelPathCandidates = [configRelPath, agentHarnessConfigRelPath];
+const configSchemaFile = "config.schema.json";
 
 const fixedContract = {
   contract: "fixed",
@@ -167,6 +169,7 @@ const messages = {
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
+  agent-harness config validate [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
@@ -207,6 +210,7 @@ const messages = {
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
+  agent-harness config validate [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
@@ -326,6 +330,242 @@ function loadProjectConfig(cwd) {
   } catch (error) {
     throw new Error(`Could not parse ${relPath}: ${error.message}`);
   }
+}
+
+function readConfigSchema() {
+  return JSON.parse(readFileSync(join(schemaRoot, configSchemaFile), "utf8"));
+}
+
+function schemaType(value) {
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  if (value === null) {
+    return "null";
+  }
+  return typeof value;
+}
+
+function schemaPath(base, key) {
+  if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)) {
+    return `${base}.${key}`;
+  }
+  return `${base}[${JSON.stringify(key)}]`;
+}
+
+function matchesSchemaType(value, expected) {
+  if (expected === "integer") {
+    return Number.isInteger(value);
+  }
+  if (expected === "number") {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+  if (expected === "object") {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
+  if (expected === "array") {
+    return Array.isArray(value);
+  }
+  return schemaType(value) === expected;
+}
+
+function validateJsonSchemaValue(value, schema, path = "$") {
+  const errors = [];
+  if (!schema || typeof schema !== "object") {
+    return errors;
+  }
+
+  if (schema.anyOf) {
+    const matches = schema.anyOf.filter((candidate) => validateJsonSchemaValue(value, candidate, path).length === 0);
+    if (!matches.length) {
+      errors.push(`${path} must match at least one schema option.`);
+    }
+  }
+
+  if (schema.oneOf) {
+    const matches = schema.oneOf.filter((candidate) => validateJsonSchemaValue(value, candidate, path).length === 0);
+    if (matches.length !== 1) {
+      errors.push(`${path} must match exactly one schema option.`);
+    }
+  }
+
+  if (schema.type) {
+    const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+    if (!types.some((type) => matchesSchemaType(value, type))) {
+      errors.push(`${path} must be ${types.join(" or ")}; got ${schemaType(value)}.`);
+      return errors;
+    }
+  }
+
+  if (schema.enum && !schema.enum.includes(value)) {
+    errors.push(`${path} must be one of ${schema.enum.map((item) => JSON.stringify(item)).join(", ")}.`);
+  }
+
+  if (typeof value === "string") {
+    if (schema.minLength !== undefined && value.length < schema.minLength) {
+      errors.push(`${path} must have length >= ${schema.minLength}.`);
+    }
+    if (schema.pattern && !(new RegExp(schema.pattern).test(value))) {
+      errors.push(`${path} must match pattern ${schema.pattern}.`);
+    }
+  }
+
+  if (typeof value === "number") {
+    if (schema.minimum !== undefined && value < schema.minimum) {
+      errors.push(`${path} must be >= ${schema.minimum}.`);
+    }
+    if (schema.maximum !== undefined && value > schema.maximum) {
+      errors.push(`${path} must be <= ${schema.maximum}.`);
+    }
+  }
+
+  if (Array.isArray(value)) {
+    if (schema.minItems !== undefined && value.length < schema.minItems) {
+      errors.push(`${path} must contain at least ${schema.minItems} item(s).`);
+    }
+    if (schema.uniqueItems) {
+      const seen = new Set(value.map((item) => JSON.stringify(item)));
+      if (seen.size !== value.length) {
+        errors.push(`${path} must contain unique items.`);
+      }
+    }
+    if (schema.items) {
+      for (let index = 0; index < value.length; index += 1) {
+        errors.push(...validateJsonSchemaValue(value[index], schema.items, `${path}[${index}]`));
+      }
+    }
+  }
+
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const properties = schema.properties || {};
+    const required = schema.required || [];
+    for (const key of required) {
+      if (!Object.prototype.hasOwnProperty.call(value, key)) {
+        errors.push(`${path}.${key} is required.`);
+      }
+    }
+    for (const [key, item] of Object.entries(value)) {
+      if (properties[key]) {
+        errors.push(...validateJsonSchemaValue(item, properties[key], schemaPath(path, key)));
+      } else if (schema.additionalProperties === false) {
+        errors.push(`${schemaPath(path, key)} is not allowed.`);
+      }
+    }
+  }
+
+  return errors;
+}
+
+function isRelativeHarnessPath(value) {
+  return typeof value === "string"
+    && value.trim()
+    && !value.startsWith("/")
+    && !/^[A-Za-z]:[\\/]/.test(value)
+    && !value.split(/[\\/]+/).includes("..");
+}
+
+function validateConfiguredPaths(config, contract) {
+  const errors = [];
+  const paths = config.paths || {};
+  const pathKeys = [
+    "tasks",
+    "taskIndex",
+    "status",
+    "specs",
+    "goals",
+    "milestones",
+    "runs",
+    "gateRecords",
+    "deferredRegister",
+    "mentalModels",
+    "mentalModel",
+    "mentalModelIndex"
+  ];
+  for (const key of pathKeys) {
+    if (paths[key] !== undefined && !isRelativeHarnessPath(paths[key])) {
+      errors.push(`$.paths.${key} must be a non-empty repo-relative path without '..'.`);
+    }
+  }
+
+  if (config.adapter?.docs !== undefined && !isRelativeHarnessPath(config.adapter.docs)) {
+    errors.push("$.adapter.docs must be a non-empty repo-relative path without '..'.");
+  }
+  if (config.adapter?.machineReadable !== undefined && !isRelativeHarnessPath(config.adapter.machineReadable)) {
+    errors.push("$.adapter.machineReadable must be a non-empty repo-relative path without '..'.");
+  }
+
+  if (contract === "adapter") {
+    if (!config.adapter || typeof config.adapter !== "object" || Array.isArray(config.adapter)) {
+      errors.push("$.adapter is required for adapter contract.");
+    } else {
+      for (const key of ["docs", "machineReadable"]) {
+        if (!config.adapter[key]) {
+          errors.push(`$.adapter.${key} is required for adapter contract.`);
+        }
+      }
+    }
+    for (const key of ["taskIndex", "status", "specs", "goals", "milestones", "runs"]) {
+      if (!paths[key]) {
+        errors.push(`$.paths.${key} is required for adapter contract.`);
+      }
+    }
+  }
+
+  if (contract === "fixed") {
+    for (const key of ["status", "goals", "runs"]) {
+      if (!paths[key]) {
+        errors.push(`$.paths.${key} is required for fixed contract.`);
+      }
+    }
+    if (!paths.tasks && !paths.taskIndex) {
+      errors.push("$.paths.tasks or $.paths.taskIndex is required for fixed contract.");
+    }
+  }
+
+  return errors;
+}
+
+function configValidationPayload(cwd) {
+  const configPath = findConfigRelPath(cwd);
+  const schemaPathAbs = join(schemaRoot, configSchemaFile);
+  const payload = {
+    ok: true,
+    cwd,
+    configPath,
+    configSource: configPath ? "file" : "default-or-discovered",
+    schemaPath: displayPath(cwd, schemaPathAbs),
+    errors: [],
+    warnings: []
+  };
+
+  if (!configPath) {
+    payload.warnings.push("No config file found; schema validation applies after config is imported or initialized.");
+    return payload;
+  }
+
+  let config;
+  try {
+    config = JSON.parse(readFileSync(join(cwd, configPath), "utf8"));
+  } catch (error) {
+    payload.ok = false;
+    payload.errors.push(`Could not parse ${configPath}: ${error.message}`);
+    return payload;
+  }
+
+  const schema = readConfigSchema();
+  let contract = "";
+  try {
+    contract = normalizeHarnessContract(config);
+  } catch (error) {
+    payload.errors.push(error.message);
+  }
+  payload.contract = contract;
+  payload.errors.push(...validateJsonSchemaValue(config, schema, "$"));
+  if (contract) {
+    payload.errors.push(...validateConfiguredPaths(config, contract));
+  }
+  payload.ok = payload.errors.length === 0;
+  return payload;
 }
 
 function pathExists(cwd, relPath) {
@@ -782,6 +1022,7 @@ function doctor(args) {
   const cwd = targetCwd(args);
   const lang = args.language;
   const context = resolveHarnessContext(cwd);
+  const configValidation = configValidationPayload(cwd);
   const required = context.requiredPaths;
   const missing = required.filter((path) => !existsSync(join(cwd, path)));
   const gitRoot = git(args, ["rev-parse", "--show-toplevel"]);
@@ -791,6 +1032,10 @@ function doctor(args) {
   console.log(`${t(lang, "doctorProject")}: ${cwd}`);
   console.log(`Harness contract: ${context.contract}`);
   console.log(`Config source: ${context.configSource}`);
+  console.log(`Config schema: ${configValidation.ok ? "ok" : "failed"}`);
+  for (const error of configValidation.errors) {
+    console.log(`Config schema error: ${error}`);
+  }
   console.log(`${t(lang, "doctorGitRoot")}: ${gitRoot || t(lang, "doctorNoGit")}`);
   console.log(`${t(lang, "doctorHarnessFiles")}: ${missing.length ? t(lang, "doctorMissing", { files: missing.join(", ") }) : t(lang, "doctorOk")}`);
   if (context.optionalPaths.length) {
@@ -807,6 +1052,9 @@ function doctor(args) {
   if (worktrees) {
     const count = worktrees.split("\n").filter((line) => line.startsWith("worktree ")).length;
     console.log(`${t(lang, "doctorWorktrees")}: ${count}`);
+  }
+  if (!configValidation.ok) {
+    process.exitCode = 1;
   }
 }
 
@@ -1084,11 +1332,13 @@ function printContract(args) {
 function configInspect(args) {
   const cwd = targetCwd(args);
   const context = resolveHarnessContext(cwd);
+  const configValidation = configValidationPayload(cwd);
   const payload = {
     contract: context.contract,
     cwd,
     configSource: context.configSource,
     configPath: context.paths.config,
+    configValidation,
     paths: context.paths,
     requiredPaths: context.requiredPaths,
     optionalPaths: context.optionalPaths,
@@ -1104,9 +1354,37 @@ function configInspect(args) {
   console.log(`Harness contract: ${payload.contract}`);
   console.log(`Config source: ${payload.configSource}`);
   console.log(`Config: ${payload.configPath}`);
+  console.log(`Config schema: ${configValidation.ok ? "ok" : "failed"}`);
+  for (const error of configValidation.errors) {
+    console.log(`Config schema error: ${error}`);
+  }
   console.log("Paths:");
   for (const [key, value] of Object.entries(payload.paths)) {
     console.log(`- ${key}: ${value}`);
+  }
+}
+
+function configValidate(args) {
+  const cwd = targetCwd(args);
+  const payload = configValidationPayload(cwd);
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+  } else {
+    console.log("Agent Harness config validation");
+    console.log(`Config: ${payload.configPath || "not found"}`);
+    console.log(`Schema: ${payload.schemaPath}`);
+    console.log(`Result: ${payload.ok ? "ok" : "failed"}`);
+    for (const warning of payload.warnings) {
+      console.log(`Warning: ${warning}`);
+    }
+    for (const error of payload.errors) {
+      console.log(`- ${error}`);
+    }
+  }
+
+  if (!payload.ok) {
+    process.exitCode = 1;
   }
 }
 
@@ -3328,6 +3606,8 @@ function main() {
       maintainTasks(args);
     } else if (command === "config" && subcommand === "inspect") {
       configInspect(args);
+    } else if (command === "config" && subcommand === "validate") {
+      configValidate(args);
     } else if (command === "config" && subcommand === "import") {
       configImport(args);
     } else if (command === "adapter" && subcommand === "inspect") {

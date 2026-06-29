@@ -15,6 +15,7 @@ This is a compatibility wrapper for the older setup entry. Prefer the shorter
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs doctor --cwd <project>
+node <plugin-root>/scripts/agent-harness.mjs config validate --cwd <project>
 ```
 
 3. For a new adapter-contract project:

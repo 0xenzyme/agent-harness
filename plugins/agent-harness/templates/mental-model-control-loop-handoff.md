@@ -7,6 +7,7 @@ and hands work off.
 
 - input:
 - context:
+- route explanation:
 - action:
 - verification:
 - state update:
@@ -18,5 +19,6 @@ and hands work off.
 - what was decided:
 - what changed:
 - what was verified:
+- candidate evidence not yet accepted:
 - what remains blocked or deferred:
 - where the next action starts:

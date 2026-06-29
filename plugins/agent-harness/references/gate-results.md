@@ -20,10 +20,15 @@ Next executable:
 
 - Evidence must be concrete: command result, run id, commit id, user review, or
   other inspectable artifact.
+- Candidate evidence from subagents, automation, inbox notes, or proposal
+  competition is not accepted state until the control lane validates it and
+  records the gate result.
 - Failed gates create a correction task, move the work back to an earlier
   state, or mark it blocked.
 - Deferred items must name where they are deferred and what unblocks them.
 - If there is no next executable work, write `None`.
+- Gate records should stay project-neutral when they are part of plugin core
+  examples or templates; put local facts in project adapters and artifacts.
 
 ## Common Gates
 

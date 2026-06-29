@@ -18,6 +18,11 @@ Status: Ready for execution from confirmed spec.
 
 Use `ask` until scope, ownership, and checkout state are clear.
 
+## Route Explanation
+
+- Why this is the right next mode:
+- Confirmation boundary:
+
 ## Scope
 
 -
@@ -32,6 +37,12 @@ Use `ask` until scope, ownership, and checkout state are clear.
 ## Verification
 
 -
+
+## Evidence And State Sync
+
+- Candidate evidence:
+- Accepted evidence:
+- State records to update:
 
 ## Completion Conditions
 

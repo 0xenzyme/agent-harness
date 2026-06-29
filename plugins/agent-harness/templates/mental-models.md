@@ -28,6 +28,11 @@ adapter contract = task with status + spec + DAG + goal + gate
   when it affects execution.
 - Record durable invariants here; record temporary execution evidence in run
   logs or status files.
+- Explain route and work-mode choices briefly when they affect execution.
+- Treat subagent, automation, inbox, and competition output as candidate
+  evidence until the control lane validates it.
+- Keep plugin-facing examples project-neutral; put local facts in adapter
+  artifacts.
 
 ## Model Definitions
 

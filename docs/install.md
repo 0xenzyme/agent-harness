@@ -52,6 +52,7 @@ Inspect the resolved paths:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
 ```
 
@@ -96,3 +97,16 @@ Primary skills:
 
 Legacy `harness-*` skill names remain as compatibility wrappers, but new usage
 should prefer the workflow skills.
+
+## Packaging Discipline
+
+Before documenting or distributing a changed plugin surface, verify that install
+docs, README files, skill files, templates, marketplace metadata, validation
+commands, and version metadata describe the same shipped behavior. Public
+examples should stay project-neutral; project-specific policy belongs in the
+target project's adapter and artifacts.
+
+Project-neutral downstream shapes are documented in
+`docs/examples/downstream-project-shapes.md`. Evaluation fixture blueprints live
+under `evals/` and should be used to check adoption behavior before adding
+project-specific assumptions to plugin core.

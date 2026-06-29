@@ -55,6 +55,19 @@ function latestFile(dir) {
   return join(dir, files[files.length - 1]);
 }
 
+function collectFiles(dir, predicate) {
+  const files = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectFiles(path, predicate));
+    } else if (entry.isFile() && predicate(path)) {
+      files.push(path);
+    }
+  }
+  return files;
+}
+
 function assertIncludes(value, needle, message) {
   assert(value.includes(needle), message || `Expected output to include ${needle}`);
 }
@@ -80,6 +93,47 @@ for (const skillName of ["orient", "execute", "intake", "init"]) {
     `short workflow skill should exist: ${skillName}`
   );
 }
+const designPrincipleFiles = [
+  "docs/project-contract.md",
+  "plugins/agent-harness/references/adapter-harness.md",
+  "plugins/agent-harness/references/task-routing.md",
+  "plugins/agent-harness/references/gate-results.md",
+  "plugins/agent-harness/templates/spec.md",
+  "plugins/agent-harness/templates/goal.md",
+  "plugins/agent-harness/skills/orient/SKILL.md",
+  "plugins/agent-harness/skills/execute/SKILL.md"
+];
+for (const file of designPrincipleFiles) {
+  const content = readFileSync(join(repoRoot, file), "utf8");
+  assert(
+    /evidence|route|competition|project-neutral|packaging/i.test(content),
+    `${file} should carry design principle language`
+  );
+}
+const schemaPath = join(repoRoot, "plugins/agent-harness/schemas/config.schema.json");
+assert(existsSync(schemaPath), "config schema should be packaged with the plugin");
+const configSchema = readJson(schemaPath);
+assert(configSchema.properties.contract.enum.includes("fixed"), "config schema should include fixed contract");
+assert(configSchema.properties.contract.enum.includes("adapter"), "config schema should include adapter contract");
+const examplesDoc = readFileSync(join(repoRoot, "docs/examples/downstream-project-shapes.md"), "utf8");
+for (const needle of ["New Adapter Project", "Existing Adapter Project", "Non-Harness Project", "Messy Realistic Project"]) {
+  assertIncludes(examplesDoc, needle, "downstream project shape examples should cover representative shapes");
+}
+const evalDoc = readFileSync(join(repoRoot, "evals/README.md"), "utf8");
+for (const needle of ["new-project", "legacy-project", "non-harness-project", "messy-realistic", "Semi-Automatic Scoring"]) {
+  assertIncludes(evalDoc, needle, "eval blueprint should cover required fixture and scoring shape");
+}
+const neutralFiles = [
+  join(repoRoot, "README.md"),
+  join(repoRoot, "README.zh-CN.md"),
+  ...collectFiles(join(repoRoot, "docs"), (path) => path.endsWith(".md")),
+  ...collectFiles(join(repoRoot, "evals"), (path) => path.endsWith(".md")),
+  ...collectFiles(join(repoRoot, "plugins/agent-harness"), (path) => /\.(md|json|mjs)$/.test(path))
+];
+for (const file of neutralFiles) {
+  const content = readFileSync(file, "utf8");
+  assert(!/b3ehive|~\/project|\/Users\//i.test(content), `${file} should stay project-neutral`);
+}
 
 const suiteDir = mkdtempSync(join(tmpdir(), "agent-harness-smoke-"));
 
@@ -91,6 +145,8 @@ try {
   assert(existsSync(join(fixed, ".harness/config.json")), "fixed init should create config");
   assert(existsSync(join(fixed, "harness/status.md")), "fixed init should create status");
   assertIncludes(run(["doctor", "--cwd", fixed]), "Harness contract: fixed", "fixed doctor should report fixed mode");
+  assertIncludes(run(["config", "validate", "--cwd", fixed]), "Result: ok", "fixed config should validate");
+  assert(JSON.parse(run(["config", "validate", "--cwd", fixed, "--json"])).ok === true, "fixed config validation json should pass");
   write(join(fixed, "harness/specs/fixed.md"), "# Fixed Spec\n\nStatus: accepted\n");
   run(["goal", "create", "--cwd", fixed, "--task", "Define the next concrete task", "--spec", "harness/specs/fixed.md"]);
   const fixedGoal = latestFile(join(fixed, "harness/goals"));
@@ -174,6 +230,8 @@ try {
   const adapterInspect = JSON.parse(run(["config", "inspect", "--cwd", adapter, "--json"]));
   assert(adapterInspect.contract === "adapter", "adapter inspect should report adapter contract");
   assert(adapterInspect.paths.taskIndex === "harness/tasks.md", "adapter default task index should be harness/tasks.md");
+  assert(adapterInspect.configValidation.ok === true, "adapter inspect should include config validation");
+  assert(JSON.parse(run(["config", "validate", "--cwd", adapter, "--json"])).ok === true, "adapter default config should validate");
   const adapterActivation = run(["activation", "snippet", "--cwd", adapter]);
   assertIncludes(adapterActivation, "Agent Harness activation snippet", "activation snippet should print heading");
   assertIncludes(adapterActivation, "harness/tasks.md", "activation snippet should include default task index");
@@ -285,6 +343,7 @@ try {
   assertIncludes(customActivation, "todolist.md", "custom activation should include custom task index");
   assertIncludes(customActivation, "custom/status.md", "custom activation should include custom status file");
   assert(!existsSync(join(custom, "AGENTS.md")), "custom activation snippet should not write AGENTS.md");
+  assert(JSON.parse(run(["config", "validate", "--cwd", custom, "--json"])).ok === true, "custom adapter config should validate");
   const customActivationJson = JSON.parse(run(["activation", "snippet", "--cwd", custom, "--json"]));
   assert(customActivationJson.writesFiles === false, "activation json should report writesFiles=false");
   assertIncludes(customActivationJson.snippet, "todolist.md", "activation json snippet should include custom task index");
@@ -477,6 +536,7 @@ Manual verification evidence only.
     }
   }, null, 2)}\n`);
   run(["init", "--cwd", configuredInit, "--contract", "adapter"]);
+  assertIncludes(run(["config", "validate", "--cwd", configuredInit]), "Result: ok", "configured init config should validate");
   assert(existsSync(join(configuredInit, "todo/custom.md")), "init should create configured task index");
   assert(existsSync(join(configuredInit, "state/status.md")), "init should create configured status file");
   assert(existsSync(join(configuredInit, "project/harness.md")), "init should create configured adapter docs");
@@ -503,9 +563,45 @@ Manual verification evidence only.
   mkdirSync(join(malformed, ".harness"), { recursive: true });
   write(join(malformed, ".harness/config.json"), "{bad json");
   assertIncludes(
+    runFails(["config", "validate", "--cwd", malformed, "--json"]),
+    "\"ok\": false",
+    "malformed config validate should fail clearly"
+  );
+  assertIncludes(
     runFails(["doctor", "--cwd", malformed]),
     "Could not parse .harness/config.json",
     "malformed config should fail clearly"
+  );
+
+  const invalidSchema = join(suiteDir, "invalid-schema-config");
+  mkdirSync(join(invalidSchema, ".harness"), { recursive: true });
+  write(join(invalidSchema, ".harness/config.json"), `${JSON.stringify({
+    contract: "adapter",
+    projectName: "invalid-schema-config",
+    adapter: {
+      docs: "/absolute/harness.md",
+      machineReadable: ".harness/config.json"
+    },
+    paths: {
+      taskIndex: "harness/tasks.md",
+      status: "harness/status.md",
+      specs: "harness/specs",
+      goals: "harness/goals",
+      milestones: "harness/milestones",
+      runs: ".harness/runs"
+    },
+    workMode: {
+      defaultPolicy: "teleport"
+    }
+  }, null, 2)}\n`);
+  const invalidSchemaOutput = runFails(["config", "validate", "--cwd", invalidSchema, "--json"]);
+  assertIncludes(invalidSchemaOutput, "\"ok\": false", "invalid schema config should fail json validation");
+  assertIncludes(invalidSchemaOutput, "$.workMode.defaultPolicy must be one of", "invalid schema config should report enum errors");
+  assertIncludes(invalidSchemaOutput, "$.adapter.docs must be a non-empty repo-relative path", "invalid schema config should reject absolute adapter path");
+  assertIncludes(
+    runFails(["doctor", "--cwd", invalidSchema]),
+    "Config schema: failed",
+    "doctor should report schema validation failure"
   );
 
   const optional = join(suiteDir, "missing-optional");

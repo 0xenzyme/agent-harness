@@ -29,7 +29,15 @@ Status: draft
 - Reason:
 - Required docs:
 - Required gates:
+- Optional competition needed:
+- Idea Inbox input:
 - Escalation triggers:
+
+## Evidence Plan
+
+- Accepted evidence:
+- Candidate evidence sources:
+- State records to update:
 
 ## Adapter References
 
@@ -44,6 +52,7 @@ Status: draft
 ## Verification
 
 -
+- Config schema validation needed:
 
 ## Pause Conditions
 

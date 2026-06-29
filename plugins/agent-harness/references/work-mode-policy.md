@@ -8,6 +8,11 @@ Agent Harness does not assume every goal needs a new branch or worktree.
 - `worktree`: use a separate checkout before editing.
 - `ask`: pause for user direction.
 
+Every work mode recommendation should include a short reason. The reason
+should mention the observable input that mattered, such as checkout cleanliness,
+scope, parallelism, production risk, credentials, destructive impact, or user
+instruction.
+
 ## Local
 
 Use local mode when the task is small, foreground, explicitly local, or depends
@@ -26,3 +31,6 @@ requires credentials, or has unclear product/project direction.
 
 The CLI recommendation command is read-only. It does not create branches,
 worktrees, daemons, sessions, PRs, or deployments.
+
+Work mode is not final acceptance. The control lane still owns validation,
+evidence review, and state sync before marking work done.

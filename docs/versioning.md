@@ -61,6 +61,10 @@ A version bump should happen only after:
 - fresh-thread skill discoverability is checked when skills are added, removed,
   or renamed.
 
+The release gate is also the packaging-discipline check: docs, skills,
+templates, marketplace metadata, validation commands, and version metadata must
+agree before the version is treated as shippable.
+
 ## Non-Goals
 
 - Do not create a roadmap just to assign versions.
