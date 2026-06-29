@@ -20,7 +20,7 @@ contracts, then make this repository use the adapter contract itself.
 3. `docs/harness/README.md`
 4. `docs/specs/2026-06-29-agent-harness-adapter-contract-design.md`
 5. `README.md`
-6. `docs/architecture.md`
+6. `docs/mental-model.md`
 7. `docs/project-contract.md`
 8. `docs/worktree-policy.md`
 9. `plugins/agent-harness/scripts/agent-harness.mjs`

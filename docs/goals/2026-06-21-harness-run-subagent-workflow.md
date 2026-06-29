@@ -15,7 +15,7 @@ Status: Draft goal handoff; execute only after the spec is confirmed by the user
 4. `.agent-harness/config.json`
 5. `.agent-harness/status.md`
 6. `docs/project-contract.md`
-7. `docs/architecture.md`
+7. `docs/mental-model.md`
 8. `docs/worktree-policy.md`
 9. `plugins/agent-harness/scripts/agent-harness.mjs`
 10. `plugins/agent-harness/templates/tasks.md`
@@ -36,7 +36,7 @@ Use `ask` before implementing direct Codex execution, because the stable command
 
 - Add a convenient workflow for going from generated goal prompt to an executable run packet.
 - Keep the distinction clear:
-  - `goal`: create durable handoff under `.agent-harness/goals/`.
+  - `goal`: create durable handoff under the configured goals directory.
   - `run`: prepare or execute one handoff under `.agent-harness/runs/`.
 - Add `agent-harness run prepare --goal <goal-file> --cwd <project>`.
 - Add or design `agent-harness goal create --task <title-or-id> --cwd <project>` if it does not already exist.
@@ -60,8 +60,8 @@ Use `ask` before implementing direct Codex execution, because the stable command
 ## Expected Workflow
 
 1. User runs `harness-goal` or `agent-harness goal create`.
-2. The harness writes `.agent-harness/goals/YYYY-MM-DD-<slug>.md`.
-3. User runs `agent-harness run prepare --goal .agent-harness/goals/YYYY-MM-DD-<slug>.md`.
+2. The harness writes `docs/goals/YYYY-MM-DD-<slug>.md`.
+3. User runs `agent-harness run prepare --goal docs/goals/YYYY-MM-DD-<slug>.md`.
 4. The harness writes `.agent-harness/runs/<timestamp>-<slug>/`.
 5. User opens `prompt.md` in a new Codex session or `/goal`.
 6. Main agent uses `subagents.md` to decide whether to spawn explorer/worker/verification agents.
@@ -75,7 +75,7 @@ Run:
 ```bash
 npm run validate:plugin
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd .
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal .agent-harness/goals/2026-06-21-language-aware-command-output.md
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal docs/goals/2026-06-21-language-aware-command-output.md
 ```
 
 Then verify the generated run packet:
@@ -89,9 +89,9 @@ Use a temporary project for non-destructive contract checks:
 ```bash
 tmpdir="$(mktemp -d)"
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd "$tmpdir" --project-name demo
-mkdir -p "$tmpdir/.agent-harness/goals"
-cp .agent-harness/goals/2026-06-21-language-aware-command-output.md "$tmpdir/.agent-harness/goals/language-aware-command-output.md"
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd "$tmpdir" --goal "$tmpdir/.agent-harness/goals/language-aware-command-output.md"
+mkdir -p "$tmpdir/docs/goals"
+cp docs/goals/2026-06-21-language-aware-command-output.md "$tmpdir/docs/goals/language-aware-command-output.md"
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd "$tmpdir" --goal "$tmpdir/docs/goals/language-aware-command-output.md"
 ```
 
 ## Completion Conditions

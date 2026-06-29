@@ -14,7 +14,7 @@ Status: Draft; requires user confirmation before implementation.
 1. `harness-goal` 负责生成 durable goal handoff。
    - 读取 `tasks.md`、`.agent-harness/config.json`、`.agent-harness/status.md` 和 git 状态。
    - 判断推荐 work mode：`local`、`worktree` 或 `ask`。
-   - 写入 `.agent-harness/goals/YYYY-MM-DD-<slug>.md`。
+   - 写入 `docs/goals/YYYY-MM-DD-<slug>.md`。
    - 必要时更新 `tasks.md` 和 `.agent-harness/status.md`。
    - 不直接执行实现，不自动创建 branch，不自动 push。
 2. 执行阶段应该读取 goal handoff，并开始一个受控 run。
@@ -39,7 +39,7 @@ Status: Draft; requires user confirmation before implementation.
 第一阶段实现确定性、低风险的命令：
 
 - `agent-harness goal create --task <title-or-id> --cwd <project>`
-  - 从 `tasks.md` 选任务，生成 `.agent-harness/goals/YYYY-MM-DD-<slug>.md`。
+  - 从 `tasks.md` 选任务，生成 `docs/goals/YYYY-MM-DD-<slug>.md`。
 - `agent-harness run prepare --goal <goal-file> --cwd <project>`
   - 创建 `.agent-harness/runs/<timestamp>-<slug>/`。
   - 写入 `run.md`、`prompt.md`、`subagents.md`、`status.json`。
@@ -104,14 +104,14 @@ Status: Draft; requires user confirmation before implementation.
 - `npm run validate:plugin`
 - `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd .`
 - `node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd . --task "Add language-aware command output" --dry-run`
-- `node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal .agent-harness/goals/2026-06-21-language-aware-command-output.md`
+- `node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal docs/goals/2026-06-21-language-aware-command-output.md`
 - 检查 `.agent-harness/runs/<timestamp>-language-aware-command-output>/` 包含 `run.md`、`prompt.md`、`subagents.md`、`status.json`。
 - 用临时项目验证 `run prepare` 不修改目标代码，只创建 `.agent-harness/runs/` 下的 run packet。
 
 ## 完成条件
 
 - 用户可以通过 CLI 生成 goal handoff，并通过 `run prepare` 得到下一步执行包。
-- `goal` 文件仍写入 `.agent-harness/goals/`。
+- `goal` 文件仍写入配置的 goals 目录。
 - `run` 产物写入 `.agent-harness/runs/<timestamp>-<slug>/`。
 - `subagents.md` 能给出合理拆分，且每个子任务足够小，适合一个 context 内完成。
 - 文档解释完整 workflow：init -> tasks -> goal -> run prepare -> execute -> verify -> update tasks/status。

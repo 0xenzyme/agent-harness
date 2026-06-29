@@ -11,18 +11,18 @@ Generic protocol lives in the plugin references under
 - Task index: `tasks.md`
 - Status file: `.agent-harness/status.md`
 - Specs: `docs/specs/`
-- Goals: `.agent-harness/goals/`
+- Goals: `docs/goals/`
 - Milestones: `docs/milestones/`
 - Runs / logs: `.agent-harness/runs/`
 - Gate records: `.agent-harness/runs/`
 - Deferred register: `docs/milestones/`
-- Mental model / invariants: `docs/architecture.md`
+- Mental model / invariants: `docs/mental-model.md`
 
 ## Source Of Truth
 
 - Public package shape and first-use workflow: `README.md`
 - Project contracts: `docs/project-contract.md`
-- Architecture and loop boundaries: `docs/architecture.md`
+- Mental model and loop boundaries: `docs/mental-model.md`
 - Task state: `tasks.md`
 - Current execution status: `.agent-harness/status.md`
 

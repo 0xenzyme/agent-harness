@@ -8,7 +8,7 @@ Status: Confirmed for goal handoff.
 
 - `tasks.md` 作为项目任务状态的 source of truth。
 - `.agent-harness/config.json` 记录项目策略。
-- `.agent-harness/goals/` 保存 goal handoff。
+- `docs/goals/` 保存 goal handoff。
 - `.agent-harness/runs/` 保存 run packet 和执行证据。
 - `agent-harness goal create` 可以从 `tasks.md` 生成 goal。
 - `agent-harness run prepare` / `run status` 可以准备和查看 run packet。
@@ -99,9 +99,9 @@ agent-harness run status --cwd <project> --run <run-dir>
 ```bash
 npm run validate:plugin
 node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd . --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal .agent-harness/goals/2026-06-21-complete-goal-toolchain.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal .agent-harness/goals/2026-06-21-complete-goal-toolchain.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal .agent-harness/goals/2026-06-21-complete-goal-toolchain.md
+node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd . --run <prepared-run-dir>
 ```
 

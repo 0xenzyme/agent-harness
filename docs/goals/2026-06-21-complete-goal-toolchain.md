@@ -1,6 +1,6 @@
 # Goal: Complete The Goal Toolchain
 
-Spec: .agent-harness/specs/2026-06-21-complete-goal-toolchain-design.md
+Spec: docs/specs/2026-06-21-complete-goal-toolchain-design.md
 Status: Ready for execution from confirmed spec.
 
 ## Source Task
@@ -9,7 +9,7 @@ Status: Ready for execution from confirmed spec.
 
 ## Read First
 
-1. `.agent-harness/specs/2026-06-21-complete-goal-toolchain-design.md`
+1. `docs/specs/2026-06-21-complete-goal-toolchain-design.md`
 2. `AGENTS.md`
 3. `tasks.md`
 4. `.agent-harness/config.json`
@@ -58,9 +58,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd .
 ```bash
 npm run validate:plugin
 node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd . --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal .agent-harness/goals/2026-06-21-complete-goal-toolchain.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal .agent-harness/goals/2026-06-21-complete-goal-toolchain.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal .agent-harness/goals/2026-06-21-complete-goal-toolchain.md
+node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd . --goal docs/goals/2026-06-21-complete-goal-toolchain.md
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd . --run <prepared-run-dir>
 ```
 

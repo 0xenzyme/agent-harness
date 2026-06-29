@@ -1,4 +1,4 @@
-# Agent Harness Architecture
+# Agent Harness Mental Model
 
 Agent Harness has three layers:
 
@@ -78,7 +78,7 @@ A development loop should always have:
 
 `goal` and `run` are separate steps:
 
-- `goal`: create a durable handoff under `.agent-harness/goals/`.
+- `goal`: create a durable handoff under the configured goals directory.
 - `run`: prepare or record execution for one goal under `.agent-harness/runs/`.
 
 In the adapter contract, these are the configured goals and runs directories rather

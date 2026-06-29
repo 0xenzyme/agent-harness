@@ -2,8 +2,8 @@
 
 ## Focus
 
-- Current focus: Adapter contract terminology cleanup and current-project
-  adapter setup completed.
+- Current focus: Current repository adapter paths now match the adapter
+  template defaults and can serve as the reference example.
 
 ## Git
 
@@ -21,7 +21,7 @@
   - `npm run test:smoke`
   - `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`
 - Result: passed. Current project resolves as `contract: "adapter"` with
-  required and optional harness paths present.
+  required paths under `docs/specs`, `docs/goals`, and `docs/mental-model.md`.
 
 ## Blockers
 
