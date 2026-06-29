@@ -1,36 +1,57 @@
 {
-  "schemaVersion": 1,
+  "contract": "adapter",
   "projectName": "agent-harness",
-  "paths": {
-    "tasks": "tasks.md",
-    "status": ".agent-harness/status.md",
-    "goals": ".agent-harness/goals",
-    "runs": ".agent-harness/runs"
-  },
-  "worktree": {
-    "defaultPolicy": "ask",
-    "autoRules": [
-      {
-        "when": "user_explicitly_requests_no_branch_or_worktree",
-        "use": "local"
-      },
-      {
-        "when": "local_checkout_has_unrelated_changes",
-        "use": "worktree"
-      },
-      {
-        "when": "parallel_or_unattended_work",
-        "use": "worktree"
-      },
-      {
-        "when": "destructive_or_production_action",
-        "use": "ask"
-      }
+  "adapter": {
+    "docs": "docs/harness/README.md",
+    "machineReadable": ".agent-harness/config.json",
+    "preflight": [
+      "Read AGENTS.md before editing repository files.",
+      "Validate plugin changes with npm run validate:plugin."
+    ],
+    "stateSync": [
+      "Update tasks.md after meaningful task state changes.",
+      "Update .agent-harness/status.md after execution or verification."
     ]
   },
-  "loops": {
-    "defaultMode": "report-only",
-    "maxIterations": 3,
-    "requiresVerification": true
+  "paths": {
+    "taskIndex": "tasks.md",
+    "status": ".agent-harness/status.md",
+    "specs": "docs/specs",
+    "goals": ".agent-harness/goals",
+    "milestones": "docs/milestones",
+    "runs": ".agent-harness/runs",
+    "gateRecords": ".agent-harness/runs",
+    "deferredRegister": "docs/milestones",
+    "mentalModel": "docs/architecture.md"
+  },
+  "language": {
+    "default": "auto"
+  },
+  "workMode": {
+    "defaultPolicy": "ask"
+  },
+  "lifecycle": {
+    "taskStates": [
+      "todo",
+      "spec-draft",
+      "spec-ready",
+      "goal-ready",
+      "doing",
+      "review",
+      "blocked",
+      "done",
+      "cancelled"
+    ]
+  },
+  "gates": {
+    "enabled": [
+      "spec",
+      "execution",
+      "integration"
+    ],
+    "optional": [
+      "walkthrough",
+      "retrospective"
+    ]
   }
 }

@@ -2,19 +2,26 @@
 
 ## Focus
 
-- Current focus: Language-aware command output is implemented; next task is testing Agent Harness on one real downstream project.
+- Current focus: Adapter contract terminology cleanup and current-project
+  adapter setup completed.
 
 ## Git
 
-- Preferred work mode: ask
+- Preferred work mode: local for foreground contract/documentation cleanup unless
+  the user asks for an isolated worktree.
 - Current branch: main
-- Worktree notes: Current language-aware work was completed directly on `main` per user instruction; no worktree or new branch was created.
+- Worktree notes: Work was done in the current checkout; no worktree, branch,
+  push, PR, deploy, daemon, or Codex session launch was created.
 
 ## Verification
 
-- Last checked: 2026-06-21
-- Last command: `npm run validate:plugin`; `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang en`; `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`; `AGENT_HARNESS_LANG=zh-CN node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd .`; temporary-project `init --lang zh-CN` and config fallback checks
-- Result: passed; `print-contract` remains stable JSON and `.agent-harness/runs/20260621-200856-language-aware-command-output/status.json` is marked complete
+- Last checked: 2026-06-29
+- Last commands:
+  - `npm run validate:plugin`
+  - `npm run test:smoke`
+  - `node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd . --lang zh-CN`
+- Result: passed. Current project resolves as `contract: "adapter"` with
+  required and optional harness paths present.
 
 ## Blockers
 
