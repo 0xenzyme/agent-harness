@@ -15,8 +15,12 @@ goal handoffs, and loop engineering.
 
 ## File Contract
 
-- `tasks.md` is the project backlog source of truth in downstream repos.
-- `.agent-harness/config.json` stores machine-readable harness settings.
-- `.agent-harness/status.md` stores current project status for humans.
-- `.agent-harness/goals/` stores generated goal handoff files.
-- `.agent-harness/runs/` stores loop run logs and automation outputs.
+- Fixed `contract: "fixed"` projects use `tasks.md`,
+  `.agent-harness/config.json`, `.agent-harness/status.md`,
+  `.agent-harness/goals/`, and `.agent-harness/runs/`.
+- Adapter `contract: "adapter"` projects use `.agent-harness/config.json` plus a
+  project adapter to declare task index, specs, goals, milestones, runs, gates,
+  status, and deferred-register paths.
+- Plugin core defines protocol; project adapters define project-specific
+  overrides; documentation artifacts record project facts and execution
+  evidence.

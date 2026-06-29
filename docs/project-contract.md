@@ -1,20 +1,26 @@
 # Project Contract
 
-This contract defines the files Agent Harness expects in each downstream
-project.
+This contract defines how Agent Harness finds project control files.
 
-## Required Paths
+Agent Harness supports two project contracts:
+
+- `fixed` (`contract: "fixed"`): fixed-path project contract.
+- `adapter` (`contract: "adapter"`): adapter-driven project contract with configurable
+  artifact paths.
+
+## Fixed Contract
+
+Fixed projects use these paths:
 
 ### `tasks.md`
 
-The source of truth for current project tasks.
+The human-readable project backlog and task source of truth.
 
 Rules:
 
-- Keep it at the repository root.
-- Do not create alternate todo files such as `docs/tasks.md` or `.codex/tasks.md`.
+- Keep it at the repository root in the fixed contract.
 - Codex should read it before proposing or executing a new goal.
-- Codex should update it after meaningful work.
+- Codex should update it after meaningful work when state sync is required.
 
 ### `.agent-harness/config.json`
 
@@ -22,16 +28,14 @@ Machine-readable project settings.
 
 Required fields:
 
-- `schemaVersion`
+- `contract`
 - `projectName`
 - `paths`
 - `worktree`
 
 ### `.agent-harness/status.md`
 
-Human-readable project status.
-
-This is not the backlog. It is a short current-state file for:
+Human-readable project status:
 
 - active focus
 - current branch/worktree posture
@@ -42,16 +46,11 @@ This is not the backlog. It is a short current-state file for:
 
 Generated goal handoff files.
 
-Use this for durable prompts that can be pasted into `/goal` or handed to a
-new session.
-
 ### `.agent-harness/runs/`
 
 Loop run logs and automation outputs.
 
-Use this for report-only runs, CI triage output, and recurring checks.
-
-Each prepared run uses a separate directory:
+Prepared runs use:
 
 ```text
 .agent-harness/runs/
@@ -63,18 +62,79 @@ Each prepared run uses a separate directory:
     logs/
 ```
 
-Rules:
+## Adapter Contract
 
-- `run.md` records source goal, work mode, manual checkpoints, and verification.
-- `prompt.md` is the ready-to-use prompt for `/goal` or a new Codex session.
-- `subagents.md` gives bounded split guidance for `small`, `medium`, `large`,
-  and `ask` tasks.
-- `status.json` stores machine-readable run state.
-- `logs/` is reserved for command output summaries and automation logs.
-- `run prepare` must not start daemons, spawn Codex sessions, push, deploy, or
-  open PRs.
+Adapter projects use `.agent-harness/config.json` as the machine entry point
+when present, but artifact paths come from config and the project adapter.
+Projects that already have `docs/harness/README.md` plus a known task index
+such as `todolist.md` can be discovered as adapter projects before config is
+imported.
 
-## Default Task Format
+Minimum config:
+
+```json
+{
+  "contract": "adapter",
+  "projectName": "",
+  "adapter": {
+    "docs": "docs/harness/README.md",
+    "machineReadable": ".agent-harness/config.json",
+    "preflight": [],
+    "stateSync": []
+  },
+  "paths": {
+    "taskIndex": "tasks.md",
+    "status": ".agent-harness/status.md",
+    "specs": "docs/specs",
+    "goals": "docs/goals",
+    "milestones": "docs/milestones",
+    "runs": ".agent-harness/runs",
+    "gateRecords": ".agent-harness/runs",
+    "deferredRegister": "docs/milestones",
+    "mentalModel": "docs/mental-model.md"
+  }
+}
+```
+
+Existing adapter projects can persist discovered paths without creating a
+second task index:
+
+```bash
+agent-harness config import --cwd <project> --task-index todolist.md --dry-run
+agent-harness config import --cwd <project> --task-index todolist.md
+```
+
+The real import also creates required support artifacts that do not split
+project state, including the configured status file and runs/specs/goals/
+milestones directories when missing.
+
+The adapter should declare:
+
+- artifact paths and source-of-truth files
+- DB, production, Admin CLI, credential, paid-call, and destructive-operation
+  boundaries
+- commit, PR, release, and ship policies
+- validation commands
+- enabled gates and project-specific gate details
+- UI harness or mental model locations when relevant
+
+## Adapter Artifacts
+
+Adapter artifacts record facts; they are not plugin rules.
+
+Common artifacts:
+
+- task index
+- specs
+- goals
+- milestones
+- run logs
+- gate results
+- deferred / follow-up register
+- project status
+- mental model / invariants
+
+## Default Fixed Task Format
 
 ```md
 # Project Tasks
@@ -98,3 +158,19 @@ Rules:
 
 - [x] Completed task title
 ```
+
+## Run Rules
+
+- `run.md` records source goal, work mode, manual checkpoints, and verification.
+- `prompt.md` is the ready-to-use prompt for `/goal` or a new Codex session.
+- `subagents.md` gives bounded split guidance for `small`, `medium`, `large`,
+  and `ask` tasks.
+- `status.json` stores machine-readable run state.
+- `logs/` is reserved for command output summaries and automation logs.
+- `run prepare` must not start daemons, spawn Codex sessions, push, deploy, or
+  open PRs.
+
+## Compatibility
+
+Fixed contract remains supported. Adapter contract must not rewrite or migrate old
+projects unless the user explicitly requests migration.

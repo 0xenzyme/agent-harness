@@ -32,7 +32,27 @@ Once installed, use `$harness-init` in the target project, or run the CLI
 directly from a checked-out copy:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
+```
+
+For an existing adapter project that already has `docs/harness/README.md`
+and a task index such as `todolist.md`, import the adapter config without
+creating a second task index:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --dry-run
+node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
+```
+
+The real import writes `.agent-harness/config.json` and creates missing
+support artifacts such as the configured status file and runs directory. It
+does not create a second task index.
+
+Inspect the resolved paths:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
 ```
 
 For Chinese human-facing command output, pass `--lang zh-CN` or set
@@ -49,4 +69,10 @@ Then create and prepare controlled handoffs:
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
 node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal .agent-harness/goals/YYYY-MM-DD-task-title.md
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .agent-harness/runs/YYYYMMDD-HHMMSS-task-title
+```
+
+In the adapter contract, create goals from confirmed specs:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec docs/specs/task-title.md
 ```

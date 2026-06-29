@@ -35,9 +35,26 @@ Ask before choosing when:
 
 ## Smart Default
 
-The default policy is `ask`. A harnessed project can opt into `auto`, but the
-agent must still report the reason for the selected mode before editing files.
+The default policy is `ask`. A harnessed project can set an explicit default,
+but the agent must still report the reason for the selected mode before editing
+files. Fixed contract config reads `worktree.defaultPolicy`; adapter contract config may use
+`workMode.defaultPolicy`.
 
 `agent-harness run prepare` records the recommended mode from the goal and
 project config. It does not create a worktree by itself; the executing agent or
 user still chooses and explains the actual work mode before editing files.
+
+## Recommendation Command
+
+Use `agent-harness worktree recommend --cwd <project>` before execution when
+the current checkout state matters. The command is read-only: it reports
+`local`, `worktree`, or `ask` with reasons from `git status` and
+`.agent-harness/config.json`, but it does not create branches, create
+worktrees, modify files, or start Codex sessions.
+
+For automation, use `--json` to get a stable machine-readable result. The
+first supported observable rule is
+`local_checkout_has_unrelated_changes -> worktree`, where a dirty checkout is
+treated as the conservative signal. User intent, parallel work, production
+risk, and destructive operations still require explicit context or a separate
+spec.
