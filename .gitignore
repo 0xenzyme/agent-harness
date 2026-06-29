@@ -1,6 +1,8 @@
 .DS_Store
 node_modules/
 *.log
+__pycache__/
+*.pyc
 .worktree/
 .agent-harness/runs/
 .agent-harness/state.json

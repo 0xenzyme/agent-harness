@@ -1,0 +1,51 @@
+{
+  "contract": "adapter",
+  "projectName": "",
+  "adapter": {
+    "docs": "docs/harness/README.md",
+    "machineReadable": ".agent-harness/config.json",
+    "preflight": [],
+    "stateSync": []
+  },
+  "paths": {
+    "taskIndex": "tasks.md",
+    "status": ".agent-harness/status.md",
+    "specs": "docs/specs",
+    "goals": "docs/goals",
+    "milestones": "docs/milestones",
+    "runs": ".agent-harness/runs",
+    "gateRecords": ".agent-harness/runs",
+    "deferredRegister": "docs/milestones",
+    "mentalModel": "docs/mental-model.md"
+  },
+  "language": {
+    "default": "auto"
+  },
+  "workMode": {
+    "defaultPolicy": "ask"
+  },
+  "lifecycle": {
+    "taskStates": [
+      "todo",
+      "spec-draft",
+      "spec-ready",
+      "goal-ready",
+      "doing",
+      "review",
+      "blocked",
+      "done",
+      "cancelled"
+    ]
+  },
+  "gates": {
+    "enabled": [
+      "spec",
+      "execution",
+      "integration"
+    ],
+    "optional": [
+      "walkthrough",
+      "retrospective"
+    ]
+  }
+}
