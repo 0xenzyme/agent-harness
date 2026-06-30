@@ -38,7 +38,8 @@ Examples:
 
 ```text
 0.1.0 -> 0.2.0  completed workflow-controller skill blueprint
-0.2.0 -> 0.2.1  fix wrapper wording or validation coverage for that blueprint
+0.2.0 -> 0.3.0  removed legacy wrapper skills from the public skill surface
+0.3.0 -> 0.3.1  fix wording or validation coverage for that blueprint line
 ```
 
 After `1.0.0`, switch to normal semver:

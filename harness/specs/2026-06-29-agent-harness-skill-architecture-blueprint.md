@@ -1,6 +1,6 @@
 # Agent Harness Skill Architecture Blueprint
 
-Status: implemented in `0.2.0`
+Status: implemented in `0.2.0`; legacy wrapper cleanup implemented in `0.3.0`
 Created: 2026-06-29
 Updated: 2026-06-30
 
@@ -173,22 +173,26 @@ Strict boundaries:
 
 ## Existing Skill Migration
 
-Existing artifact-oriented skills remain as compatibility wrappers.
+The `0.2.0` release kept artifact-oriented skill names as compatibility
+wrappers. The `0.3.0` cleanup removes those wrappers from the shipped plugin
+to keep the skill picker focused on the four workflow skills.
 
-| Legacy skill | Target behavior |
-| --- | --- |
-| `harness-init` | Wrapper for `harness:init`. |
-| `harness-adapter` | Wrapper routing to `harness:orient`, `harness:init`, `harness:intake`, or `harness:execute`. |
-| `harness-tasks` | Wrapper routing summaries to `harness:orient`, ideas to `harness:intake`, and post-work sync to `harness:execute`. |
-| `harness-goal` | Wrapper for goal preparation inside `harness:execute`; route next-step questions to `harness:orient`. |
-| `harness-run` | Wrapper for run preparation, status, and record behavior inside `harness:execute`. |
+Removed wrapper skills:
 
-Wrapper rule:
+- `harness-init`
+- `harness-adapter`
+- `harness-tasks`
+- `harness-goal`
+- `harness-run`
 
-- old skill files remain discoverable;
-- their descriptions mention legacy compatibility;
-- they route users to workflow behavior;
-- they do not introduce a second source of truth or conflicting rules.
+Route old usage to:
+
+- setup, migration, import, doctor, and activation preview: `harness:init`
+- project state, task summaries, blockers, and next-step recommendations:
+  `harness:orient`
+- ideas, requirements, bugs, and capture-thread notes: `harness:intake`
+- confirmed task, spec, goal, run, verification, and state sync:
+  `harness:execute`
 
 ## Non-Core Workflows
 
@@ -210,7 +214,7 @@ during the Sync step.
 
 ### Competition
 
-Do not make `harness:compete` in core `0.2.0`.
+Do not make `harness:compete` in the core workflow skill surface.
 
 Treat proposal competition as an optional Shape protocol for high-ambiguity
 work:
@@ -238,7 +242,8 @@ or update accepted task/status/run state.
 
 ### Blueprint-Driven Versioning
 
-This blueprint ships as `0.2.0`.
+This blueprint first shipped as `0.2.0`. The legacy wrapper removal ships as
+`0.3.0`.
 
 The following version fields are aligned:
 
@@ -311,7 +316,8 @@ The active control thread owns acceptance.
 - Added `plugins/agent-harness/skills/intake/SKILL.md`.
 - Added `plugins/agent-harness/skills/execute/SKILL.md`.
 - Added `plugins/agent-harness/skills/init/SKILL.md`.
-- Converted legacy `harness-*` skills to compatibility wrappers.
+- Removed legacy `harness-*` wrapper skills from the shipped plugin in
+  `0.3.0`; the four workflow skills are the only public skill entries.
 - Renamed the installed plugin metadata from `agent-harness` to `harness`.
 - Kept the repository directory and CLI binary as `agent-harness`.
 - Updated README, Chinese README, install docs, marketplace metadata, and smoke
@@ -327,8 +333,9 @@ The active control thread owns acceptance.
 - `harness:execute` covers confirmed task / goal / run execution, verification,
   and state sync.
 - `harness:init` covers setup, migration, doctor/import, and activation preview.
-- Existing skill names continue to work as compatibility wrappers.
+- Legacy wrapper skill names are not shipped; old usage routes to the four
+  workflow skills.
 - README and install docs do not advertise absent skills.
-- `package.json` and plugin manifest versions are aligned at `0.2.0`.
+- `package.json` and plugin manifest versions are aligned at `0.3.0`.
 - `npm run validate:plugin` passes.
 - `npm run test:smoke` passes.

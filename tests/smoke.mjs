@@ -93,6 +93,20 @@ for (const skillName of ["orient", "execute", "intake", "init"]) {
     `short workflow skill should exist: ${skillName}`
   );
 }
+const shippedSkills = readdirSync(join(repoRoot, "plugins/agent-harness/skills"), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
+assert(
+  JSON.stringify(shippedSkills) === JSON.stringify(["execute", "init", "intake", "orient"]),
+  `plugin should ship only the four workflow skills; found ${shippedSkills.join(", ")}`
+);
+for (const legacySkillName of ["harness-adapter", "harness-goal", "harness-init", "harness-run", "harness-tasks"]) {
+  assert(
+    !existsSync(join(repoRoot, "plugins/agent-harness/skills", legacySkillName, "SKILL.md")),
+    `legacy wrapper skill should not be shipped: ${legacySkillName}`
+  );
+}
 const designPrincipleFiles = [
   "docs/project-contract.md",
   "plugins/agent-harness/references/adapter-harness.md",

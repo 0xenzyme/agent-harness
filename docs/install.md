@@ -88,15 +88,22 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/
 
 ## Skill Entry Points
 
-Primary skills:
+Agent Harness intentionally ships four workflow skills:
 
 - `harness:orient` for read-only project state and next-step recommendation.
 - `harness:intake` for ideas, requirements, bugs, and capture-thread notes.
 - `harness:execute` for confirmed implementation, verification, and state sync.
 - `harness:init` for setup, migration, import, doctor, and activation preview.
 
-Legacy `harness-*` skill names remain as compatibility wrappers, but new usage
-should prefer the workflow skills.
+Legacy artifact-oriented `harness-*` wrapper skills are not shipped. Route old
+usage to one of the four workflow skills instead.
+
+| Situation | Skill |
+| --- | --- |
+| Read-only status, todo, blocker, and next-route inspection. | `harness:orient` |
+| New idea, requirement, bug, or capture-thread note triage. | `harness:intake` |
+| Setup, migration, config import, doctor, or activation preview. | `harness:init` |
+| Confirmed task, spec, goal, run, verification, and state sync. | `harness:execute` |
 
 ## Packaging Discipline
 

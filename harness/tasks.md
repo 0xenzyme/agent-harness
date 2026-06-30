@@ -17,6 +17,13 @@
 
 ## Done
 
+- [x] Remove legacy Agent Harness wrapper skills.
+  - Completed: Deleted the artifact-oriented `harness-*` wrapper skill files
+    so the installed plugin exposes only `harness:orient`, `harness:intake`,
+    `harness:init`, and `harness:execute`.
+  - Version: `0.3.0`
+  - Verification: `git diff --check`, `npm run validate:plugin`,
+    `npm run test:smoke`, `doctor`, and skill-file listing.
 - [x] Complete Agent Harness maintenance batch.
   - Completed: Added `config validate` and
     `plugins/agent-harness/schemas/config.schema.json`; created `evals/`
@@ -64,6 +71,8 @@
     artifact skills to compatibility wrappers; updated README, Chinese README,
     install docs, marketplace metadata, smoke guards, and the skill
     architecture blueprint.
+  - Note: The compatibility wrappers were later removed in `0.3.0` so the
+    plugin exposes only the four workflow skills.
   - Spec: `harness/specs/2026-06-29-agent-harness-skill-architecture-blueprint.md`
   - Version: `0.2.0`
   - Verification: `quick_validate.py` for all plugin skills,

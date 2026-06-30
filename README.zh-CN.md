@@ -71,7 +71,7 @@ adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 
 
 ## Plugin Skills
 
-Codex 会把这个 plugin 暴露为 `harness`。主要 workflow skills 是：
+Codex 会把这个 plugin 暴露为 `harness`。它刻意只发布四个 workflow skills：
 
 - `harness:orient`：只读理解项目状态、当前 todo、blockers，并推荐下一步
   route。
@@ -82,9 +82,18 @@ Codex 会把这个 plugin 暴露为 `harness`。主要 workflow skills 是：
 - `harness:init`：初始化新项目、迁移旧项目、运行 doctor/import，并预览
   activation instructions。
 
-旧的 `harness-init`、`harness-adapter`、`harness-tasks`、`harness-goal`
-和 `harness-run` 仍作为 compatibility wrappers 保留。新的使用方式应优先
-使用上面的 workflow skills。
+旧的 artifact-oriented wrapper skills 不再发布。按 route 选择 workflow
+skill：只读状态用 `orient`，新想法用 `intake`，setup/adoption 用 `init`，
+已确认执行用 `execute`。
+
+### Which Skill Should I Use?
+
+| 场景 | Skill |
+| --- | --- |
+| 只读查看项目状态、todo、blockers 或下一步 route，不编辑文件。 | `harness:orient` |
+| 捕获或 triage 新想法、新需求、bug 或 capture-thread note。 | `harness:intake` |
+| 给项目接入 Agent Harness、迁移已有 task index、运行 doctor/import，或预览 activation。 | `harness:init` |
+| 完成已确认的 task、spec、goal 或 run packet，然后验证并同步状态。 | `harness:execute` |
 
 ## First Commands
 

@@ -83,7 +83,8 @@ This repo is both a source project and a Codex local marketplace:
 
 ## Plugin Skills
 
-Codex exposes the plugin as `harness`. The primary workflow skills are:
+Codex exposes the plugin as `harness`. It intentionally ships four workflow
+skills:
 
 - `harness:orient`: read-only project state, current todo, blockers, and next
   route recommendation.
@@ -94,9 +95,18 @@ Codex exposes the plugin as `harness`. The primary workflow skills are:
 - `harness:init`: initialize a new project, migrate an existing project, run
   doctor/import, and preview activation instructions.
 
-The older `harness-init`, `harness-adapter`, `harness-tasks`, `harness-goal`,
-and `harness-run` entries remain as compatibility wrappers. New usage should
-prefer the workflow skills above.
+Older artifact-oriented wrapper skills are no longer shipped. Use the workflow
+skill that matches the route: `orient` for read-only state, `intake` for new
+ideas, `init` for setup/adoption, and `execute` for confirmed work.
+
+### Which Skill Should I Use?
+
+| Situation | Skill |
+| --- | --- |
+| Check project status, todo, blockers, or next route without editing files. | `harness:orient` |
+| Capture or triage a new idea, requirement, bug, or capture-thread note. | `harness:intake` |
+| Adopt Agent Harness in a project, migrate an existing task index, run doctor/import, or preview activation. | `harness:init` |
+| Complete a confirmed task, spec, goal, or run packet and then verify and sync state. | `harness:execute` |
 
 ## First Commands
 
