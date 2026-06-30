@@ -1,6 +1,6 @@
 ---
 name: orient
-description: Read-only Agent Harness orientation. Use when the user asks for current project state, todolist/tasks, blockers, next step, harness readiness, or which workflow mode to use before execution.
+description: Read-only Agent Harness orientation for current state, tasks, blockers, and next route. / 只读定位当前项目状态、任务、阻塞与下一步路线。
 ---
 
 # Harness Orient

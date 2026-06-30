@@ -7,6 +7,18 @@ Status: Ready for execution from confirmed spec.
 
 -
 
+## Source Task Acceptance Map
+
+Use this section when one goal merges multiple source tasks or describes batch
+completion. Preserve each original source task acceptance before execution;
+update `Evidence` and `Status` before recording a completed run.
+
+- Task: `<source task title>`
+  - Acceptance: `<original source task acceptance>`
+  - Evidence: `TBD`
+  - Status: `pending`
+  - Unblocker: `N/A`
+
 ## Read First
 
 - `AGENTS.md`
@@ -17,6 +29,16 @@ Status: Ready for execution from confirmed spec.
 ## Work Mode Recommendation
 
 Use `ask` until scope, ownership, and checkout state are clear.
+
+## Execution Role
+
+Use `implementer`.
+
+- `gate-only`: the current thread reviews candidate output and verification
+  evidence, but does not directly edit implementation files.
+- `implementer`: the current thread may edit files inside the accepted scope.
+- `mixed`: the current thread may both edit and gate only after recording why
+  the tradeoff is acceptable.
 
 ## Route Explanation
 

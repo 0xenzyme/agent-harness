@@ -39,6 +39,19 @@ Status: draft
 - Candidate evidence sources:
 - State records to update:
 
+## Source Task Acceptance Map
+
+Use this section when a spec or goal merges multiple source tasks or describes
+batch completion. Preserve each original source task acceptance before
+execution; completed runs require every item to be `satisfied` with concrete
+evidence.
+
+- Task: `<source task title>`
+  - Acceptance: `<original source task acceptance>`
+  - Evidence: `TBD`
+  - Status: `pending`
+  - Unblocker: `N/A`
+
 ## Adapter References
 
 - Project adapter:

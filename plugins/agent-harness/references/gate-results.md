@@ -23,6 +23,15 @@ Next executable:
 - Candidate evidence from subagents, automation, inbox notes, or proposal
   competition is not accepted state until the control lane validates it and
   records the gate result.
+- In `gate-only` execution, the control lane must cite implementer output and
+  verification evidence before accepting state. It should request corrections
+  instead of directly rewriting implementation files.
+- Completed run records must include verification evidence. Completed
+  `gate-only` records must also include explicit gate evidence that points to
+  implementer output and acceptance review.
+- Batch or merged source-task runs must include a `Source Task Acceptance Map`.
+  The control lane must verify every mapped acceptance item before marking the
+  run completed.
 - Failed gates create a correction task, move the work back to an earlier
   state, or mark it blocked.
 - Deferred items must name where they are deferred and what unblocks them.

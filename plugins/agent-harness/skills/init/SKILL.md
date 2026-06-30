@@ -1,6 +1,6 @@
 ---
 name: init
-description: Adopt, initialize, import, or audit Agent Harness in a new or existing project. Use when setting up harness, migrating a legacy project, creating adapter files, or previewing activation instructions.
+description: Adopt, initialize, import, or audit Agent Harness in a new or existing project. / 在新项目或现有项目中接入、初始化、导入或审计 Agent Harness。
 ---
 
 # Harness Init

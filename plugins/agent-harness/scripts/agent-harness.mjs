@@ -54,12 +54,17 @@ const commonTaskIndexCandidates = [
   "tasks.md"
 ];
 
+const validExecutionRoles = new Set(["gate-only", "implementer", "mixed"]);
+const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
+
 function parseArgs(argv) {
   const args = { _: [] };
   const valueOptions = new Set([
     "adapterDocs",
     "adapter-docs",
     "cwd",
+    "gateEvidence",
+    "gate-evidence",
     "goal",
     "idea",
     "lang",
@@ -178,7 +183,7 @@ const messages = {
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
-  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--cwd PATH] [--json]
+  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH]`,
     initDone: "Agent Harness initialized in {cwd}",
     initCreated: "Created: {files}",
@@ -219,7 +224,7 @@ const messages = {
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
-  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--cwd PATH] [--json]
+  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH]`,
     initDone: "Agent Harness 已初始化: {cwd}",
     initCreated: "已创建: {files}",
@@ -2777,6 +2782,14 @@ ${readFirstList}
 
 Use \`${selectedWorkMode}\` until the goal has a confirmed spec and clear file ownership.
 
+## Execution Role
+
+Use \`implementer\`.
+
+- \`gate-only\`: the current thread reviews candidate output and verification evidence, but does not directly edit implementation files.
+- \`implementer\`: the current thread may edit files inside the accepted scope.
+- \`mixed\`: the current thread may both edit and gate only after recording why the tradeoff is acceptable.
+
 ## Scope
 
 - ${acceptance}
@@ -2914,6 +2927,126 @@ function extractGoalWorkModeRaw(goalContent) {
   return match ? match[1].trim() : "";
 }
 
+function extractGoalExecutionRoleRaw(goalContent) {
+  const section = extractSection(goalContent, "Execution Role");
+  const match = section.match(/Use\s+`([^`]+)`/i);
+  return match ? match[1].trim().toLowerCase() : "";
+}
+
+function cleanMapValue(value) {
+  const trimmed = String(value || "").trim();
+  if (trimmed.startsWith("`") && trimmed.endsWith("`")) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
+function parseSourceTaskAcceptanceMap(section) {
+  const items = [];
+  let current = null;
+  let currentField = "";
+  for (const line of section.split(/\r?\n/)) {
+    const taskMatch = line.match(/^-\s+Task:\s*(.+?)\s*$/);
+    if (taskMatch) {
+      current = {
+        task: cleanMapValue(taskMatch[1]),
+        acceptance: "",
+        evidence: "",
+        status: "",
+        unblocker: ""
+      };
+      items.push(current);
+      currentField = "";
+      continue;
+    }
+
+    if (!current) {
+      continue;
+    }
+
+    const fieldMatch = line.match(/^\s+-\s+(Acceptance|Evidence|Status|Unblocker):\s*(.*?)\s*$/i);
+    if (fieldMatch) {
+      currentField = fieldMatch[1].toLowerCase();
+      current[currentField] = cleanMapValue(fieldMatch[2]);
+      continue;
+    }
+
+    const continuation = line.match(/^\s{4,}(\S.*?)\s*$/);
+    if (currentField && continuation) {
+      current[currentField] = cleanMapValue(`${current[currentField]} ${continuation[1]}`);
+    }
+  }
+  return items;
+}
+
+function missingEvidence(value) {
+  return !value || /^(tbd|n\/a|none|not recorded|-|\.\.\.)$/i.test(String(value).trim());
+}
+
+function batchSignals(content) {
+  const relevant = [
+    goalTitle(content, ""),
+    extractSection(content, "Goal"),
+    extractSection(content, "Source Task"),
+    extractSection(content, "Scope"),
+    extractSection(content, "Completion Conditions")
+  ].join("\n");
+  return /\b(batch|source tasks|multiple source tasks|unfinished tasks|merged source tasks)\b/i.test(relevant);
+}
+
+function acceptanceMapDetails(goalContent, specContent = "") {
+  const goalSection = extractSection(goalContent, "Source Task Acceptance Map");
+  const specSection = extractSection(specContent, "Source Task Acceptance Map");
+  const section = goalSection || specSection;
+  return {
+    required: batchSignals(goalContent) || batchSignals(specContent),
+    source: goalSection ? "goal" : specSection ? "spec" : "",
+    section,
+    items: section ? parseSourceTaskAcceptanceMap(section) : []
+  };
+}
+
+function acceptanceMapValidationErrors(mapDetails, { completed = false } = {}) {
+  const errors = [];
+  if (!mapDetails.required && !mapDetails.section) {
+    return errors;
+  }
+
+  if (mapDetails.required && !mapDetails.section) {
+    errors.push("Batch goals require a Source Task Acceptance Map.");
+    return errors;
+  }
+
+  if (!mapDetails.items.length) {
+    errors.push("Source Task Acceptance Map must include at least one '- Task:' item.");
+    return errors;
+  }
+
+  mapDetails.items.forEach((item, index) => {
+    const label = item.task || `item ${index + 1}`;
+    if (!item.task) {
+      errors.push(`Source Task Acceptance Map item ${index + 1} is missing Task.`);
+    }
+    if (!item.acceptance) {
+      errors.push(`Source Task Acceptance Map item '${label}' is missing Acceptance.`);
+    }
+    if (!validAcceptanceMapStatuses.has(item.status)) {
+      errors.push(`Source Task Acceptance Map item '${label}' must use Status pending, satisfied, deferred, or blocked; found ${item.status || "(missing)"}.`);
+    }
+    if ((item.status === "deferred" || item.status === "blocked") && missingEvidence(item.unblocker)) {
+      errors.push(`Source Task Acceptance Map item '${label}' is ${item.status} but missing Unblocker.`);
+    }
+    if (completed && item.status !== "satisfied") {
+      errors.push(`Completed batch runs require Source Task Acceptance Map item '${label}' to be satisfied; found ${item.status || "(missing)"}.`);
+    }
+    if (completed && missingEvidence(item.evidence)) {
+      errors.push(`Completed batch runs require concrete Evidence for Source Task Acceptance Map item '${label}'.`);
+    }
+  });
+
+  return errors;
+}
+
 function sectionHasManualVerification(section) {
   return /\b(manual|human|review|evidence|document|not automated|cannot be automated)\b/i.test(section);
 }
@@ -2926,6 +3059,8 @@ function goalMetadata(cwd, goalPath) {
   const specExists = Boolean(specInProject && existsSync(specAbs));
   const specContent = specExists ? readFileSync(specAbs, "utf8") : "";
   const workMode = extractGoalWorkModeRaw(content);
+  const executionRole = extractGoalExecutionRoleRaw(content);
+  const acceptanceMap = acceptanceMapDetails(content, specContent);
 
   return {
     path: displayPath(cwd, goalPath),
@@ -2936,10 +3071,19 @@ function goalMetadata(cwd, goalPath) {
     specExists,
     specStatus: specStatus(specContent),
     workMode,
+    executionRole,
+    acceptanceMap: {
+      required: acceptanceMap.required,
+      source: acceptanceMap.source,
+      itemCount: acceptanceMap.items.length,
+      items: acceptanceMap.items
+    },
     sections: {
       sourceTask: Boolean(extractSection(content, "Source Task")),
       readFirst: Boolean(extractSection(content, "Read First")),
       workModeRecommendation: Boolean(extractSection(content, "Work Mode Recommendation")),
+      executionRole: Boolean(extractSection(content, "Execution Role")),
+      sourceTaskAcceptanceMap: Boolean(extractSection(content, "Source Task Acceptance Map")),
       scope: Boolean(extractSection(content, "Scope")),
       nonGoals: Boolean(extractSection(content, "Non-Goals")),
       verification: Boolean(extractSection(content, "Verification")),
@@ -2984,6 +3128,7 @@ function validateGoal(cwd, goalPath) {
     ["Source Task", "sourceTask"],
     ["Read First", "readFirst"],
     ["Work Mode Recommendation", "workModeRecommendation"],
+    ["Execution Role", "executionRole"],
     ["Scope", "scope"],
     ["Non-Goals", "nonGoals"],
     ["Verification", "verification"],
@@ -3005,11 +3150,19 @@ function validateGoal(cwd, goalPath) {
     errors.push(`Work Mode Recommendation must use one of local, worktree, or ask; found ${metadata.workMode || "(missing)"}.`);
   }
 
+  if (!validExecutionRoles.has(metadata.executionRole)) {
+    errors.push(`Execution Role must use one of gate-only, implementer, or mixed; found ${metadata.executionRole || "(missing)"}.`);
+  }
+
   const verification = extractSection(content, "Verification");
   const verificationCommands = extractVerificationCommands(verification);
   if (!verificationCommands.length && !sectionHasManualVerification(verification)) {
     errors.push("Verification must include executable commands or explain the manual verification evidence.");
   }
+
+  const specContent = metadata.specExists ? readFileSync(join(cwd, metadata.specPath), "utf8") : "";
+  const acceptanceMap = acceptanceMapDetails(content, specContent);
+  errors.push(...acceptanceMapValidationErrors(acceptanceMap));
 
   const pauseConditions = extractSection(content, "Pause Conditions");
   const pauseLower = pauseConditions.toLowerCase();
@@ -3110,6 +3263,8 @@ function goalInspect(args) {
   console.log(`Spec: ${payload.spec || "missing"}`);
   console.log(`Spec status: ${payload.specStatus || "unknown"}`);
   console.log(`Work mode: ${payload.workMode || "missing"}`);
+  console.log(`Execution role: ${payload.executionRole || "missing"}`);
+  console.log(`Acceptance map: ${payload.acceptanceMap?.required ? `${payload.acceptanceMap.itemCount} item(s)` : "not required"}`);
   console.log(`Validation: ${validation.ok ? "ok" : "failed"}`);
   for (const error of validation.errors) {
     console.log(`- ${error}`);
@@ -3246,7 +3401,7 @@ function nextAvailableRunDir(basePath) {
   throw new Error(`Could not find an available run directory for ${basePath}`);
 }
 
-function buildRunMarkdown({ context, createdAt, cwd, goalPath, goalContent, runDir, taskSize, workMode }) {
+function buildRunMarkdown({ context, createdAt, cwd, goalPath, goalContent, runDir, taskSize, workMode, executionRole, acceptanceMap }) {
   const relGoal = displayPath(cwd, goalPath);
   const relRunDir = displayPath(cwd, runDir);
   const stateSyncPathList = stateSyncPaths(context);
@@ -3273,7 +3428,10 @@ Spec: \`${spec}\`
 Run directory: \`${relRunDir}\`
 Harness contract: \`${context.contract}\`
 Work mode: \`${workMode}\`
+Execution role: \`${executionRole}\`
 Task size: \`${taskSize}\`
+Acceptance map required: \`${acceptanceMap.required ? "yes" : "no"}\`
+Acceptance map items: \`${acceptanceMap.items.length}\`
 
 ## Source Task
 
@@ -3283,10 +3441,12 @@ ${sourceTask}
 
 1. Read \`${relGoal}\` and its referenced spec before editing.
 2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
-3. Use \`subagents.md\` only as bounded guidance; small tasks can stay in one main-agent context.
-4. Run the verification commands from the goal.
-5. Record any command output summaries or follow-ups under this run directory.
-6. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+3. Confirm the execution role. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
+4. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+5. Use \`subagents.md\` only as bounded guidance; small tasks can stay in one main-agent context.
+6. Run the verification commands from the goal.
+7. Record any command output summaries or follow-ups under this run directory.
+8. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -3306,6 +3466,7 @@ function buildPromptMarkdown({ context, cwd, goalPath, goalContent }) {
   const spec = extractInlinePath(goalContent, "Spec") || "the spec referenced by the goal";
   const stateSyncPathList = stateSyncPaths(context);
   const adapterPath = context.paths.adapterDocs || "";
+  const executionRole = extractGoalExecutionRoleRaw(goalContent) || "missing";
 
   return `# Goal Execution Prompt
 
@@ -3318,6 +3479,7 @@ Requirements:
 - Read \`${relGoal}\` and \`${spec}\` before making edits.
 - ${context.mode === "adapter" && adapterPath ? `Read \`${adapterPath}\` and apply its project-specific hard boundaries, preflight requirements, and state-sync rules.` : "Follow the repository instructions and configured harness paths."}
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
+- Follow the goal's Execution Role: \`${executionRole}\`.
 - Do not push, deploy, publish, open a PR, start a daemon, or automatically launch additional Codex sessions unless the user explicitly asks.
 - If the checkout is dirty with unrelated work, use the worktree policy from the goal and project docs.
 - After implementation, run the goal's verification commands and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync.
@@ -3442,8 +3604,13 @@ function runPrepare(args) {
   }
 
   const goalContent = readFileSync(goalPath, "utf8");
+  const specRel = extractInlinePath(goalContent, "Spec");
+  const specAbs = resolveProjectPath(cwd, specRel);
+  const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
   const createdAt = new Date().toISOString();
   const workMode = extractWorkMode(goalContent, cwd);
+  const executionRole = extractGoalExecutionRoleRaw(goalContent);
+  const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
   const taskSize = classifyTask(goalContent, workMode);
   const runSlug = runSlugFromGoal(goalPath);
   const runDir = nextAvailableRunDir(join(cwd, paths.runs, `${runTimestamp()}-${runSlug}`));
@@ -3459,7 +3626,9 @@ function runPrepare(args) {
     goalContent,
     runDir,
     taskSize,
-    workMode
+    workMode,
+    executionRole,
+    acceptanceMap
   }));
   writeFileSync(join(runDir, "prompt.md"), buildPromptMarkdown({ context, cwd, goalPath, goalContent }));
   writeFileSync(join(runDir, "subagents.md"), buildSubagentsMarkdown({ cwd, goalPath, taskSize }));
@@ -3472,6 +3641,10 @@ function runPrepare(args) {
     goalPath: displayPath(cwd, goalPath),
     runDir: displayPath(cwd, runDir),
     workMode,
+    executionRole,
+    acceptanceMapRequired: acceptanceMap.required,
+    acceptanceMapSource: acceptanceMap.source,
+    acceptanceMapItemCount: acceptanceMap.items.length,
     taskSize,
     files,
     logs: "logs/",
@@ -3488,7 +3661,7 @@ const recordableRunPhases = new Set(["completed", "blocked"]);
 function runRecord(args) {
   const cwd = targetCwd(args);
   if (!args.run) {
-    throw new Error("Usage: agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--cwd PATH] [--json]");
+    throw new Error("Usage: agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--cwd PATH] [--json]");
   }
   if (!recordableRunPhases.has(args.phase)) {
     throw new Error(`Invalid --phase: ${args.phase || "(missing)"}`);
@@ -3505,12 +3678,37 @@ function runRecord(args) {
 
   const now = new Date().toISOString();
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
+  const executionRole = status.executionRole || "unknown";
+  if (args.phase === "completed" && !args.verification) {
+    throw new Error("Completed runs require --verification evidence.");
+  }
+  if (args.phase === "completed" && executionRole === "gate-only" && !args.gateEvidence) {
+    throw new Error("Completed gate-only runs require --gate-evidence describing implementer output and acceptance evidence.");
+  }
+  if (args.phase === "completed") {
+    const goalPath = status.goalPath ? resolveProjectPath(cwd, status.goalPath) : "";
+    if (status.acceptanceMapRequired && (!goalPath || !existsSync(goalPath))) {
+      throw new Error("Completed batch runs require a readable goal with Source Task Acceptance Map evidence.");
+    }
+    if (goalPath && existsSync(goalPath)) {
+      const goalContent = readFileSync(goalPath, "utf8");
+      const specRel = extractInlinePath(goalContent, "Spec");
+      const specAbs = resolveProjectPath(cwd, specRel);
+      const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
+      const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
+      const acceptanceMapErrors = acceptanceMapValidationErrors(acceptanceMap, { completed: true });
+      if (acceptanceMapErrors.length) {
+        throw new Error(`Source Task Acceptance Map validation failed:\n${acceptanceMapErrors.map((error) => `- ${error}`).join("\n")}`);
+      }
+    }
+  }
   const nextStatus = {
     ...status,
     phase: args.phase,
     updatedAt: now,
     summary: args.summary,
-    verificationSummary: args.verification || status.verificationSummary || ""
+    verificationSummary: args.verification || status.verificationSummary || "",
+    gateEvidence: args.gateEvidence || status.gateEvidence || ""
   };
   const logsDir = join(runDir, "logs");
   mkdirSync(logsDir, { recursive: true });
@@ -3528,6 +3726,10 @@ ${args.summary}
 ## Verification
 
 ${args.verification || "Not recorded."}
+
+## Gate Evidence
+
+${args.gateEvidence || "Not recorded."}
 `;
 
   writeFileSync(statusPath, `${JSON.stringify(nextStatus, null, 2)}\n`);
@@ -3539,7 +3741,8 @@ ${args.verification || "Not recorded."}
     log: displayPath(cwd, logPath),
     phase: args.phase,
     summary: args.summary,
-    verificationSummary: nextStatus.verificationSummary
+    verificationSummary: nextStatus.verificationSummary,
+    gateEvidence: nextStatus.gateEvidence
   };
 
   if (args.json) {

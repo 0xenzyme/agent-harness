@@ -95,6 +95,15 @@ Validation and known risks must be concrete. If nothing was found, write
 State changes should point to inspectable evidence: changed files, command
 summaries, run records, gate reports, or human review notes.
 
+For `gate-only` acceptance, the controller must cite implementer output and
+gate evidence before marking a run completed. If that evidence is absent, the
+merge decision should be `request-fix`, `blocked`, or `hold-for-user`.
+
+For batch or merged source-task work, the controller must preserve a
+`Source Task Acceptance Map`. Aggregate run evidence is not enough; each source
+task acceptance needs its own status and evidence before accepted state moves
+to Done.
+
 ## Integration Gate Report
 
 ```text

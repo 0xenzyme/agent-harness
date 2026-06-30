@@ -3,15 +3,17 @@
 [中文](README.zh-CN.md)
 
 Agent Harness is a reusable Codex workflow package for development projects.
-It standardizes the small control plane that every project needs before goal
-automation and loop engineering can work reliably.
+It gives each project a small control layer so more task coordination,
+execution preparation, verification, and state sync can move into automation.
 
 ## Problem
 
-When one person operates many software projects, each project tends to invent
-its own backlog file, status notes, branch habits, and goal prompts. That makes
-automation brittle. Codex cannot safely decide what to do next if it has to
-rediscover each project's task system from scratch.
+When one person maintains many software projects, too much time is spent on
+coordination work around development: tracking tasks, deciding the next safe
+step, preparing goal prompts, checking evidence, and remembering project
+boundaries. Agent Harness pushes that work into a stable harness layer so
+coding agents can automate more of the development loop and the human spends
+less time acting as the task router.
 
 ## Adapter Model
 
@@ -48,6 +50,15 @@ Agent Harness keeps the control plane small and inspectable:
 - Route explanations stay lightweight: Codex should briefly say why it is
   orienting, shaping, executing, asking, using a worktree, or staying local.
 
+## Influences
+
+Agent Harness is inspired in part by b3ehive's approach to controller-led
+agent work: small workflow entry points, explicit route selection, proposal
+competition as optional Shape work, inspectable evidence before accepted state,
+and disciplined packaging. Agent Harness translates those ideas into its own
+fixed/adapter contracts rather than importing b3ehive project structure or
+local project policy.
+
 ## Artifact Map
 
 Adapter projects use `.harness/config.json` plus a project adapter to
@@ -81,6 +92,12 @@ This repo is both a source project and a Codex local marketplace:
 - `plugins/agent-harness/scripts/agent-harness.mjs` provides a small CLI.
 - `evals/` contains project-neutral evaluation fixture blueprints.
 
+The current repository's `harness/` and `.harness/` directories are project
+adapter state for developing Agent Harness itself. They are not installed as
+plugin content. Installed plugin content comes from `plugins/agent-harness/`;
+downstream projects get their own adapter artifacts only when `harness:init`
+or the CLI initializes/imports that project.
+
 ## Plugin Skills
 
 Codex exposes the plugin as `harness`. It intentionally ships four workflow
@@ -99,6 +116,11 @@ Older artifact-oriented wrapper skills are no longer shipped. Use the workflow
 skill that matches the route: `orient` for read-only state, `intake` for new
 ideas, `init` for setup/adoption, and `execute` for confirmed work.
 
+Codex plugin metadata does not currently expose a project-confirmed localized
+description schema for this package. User-visible plugin and skill descriptions
+therefore use a compact zh-CN/en bilingual fallback in the existing description
+fields, while runtime responses still follow the user's language.
+
 ### Which Skill Should I Use?
 
 | Situation | Skill |
@@ -108,146 +130,39 @@ ideas, `init` for setup/adoption, and `execute` for confirmed work.
 | Adopt Agent Harness in a project, migrate an existing task index, run doctor/import, or preview activation. | `harness:init` |
 | Complete a confirmed task, spec, goal, or run packet and then verify and sync state. | `harness:execute` |
 
-## First Commands
+## Use With A Coding Agent
 
-Validate the plugin:
+Most users should start by asking Codex, or another coding agent with access
+to the installed plugin, to use the Harness workflow skills in the target
+project. The agent should read project instructions, inspect the Harness
+adapter, choose a route, and report the evidence it used before changing
+state.
 
-```bash
-npm run validate:plugin
-npm run test:smoke
+Typical prompts look like:
+
+```text
+Use harness:init in /path/to/project to adopt Agent Harness. Preview activation and do not edit AGENTS.md without my approval.
+Use harness:orient in the current repo and tell me the next safe route.
+Use harness:intake to triage this idea without implementing it: Add a new import flow.
+Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-title.md. Verify and sync task/status evidence.
 ```
 
-Initialize an adapter-contract downstream project:
+The normal user-level flow is:
 
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
+```text
+harness:init -> harness:orient or harness:intake -> confirmed spec/goal -> harness:execute -> verification -> state sync
 ```
 
-Import an existing adapter project that already has an adapter and task
-index, without creating a second task index:
+When you want the current thread to act as main control, gate, reviewer, judge,
+or acceptance lane, say so explicitly; Harness treats that as `gate-only` by
+default. In `gate-only`, the control thread reviews candidate output and
+verification evidence, then accepts, blocks, or requests corrections without
+directly editing implementation files. Use `implementer` or `mixed` only when
+you want the same thread to edit files too.
 
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --dry-run
-node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
-```
-
-If a project already has `todolist.md`, `init --contract adapter` preserves it
-instead of creating a parallel `harness/tasks.md`. A real `config import` writes the
-machine config and creates missing support artifacts such as the configured
-status file and runs directory.
-
-Check a downstream project:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
-```
-
-Print a project-scope activation snippet for `AGENTS.md` without writing files:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs activation snippet --cwd /path/to/project
-```
-
-Plugin-level `SessionStart` bootstrap is intentionally not enabled yet. Local
-validation shows the current plugin validator rejects `hooks` in
-`.codex-plugin/plugin.json`; keeping the manifest hook-free is the current
-boundary that prevents Agent Harness from affecting non-harness projects.
-
-Inspect resolved config and adapter paths:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
-node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
-```
-
-Summarize current status and recommend the next action without starting work:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
-```
-
-Preview a new idea or requirement before modifying the task index:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
-```
-
-Append the candidate to a supported markdown task index only after explicit
-confirmation:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
-```
-
-Preview deterministic task/status maintenance from current git state and recent
-run records:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --json
-```
-
-Record a conservative maintenance snapshot in the configured status file, and
-only apply exact completed-run task updates when they can be written safely:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
-```
-
-Recommend whether to use the current checkout, a worktree, or ask first:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /path/to/project --json
-```
-
-Use Chinese command output:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
-```
-
-Create a goal handoff from the configured task index:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
-```
-
-The adapter contract requires an accepted spec:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
-```
-
-List, inspect, and validate goals before preparing a run:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
-```
-
-Prepare a run packet from a goal:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
-```
-
-Inspect a prepared run:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
-```
-
-Record a run outcome without modifying source files, pushing, or opening PRs:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
-node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
-```
+The CLI remains available as deterministic tooling for agents, operators, and
+maintainers, but it is not the primary first-use path for most people. See
+the detailed [CLI reference](docs/cli.md) for command examples.
 
 ## Workflow
 
@@ -257,22 +172,16 @@ approval, credentials, production access, or unblocking decisions are needed.
 
 ![Adapter Execution Model](docs/assets/readme/adapter-execution-model.png)
 
-The intended adapter workflow is:
+The intended user-level adapter workflow is:
 
 ```text
-init/import -> activation snippet -> orient/intake -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> maintain tasks -> update state records
+harness:init/import -> harness:orient or harness:intake -> confirmed spec/goal -> harness:execute -> verify -> state sync
 ```
 
-`activation snippet` prints an `AGENTS.md` section; it does not modify project
-instructions. `orient next` is read-only; it summarizes status and task state.
-`intake idea` is also read-only by default; it classifies a new idea and only
-appends to a supported markdown task index when `--record` is passed. Both
-commands report what confirmation is needed before execution.
-`maintain tasks` is read-only by default; with `--record` it writes a
-conservative status snapshot and only applies exact task-index updates.
-`config validate` checks the active `.harness/config.json` or legacy
-`.agent-harness/config.json` against the plugin schema and reports actionable
-schema errors.
+Under the hood, Harness records route decisions, run packets, acceptance
+evidence, and status snapshots through deterministic local tooling. The
+tooling stays bounded: it does not start Codex, create a daemon, push, deploy,
+or open a PR.
 
 Conditional plugin bootstrap remains deferred. The validated plugin manifest
 does not declare a session hook, so installed Agent Harness skills do not
@@ -287,31 +196,6 @@ Proposal competition remains a documented Shape protocol. It may compare
 routes, risks, and coverage for ambiguous work, but it does not execute the
 selected route and is not an installed `harness:compete` skill in this
 package.
-
-`goal create` writes a durable handoff under the configured goals directory.
-`goal validate` checks that a goal references a confirmed repo-local spec and
-contains the required execution sections. `run prepare` runs that validation
-gate before writing `run.md`, `prompt.md`, `subagents.md`, `status.json`, and
-`logs/` under the configured runs directory. `run record` updates only the run
-directory with a final or blocked outcome. These commands do not start Codex,
-create a daemon, push, deploy, or open a PR.
-
-## Command Language
-
-Human-facing CLI output supports `en` and `zh-CN` for `init`, `doctor`,
-`worktree recommend`, and help/usage. Activation, orientation, intake, and
-maintenance output is currently stable English text. The language is resolved in this
-order:
-
-1. `--lang <code>`
-2. `AGENT_HARNESS_LANG`
-3. `.harness/config.json` `language.default`
-4. system locale from `LC_ALL`, `LC_MESSAGES`, or `LANG`
-5. fallback `en`
-
-Use `auto` to continue to the next source. Unknown language codes fall back to
-`en`. Machine output, JSON from `print-contract`, paths, command names, package
-names, skill names, and Git output remain unchanged.
 
 ## Evaluation And Examples
 
@@ -355,4 +239,21 @@ The current version is intentionally bounded:
 - It makes escalation points explicit before credentials, paid APIs,
   production access, destructive operations, push, PR, deploy, or release.
 
-The goal is to make Codex more predictable before making it more autonomous.
+The goal is to increase development automation while keeping the control
+points, evidence, and escalation boundaries explicit.
+
+## Roadmap
+
+Future Agent Harness work should make the control contracts usable by other
+coding agents, not only Codex. The intended direction is an agent-neutral
+adapter layer for task/spec/goal/run packets, capability declarations,
+verification results, and state-sync evidence. Support for other coding agents
+should be added only after each agent surface has explicit safety boundaries,
+result-packet expectations, and validation fixtures.
+
+Delegation should stay capability-driven: detect whether a coding-agent
+surface can create isolated work, return an execution result packet, report
+changed files and verification, and respect no-daemon / no-push boundaries. If
+those capabilities are missing, Agent Harness should fall back to foreground
+manual execution instead of pretending parallel or isolated implementation is
+available.

@@ -83,6 +83,12 @@ assert(
   pluginManifest.version === packageManifest.version,
   "plugin manifest version should stay aligned with package.json"
 );
+assertIncludes(pluginManifest.description, "可复用", "plugin description should include zh-CN/en bilingual fallback");
+assertIncludes(
+  pluginManifest.interface.shortDescription,
+  "adapter 驱动",
+  "plugin short description should include zh-CN/en bilingual fallback"
+);
 assert(
   pluginManifest.hooks === undefined,
   "agent-harness plugin manifest should stay hook-free until conditional bootstrap has validation and runtime coverage"
@@ -146,8 +152,49 @@ const neutralFiles = [
 ];
 for (const file of neutralFiles) {
   const content = readFileSync(file, "utf8");
-  assert(!/b3ehive|~\/project|\/Users\//i.test(content), `${file} should stay project-neutral`);
+  assert(!/~\/project|\/Users\//i.test(content), `${file} should not expose local paths`);
+  const relativeFile = file.startsWith(repoRoot) ? file.slice(repoRoot.length + 1) : file;
+  const allowsB3ehiveAttribution = ["README.md", "README.zh-CN.md"].includes(relativeFile);
+  if (!allowsB3ehiveAttribution) {
+    assert(!/b3ehive/i.test(content), `${file} should stay project-neutral`);
+  }
 }
+const rootReadme = readFileSync(join(repoRoot, "README.md"), "utf8");
+const rootReadmeZh = readFileSync(join(repoRoot, "README.zh-CN.md"), "utf8");
+const cliDoc = readFileSync(join(repoRoot, "docs/cli.md"), "utf8");
+const cliDocZh = readFileSync(join(repoRoot, "docs/cli.zh-CN.md"), "utf8");
+assertIncludes(rootReadme, "## Use With A Coding Agent", "README should present a coding-agent-first entry path");
+assertIncludes(rootReadme, "docs/cli.md", "README should link to the detailed CLI reference");
+assertIncludes(rootReadmeZh, "docs/cli.zh-CN.md", "zh-CN README should link to the detailed CLI reference");
+assertExcludes(rootReadme, "## First Commands", "README should not lead with terminal-first commands");
+assertExcludes(rootReadme, "## Command Language", "README should keep CLI language details in docs");
+assertExcludes(rootReadmeZh, "## Command Language", "zh-CN README should keep CLI language details in docs");
+assertExcludes(
+  rootReadme,
+  "node plugins/agent-harness/scripts/agent-harness.mjs",
+  "README should not carry the detailed CLI command catalog"
+);
+assertExcludes(
+  rootReadmeZh,
+  "node plugins/agent-harness/scripts/agent-harness.mjs",
+  "zh-CN README should not carry the detailed CLI command catalog"
+);
+assertIncludes(rootReadme, "They are not installed as", "README should explain source adapter artifacts are not installed plugin content");
+assertIncludes(cliDoc, "--gate-evidence", "CLI reference should document gate-only run evidence");
+assertIncludes(cliDocZh, "--gate-evidence", "zh-CN CLI reference should document gate-only run evidence");
+const projectContractDoc = readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8");
+for (const needle of ["## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Agent-Neutral Delegation Rules"]) {
+  assertIncludes(projectContractDoc, needle, "project contract should document execution roles");
+}
+const executeSkillDoc = readFileSync(join(repoRoot, "plugins/agent-harness/skills/execute/SKILL.md"), "utf8");
+for (const needle of ["gate-only", "implementer", "mixed", "main control", "--gate-evidence"]) {
+  assertIncludes(executeSkillDoc, needle, "execute skill should route control/gate requests by execution role");
+}
+const goalTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/goal.md"), "utf8");
+assertIncludes(goalTemplateDoc, "## Execution Role", "goal template should include an execution role section");
+const cliSource = readFileSync(cli, "utf8");
+assertIncludes(cliSource, "## Execution Role", "goal generator should include an execution role section");
+assertIncludes(cliSource, "gate-evidence", "run record should expose gate evidence input");
 
 const suiteDir = mkdtempSync(join(tmpdir(), "agent-harness-smoke-"));
 
@@ -169,6 +216,8 @@ try {
   run(["run", "prepare", "--cwd", fixed, "--goal", fixedGoal]);
   assert(readdirSync(join(fixed, ".harness/runs")).length > 0, "fixed run packet should use fixed runs dir");
   const fixedRun = readdirSync(join(fixed, ".harness/runs")).sort().at(-1);
+  const fixedRunStatus = readJson(join(fixed, ".harness/runs", fixedRun, "status.json"));
+  assert(fixedRunStatus.executionRole === "implementer", "run prepare should record generated goal execution role");
   run([
     "run",
     "record",
@@ -406,14 +455,33 @@ try {
   assert(customGoalList.goals[0].valid === true, "goal list should expose validation state");
   const customGoalInspect = JSON.parse(run(["goal", "inspect", "--cwd", custom, "--goal", customGoal, "--json"]));
   assert(customGoalInspect.spec === "harness/specs/custom.md", "goal inspect should expose referenced spec");
+  assert(customGoalInspect.executionRole === "implementer", "goal inspect should expose generated execution role");
   assert(customGoalInspect.validation.ok === true, "goal inspect should include validation result");
   const customGoalValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", customGoal, "--json"]));
   assert(customGoalValidate.ok === true, "goal validate should pass for generated custom goal");
+  assert(customGoalValidate.goal.executionRole === "implementer", "goal validate should expose execution role");
   run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
   const customRuns = readdirSync(join(custom, "custom/runs")).sort();
   assert(customRuns.length > 0, "adapter run packet should use custom runs dir");
   const customRunStatus = readJson(join(custom, "custom/runs", customRuns[0], "status.json"));
   assert(customRunStatus.harnessContract === "adapter", "run status should record adapter mode");
+  assert(customRunStatus.executionRole === "implementer", "run status should record execution role");
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      custom,
+      "--run",
+      join("custom/runs", customRuns[0]),
+      "--phase",
+      "completed",
+      "--summary",
+      "missing verification"
+    ]),
+    "Completed runs require --verification",
+    "completed run record should require verification evidence"
+  );
   const completedRecord = JSON.parse(run([
     "run",
     "record",
@@ -515,6 +583,166 @@ Manual verification evidence only.
     "Work Mode Recommendation",
     "invalid work mode should fail validation"
   );
+  write(join(invalidGoalDir, "invalid-execution-role.md"), readFileSync(customGoal, "utf8").replace("Use `implementer`", "Use `observer`"));
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/invalid-execution-role.md", "--json"]),
+    "Execution Role",
+    "invalid execution role should fail validation"
+  );
+  write(join(invalidGoalDir, "gate-only.md"), readFileSync(customGoal, "utf8").replace("Use `implementer`", "Use `gate-only`"));
+  const gateOnlyGoal = join("custom/goals", "gate-only.md");
+  const gateOnlyValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", gateOnlyGoal, "--json"]));
+  assert(gateOnlyValidate.ok === true, "gate-only goal should validate");
+  run(["run", "prepare", "--cwd", custom, "--goal", gateOnlyGoal]);
+  const gateOnlyRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-gate-only")).sort().at(-1);
+  assert(gateOnlyRun, "gate-only run should be prepared");
+  assert(
+    readJson(join(custom, "custom/runs", gateOnlyRun, "status.json")).executionRole === "gate-only",
+    "gate-only run status should record execution role"
+  );
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      custom,
+      "--run",
+      join("custom/runs", gateOnlyRun),
+      "--phase",
+      "completed",
+      "--summary",
+      "gate-only missing evidence",
+      "--verification",
+      "verification passed"
+    ]),
+    "Completed gate-only runs require --gate-evidence",
+    "gate-only completion should require gate evidence"
+  );
+  const gateOnlyRecord = JSON.parse(run([
+    "run",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    join("custom/runs", gateOnlyRun),
+    "--phase",
+    "completed",
+    "--summary",
+    "gate-only accepted",
+    "--verification",
+    "verification passed",
+    "--gate-evidence",
+    "Reviewed implementer output and accepted run evidence",
+    "--json"
+  ]));
+  assert(gateOnlyRecord.gateEvidence.includes("Reviewed implementer output"), "gate-only record should expose gate evidence");
+  write(join(custom, "harness/specs/batch.md"), "# Batch Spec\n\nStatus: accepted\n\n## Goal\n\nComplete multiple source tasks as one batch.\n");
+  const batchGoalBase = `# Goal: Batch Source Tasks
+
+Spec: harness/specs/batch.md
+Status: Ready for execution from confirmed spec.
+
+## Source Task
+- \`todolist.md\`: \`P1 Complete multiple source tasks\`
+
+## Read First
+1. \`harness/specs/batch.md\`
+
+## Work Mode Recommendation
+Use \`local\`.
+
+## Execution Role
+Use \`implementer\`.
+
+## Scope
+- Complete multiple source tasks as one batch.
+
+## Non-Goals
+- Do not push, deploy, publish, or open a PR.
+
+## Verification
+Manual verification evidence only.
+
+## Completion Conditions
+- Every source task acceptance is satisfied.
+
+## Pause Conditions
+- Pause on spec conflicts or newer instructions.
+- Pause for credentials or paid APIs.
+- Pause for destructive or production actions.
+- Pause for product direction.
+`;
+  write(join(invalidGoalDir, "batch-missing-map.md"), batchGoalBase);
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/batch-missing-map.md", "--json"]),
+    "Source Task Acceptance Map",
+    "batch goals should require source task acceptance map"
+  );
+  const pendingMap = `## Source Task Acceptance Map
+
+- Task: \`Move README CLI details\`
+  - Acceptance: \`Root README keeps only a short CLI reference.\`
+  - Evidence: \`TBD\`
+  - Status: \`pending\`
+  - Unblocker: \`N/A\`
+- Task: \`Clarify packaging boundary\`
+  - Acceptance: \`Docs explain source adapter artifacts are not installed plugin content.\`
+  - Evidence: \`TBD\`
+  - Status: \`pending\`
+  - Unblocker: \`N/A\`
+
+`;
+  write(join(invalidGoalDir, "batch-pending-map.md"), batchGoalBase.replace("## Scope", `${pendingMap}## Scope`));
+  const pendingBatchValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/batch-pending-map.md", "--json"]));
+  assert(pendingBatchValidate.ok === true, "pending batch acceptance map should validate before execution");
+  assert(pendingBatchValidate.goal.acceptanceMap.required === true, "batch goal should report acceptance map requirement");
+  assert(pendingBatchValidate.goal.acceptanceMap.itemCount === 2, "batch goal should expose acceptance map item count");
+  run(["run", "prepare", "--cwd", custom, "--goal", "custom/goals/batch-pending-map.md"]);
+  const pendingBatchRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-batch-pending-map")).sort().at(-1);
+  assert(pendingBatchRun, "pending batch run should be prepared");
+  const pendingBatchRunStatus = readJson(join(custom, "custom/runs", pendingBatchRun, "status.json"));
+  assert(pendingBatchRunStatus.acceptanceMapRequired === true, "run status should record required acceptance map");
+  assert(pendingBatchRunStatus.acceptanceMapItemCount === 2, "run status should record acceptance map item count");
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      custom,
+      "--run",
+      join("custom/runs", pendingBatchRun),
+      "--phase",
+      "completed",
+      "--summary",
+      "batch completed without satisfied map",
+      "--verification",
+      "verification passed"
+    ]),
+    "Completed batch runs require Source Task Acceptance Map item",
+    "completed batch run should require every acceptance map item to be satisfied"
+  );
+  const satisfiedMap = pendingMap
+    .replaceAll("`TBD`", "`Verified by smoke fixture evidence`")
+    .replaceAll("`pending`", "`satisfied`");
+  write(join(invalidGoalDir, "batch-satisfied-map.md"), batchGoalBase.replace("## Scope", `${satisfiedMap}## Scope`));
+  run(["run", "prepare", "--cwd", custom, "--goal", "custom/goals/batch-satisfied-map.md"]);
+  const satisfiedBatchRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-batch-satisfied-map")).sort().at(-1);
+  const satisfiedBatchRecord = JSON.parse(run([
+    "run",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    join("custom/runs", satisfiedBatchRun),
+    "--phase",
+    "completed",
+    "--summary",
+    "batch accepted with per-source evidence",
+    "--verification",
+    "verification passed",
+    "--json"
+  ]));
+  assert(satisfiedBatchRecord.phase === "completed", "satisfied batch run should record completion");
   write(join(invalidGoalDir, "missing-section.md"), readFileSync(customGoal, "utf8").replace("## Completion Conditions", "## Completion Conditions Removed"));
   assertIncludes(
     runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/missing-section.md", "--json"]),

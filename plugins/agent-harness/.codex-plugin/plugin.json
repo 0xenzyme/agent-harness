@@ -1,15 +1,15 @@
 {
   "name": "harness",
   "version": "0.3.0",
-  "description": "Reusable Codex harness for workflow-oriented project task control and adapter-driven execution.",
+  "description": "Reusable Codex harness for workflow-oriented project task control and adapter-driven execution. / 可复用 Codex 项目任务控制与 adapter 执行工作流。",
   "author": {
     "name": "Agent Harness Maintainers"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Agent Harness",
-    "shortDescription": "Orient, intake, initialize, and execute adapter-driven project work.",
-    "longDescription": "Agent Harness provides reusable Codex workflow protocols for fixed-contract and adapter-contract projects: orientation, idea intake, project adapters, configurable artifact paths, goal handoffs, run packets, gates, evidence, and worktree policy guidance.",
+    "shortDescription": "Orient, intake, initialize, and execute adapter-driven project work. / 定位、收集、初始化并执行 adapter 驱动的项目工作。",
+    "longDescription": "Agent Harness provides reusable Codex workflow protocols for fixed-contract and adapter-contract projects: orientation, idea intake, project adapters, configurable artifact paths, goal handoffs, run packets, gates, evidence, and worktree policy guidance. zh-CN fallback: Agent Harness 为 fixed / adapter contract 项目提供可复用 Codex 工作流协议，覆盖只读定位、需求收集、项目 adapter、可配置 artifact paths、goal handoff、run packet、gate、evidence 和 worktree policy guidance。",
     "developerName": "Agent Harness Maintainers",
     "category": "Productivity",
     "capabilities": [

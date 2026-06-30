@@ -6,17 +6,83 @@
 
 ## Later
 
-- [ ] P3 Revisit conditional Agent Harness bootstrap after hook validation support.
-  - Source: Conditional bootstrap validation found that the current plugin
-    validation gate rejects `hooks` in `.codex-plugin/plugin.json`; Agent
-    Harness must remain hook-free until the plugin contract and runtime tests
-    can prove non-harness projects receive no injected context.
-  - Acceptance: If hook manifests become supported, add a conditional
-    `SessionStart` bootstrap only with Codex App and Codex CLI runtime tests
-    covering both harness and non-harness projects.
-
 ## Done
 
+- [x] Move root README CLI command catalog into docs.
+  - Completed: Moved detailed `agent-harness` CLI command examples out of
+    `README.md` and `README.zh-CN.md` into `docs/cli.md` and
+    `docs/cli.zh-CN.md`; root README files now keep only a short CLI reference
+    while staying coding-agent-first. Added smoke guards so root README files
+    do not regain the detailed CLI command catalog.
+  - Spec: `harness/specs/2026-06-30-root-readme-cli-relocation.md`
+  - Goal: `harness/goals/2026-06-30-root-readme-cli-relocation.md`
+  - Run: `.harness/runs/20260630-163748-root-readme-cli-relocation/`
+  - Verification: `node --check`, `git diff --check`,
+    `npm run test:smoke`, `npm run validate:plugin`, `goal validate`, and
+    `run record`.
+
+- [x] Add source task acceptance coverage gate for batch completion.
+  - Completed: Added `Source Task Acceptance Map` protocol for batch or merged
+    source-task goals; `goal validate` now requires and validates the map when
+    batch signals are present; `run prepare` records acceptance-map metadata;
+    `run record --phase completed` rejects batch completion unless every map
+    item is `satisfied` with concrete evidence. Updated templates, project
+    contract docs, gate/controller references, and smoke tests.
+  - Spec: `harness/specs/2026-06-30-source-task-acceptance-coverage-gate.md`
+  - Goal: `harness/goals/2026-06-30-source-task-acceptance-coverage-gate.md`
+  - Run: `.harness/runs/20260630-162929-source-task-acceptance-coverage-gate/`
+  - Verification: `node --check`, `git diff --check`,
+    `npm run test:smoke`, `npm run validate:plugin`, `goal validate`, and
+    `run record`.
+
+- [x] Complete open Agent Harness task batch.
+  - Completed: Merged the unfinished `Next` and actionable `Later` tasks into
+    one accepted batch spec and goal; added executable `Execution Role`
+    validation, propagated execution role into run packets, required
+    verification for completed run records, and required `--gate-evidence` for
+    completed `gate-only` runs. Clarified packaging boundaries, added zh-CN/en
+    bilingual fallback descriptions, documented agent-neutral delegation and
+    multi coding-agent roadmap constraints, and rechecked conditional bootstrap
+    hook support.
+  - Source tasks: `Add execution-role and gate-evidence enforcement`, `Do a
+    second-pass README and plugin packaging-boundary cleanup`, `Add zh-CN/en
+    skill suggestion localization or bilingual fallback`, `Generalize execute
+    delegation across coding agents`, `Define multi coding-agent support
+    roadmap`, and `Revisit conditional Agent Harness bootstrap after hook
+    validation support`.
+  - Spec: `harness/specs/2026-06-30-complete-open-task-batch.md`
+  - Goal: `harness/goals/2026-06-30-complete-open-task-batch.md`
+  - Run: `.harness/runs/20260630-160325-complete-open-task-batch/`
+  - Verification: `node --check`, `git diff --check`,
+    `npm run test:smoke`, `npm run validate:plugin`, `goal validate`, and
+    `run record`, plus temporary hook-manifest validation.
+  - Deferred boundary: Conditional bootstrap remains hook-free because the
+    current plugin validator still rejects `.codex-plugin/plugin.json`
+    `hooks`; revisit only after plugin validation and runtime tests support
+    conditional `SessionStart` behavior.
+  - Acceptance audit: The source task acceptance map now records that the
+    README CLI relocation acceptance remained blocked; the narrower follow-up
+    task is back in `Later`.
+
+- [x] Clarify control/gate vs implementer execution roles.
+  - Completed: Added explicit `gate-only`, `implementer`, and `mixed`
+    execution roles to `harness:execute`, project contract docs, route/gate
+    references, README files, the goal template, and generated goal handoff
+    text. Requests framed as main control, control lane, gate, judge, review,
+    or acceptance now default to `gate-only` unless same-thread implementation
+    is clearly authorized.
+  - Goal: `harness/goals/2026-06-30-clarify-control-gate-vs-implementer-execution-roles.md`
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `git diff --check`, `npm run test:smoke`, and `npm run validate:plugin`.
+- [x] Review and improve Agent Harness README/docs for coding-agent-first use.
+  - Completed: Reframed public README files around `harness:init`,
+    `harness:orient`, `harness:intake`, and `harness:execute` as the primary
+    user path; moved CLI and `npm` commands into agent/operator verification,
+    deterministic diagnostics, and maintainer tooling context; aligned install
+    and project-contract docs; added a smoke guard for the README entry path.
+  - Goal: `harness/goals/2026-06-30-review-and-improve-agent-harness-readme-docs-coding-agent-first.md`
+  - Verification: `git diff --check`, `npm run test:smoke`, and
+    `npm run validate:plugin`.
 - [x] Remove legacy Agent Harness wrapper skills.
   - Completed: Deleted the artifact-oriented `harness-*` wrapper skill files
     so the installed plugin exposes only `harness:orient`, `harness:intake`,

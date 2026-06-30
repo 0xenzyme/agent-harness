@@ -1,0 +1,154 @@
+# CLI Reference
+
+主要用户路径是让 Codex 或其他 coding agent 使用 `harness:*` workflow
+skills。CLI 是 agents、operators、diagnostics、scripted adoption 和 plugin
+maintainers 使用的确定性工具。
+
+除非环境里已经有打包后的 `agent-harness` binary，否则在本仓库 checkout 中运
+行以下命令。
+
+## 验证 Plugin
+
+```bash
+npm run validate:plugin
+npm run test:smoke
+```
+
+## 初始化或导入项目
+
+初始化 adapter-contract 下游项目：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
+```
+
+导入已经有 adapter 和 task index 的 adapter 项目，不创建第二个任务索引：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --dry-run
+node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
+```
+
+如果项目已经有 `todolist.md`，`init --contract adapter` 会沿用它，不会再创
+建并行的 `harness/tasks.md`。真实执行 `config import` 会写入 machine
+config，并创建缺失的支持产物，例如配置的 status 文件和 runs 目录。
+
+## 检查项目
+
+检查下游项目：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
+```
+
+打印用于 `AGENTS.md` 的 project-scope activation snippet，不写文件：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs activation snippet --cwd /path/to/project
+```
+
+当前没有启用 plugin-level `SessionStart` bootstrap。本地验证显示，当前
+plugin validator 会拒绝 `.codex-plugin/plugin.json` 里的 `hooks` 字段；保持
+manifest hook-free 是当前边界，用来避免 Agent Harness 影响没有接入 harness
+的项目。
+
+查看解析后的 config 和 adapter 路径：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
+```
+
+只读汇总当前状态并推荐下一步，不开始执行：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
+```
+
+## Intake And Maintenance
+
+预览一个新想法或新需求，不修改 task index：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
+```
+
+用户明确确认后，才把候选项追加到支持的 markdown task index：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
+```
+
+从当前 git state 和 recent run records 预览确定性的 task/status maintenance：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --json
+```
+
+把保守的 maintenance snapshot 写入配置的 status 文件；只有当 completed run
+提供精确证据且 task index 可安全写入时，才应用 task 更新：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
+```
+
+推荐当前任务应该继续使用当前 checkout、切到 worktree，还是先询问：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /path/to/project --json
+```
+
+## Language
+
+使用中文命令输出：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
+```
+
+## Goals And Runs
+
+从配置的 task index 创建 goal handoff：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
+```
+
+adapter contract 要求 goal 引用已确认的 spec：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
+```
+
+准备 run 之前，列出、查看并验证 goals：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
+```
+
+从 goal 准备 run packet：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
+```
+
+查看已准备的 run：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
+```
+
+记录 run 结果，不修改源码、不 push、不 open PR：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
+node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Gate accepted" --verification "npm test passed" --gate-evidence "Reviewed implementer output and run evidence"
+node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
+```

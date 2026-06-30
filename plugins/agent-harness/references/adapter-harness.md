@@ -30,6 +30,13 @@ adapter contract = task with status + spec + DAG + goal + gate
   rules, ports, credentials, or downstream production procedures.
 - Lightweight route explanation: when Codex changes workflow mode or work
   mode, it should briefly say why and name the confirmation boundary.
+- Role separation: control / gate threads should declare whether they are
+  `gate-only`, `implementer`, or `mixed` before editing. A main-control,
+  review, judge, gate, or acceptance request defaults to `gate-only` unless the
+  user explicitly authorizes same-thread implementation.
+- Agent-neutral delegation: worker surfaces are optional capability providers.
+  They must return inspectable result packets before controller acceptance; if
+  no suitable worker exists, fall back to foreground execution or `ask`.
 
 ## Default Lifecycle
 
@@ -100,6 +107,22 @@ requires intake / triage before task, spec, goal, or execution state changes.
 Proposal competition is a Shape protocol. It can compare routes and risks for
 ambiguous work, but it is not an execution launcher and is not accepted state
 until the control lane validates the recommendation.
+
+## Execution Roles
+
+Use an explicit execution role when a thread moves from orientation to
+execution:
+
+- `gate-only`: inspect candidate output and evidence; accept, block, or
+  request correction without directly editing implementation files.
+- `implementer`: edit files inside the accepted scope and provide evidence for
+  acceptance.
+- `mixed`: combine editing and acceptance only after naming why that tradeoff
+  is acceptable for the task.
+
+`goal validate` enforces a declared execution role. `run record --phase
+completed` requires verification evidence, and `gate-only` completion also
+requires explicit gate evidence.
 
 ## Evaluation Fixtures
 

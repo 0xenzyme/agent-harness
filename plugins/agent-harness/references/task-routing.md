@@ -12,6 +12,7 @@ Task routing chooses the lightest harness flow that is still safe.
 - External risk: credentials, paid APIs, production data, destructive changes.
 - Existing coverage by a spec, adapter, helper, or gate.
 - User intent: question, discussion, review, or implementation.
+- Requested execution role: `gate-only`, `implementer`, or `mixed`.
 
 ## Task Kinds
 
@@ -108,6 +109,39 @@ Do not route directly from Idea Inbox to `execute` unless the control lane has
 accepted scope, non-goals, verification, completion conditions, and pause
 conditions.
 
+## Execution Roles
+
+Execution role is separate from work mode. Work mode says where work happens
+(`local`, `worktree`, or `ask`); execution role says what the current thread is
+allowed to do.
+
+- `gate-only`: the current thread is the control / acceptance lane. It may
+  inspect candidate output, run verification, request corrections, and accept
+  or block state. It must not directly edit implementation files.
+- `implementer`: the current thread may edit files inside the authorized scope
+  and then present evidence for acceptance.
+- `mixed`: the current thread may both edit and gate only when the user
+  explicitly accepts that tradeoff, or the task is low-risk and local enough
+  that the route explanation names why mixed execution is acceptable.
+
+If the user says "main control", "control lane", "gate", "judge", "review",
+or "acceptance", default to `gate-only` unless they explicitly ask the current
+thread to implement directly.
+
+Completed state must be backed by run evidence. `gate-only` completion requires
+both verification evidence and gate evidence that cites implementer output.
+
+## Agent-Neutral Delegation
+
+Delegation is capability-driven, not Codex-specific. A controller may hand work
+to Codex App threads, Codex CLI subagents, another coding-agent worker, or no
+worker at all only when that surface can return a concrete result packet:
+changed files, summary, verification, known risks, stop conditions, and
+state-sync notes.
+
+If those capabilities are missing, stay in foreground execution or route to
+`ask`. Do not treat unavailable worker features as accepted state.
+
 ## Route Decision Format
 
 ```text
@@ -117,6 +151,7 @@ Level:
 Reason:
 Required docs:
 Required gates:
+Execution role:
 Execution mode:
 Validation:
 Escalation triggers:

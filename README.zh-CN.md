@@ -2,11 +2,11 @@
 
 [English](README.md)
 
-Agent Harness 是一个面向开发项目的可复用 Codex workflow package。它为项目建立一个小型、文件化的控制平面，让 goal handoff、loop engineering 和后续自动化有稳定入口。
+Agent Harness 是一个面向开发项目的可复用 Codex workflow package。它为项目建立一个小型、文件化的控制层，让任务协调、执行准备、验证和状态同步能更多交给自动化处理。
 
 ## 问题
 
-当一个人同时维护多个软件项目时，每个项目往往会各自发明 backlog 文件、状态记录、分支习惯和 goal prompt。这样会让自动化变得脆弱：Codex 如果每次都要重新理解项目任务系统，就很难安全判断下一步该做什么。
+当一个人同时维护多个软件项目时，真正消耗精力的往往不是写某一行代码，而是开发过程中的协调工作：追踪任务、判断下一步是否安全、准备 goal prompt、检查 evidence、记住每个项目的边界。Agent Harness 的目标是把这些工作推到稳定的 harness 层，让 coding agent 能自动化处理更多开发循环，减少人的调度负担并提升推进效率。
 
 ## Adapter Model
 
@@ -40,6 +40,14 @@ Agent Harness 保持控制平面小而可检查：
 - Route explanations 保持 lightweight：Codex 应简短说明为什么正在
   orient、shape、execute、ask、使用 worktree 或留在 local checkout。
 
+## Influences
+
+Agent Harness 部分受 b3ehive 的 controller-led agent work 思路启发：更小的
+workflow entry points、显式 route selection、把 proposal competition 作为可
+选 Shape work、accepted state 前保留 inspectable evidence，以及保持
+packaging discipline。Agent Harness 会把这些思想翻译成自己的 fixed/adapter
+contracts，而不是引入 b3ehive 的项目结构或本地项目策略。
+
 ## Artifact Map
 
 adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 artifact paths。plugin core 不需要写入具体项目的产品名、数据库边界、生产规则、端口、凭证或发布策略。
@@ -69,6 +77,11 @@ adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 
 - `plugins/agent-harness/scripts/agent-harness.mjs` 提供一个小型 CLI。
 - `evals/` 包含 project-neutral evaluation fixture blueprints。
 
+当前仓库里的 `harness/` 和 `.harness/` 是 Agent Harness 自身开发用的
+project adapter state，不是安装到 plugin 里的内容。可安装 plugin 内容来自
+`plugins/agent-harness/`；下游项目只有在 `harness:init` 或 CLI init/import
+时，才会得到自己的 adapter artifacts。
+
 ## Plugin Skills
 
 Codex 会把这个 plugin 暴露为 `harness`。它刻意只发布四个 workflow skills：
@@ -86,6 +99,10 @@ Codex 会把这个 plugin 暴露为 `harness`。它刻意只发布四个 workflo
 skill：只读状态用 `orient`，新想法用 `intake`，setup/adoption 用 `init`，
 已确认执行用 `execute`。
 
+当前 package 没有依赖已确认的 localized plugin description schema。面向用
+户的 plugin / skill descriptions 使用现有 description 字段里的 zh-CN/en
+bilingual fallback；运行时回复仍按用户语言输出。
+
 ### Which Skill Should I Use?
 
 | 场景 | Skill |
@@ -95,140 +112,37 @@ skill：只读状态用 `orient`，新想法用 `intake`，setup/adoption 用 `i
 | 给项目接入 Agent Harness、迁移已有 task index、运行 doctor/import，或预览 activation。 | `harness:init` |
 | 完成已确认的 task、spec、goal 或 run packet，然后验证并同步状态。 | `harness:execute` |
 
-## First Commands
+## Use With A Coding Agent
 
-验证 plugin：
+大多数用户不需要先手动运行 CLI。安装 `harness` 后，主路径是让 Codex，或
+其他能访问该 plugin 的 coding agent，在目标项目里调用 Harness workflow
+skills。agent 应先读取项目 instructions，检查 Harness adapter，选择 route，
+并在修改状态前说明它使用了哪些 evidence。
 
-```bash
-npm run validate:plugin
-npm run test:smoke
+典型 prompt 可以这样写：
+
+```text
+Use harness:init in /path/to/project to adopt Agent Harness. Preview activation and do not edit AGENTS.md without my approval.
+Use harness:orient in the current repo and tell me the next safe route.
+Use harness:intake to triage this idea without implementing it: Add a new import flow.
+Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-title.md. Verify and sync task/status evidence.
 ```
 
-初始化 adapter contract 下游项目：
+常规用户级流程是：
 
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
+```text
+harness:init -> harness:orient or harness:intake -> confirmed spec/goal -> harness:execute -> verification -> state sync
 ```
 
-导入已经有 adapter 和 task index 的 adapter 项目，不创建第二个任务索引：
+如果你希望当前 thread 作为 main control、gate、reviewer、judge 或 acceptance
+lane，请直接说明；Harness 默认把这种请求视为 `gate-only`。在 `gate-only`
+中，control thread 只审查 candidate output 和 verification evidence，然后
+accept、block 或要求 corrections，不直接修改 implementation files。只有当
+你希望同一个 thread 也改文件时，才使用 `implementer` 或 `mixed`。
 
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --dry-run
-node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
-```
-
-如果项目已经有 `todolist.md`，`init --contract adapter` 会沿用它，不会再创建并行的 `harness/tasks.md`。真实执行 `config import` 会写入 machine config，并创建缺失的支持产物，例如配置的 status 文件和 runs 目录。
-
-检查下游项目：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
-```
-
-打印用于 `AGENTS.md` 的 project-scope activation snippet，不写文件：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs activation snippet --cwd /path/to/project
-```
-
-当前没有启用 plugin-level `SessionStart` bootstrap。本地验证显示，当前
-plugin validator 会拒绝 `.codex-plugin/plugin.json` 里的 `hooks` 字段；保
-持 manifest hook-free 是当前边界，用来避免 Agent Harness 影响没有接入
-harness 的项目。
-
-查看解析后的 config 和 adapter 路径：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
-node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
-```
-
-只读汇总当前状态并推荐下一步，不开始执行：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
-```
-
-预览一个新想法或新需求，不修改 task index：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
-```
-
-用户明确确认后，才把候选项追加到支持的 markdown task index：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
-```
-
-从当前 git state 和 recent run records 预览确定性的 task/status maintenance：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --json
-```
-
-把保守的 maintenance snapshot 写入配置的 status 文件；只有当 completed run
-提供精确证据且 task index 可安全写入时，才应用 task 更新：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
-```
-
-推荐当前任务应该继续使用当前 checkout、切到 worktree，还是先询问：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /path/to/project --json
-```
-
-使用中文命令输出：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
-```
-
-从配置的 task index 创建 goal handoff：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
-```
-
-adapter contract 要求 goal 引用已确认的 spec：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
-```
-
-准备 run 之前，列出、查看并验证 goals：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
-```
-
-从 goal 准备 run packet：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
-```
-
-查看已准备的 run：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
-```
-
-记录 run 结果，不修改源码、不 push、不 open PR：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
-node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
-```
+CLI 仍然保留，作为 agents、operators 和 maintainers 的确定性工具，但不是
+多数用户的 primary first-use path。详细命令示例见
+[CLI reference](docs/cli.zh-CN.md)。
 
 ## Workflow
 
@@ -236,16 +150,15 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 
 ![Adapter Execution Model](docs/assets/readme/adapter-execution-model.png)
 
-推荐的 adapter workflow：
+推荐的用户级 adapter workflow：
 
 ```text
-init/import -> activation snippet -> orient/intake -> goal create -> goal validate -> worktree recommend -> run prepare -> execute -> verify -> run record -> maintain tasks -> update state records
+harness:init/import -> harness:orient or harness:intake -> confirmed spec/goal -> harness:execute -> verify -> state sync
 ```
 
-`activation snippet` 只打印 `AGENTS.md` 片段，不修改项目 instructions。
-`orient next` 是只读命令：它汇总 status 和 task state。`intake idea` 默认也是只读：它分类新想法，只有传入 `--record` 时才会追加到支持的 markdown task index。两个命令都会说明进入执行前需要哪些确认。
-`maintain tasks` 默认只读；传入 `--record` 时，它会写入保守的 status snapshot，并且只应用有精确证据、可安全写入的 task-index 更新。
-`config validate` 会用 plugin schema 检查当前 `.harness/config.json` 或 legacy `.agent-harness/config.json`，并报告可操作的 schema errors。
+在底层，Harness 通过确定性的本地工具记录 route decisions、run packets、
+acceptance evidence 和 status snapshots。工具边界保持受控：不会启动
+Codex、创建 daemon、push、deploy 或 open PR。
 
 Conditional plugin bootstrap 仍然 defer。当前通过校验的 plugin manifest 不
 声明 session hook，因此安装 Agent Harness skills 不会向无 harness 项目注入
@@ -258,20 +171,6 @@ Idea Inbox Thread 是 capture lane，不是 execution lane。使用
 Proposal competition 仍是 documented Shape protocol。它可以为模糊任务比较
 routes、risks 和 coverage，但不执行被选中的路线；当前 package 也不会安装
 新的 `harness:compete` skill。
-
-`goal create` 会把 durable handoff 写到配置的 goals 目录。`goal validate` 检查 goal 是否引用 repo 内已确认 spec，并包含执行所需 sections。`run prepare` 会先通过这个 validation gate，再把 `run.md`、`prompt.md`、`subagents.md`、`status.json` 和 `logs/` 写到配置的 runs 目录。`run record` 只更新 run 目录，记录 completed 或 blocked 结果。这些命令不会启动 Codex、创建 daemon、push、deploy 或 open PR。
-
-## Command Language
-
-面向人的 CLI 输出支持 `en` 和 `zh-CN`，覆盖 `init`、`doctor`、`worktree recommend` 和 help/usage。activation、orientation、intake 和 maintenance 输出当前是稳定英文文本。语言解析顺序：
-
-1. `--lang <code>`
-2. `AGENT_HARNESS_LANG`
-3. `.harness/config.json` 里的 `language.default`
-4. 系统 locale：`LC_ALL`、`LC_MESSAGES` 或 `LANG`
-5. fallback `en`
-
-使用 `auto` 会继续检查下一个来源。未知语言会 fallback 到 `en`。机器输出、`print-contract` 的 JSON、路径、命令名、package names、skill names 和 Git 输出保持英文不翻译。
 
 ## Evaluation And Examples
 
@@ -311,4 +210,18 @@ Codex 会读取 `.agents/plugins/marketplace.json` 并暴露 `harness` plugin。
 - 从 report-only loops 开始，而不是直接进入无人值守修复循环。
 - 在凭证、付费 API、生产访问、破坏性操作、push、PR、deploy 或 release 前显式暴露 escalation point。
 
-目标是先让 Codex 更可预测，再逐步提高自治程度。
+目标是加强开发自动化，同时把控制点、evidence 和需要升级给人的边界保持清楚。
+
+## Roadmap
+
+未来 Agent Harness 应该让控制合同可以被其他 coding agents 使用，而不只服务
+Codex。方向是建立 agent-neutral adapter layer，覆盖 task/spec/goal/run
+packets、capability declarations、verification results 和 state-sync
+evidence。支持其他 coding agents 前，应先为每个 agent surface 定义明确的
+safety boundaries、result-packet expectations 和 validation fixtures。
+
+delegation 应保持 capability-driven：先判断某个 coding-agent surface 是否能
+创建隔离工作、返回 execution result packet、报告 changed files 和
+verification，并遵守 no-daemon / no-push 边界。如果能力不存在，Agent
+Harness 应 fallback 到 foreground manual execution，而不是假装已经具备并行
+或隔离实现能力。

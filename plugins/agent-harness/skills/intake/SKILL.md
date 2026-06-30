@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Capture and triage new ideas, requirements, bugs, or Idea Inbox Thread notes for Agent Harness. Use when the user wants to record an idea, add something to the todolist, or promote capture-thread notes without implementing them yet.
+description: Capture and triage ideas, requirements, bugs, or Idea Inbox notes without implementing them. / 收集并分流想法、需求、bug 或 Idea Inbox notes，但不直接实现。
 ---
 
 # Harness Intake

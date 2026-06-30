@@ -26,10 +26,25 @@ The marketplace entry points to:
 ./plugins/agent-harness
 ```
 
+Only `plugins/agent-harness/` is installed as plugin content. The source
+repository's own `harness/` and `.harness/` directories are its project adapter
+state, not packaged downstream state. Each downstream project owns its own
+adapter artifacts after `harness:init` or CLI init/import.
+
 ## Downstream Project Setup
 
-Once installed, use `harness:init` in the target project, or run the CLI
-directly from a checked-out copy:
+Once installed, ask Codex or another coding agent with access to the plugin to
+use the workflow skill that matches the route:
+
+```text
+Use harness:init in /path/to/project to adopt Agent Harness. Preview activation and do not edit AGENTS.md without my approval.
+Use harness:orient in /path/to/project and tell me the next safe route.
+Use harness:intake to triage this idea without implementing it: Add a new import flow.
+Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-title.md. Verify and sync state evidence.
+```
+
+Use the CLI directly only as operator verification, deterministic diagnostics,
+scripted adoption, or maintainer tooling from a checked-out copy:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
@@ -64,7 +79,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/proje
 AGENT_HARNESS_LANG=zh-CN node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 ```
 
-Then create and prepare controlled handoffs:
+The CLI can also create and prepare controlled handoffs when an agent/operator
+needs durable packets:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
@@ -72,8 +88,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
 ```
 
-After execution, preview deterministic state sync from git state and recent
-run records before writing:
+After execution, agents/operators can preview deterministic state sync from git
+state and recent run records before writing:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
@@ -95,6 +111,10 @@ Agent Harness intentionally ships four workflow skills:
 - `harness:execute` for confirmed implementation, verification, and state sync.
 - `harness:init` for setup, migration, import, doctor, and activation preview.
 
+Plugin and skill descriptions use a zh-CN/en bilingual fallback in the existing
+description fields. Do not add new localized manifest keys until the Codex
+plugin contract documents and validates them.
+
 Legacy artifact-oriented `harness-*` wrapper skills are not shipped. Route old
 usage to one of the four workflow skills instead.
 
@@ -112,6 +132,10 @@ docs, README files, skill files, templates, marketplace metadata, validation
 commands, and version metadata describe the same shipped behavior. Public
 examples should stay project-neutral; project-specific policy belongs in the
 target project's adapter and artifacts.
+
+Run records are evidence artifacts, not source edits. Completed run records
+must include verification evidence; `gate-only` completed records must also
+include gate evidence that cites implementer output and acceptance evidence.
 
 Project-neutral downstream shapes are documented in
 `docs/examples/downstream-project-shapes.md`. Evaluation fixture blueprints live
