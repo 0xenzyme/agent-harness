@@ -216,6 +216,19 @@ Common artifacts:
 - project status
 - mental models / invariants
 
+## Conversation Reconciliation Rules
+
+Artifacts are durable state, but the active control thread can contain a newer
+explicit user or controller decision that has not been recorded yet. Treat that
+conversation-confirmed state as the current route context for orientation and
+gate decisions, while reporting the artifact mismatch as stale state that must
+be synced before execution.
+
+If a revised milestone, spec, goal, or route supersedes an older artifact,
+orientation must not recommend the older artifact as the active next path just
+because it remains on disk. Route to state sync, shaping, intake, goal
+creation, or `ask`, and cite both the newer decision and the stale artifact.
+
 ## Activation Rules
 
 Adapter files do not automatically inject instructions into Codex or any other

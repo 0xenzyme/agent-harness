@@ -37,7 +37,14 @@ Options:
 - Recommended:
 - Alternative:
 Default if no decision:
+Supersedes:
+Artifacts to update:
 ```
+
+When a controller accepts a revised plan, `Supersedes` should name the older
+milestone, spec, goal, route, or task state it replaces. `Artifacts to update`
+should list durable records that still reflect the old plan so later
+orientation does not treat stale artifacts as the active route.
 
 ## Goal Launch Packet
 

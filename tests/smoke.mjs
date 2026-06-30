@@ -152,6 +152,14 @@ const workflowSkillDescriptions = Object.fromEntries(
   Object.entries(workflowSkillDocs).map(([name, doc]) => [name, frontmatterDescription(doc)])
 );
 const taskRoutingReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/task-routing.md"), "utf8");
+const orientRouteDecisionReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/skills/orient/references/route-decision.md"),
+  "utf8"
+);
+const controllerCommunicationReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/references/controller-communication.md"),
+  "utf8"
+);
 const executionRolesReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/skills/execute/references/execution-roles.md"),
   "utf8"
@@ -245,6 +253,26 @@ assertIncludes(
   "../../references/task-routing.md",
   "orient should route ambiguous work through the task-routing reference"
 );
+assertIncludes(
+  workflowSkillDocs.orient,
+  "conversation-confirmed state",
+  "orient should reconcile newer active-thread decisions before recommending stale artifacts"
+);
+assertIncludes(
+  orientRouteDecisionReference,
+  "Stale artifact check",
+  "orient route decisions should report stale artifact reconciliation"
+);
+assertIncludes(
+  taskRoutingReference,
+  "Conversation Vs Artifact State",
+  "task-routing should define precedence for active-thread decisions over stale artifacts"
+);
+assertIncludes(
+  controllerCommunicationReference,
+  "Supersedes",
+  "controller packets should record which older plan a revised decision replaces"
+);
 const designPrincipleFiles = [
   "docs/project-contract.md",
   "plugins/agent-harness/references/adapter-harness.md",
@@ -315,7 +343,7 @@ assertIncludes(rootReadme, "They are not installed as", "README should explain s
 assertIncludes(cliDoc, "--gate-evidence", "CLI reference should document gate-only run evidence");
 assertIncludes(cliDocZh, "--gate-evidence", "zh-CN CLI reference should document gate-only run evidence");
 const projectContractDoc = readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8");
-for (const needle of ["## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Agent-Neutral Delegation Rules"]) {
+for (const needle of ["## Conversation Reconciliation Rules", "## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Agent-Neutral Delegation Rules"]) {
   assertIncludes(projectContractDoc, needle, "project contract should document execution roles");
 }
 const executeSkillDoc = readFileSync(join(repoRoot, "plugins/agent-harness/skills/execute/SKILL.md"), "utf8");

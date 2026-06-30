@@ -32,6 +32,9 @@ Agent Harness 保持控制平面小而可检查：
   不直接执行被选中的路线。
 - 已接受的状态应留下 evidence trail，例如 task entries、specs、goals、
   runs、gate records、command summaries 或 review notes。
+- Orient 时要把 durable artifacts 和 active control thread 中更新的
+  conversation-confirmed state 对齐；发现 stale artifacts 时先报告并同步，再推荐
+  execution。
 - Packaging 保持 disciplined：docs、skills、templates、marketplace
   metadata、validation commands 和 version metadata 应描述同一套真实暴露的
   行为。

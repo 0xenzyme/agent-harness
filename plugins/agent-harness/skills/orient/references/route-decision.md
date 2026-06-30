@@ -7,6 +7,9 @@ Use this reference when orientation needs to recommend the next harness mode.
 - current task state
 - configured harness contract and paths
 - relevant adapter, status, task index, specs, goals, runs, and mental models
+- current conversation-confirmed state from the active control thread,
+  especially explicit user or controller decisions that revise or supersede
+  older artifact state
 - dirty checkout or unrelated work
 - user intent: question, discussion, review, intake, setup, or execution
 - external risk: credentials, paid APIs, production data, destructive changes
@@ -23,6 +26,7 @@ Required gates:
 Execution role:
 Execution mode:
 Validation:
+Stale artifact check:
 Escalation triggers:
 Confirmation needed:
 ```
@@ -45,3 +49,8 @@ Confirmation needed:
 
 Orientation may recommend a route, but it must not mutate state, prepare runs,
 create branches/worktrees, or start implementation.
+
+When conversation-confirmed state conflicts with task, milestone, spec, or
+goal artifacts, orientation should name the superseded artifact and route to
+state sync, shaping, intake, goal creation, or `ask`. Do not present the older
+artifact recommendation as the active next path.

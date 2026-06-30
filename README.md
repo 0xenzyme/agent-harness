@@ -41,6 +41,9 @@ Agent Harness keeps the control plane small and inspectable:
   routes and risks, but it does not execute the selected route.
 - Accepted state should leave an evidence trail through task entries, specs,
   goals, runs, gate records, command summaries, or review notes.
+- Orientation reconciles durable artifacts with newer conversation-confirmed
+  state from the active control thread, and reports stale artifacts before
+  recommending execution.
 - Packaging stays disciplined: docs, skills, templates, marketplace metadata,
   validation commands, and version metadata should describe the same exposed
   behavior.

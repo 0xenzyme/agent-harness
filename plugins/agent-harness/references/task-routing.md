@@ -11,6 +11,8 @@ Task routing chooses the lightest harness flow that is still safe.
 - Engineering abstraction or reuse risk.
 - External risk: credentials, paid APIs, production data, destructive changes.
 - Existing coverage by a spec, adapter, helper, or gate.
+- Current conversation-confirmed state from the active control thread,
+  including explicit user or controller decisions that revise older artifacts.
 - User intent: question, discussion, review, or implementation.
 - Requested execution role: `gate-only`, `implementer`, or `mixed`.
 
@@ -78,6 +80,20 @@ coverage.
 
 Use for milestone work, multi-task DAGs, high-risk operations, or parallel
 execution. Require milestone gates and explicit state sync.
+
+## Conversation Vs Artifact State
+
+Artifacts are the durable source of truth, but the active control thread may
+contain newer conversation-confirmed state that has not been recorded yet. If
+the user or controller explicitly accepts a revised plan, milestone, spec,
+goal, or execution route, use that newer decision for route selection and
+report any older artifacts as stale.
+
+Do not route execution through a superseded artifact just because it is still
+on disk. Recommend `shape`, `goal`, `intake`, state sync, or `ask` until the
+durable artifacts match the active decision. Cite both sides of the mismatch:
+the newer conversation-confirmed state and the artifact that still reflects the
+old plan.
 
 ## Optional Competition
 
