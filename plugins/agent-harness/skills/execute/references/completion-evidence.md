@@ -46,3 +46,14 @@ evidence and `Status: satisfied`.
 When an adapter declares `gates.requiredForCompletion` or `gates.blocking`, the
 run needs matching `Required Gate Evidence` entries with concrete evidence and
 `Status: satisfied`.
+
+## Delivery Target
+
+Completed state must reach the goal's Target Delivery State. Local verification
+can satisfy `validated-local`, but it cannot satisfy `committed`, `pushed`,
+`PR-open`, `merged`, or `released/shipped` without matching delivery evidence.
+
+If the target is above the actual state and the goal authorizes the required
+delivery steps, continue the delivery pipeline before closeout. If
+authorization or evidence is missing, the correct state is delivery pending,
+not completed.

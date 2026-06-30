@@ -21,9 +21,11 @@ to implement directly.
 
 The current thread may edit files only inside the authorized scope.
 
+- Must obey the Conversation Route and Execution Context Lock before editing.
 - Must preserve non-goals.
 - Must run the requested verification or explain why it could not run.
 - Must report changed files, verification, known risks, and deferred work.
+- Must report Delivery State separately from implementation status.
 - Must not mark acceptance complete unless the current thread is also explicitly
   authorized to own acceptance.
 
@@ -39,6 +41,11 @@ control-lane behavior, `mixed` is not allowed without a new explicit approval.
 
 ## Stop Conditions
 
-Pause before editing when role, allowed scope, forbidden scope, verification, or
-acceptance authority is missing. Continue only when the missing item is clearly
-not applicable or already supplied by a confirmed spec, goal, or run.
+Pause before editing when role, conversation route, execution context lock,
+allowed scope, forbidden scope, verification, or acceptance authority is
+missing. Continue only when the missing item is clearly not applicable or
+already supplied by a confirmed spec, goal, or run.
+
+Do not describe local implementation as merged, shipped, or mainline complete
+unless Delivery State evidence records the commit, push, PR, merge, and release
+state that supports that wording.

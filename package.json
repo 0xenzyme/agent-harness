@@ -10,6 +10,7 @@
   "scripts": {
     "doctor": "node plugins/agent-harness/scripts/agent-harness.mjs doctor",
     "print-contract": "node plugins/agent-harness/scripts/agent-harness.mjs print-contract",
+    "test:eval": "node evals/run-agent-harness-eval.mjs",
     "test:smoke": "node tests/smoke.mjs",
     "validate:plugin": "PYTHONPATH=tools/python-yaml-shim python3 \"${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py\" plugins/agent-harness"
   },

@@ -147,6 +147,34 @@ thread to implement directly.
 Completed state must be backed by run evidence. `gate-only` completion requires
 both verification evidence and gate evidence that cites implementer output.
 
+## Conversation Route And Delivery State
+
+When routing work to `worktree`, return both file-location state and
+conversation ownership:
+
+- `current-thread`: the active thread owns the locked cwd / branch.
+- `slot-thread`: continue in a dedicated slot thread before editing.
+- `remote-control-worktree`: the active thread may control a different locked
+  worktree only after explicit approval.
+
+Before execution, record an Execution Context Lock with conversation lane,
+controller thread, execution cwd, execution branch, execution slot, and
+remote-control worktree yes/no. If the lock does not match the current cwd /
+branch, pause or migrate to the correct thread unless remote-control execution
+is explicitly allowed.
+
+Closeout must report Delivery State separately from implementation status:
+`implemented-local`, `validated-local`, `committed`, `pushed`, `PR-open`,
+`merged`, or `released/shipped`. If work is only dirty or uncommitted in a dev
+worktree, route the next action to review local diff, then explicit commit / PR
+or discard. Do not route that state as mainline done.
+
+When the goal's Target Delivery State is above the actual state and the matching
+authorization fields are `yes`, route forward into the delivery pipeline
+instead of stopping at local validation. Only route to user handoff when the
+target is `validated-local`, authorization is missing, or external PR / merge /
+release evidence must be supplied.
+
 ## Agent-Neutral Delegation
 
 Delegation is capability-driven, not Codex-specific. A controller may hand work
@@ -154,6 +182,16 @@ to Codex App threads, Codex CLI subagents, another coding-agent worker, or no
 worker at all only when that surface can return a concrete result packet:
 changed files, summary, verification, known risks, stop conditions, and
 state-sync notes.
+
+Prefer a fresh Codex App thread or Codex CLI subagent for worker execution.
+Avoid fork as the default because inherited history can confuse controller and
+execution roles. Use fork only when the controller explicitly approves inherited
+context and repeats the worker role, source controller thread, allowed scope,
+forbidden scope, return channel, and result packet contract.
+
+Parallel worker execution must follow the run packet's execution DAG. Ready
+nodes with no unmet dependencies may be launched together; dependent nodes must
+wait until their prerequisites are recorded with `run node record`.
 
 If those capabilities are missing, stay in foreground execution or route to
 `ask`. Do not treat unavailable worker features as accepted state.

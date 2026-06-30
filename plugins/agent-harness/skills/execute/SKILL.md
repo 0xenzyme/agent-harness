@@ -40,7 +40,15 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
    User language such as "control lane", "main control", "gate", "judge",
    "review", or "acceptance" defaults to `gate-only` unless the user clearly
    asks the current thread to implement directly.
-5. Confirm the executable scope, non-goals, verification commands, completion
+5. Confirm the Conversation Route and Execution Context Lock before editing:
+   - `current-thread`: continue only if the current cwd / branch match the
+     lock.
+   - `slot-thread`: prepare a handoff packet and continue in the slot thread.
+   - `remote-control-worktree`: use the locked execution cwd explicitly and do
+     not patch the control-lane cwd.
+   For `worktree` goals, `goal validate` must pass the route/lock gate before
+   `run prepare`.
+6. Confirm the executable scope, non-goals, verification commands, completion
    conditions, and pause conditions. If any of these are missing, route to
    `shape`, `goal`, or `ask`, or pause for confirmation. Continue only when the
    missing item is clearly not applicable or already supplied by a confirmed
@@ -56,30 +64,30 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
    implementation. If the checklist is missing and the difference between
    technical completion and product acceptance matters, pause to shape or amend
    the goal instead of implementing against vague prose.
-6. If the user asks what to do next before authorizing work, switch to orient:
+7. If the user asks what to do next before authorizing work, switch to orient:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project>
 ```
 
-7. Create, inspect, or validate a goal when a durable handoff is needed:
+8. Create, inspect, or validate a goal when a durable handoff is needed:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task "<task title>" --spec <spec-path>
 node <plugin-root>/scripts/agent-harness.mjs goal validate --cwd <project> --goal <goal-file>
 ```
 
-8. Prepare or inspect a run packet when useful for controlled execution:
+9. Prepare or inspect a run packet when useful for controlled execution:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
 node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <run-dir> --json
 ```
 
-9. If the role is `gate-only`, do not implement directly. Review the
+10. If the role is `gate-only`, do not implement directly. Review the
    implementer output, compare it to the goal, run verification, and either
    accept state or request concrete corrections.
-10. If the run packet has `dag.json`, use it as the execution order:
+11. If the run packet has `dag.json`, use it as the execution order:
    - Launch only `readyNodes` from `run status --json`.
    - Nodes in the same ready set may run in parallel.
    - Prefer fresh Codex App threads or Codex CLI subagents for workers.
@@ -92,10 +100,10 @@ node <plugin-root>/scripts/agent-harness.mjs run node record --cwd <project> --r
 node <plugin-root>/scripts/agent-harness.mjs run node record --cwd <project> --run <run-dir> --node <node-id> --phase blocked --summary "<blocker summary>"
 ```
 
-11. If the role is `implementer` or accepted `mixed`, implement only the
+12. If the role is `implementer` or accepted `mixed`, implement only the
    authorized scope when the current thread owns the relevant DAG node or the
    run is foreground-only.
-12. Run verification, then update configured task/status/run evidence and record
+13. Run verification, then update configured task/status/run evidence and record
    deferred work. When deterministic maintenance is useful, preview or record
    it explicitly:
 
@@ -104,12 +112,24 @@ node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project>
 node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project> --record
 ```
 
-13. Record a run outcome when a run packet exists:
+14. Record a run outcome when a run packet exists:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <run-dir> --phase completed --summary "<summary>" --verification "<verification summary>" --gate-evidence "<gate-only evidence when needed>"
 node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <run-dir> --phase blocked --summary "<blocker summary>"
 ```
+
+15. Report Delivery State explicitly. If the state is `implemented-local` or
+    `validated-local`, say that local implementation / verification is complete
+    but it is uncommitted and unmerged unless the recorded commit / push / PR /
+    merge / release fields prove otherwise.
+    If Target Delivery State is above the actual state and the goal authorizes
+    the required delivery steps, continue the delivery pipeline before
+    closeout. Use `--pr-url`, `--merge-sha`, or `--release-ref` with
+    `run record` when Git alone cannot prove PR / merge / release state.
+    If Target Delivery State is above the actual state but authorization or
+    external evidence is missing, report `delivery pending`; do not mark the
+    run completed.
 
 ## Boundaries
 
@@ -118,6 +138,9 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
   that the user, confirmed goal, or run packet did not already provide.
 - Do not combine control-lane acceptance and implementation when the user has
   asked for gate-only, control-only, review-only, or acceptance-lane behavior.
+- Do not describe dirty or uncommitted dev-worktree output as done on main,
+  merged, shipped, or released.
+- Do not mark a run completed below its Target Delivery State.
 - Do not modify `AGENTS.md` or activation behavior without explicit approval.
 - Do not push, open PRs, deploy, release, use credentials, use paid APIs, touch
   production, perform destructive operations, or start daemons without explicit

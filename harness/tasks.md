@@ -8,6 +8,73 @@
 
 ## Done
 
+- [x] Add conversation routing and delivery-state gates.
+  - Completed: Added `Conversation Route` and `Execution Context Lock`
+    sections to generated/manual goals; `goal validate` now rejects `worktree`
+    goals without route/lock proof or invalid remote-control settings. Run
+    packets and prompts record conversation lane, controller thread, execution
+    cwd/branch/slot, remote-control worktree, and delivery state.
+    `Delivery State` now has a target plus commit/push/PR/merge/release
+    authorization; `goal validate` rejects targets without matching
+    authorization, and `run record --phase completed` rejects actual delivery
+    state below target. `run record` accepts `--pr-url`, `--merge-sha`, and
+    `--release-ref` for external delivery evidence. Updated execute skill
+    guidance, controller packets, task routing, project contract, CLI docs,
+    templates, and smoke tests.
+  - Source: Delegated intake from thread
+    `019f19a0-5ee9-7650-878e-06975d1c18f2` during M2 GEO App repair.
+  - Fixes: conversation routing / thread ownership risk where control-lane
+    cwd could receive patches despite a dev worktree route; delivery-state
+    ambiguity where dirty verified local work could read as done/merged; and
+    the value-prop gap where gate-passing worktree output could stop at local
+    validation instead of continuing into the authorized delivery pipeline.
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `npm run test:smoke`, `git diff --check`, and
+    `npm run validate:plugin`.
+
+- [x] Add deterministic Agent Harness skill eval harness.
+  - Completed: Added versioned activation trigger cases, task cases,
+    transcript rubric, dependency-free deterministic eval runner,
+    `npm run test:eval`, eval README instructions, and eval results history.
+    The runner validates trigger-case coverage, materializes temporary fixture
+    projects, runs CLI hard checks, and confirms read-only / dry-run cases do
+    not write forbidden paths.
+  - Spec: None - direct user request in the current thread on 2026-06-30.
+  - Verification: `node --check evals/run-agent-harness-eval.mjs`,
+    `npm run test:eval`, `npm run test:smoke`, `npm run validate:plugin`,
+    `git diff --check`, and `doctor`.
+
+- [x] Add controller-gated execution DAG for multi-agent runs.
+  - Completed: `run prepare` now writes `dag.json`, `dag.md`, and
+    per-node `agents/<node>/prompt.md` / `status.json` artifacts; medium and
+    large runs use an enforced DAG, with large runs adding parallel worker
+    layers. Added `run node record`
+    to record worker node results with dependency checks, verification
+    evidence, and ready-node updates. `run status --json` now exposes DAG
+    readiness, and completed enforced-DAG runs are rejected until every node is
+    complete. Documented fresh-thread / Codex CLI subagent preference and
+    fork-as-exception policy across CLI docs, project contract docs, controller
+    references, task routing, goal/spec templates, README summaries, and
+    `harness:execute`.
+  - Spec: None - direct user request in the current thread on 2026-06-30.
+  - Verification: `node --check`, `npm run test:smoke`, `git diff --check`,
+    and `npm run validate:plugin`.
+
+- [x] Add master acceptance and adapter-declared gates to Agent Harness.
+  - Completed: Added adapter-declared `gates.requiredForCompletion` and
+    `gates.blocking` support; generated goals now include `Spec Acceptance
+    Checklist` and `Required Gate Evidence`; run preparation records gate
+    metadata; completed run records reject pending checklist or required gate
+    evidence even when technical verification is present. Updated templates,
+    execute workflow guidance, project contract docs, gate/controller
+    references, config schema, and smoke tests.
+  - Spec: `harness/specs/2026-06-30-master-acceptance-and-adapter-gates.md`
+  - Goal: `harness/goals/2026-06-30-master-acceptance-and-adapter-gates.md`
+  - Run: `.harness/runs/20260630-171105-master-acceptance-and-adapter-gates/`
+  - Verification: `node --check`, `git diff --check`,
+    `npm run test:smoke`, `npm run validate:plugin`, `goal validate`, and
+    `run record`.
+
 - [x] Move root README CLI command catalog into docs.
   - Completed: Moved detailed `agent-harness` CLI command examples out of
     `README.md` and `README.zh-CN.md` into `docs/cli.md` and

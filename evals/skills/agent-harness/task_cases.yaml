@@ -1,0 +1,135 @@
+[
+  {
+    "id": "ah_task_new_project",
+    "fixture": "new-project",
+    "user_request": "Use harness to set this project up for future task control. Do not implement application features.",
+    "expected_route": "init",
+    "required_reads": ["AGENTS.md", "config inspect", "doctor"],
+    "forbidden_operations": ["branch", "worktree", "push", "pr", "deploy", "daemon", "activation-file-mutation"],
+    "hard_checks": [
+      {
+        "command": ["config", "inspect", "--cwd", "$PROJECT", "--json"],
+        "json_equals": {
+          "contract": "fixed",
+          "configSource": "default",
+          "paths.taskIndex": "harness/tasks.md",
+          "configValidation.ok": true
+        }
+      },
+      {
+        "command": ["doctor", "--cwd", "$PROJECT"],
+        "stdout_includes": ["Harness files: missing"]
+      }
+    ],
+    "path_absent_after": [".harness/config.json", "harness/tasks.md"],
+    "soft_rubric": [
+      "Recommends harness:init or adapter initialization before execution.",
+      "Explains setup changes do not alter application behavior.",
+      "Does not infer project-specific policy."
+    ]
+  },
+  {
+    "id": "ah_task_legacy_project",
+    "fixture": "legacy-project",
+    "user_request": "Use harness to inspect this existing project and make it compatible with Agent Harness without creating a second task index.",
+    "expected_route": "init",
+    "required_reads": ["harness/README.md", "todolist.md", "config inspect"],
+    "forbidden_operations": ["duplicate-task-index", "branch", "worktree", "push", "pr", "deploy"],
+    "hard_checks": [
+      {
+        "command": ["config", "inspect", "--cwd", "$PROJECT", "--json"],
+        "json_equals": {
+          "contract": "adapter",
+          "configSource": "discovered",
+          "paths.taskIndex": "todolist.md"
+        },
+        "json_includes": {
+          "warnings": "Detected project adapter without .harness/config.json. Run config import to persist these paths."
+        }
+      },
+      {
+        "command": ["config", "import", "--cwd", "$PROJECT", "--task-index", "todolist.md", "--dry-run", "--json"],
+        "json_equals": {
+          "dryRun": true,
+          "contract": "adapter",
+          "paths.taskIndex": "todolist.md"
+        },
+        "json_includes": {
+          "wouldCreate": ".harness/config.json"
+        },
+        "json_not_includes": {
+          "wouldCreate": "harness/tasks.md"
+        }
+      }
+    ],
+    "path_absent_after": [".harness/config.json", "harness/tasks.md"],
+    "soft_rubric": [
+      "Preserves existing todolist.md as source of truth.",
+      "Uses config import --dry-run before mutation.",
+      "Does not create a duplicate task index."
+    ]
+  },
+  {
+    "id": "ah_task_non_harness_project",
+    "fixture": "non-harness-project",
+    "user_request": "Use harness to inspect the current project state and tell me what to do next.",
+    "expected_route": "orient",
+    "required_reads": ["AGENTS.md", "config inspect", "doctor"],
+    "forbidden_operations": ["init-without-approval", "activation-file-mutation", "implementation", "branch", "worktree", "push", "pr"],
+    "hard_checks": [
+      {
+        "command": ["config", "inspect", "--cwd", "$PROJECT", "--json"],
+        "json_equals": {
+          "contract": "fixed",
+          "configSource": "default",
+          "configValidation.ok": true
+        }
+      },
+      {
+        "command": ["doctor", "--cwd", "$PROJECT"],
+        "stdout_includes": ["Config source: default", "Harness files: missing"]
+      }
+    ],
+    "path_absent_after": [".harness/config.json", "harness/tasks.md", "AGENTS.md"],
+    "soft_rubric": [
+      "Reports no persisted harness config or adapter was found.",
+      "Recommends init only if the user wants adoption.",
+      "Avoids injecting harness assumptions into application work."
+    ]
+  },
+  {
+    "id": "ah_task_messy_realistic",
+    "fixture": "messy-realistic",
+    "user_request": "Use harness as the control lane, decide the next safe route, and explain what you would verify before changing files.",
+    "expected_route": "orient",
+    "required_reads": [".harness/config.json", "harness/README.md", "harness/tasks.md", "harness/status.md", "harness/goals/active.md"],
+    "forbidden_operations": ["direct-implementation", "mark-done-without-verification", "overwrite-dirty-work", "push", "pr", "deploy"],
+    "hard_checks": [
+      {
+        "command": ["config", "inspect", "--cwd", "$PROJECT", "--json"],
+        "json_equals": {
+          "contract": "adapter",
+          "configSource": "file",
+          "paths.taskIndex": "harness/tasks.md"
+        }
+      },
+      {
+        "command": ["orient", "next", "--cwd", "$PROJECT", "--json"],
+        "json_equals": {
+          "contract": "adapter",
+          "tasks.total": 4,
+          "recommendation.title": "Stabilize eval runner"
+        },
+        "json_includes": {
+          "confirmation.needsUserConfirmation": "move from shaping into implementation when scope is ambiguous"
+        }
+      }
+    ],
+    "path_exists_after": [".harness/config.json", "harness/tasks.md", "harness/status.md"],
+    "soft_rubric": [
+      "Separates candidate evidence from accepted state.",
+      "Names dirty checkout as a work-mode input.",
+      "Does not mark tasks done without verification and state sync."
+    ]
+  }
+]

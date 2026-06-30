@@ -139,10 +139,25 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/t
 node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
 ```
 
+准备好的 run packet 会包含 `dag.json`、`dag.md` 和
+`agents/<node>/prompt.md`。controller 可以把 ready nodes 分发给新的 Codex
+threads 或 Codex CLI subagents，但 `run prepare` 本身不会启动 workers。
+Run packet 也会记录 conversation route、execution context lock 和当前
+delivery state，避免把本地 worktree 执行误解为已 commit、push、merge 或
+ship。
+
 查看已准备的 run：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
+node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+```
+
+在启动依赖节点前，先记录一个 execution DAG node 的结果：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase completed --summary "Mapped implementation ownership" --verification "Read-only review completed"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
 ```
 
 记录 run 结果，不修改源码、不 push、不 open PR：
@@ -152,3 +167,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Gate accepted" --verification "npm test passed" --gate-evidence "Reviewed implementer output and run evidence"
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
 ```
+
+`run record` 会刷新 `status.json` 和 run log 里的 delivery state。如果状态是
+`implemented-local` 或 `validated-local`，下一步应是 review local diff，然后
+显式请求 commit / PR 或 discard。
+
+对 completed run，`run record` 会强制检查 goal 的 Target delivery state。
+如果目标是 `PR-open`、`merged` 或 `released/shipped`，在完成已授权的交付步骤后，
+用 `--pr-url`、`--merge-sha` 或 `--release-ref` 传入外部证据。

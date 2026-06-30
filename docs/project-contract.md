@@ -134,6 +134,24 @@ The adapter should declare:
 - enabled gates and project-specific gate details
 - UI harness or mental model locations when relevant
 
+Adapters may also declare completion gates in machine config:
+
+```json
+{
+  "gates": {
+    "enabled": ["spec", "execution", "integration", "content-quality"],
+    "requiredForCompletion": ["content-quality"],
+    "blocking": ["source-coverage"]
+  }
+}
+```
+
+`enabled` and `optional` describe available project gates.
+`requiredForCompletion` and `blocking` name gates that must have matching
+`Required Gate Evidence` before `run record --phase completed` can accept the
+run. The plugin core checks the evidence shape and status; the adapter docs and
+gate artifacts define the domain-specific meaning of each gate.
+
 ## Design Principles
 
 Agent Harness contracts, adapters, templates, and skills should preserve these
@@ -158,6 +176,10 @@ principles:
   explicit execution role. A thread asked to act as main control, gate,
   reviewer, judge, or acceptance lane defaults to `gate-only` unless the user
   explicitly authorizes direct implementation in that same thread.
+- master acceptance: candidate output, worker self-tests, route proposals,
+  page existence, build success, and smoke checks are evidence, not accepted
+  completion. Required checklist and adapter gate evidence must be satisfied
+  before accepted state moves to done.
 
 These principles are protocol constraints. Project adapters may add local
 policy, but plugin core must not absorb downstream-specific facts.
@@ -282,11 +304,22 @@ whether it can provide isolated execution, changed-file reporting,
 verification summaries, stop-condition reporting, and no-daemon / no-push
 compliance.
 
+Preferred worker surfaces are a new Codex App thread or a Codex CLI subagent.
+Fork is not a default execution surface. A fork may be used only when the
+controller explicitly approves context inheritance and restates the worker's
+thread role, controller thread, allowed scope, return channel, and forbidden
+scope.
+
 When those capabilities are unavailable, route to foreground manual execution
 or `ask`; do not imply that parallel worker execution, cross-agent handoff, or
 automatic acceptance is supported. Support for another coding agent requires
 fixtures and validation for its result packet before it can become accepted
 state.
+
+Parallel execution must be represented as an execution DAG. The controller may
+launch all ready nodes in the same ready set in parallel, but it must not launch
+or accept dependent nodes until their dependencies have completed with concrete
+result packets.
 
 ## Intake Rules
 
@@ -364,6 +397,12 @@ state.
   session.
 - `subagents.md` gives bounded split guidance for `small`, `medium`, `large`,
   and `ask` tasks.
+- `dag.json` stores the machine-readable execution DAG, worker surfaces,
+  dependency edges, parallel layers, and completion enforcement mode.
+- `dag.md` gives the human-readable controller plan for launching ready nodes.
+- `agents/<node>/prompt.md` and `agents/<node>/status.json` provide per-node
+  launch prompts and node state. `agents/<node>/result.md` is written when the
+  node is recorded.
 - `status.json` stores machine-readable run state.
 - `logs/` is reserved for command output summaries and automation logs.
 - `goal validate` is the gate before `run prepare`: executable goals must
@@ -371,11 +410,76 @@ state.
   name a valid work mode and execution role, and provide verification or manual
   evidence guidance.
 - `run prepare` must not start daemons, spawn coding-agent sessions, push,
-  deploy, or open PRs.
+  deploy, or open PRs. It may prepare per-node prompts for controller-launched
+  workers.
+- `run node record` records a single DAG node result. It must reject a completed
+  node whose dependencies are not completed, and completed nodes require
+  verification evidence.
 - `run record` updates only the target run directory's `status.json` and
   `logs/`; it does not update source files, task indexes, PRs, deployments, or
   releases. Completed records require verification evidence; completed
-  `gate-only` records also require gate evidence.
+  `gate-only` records also require gate evidence. Runs with enforced DAGs
+  cannot be completed until every DAG node is completed.
+
+## Conversation Route And Execution Context Lock
+
+Work mode only says where files may be changed. Conversation route says which
+conversation owns the execution lane:
+
+- `current-thread`: the current conversation owns execution in the locked cwd.
+- `slot-thread`: execution must move to a dedicated slot conversation before
+  editing.
+- `remote-control-worktree`: the current conversation may control a different
+  locked worktree only when explicitly approved and recorded.
+
+Worktree goals must include `Conversation Route` and `Execution Context Lock`
+before `run prepare`. The lock records conversation lane, controller thread,
+execution cwd, execution branch, execution slot, and whether remote-control
+worktree execution is allowed.
+
+If the current conversation lane does not match the locked execution cwd or
+branch, the agent must pause, switch to the slot thread, or explicitly treat the
+current thread as remote-controlling the locked worktree. Patches must land only
+in the locked execution cwd; control-lane cwd defaults are not proof of the
+correct execution context.
+
+`goal validate` must reject `worktree` goals that omit this route/lock or set
+`remote-control-worktree` without `Remote-control worktree: yes`.
+
+## Delivery State Gate
+
+Implementation state and delivery state are distinct. Harness records must not
+describe local verified work as merged, shipped, or mainline complete unless
+the delivery evidence proves it.
+
+Delivery state vocabulary:
+
+- `implemented-local`: implementation exists in the local working tree.
+- `validated-local`: implementation has verification evidence locally but is
+  not necessarily committed, pushed, reviewed, merged, released, or shipped.
+- `committed`: a local commit records the work.
+- `pushed`: the commit is pushed to its upstream branch.
+- `PR-open`: a pull request is open.
+- `merged`: the work has merged to the target branch.
+- `released/shipped`: release or deploy evidence exists.
+
+Run records and closeout proof must include delivery state, dirty working tree
+status, commit, push, PR, merge, and release fields. If commit / push / PR /
+merge / release was not explicitly authorized or performed, final wording must
+say local implementation and verification are complete but uncommitted and
+unmerged. Dirty development worktrees are reviewable state, not durable
+completion state.
+
+`Delivery State` also declares a Target delivery state and authorization fields
+for commit, push, PR, merge, and release. `goal validate` must reject targets
+that cannot be reached with the recorded authorization. `run record --phase
+completed` must reject a run whose actual delivery state is below target.
+
+When gates pass and the target is above `validated-local`, the harness route
+must continue the authorized delivery pipeline. It should not hand a passing
+dirty worktree back to the user as the normal endpoint. If authorization or
+external evidence is missing, record delivery pending and make the missing
+authorization/evidence the next action.
 
 ## Batch Acceptance Coverage
 

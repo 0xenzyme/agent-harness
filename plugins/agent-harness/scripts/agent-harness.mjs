@@ -55,7 +55,12 @@ const commonTaskIndexCandidates = [
 ];
 
 const validExecutionRoles = new Set(["gate-only", "implementer", "mixed"]);
+const validConversationRoutes = new Set(["current-thread", "slot-thread", "remote-control-worktree"]);
+const deliveryStateOrder = ["implemented-local", "validated-local", "committed", "pushed", "PR-open", "merged", "released/shipped"];
+const validDeliveryStates = new Set(deliveryStateOrder);
 const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
+const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
+const recordableRunNodePhases = new Set(["completed", "blocked"]);
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -72,15 +77,24 @@ function parseArgs(argv) {
     "mode",
     "phase",
     "priority",
+    "prUrl",
+    "pr-url",
     "projectName",
     "project-name",
+    "releaseRef",
+    "release-ref",
+    "mergeSha",
+    "merge-sha",
+    "node",
     "run",
     "section",
     "summary",
+    "surface",
     "spec",
     "taskIndex",
     "task-index",
     "task",
+    "thread",
     "verification",
     "workMode",
     "work-mode"
@@ -183,8 +197,9 @@ const messages = {
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
-  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--cwd PATH] [--json]
-  agent-harness run status --run <run-dir> [--cwd PATH]`,
+  agent-harness run node record --run <run-dir> --node <node-id> --phase completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--cwd PATH] [--json]
+  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
+  agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
     initDone: "Agent Harness initialized in {cwd}",
     initCreated: "Created: {files}",
     initNoChanges: "No files changed.",
@@ -224,8 +239,9 @@ const messages = {
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
-  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--cwd PATH] [--json]
-  agent-harness run status --run <run-dir> [--cwd PATH]`,
+  agent-harness run node record --run <run-dir> --node <node-id> --phase completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--cwd PATH] [--json]
+  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
+  agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
     initDone: "Agent Harness 已初始化: {cwd}",
     initCreated: "已创建: {files}",
     initNoChanges: "没有文件变更。",
@@ -2124,6 +2140,201 @@ function gitMaintenanceSummary(args) {
   };
 }
 
+function deliveryStateFromGit(gitState, { completed = false } = {}) {
+  if (!gitState.isRepo) {
+    return "unknown";
+  }
+  if (gitState.dirty) {
+    return completed ? "validated-local" : "implemented-local";
+  }
+  if (gitState.ahead > 0) {
+    return "committed";
+  }
+  if (gitState.upstream) {
+    return "pushed";
+  }
+  return completed ? "validated-local" : "implemented-local";
+}
+
+function deliveryStateSnapshot(cwd, { completed = false } = {}) {
+  const gitState = gitMaintenanceSummary({ cwd });
+  const head = gitState.isRepo ? git({ cwd }, ["rev-parse", "--short", "HEAD"]) : "";
+  const pushed = gitState.isRepo && gitState.upstream && gitState.ahead === 0;
+
+  return {
+    state: deliveryStateFromGit(gitState, { completed }),
+    isRepo: gitState.isRepo,
+    root: gitState.root,
+    branch: gitState.branch,
+    upstream: gitState.upstream,
+    ahead: gitState.ahead,
+    behind: gitState.behind,
+    workingTreeDirty: gitState.dirty ? "yes" : "no",
+    changedPathCount: gitState.changedPathCount,
+    commit: gitState.isRepo ? head || "none" : "none",
+    push: pushed ? gitState.upstream : "none",
+    pr: "none",
+    merge: "none",
+    release: "none",
+    statusShort: gitState.statusShort
+  };
+}
+
+function normalizeDeliveryState(value) {
+  const normalizedValue = String(cleanMapValue(value) || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
+  const normalized = normalizedValue.replace(/^target-/, "");
+  if (!normalized || normalized === "tbd") {
+    return "";
+  }
+  if (["implemented", "implemented-local", "local"].includes(normalized)) {
+    return "implemented-local";
+  }
+  if (["validated", "validated-local", "review", "local-verified", "verified-local"].includes(normalized)) {
+    return "validated-local";
+  }
+  if (["commit", "committed"].includes(normalized)) {
+    return "committed";
+  }
+  if (["push", "pushed"].includes(normalized)) {
+    return "pushed";
+  }
+  if (["pr", "pr-open", "pull-request", "pull-request-open"].includes(normalized)) {
+    return "PR-open";
+  }
+  if (["merge", "merged"].includes(normalized)) {
+    return "merged";
+  }
+  if (["release", "released", "ship", "shipped", "released-shipped", "released/shipped"].includes(normalized)) {
+    return "released/shipped";
+  }
+  return cleanMapValue(value);
+}
+
+function deliveryStateRank(state) {
+  const normalized = normalizeDeliveryState(state);
+  return deliveryStateOrder.indexOf(normalized);
+}
+
+function applyDeliveryEvidence(deliveryState, evidence = {}) {
+  const pr = evidence.prUrl || deliveryState.pr || "none";
+  const merge = evidence.mergeSha || deliveryState.merge || "none";
+  const release = evidence.releaseRef || deliveryState.release || "none";
+  let state = deliveryState.state;
+  if (!missingEvidence(release)) {
+    state = "released/shipped";
+  } else if (!missingEvidence(merge)) {
+    state = "merged";
+  } else if (!missingEvidence(pr)) {
+    state = "PR-open";
+  }
+
+  return {
+    ...deliveryState,
+    state,
+    pr,
+    merge,
+    release
+  };
+}
+
+function deliveryPolicyFromSection(section) {
+  const fields = {};
+  for (const line of section.split(/\r?\n/)) {
+    const match = line.match(/^-\s+([^:]+):\s*(.*?)\s*$/);
+    if (match) {
+      fields[match[1].trim().toLowerCase()] = cleanMapValue(match[2]);
+    }
+  }
+  const target = normalizeDeliveryState(fields["target delivery state"] || "validated-local") || "validated-local";
+  return {
+    section,
+    target,
+    commitAuthorized: fields["commit authorized"] || "no",
+    pushAuthorized: fields["push authorized"] || "no",
+    prAuthorized: fields["pr authorized"] || "no",
+    mergeAuthorized: fields["merge authorized"] || "no",
+    releaseAuthorized: fields["release authorized"] || "no"
+  };
+}
+
+function deliveryPolicyDetails(goalContent) {
+  const section = extractSection(goalContent, "Delivery State");
+  return deliveryPolicyFromSection(section);
+}
+
+function deliveryAuthValue(value) {
+  return yesNoValue(value);
+}
+
+function requiredDeliveryAuthorizations(target) {
+  const rank = deliveryStateRank(target);
+  const requirements = [];
+  if (rank >= deliveryStateRank("committed")) {
+    requirements.push(["Commit authorized", "commitAuthorized"]);
+  }
+  if (rank >= deliveryStateRank("pushed")) {
+    requirements.push(["Push authorized", "pushAuthorized"]);
+  }
+  if (rank >= deliveryStateRank("PR-open")) {
+    requirements.push(["PR authorized", "prAuthorized"]);
+  }
+  if (rank >= deliveryStateRank("merged")) {
+    requirements.push(["Merge authorized", "mergeAuthorized"]);
+  }
+  if (rank >= deliveryStateRank("released/shipped")) {
+    requirements.push(["Release authorized", "releaseAuthorized"]);
+  }
+  return requirements;
+}
+
+function deliveryPolicyValidationErrors(policy) {
+  const errors = [];
+  if (!validDeliveryStates.has(policy.target)) {
+    errors.push(`Delivery State target must use one of ${deliveryStateOrder.join(", ")}; found ${policy.target || "(missing)"}.`);
+  }
+  for (const [label, value] of [
+    ["Commit authorized", policy.commitAuthorized],
+    ["Push authorized", policy.pushAuthorized],
+    ["PR authorized", policy.prAuthorized],
+    ["Merge authorized", policy.mergeAuthorized],
+    ["Release authorized", policy.releaseAuthorized]
+  ]) {
+    if (value && !deliveryAuthValue(value)) {
+      errors.push(`Delivery State ${label} must be yes or no.`);
+    }
+  }
+  for (const [label, key] of requiredDeliveryAuthorizations(policy.target)) {
+    if (deliveryAuthValue(policy[key]) !== "yes") {
+      errors.push(`Delivery State target ${policy.target} requires ${label}: yes.`);
+    }
+  }
+  return errors;
+}
+
+function deliveryTargetErrors(policy, deliveryState) {
+  const errors = [];
+  const targetRank = deliveryStateRank(policy.target);
+  const actualRank = deliveryStateRank(deliveryState.state);
+  if (targetRank < 0) {
+    errors.push(`Unknown delivery target: ${policy.target || "(missing)"}.`);
+    return errors;
+  }
+  if (!deliveryState.isRepo && targetRank <= deliveryStateRank("validated-local")) {
+    return errors;
+  }
+  if (actualRank < targetRank) {
+    errors.push(`Delivery target not reached: target ${policy.target}, actual ${deliveryState.state || "unknown"}.`);
+    const auth = requiredDeliveryAuthorizations(policy.target)
+      .map(([label, key]) => `${label}: ${policy[key] || "no"}`)
+      .join(", ");
+    errors.push(`After gates pass, continue the delivery pipeline (${auth || "no extra authorization required"}) and rerun run record with PR / merge / release evidence when applicable.`);
+  }
+  return errors;
+}
+
 function readRecentRuns(cwd, runsRelPath, limit = 5) {
   const runsAbs = runsRelPath ? join(cwd, runsRelPath) : "";
   if (!runsAbs || !existsSync(runsAbs)) {
@@ -2704,6 +2915,14 @@ function adapterRequirementLists(context) {
   };
 }
 
+function adapterRequiredCompletionGates(context) {
+  const gates = context.config.gates || {};
+  return uniqueList([
+    ...stringList(gates.requiredForCompletion),
+    ...stringList(gates.blocking)
+  ]);
+}
+
 function formatBulletList(values) {
   return values.map((value) => `- ${value}`).join("\n");
 }
@@ -2735,6 +2954,7 @@ function buildGoalContent({ task, context, specPath, workMode }) {
   const docValue = detailValue(task, "Doc");
   const linkedDocs = extractLinkedDocPaths(docValue);
   const selectedWorkMode = workMode || "ask";
+  const currentDeliveryState = deliveryStateSnapshot(context.cwd);
   const stateSyncPathList = stateSyncPaths(context);
   const readFirst = uniqueList([
     "AGENTS.md",
@@ -2747,6 +2967,7 @@ function buildGoalContent({ task, context, specPath, workMode }) {
   ]);
 
   const adapterRequirements = adapterRequirementLists(context);
+  const requiredGates = adapterRequiredCompletionGates(context);
   const defaultAdapterRequirements = context.mode === "adapter"
     ? [
       `Read \`${paths.adapterDocs}\` for project-specific hard boundaries, validation rules, preflight requirements, and state-sync requirements.`,
@@ -2764,6 +2985,13 @@ function buildGoalContent({ task, context, specPath, workMode }) {
     .filter(Boolean)
     .map((path, index) => `${index + 1}. \`${path}\``)
     .join("\n");
+  const requiredGateLines = requiredGates.length
+    ? requiredGates.map((gate) => `- Gate: \`${gate}\`
+  - Required: \`yes\`
+  - Evidence: \`TBD\`
+  - Status: \`pending\`
+  - Unblocker: \`N/A\``).join("\n")
+    : "Add one `Gate` item for each adapter-required completion gate. Technical\nverification is necessary but does not replace gate evidence.";
 
   return `# Goal: ${heading}
 
@@ -2790,13 +3018,61 @@ Use \`implementer\`.
 - \`implementer\`: the current thread may edit files inside the accepted scope.
 - \`mixed\`: the current thread may both edit and gate only after recording why the tradeoff is acceptable.
 
+## Conversation Route
+
+Use \`current-thread\`.
+
+- \`current-thread\`: the current conversation owns execution in the locked cwd.
+- \`slot-thread\`: hand off to a dedicated slot conversation before editing.
+- \`remote-control-worktree\`: the current conversation may control a different locked worktree only when explicitly approved.
+
+## Execution Context Lock
+
+- Conversation lane: \`current-thread\`
+- Controller thread: \`current-thread\`
+- Execution cwd: \`${context.cwd}\`
+- Execution branch: \`${currentDeliveryState.branch || "TBD"}\`
+- Execution slot: \`N/A\`
+- Remote-control worktree: \`no\`
+
+## Delivery State
+
+- Target delivery state: \`validated-local\`
+- Commit authorized: \`no\`
+- Push authorized: \`no\`
+- PR authorized: \`no\`
+- Merge authorized: \`no\`
+- Release authorized: \`no\`
+
+Completed runs must reach Target delivery state. If target is above
+\`validated-local\`, set the matching authorization fields to \`yes\` and
+continue delivery after verification instead of stopping in the worktree.
+
+## Execution DAG
+
+Use \`run prepare\` to generate \`dag.json\`, \`dag.md\`, and per-node
+\`agents/<node>/prompt.md\` files. Prefer new Codex threads or Codex CLI
+subagents for worker nodes. Fork is not the default worker surface; use it only
+when the controller explicitly approves inherited context.
+
+## Spec Acceptance Checklist
+
+Add checklist items here when the referenced spec has concrete acceptance
+criteria, required page/workflow coverage, or product-quality gates. Candidate
+implementation evidence is not accepted completion until relevant checklist
+items are satisfied.
+
+## Required Gate Evidence
+
+${requiredGateLines}
+
 ## Scope
 
 - ${acceptance}
 
 ## Non-Goals
 
-- Do not push, deploy, publish, or open a PR unless separately requested.
+- Do not push, deploy, publish, open a PR, or launch workers outside the run packet DAG unless separately requested.
 - Do not make destructive changes without explicit user approval.
 - Do not add project-specific assumptions to the core harness contract.
 
@@ -2933,6 +3209,38 @@ function extractGoalExecutionRoleRaw(goalContent) {
   return match ? match[1].trim().toLowerCase() : "";
 }
 
+function extractConversationRouteRaw(goalContent) {
+  const section = extractSection(goalContent, "Conversation Route");
+  const match = section.match(/Use\s+`([^`]+)`/i);
+  return match ? match[1].trim().toLowerCase() : "";
+}
+
+function parseExecutionContextLock(section) {
+  const fields = {};
+  for (const line of section.split(/\r?\n/)) {
+    const match = line.match(/^-\s+([^:]+):\s*(.*?)\s*$/);
+    if (match) {
+      fields[match[1].trim().toLowerCase()] = cleanMapValue(match[2]);
+    }
+  }
+  return {
+    conversationLane: fields["conversation lane"] || "",
+    controllerThread: fields["controller thread"] || "",
+    executionCwd: fields["execution cwd"] || "",
+    executionBranch: fields["execution branch"] || "",
+    executionSlot: fields["execution slot"] || "",
+    remoteControlWorktree: fields["remote-control worktree"] || ""
+  };
+}
+
+function executionContextLockDetails(goalContent) {
+  const section = extractSection(goalContent, "Execution Context Lock");
+  return {
+    section,
+    ...parseExecutionContextLock(section)
+  };
+}
+
 function cleanMapValue(value) {
   const trimmed = String(value || "").trim();
   if (trimmed.startsWith("`") && trimmed.endsWith("`")) {
@@ -2979,8 +3287,185 @@ function parseSourceTaskAcceptanceMap(section) {
   return items;
 }
 
+function parseEvidenceItems(section, itemLabel) {
+  const items = [];
+  let current = null;
+  let currentField = "";
+  const escapedLabel = escapeRegExp(itemLabel);
+  const itemPattern = new RegExp(`^-\\s+${escapedLabel}:\\s*(.+?)\\s*$`, "i");
+  const fieldPattern = /^\s+-\s+(Acceptance|Required|Evidence|Status|Unblocker):\s*(.*?)\s*$/i;
+
+  for (const line of section.split(/\r?\n/)) {
+    const itemMatch = line.match(itemPattern);
+    if (itemMatch) {
+      current = {
+        label: cleanMapValue(itemMatch[1]),
+        acceptance: "",
+        required: "",
+        evidence: "",
+        status: "",
+        unblocker: ""
+      };
+      items.push(current);
+      currentField = "";
+      continue;
+    }
+
+    if (!current) {
+      continue;
+    }
+
+    const fieldMatch = line.match(fieldPattern);
+    if (fieldMatch) {
+      currentField = fieldMatch[1].toLowerCase();
+      current[currentField] = cleanMapValue(fieldMatch[2]);
+      continue;
+    }
+
+    const continuation = line.match(/^\s{4,}(\S.*?)\s*$/);
+    if (currentField && continuation) {
+      current[currentField] = cleanMapValue(`${current[currentField]} ${continuation[1]}`);
+    }
+  }
+
+  return items;
+}
+
+function specAcceptanceChecklistDetails(goalContent, specContent = "") {
+  const goalSection = extractSection(goalContent, "Spec Acceptance Checklist");
+  const specSection = extractSection(specContent, "Spec Acceptance Checklist");
+  const section = goalSection || specSection;
+  return {
+    source: goalSection ? "goal" : specSection ? "spec" : "",
+    section,
+    items: section ? parseEvidenceItems(section, "Item") : []
+  };
+}
+
+function gateEvidenceDetails(goalContent, specContent = "") {
+  const goalSection = extractSection(goalContent, "Required Gate Evidence");
+  const specSection = extractSection(specContent, "Required Gate Evidence");
+  const section = goalSection || specSection;
+  return {
+    source: goalSection ? "goal" : specSection ? "spec" : "",
+    section,
+    items: section ? parseEvidenceItems(section, "Gate") : []
+  };
+}
+
+function normalizedGateName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function truthyGateRequired(value) {
+  return /^(yes|true|required|blocking|1)$/i.test(String(value || "").trim());
+}
+
+function evidenceItemValidationErrors(details, {
+  sectionTitle,
+  itemTitle,
+  requireAcceptance = false,
+  requiredLabels = [],
+  completed = false
+} = {}) {
+  const errors = [];
+  const requiredSet = new Set(requiredLabels.map(normalizedGateName).filter(Boolean));
+  const itemsByLabel = new Map();
+
+  details.items.forEach((item, index) => {
+    const label = item.label || `item ${index + 1}`;
+    const normalized = normalizedGateName(item.label);
+    if (normalized) {
+      itemsByLabel.set(normalized, item);
+    }
+    if (!item.label) {
+      errors.push(`${sectionTitle} ${itemTitle} ${index + 1} is missing ${itemTitle}.`);
+    }
+    if (requireAcceptance && !item.acceptance) {
+      errors.push(`${sectionTitle} ${itemTitle} '${label}' is missing Acceptance.`);
+    }
+    if (!validEvidenceItemStatuses.has(item.status)) {
+      errors.push(`${sectionTitle} ${itemTitle} '${label}' must use Status pending, satisfied, deferred, or blocked; found ${item.status || "(missing)"}.`);
+    }
+    if ((item.status === "deferred" || item.status === "blocked") && missingEvidence(item.unblocker)) {
+      errors.push(`${sectionTitle} ${itemTitle} '${label}' is ${item.status} but missing Unblocker.`);
+    }
+    const itemRequired = truthyGateRequired(item.required) || requiredSet.has(normalized);
+    if (completed && itemRequired && item.status !== "satisfied") {
+      errors.push(`Completed runs require ${sectionTitle} ${itemTitle} '${label}' to be satisfied; found ${item.status || "(missing)"}.`);
+    }
+    if (completed && itemRequired && missingEvidence(item.evidence)) {
+      errors.push(`Completed runs require concrete Evidence for ${sectionTitle} ${itemTitle} '${label}'.`);
+    }
+  });
+
+  for (const requiredLabel of requiredLabels) {
+    const normalized = normalizedGateName(requiredLabel);
+    if (normalized && !itemsByLabel.has(normalized)) {
+      errors.push(`${sectionTitle} must include required gate '${requiredLabel}'.`);
+    }
+  }
+
+  return errors;
+}
+
 function missingEvidence(value) {
   return !value || /^(tbd|n\/a|none|not recorded|-|\.\.\.)$/i.test(String(value).trim());
+}
+
+function yesNoValue(value) {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  if (["yes", "true", "1"].includes(normalizedValue)) {
+    return "yes";
+  }
+  if (["no", "false", "0"].includes(normalizedValue)) {
+    return "no";
+  }
+  return "";
+}
+
+function executionContextValidationErrors({ workMode, conversationRoute, executionContextLock }) {
+  const errors = [];
+  if (workMode !== "worktree") {
+    return errors;
+  }
+
+  if (!conversationRoute) {
+    errors.push("Worktree goals require a Conversation Route section.");
+  } else if (!validConversationRoutes.has(conversationRoute)) {
+    errors.push(`Conversation Route must use one of current-thread, slot-thread, or remote-control-worktree; found ${conversationRoute}.`);
+  }
+
+  if (!executionContextLock.section) {
+    errors.push("Worktree goals require an Execution Context Lock section.");
+    return errors;
+  }
+
+  const requiredFields = [
+    ["Conversation lane", executionContextLock.conversationLane],
+    ["Controller thread", executionContextLock.controllerThread],
+    ["Execution cwd", executionContextLock.executionCwd],
+    ["Execution branch", executionContextLock.executionBranch],
+    ["Remote-control worktree", executionContextLock.remoteControlWorktree]
+  ];
+  for (const [label, value] of requiredFields) {
+    if (missingEvidence(value)) {
+      errors.push(`Execution Context Lock must include ${label} for worktree goals.`);
+    }
+  }
+
+  const remoteControl = yesNoValue(executionContextLock.remoteControlWorktree);
+  if (executionContextLock.remoteControlWorktree && !remoteControl) {
+    errors.push("Execution Context Lock Remote-control worktree must be yes or no.");
+  }
+  if (conversationRoute === "remote-control-worktree" && remoteControl !== "yes") {
+    errors.push("Conversation Route remote-control-worktree requires Execution Context Lock Remote-control worktree: yes.");
+  }
+  if ((conversationRoute === "current-thread" || conversationRoute === "slot-thread") && remoteControl === "yes") {
+    errors.push(`Conversation Route ${conversationRoute} must not set Remote-control worktree: yes.`);
+  }
+
+  return errors;
 }
 
 function batchSignals(content) {
@@ -3060,7 +3545,12 @@ function goalMetadata(cwd, goalPath) {
   const specContent = specExists ? readFileSync(specAbs, "utf8") : "";
   const workMode = extractGoalWorkModeRaw(content);
   const executionRole = extractGoalExecutionRoleRaw(content);
+  const conversationRoute = extractConversationRouteRaw(content);
+  const executionContextLock = executionContextLockDetails(content);
+  const deliveryPolicy = deliveryPolicyDetails(content);
   const acceptanceMap = acceptanceMapDetails(content, specContent);
+  const specChecklist = specAcceptanceChecklistDetails(content, specContent);
+  const gateEvidence = gateEvidenceDetails(content, specContent);
 
   return {
     path: displayPath(cwd, goalPath),
@@ -3072,18 +3562,36 @@ function goalMetadata(cwd, goalPath) {
     specStatus: specStatus(specContent),
     workMode,
     executionRole,
+    conversationRoute,
+    executionContextLock,
+    deliveryPolicy,
     acceptanceMap: {
       required: acceptanceMap.required,
       source: acceptanceMap.source,
       itemCount: acceptanceMap.items.length,
       items: acceptanceMap.items
     },
+    specAcceptanceChecklist: {
+      source: specChecklist.source,
+      itemCount: specChecklist.items.length,
+      items: specChecklist.items
+    },
+    requiredGateEvidence: {
+      source: gateEvidence.source,
+      itemCount: gateEvidence.items.length,
+      items: gateEvidence.items
+    },
     sections: {
       sourceTask: Boolean(extractSection(content, "Source Task")),
       readFirst: Boolean(extractSection(content, "Read First")),
       workModeRecommendation: Boolean(extractSection(content, "Work Mode Recommendation")),
       executionRole: Boolean(extractSection(content, "Execution Role")),
+      conversationRoute: Boolean(extractSection(content, "Conversation Route")),
+      executionContextLock: Boolean(extractSection(content, "Execution Context Lock")),
+      deliveryState: Boolean(extractSection(content, "Delivery State")),
       sourceTaskAcceptanceMap: Boolean(extractSection(content, "Source Task Acceptance Map")),
+      specAcceptanceChecklist: Boolean(extractSection(content, "Spec Acceptance Checklist")),
+      requiredGateEvidence: Boolean(extractSection(content, "Required Gate Evidence")),
       scope: Boolean(extractSection(content, "Scope")),
       nonGoals: Boolean(extractSection(content, "Non-Goals")),
       verification: Boolean(extractSection(content, "Verification")),
@@ -3153,6 +3661,12 @@ function validateGoal(cwd, goalPath) {
   if (!validExecutionRoles.has(metadata.executionRole)) {
     errors.push(`Execution Role must use one of gate-only, implementer, or mixed; found ${metadata.executionRole || "(missing)"}.`);
   }
+  errors.push(...executionContextValidationErrors({
+    workMode: metadata.workMode,
+    conversationRoute: metadata.conversationRoute,
+    executionContextLock: metadata.executionContextLock
+  }));
+  errors.push(...deliveryPolicyValidationErrors(metadata.deliveryPolicy));
 
   const verification = extractSection(content, "Verification");
   const verificationCommands = extractVerificationCommands(verification);
@@ -3163,6 +3677,24 @@ function validateGoal(cwd, goalPath) {
   const specContent = metadata.specExists ? readFileSync(join(cwd, metadata.specPath), "utf8") : "";
   const acceptanceMap = acceptanceMapDetails(content, specContent);
   errors.push(...acceptanceMapValidationErrors(acceptanceMap));
+  const specChecklist = specAcceptanceChecklistDetails(content, specContent);
+  errors.push(...evidenceItemValidationErrors(specChecklist, {
+    sectionTitle: "Spec Acceptance Checklist",
+    itemTitle: "Item",
+    requireAcceptance: true
+  }));
+  const context = resolveHarnessContext(cwd);
+  const requiredGates = adapterRequiredCompletionGates(context);
+  const gateEvidence = gateEvidenceDetails(content, specContent);
+  if (requiredGates.length && !gateEvidence.section) {
+    errors.push(`Required Gate Evidence must include adapter-required gate(s): ${requiredGates.join(", ")}.`);
+  } else {
+    errors.push(...evidenceItemValidationErrors(gateEvidence, {
+      sectionTitle: "Required Gate Evidence",
+      itemTitle: "Gate",
+      requiredLabels: requiredGates
+    }));
+  }
 
   const pauseConditions = extractSection(content, "Pause Conditions");
   const pauseLower = pauseConditions.toLowerCase();
@@ -3265,6 +3797,8 @@ function goalInspect(args) {
   console.log(`Work mode: ${payload.workMode || "missing"}`);
   console.log(`Execution role: ${payload.executionRole || "missing"}`);
   console.log(`Acceptance map: ${payload.acceptanceMap?.required ? `${payload.acceptanceMap.itemCount} item(s)` : "not required"}`);
+  console.log(`Spec checklist: ${payload.specAcceptanceChecklist?.itemCount || 0} item(s)`);
+  console.log(`Required gate evidence: ${payload.requiredGateEvidence?.itemCount || 0} item(s)`);
   console.log(`Validation: ${validation.ok ? "ok" : "failed"}`);
   for (const error of validation.errors) {
     console.log(`- ${error}`);
@@ -3368,6 +3902,396 @@ function classifyTask(goalContent, workMode) {
   return "large";
 }
 
+function buildDagNode({ id, label, mode, dependencies = [], ownership, expectedOutput, stopConditions }) {
+  return {
+    id,
+    label,
+    mode,
+    dependencies,
+    ownership,
+    expectedOutput,
+    stopConditions,
+    prompt: `agents/${id}/prompt.md`,
+    status: `agents/${id}/status.json`,
+    result: `agents/${id}/result.md`
+  };
+}
+
+function defaultDagNodes(taskSize) {
+  if (taskSize === "ask") {
+    return [
+      buildDagNode({
+        id: "controller-decision",
+        label: "Controller Decision",
+        mode: "gate-only",
+        ownership: "scope, product direction, credentials, destructive actions, and file ownership decision",
+        expectedOutput: "decision request or approved execution route",
+        stopConditions: "any unresolved cost, risk, product, production, or ownership decision"
+      })
+    ];
+  }
+
+  if (taskSize === "small") {
+    return [
+      buildDagNode({
+        id: "main-agent",
+        label: "Main Agent",
+        mode: "implementer",
+        ownership: "the accepted goal scope in the current foreground context",
+        expectedOutput: "focused patch, verification summary, and state-sync notes",
+        stopConditions: "scope growth, unclear ownership, credentials, destructive commands, or production access"
+      })
+    ];
+  }
+
+  if (taskSize === "medium") {
+    return [
+      buildDagNode({
+        id: "explorer",
+        label: "Explorer",
+        mode: "read-only",
+        ownership: "goal, spec, relevant docs, and the smallest source-file map needed for implementation",
+        expectedOutput: "implementation map, risks, and exact file ownership recommendation",
+        stopConditions: "spec conflict, unclear product direction, or file ownership overlap"
+      }),
+      buildDagNode({
+        id: "worker",
+        label: "Worker",
+        mode: "write",
+        dependencies: ["explorer"],
+        ownership: "files assigned by the explorer; avoid unrelated refactors",
+        expectedOutput: "focused patch plus notes on behavior changes",
+        stopConditions: "credentials, destructive commands, daemon behavior, or broad contract changes outside the goal"
+      }),
+      buildDagNode({
+        id: "verification",
+        label: "Verification",
+        mode: "read/execute",
+        dependencies: ["worker"],
+        ownership: "deterministic validation commands, run artifacts, and residual-risk reporting",
+        expectedOutput: "pass/fail summary, command evidence, and unresolved risks",
+        stopConditions: "failing verification that needs a product or scope decision"
+      })
+    ];
+  }
+
+  return [
+    buildDagNode({
+      id: "explorer",
+      label: "Explorer",
+      mode: "read-only",
+      ownership: "goal, spec, architecture docs, dependency map, and file ownership plan",
+      expectedOutput: "non-overlapping worker boundaries and merge responsibility",
+      stopConditions: "unclear merge responsibility, conflicting instructions, or overlapping ownership"
+    }),
+    buildDagNode({
+      id: "cli-contract-worker",
+      label: "CLI/Contract Worker",
+      mode: "write",
+      dependencies: ["explorer"],
+      ownership: "CLI scripts, schemas, deterministic file contracts, and tests for those surfaces",
+      expectedOutput: "focused implementation patch and machine-readable contract notes",
+      stopConditions: "contract migration, daemon behavior, direct Codex execution, or hidden UI automation"
+    }),
+    buildDagNode({
+      id: "docs-skill-worker",
+      label: "Docs/Skill Worker",
+      mode: "write",
+      dependencies: ["explorer"],
+      ownership: "README, docs, templates, and skill instructions",
+      expectedOutput: "documentation and skill guidance that match implemented behavior",
+      stopConditions: "downstream-project-specific assumptions or language/product direction questions"
+    }),
+    buildDagNode({
+      id: "verification",
+      label: "Verification",
+      mode: "read/execute",
+      dependencies: ["cli-contract-worker", "docs-skill-worker"],
+      ownership: "validation commands, temporary-project checks, and run packet inspection",
+      expectedOutput: "pass/fail summary, exact follow-up tasks, and residual risks",
+      stopConditions: "failing verification that requires scope expansion"
+    })
+  ];
+}
+
+function dagEdges(nodes) {
+  const edges = [];
+  for (const node of nodes) {
+    for (const dependency of node.dependencies || []) {
+      edges.push({ from: dependency, to: node.id });
+    }
+  }
+  return edges;
+}
+
+function dagParallelLayers(nodes) {
+  const remaining = new Map(nodes.map((node) => [node.id, new Set(node.dependencies || [])]));
+  const completed = new Set();
+  const layers = [];
+
+  while (remaining.size) {
+    const ready = [...remaining.entries()]
+      .filter(([, dependencies]) => [...dependencies].every((dependency) => completed.has(dependency)))
+      .map(([id]) => id)
+      .sort();
+    if (!ready.length) {
+      return [];
+    }
+    layers.push(ready);
+    for (const id of ready) {
+      remaining.delete(id);
+      completed.add(id);
+    }
+  }
+
+  return layers;
+}
+
+function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole }) {
+  const nodes = defaultDagNodes(taskSize);
+  return {
+    version: 1,
+    goalPath: displayPath(cwd, goalPath),
+    taskSize,
+    workMode,
+    executionRole,
+    enforcement: taskSize === "medium" || taskSize === "large" ? "required-before-run-completion" : "advisory",
+    launchPolicy: "controller-gated-manual",
+    preferredSurfaces: ["codex-app-create-thread", "codex-cli-subagent"],
+    fallbackSurfaces: ["manual-foreground"],
+    forkPolicy: "fork is not a default execution surface; use only with explicit controller approval and a corrected role packet",
+    nodes,
+    edges: dagEdges(nodes),
+    parallelLayers: dagParallelLayers(nodes)
+  };
+}
+
+function nodeStatusPath(runDir, node) {
+  return join(runDir, node.status);
+}
+
+function readNodeStatus(runDir, node) {
+  const statusPath = nodeStatusPath(runDir, node);
+  if (!existsSync(statusPath)) {
+    return {
+      node: node.id,
+      phase: "prepared"
+    };
+  }
+  return JSON.parse(readFileSync(statusPath, "utf8"));
+}
+
+function executionDagSnapshot(dag, runDir) {
+  const nodeStatuses = {};
+  const completed = [];
+  const blocked = [];
+  const running = [];
+  const ready = [];
+  const waiting = [];
+
+  for (const node of dag.nodes) {
+    const status = readNodeStatus(runDir, node);
+    const phase = status.phase || "prepared";
+    nodeStatuses[node.id] = {
+      phase,
+      thread: status.thread || "",
+      surface: status.surface || ""
+    };
+    if (phase === "completed") {
+      completed.push(node.id);
+    } else if (phase === "blocked") {
+      blocked.push(node.id);
+    } else if (phase === "running") {
+      running.push(node.id);
+    }
+  }
+
+  const completedSet = new Set(completed);
+  const blockedSet = new Set(blocked);
+  for (const node of dag.nodes) {
+    const phase = nodeStatuses[node.id].phase;
+    if (phase !== "prepared") {
+      continue;
+    }
+    const dependencies = node.dependencies || [];
+    const hasBlockedDependency = dependencies.some((dependency) => blockedSet.has(dependency));
+    const dependenciesComplete = dependencies.every((dependency) => completedSet.has(dependency));
+    if (dependenciesComplete && !hasBlockedDependency) {
+      ready.push(node.id);
+    } else {
+      waiting.push(node.id);
+    }
+  }
+
+  return {
+    version: dag.version,
+    dag: "dag.json",
+    agentsDir: "agents",
+    enforcement: dag.enforcement,
+    enforced: dag.enforcement === "required-before-run-completion",
+    launchPolicy: dag.launchPolicy,
+    preferredSurfaces: dag.preferredSurfaces,
+    fallbackSurfaces: dag.fallbackSurfaces,
+    forkPolicy: dag.forkPolicy,
+    nodeCount: dag.nodes.length,
+    parallelLayers: dag.parallelLayers,
+    readyNodes: ready,
+    runningNodes: running,
+    waitingNodes: waiting,
+    completedNodes: completed,
+    blockedNodes: blocked,
+    allNodesCompleted: completed.length === dag.nodes.length,
+    nodeStatus: nodeStatuses
+  };
+}
+
+function readExecutionDag(runDir) {
+  const dagPath = join(runDir, "dag.json");
+  if (!existsSync(dagPath)) {
+    return null;
+  }
+  return JSON.parse(readFileSync(dagPath, "utf8"));
+}
+
+function formatNodeList(values) {
+  return values.length ? values.map((value) => `\`${value}\``).join(", ") : "`none`";
+}
+
+function buildDagMarkdown({ cwd, runDir, dag }) {
+  const relRunDir = displayPath(cwd, runDir);
+  const nodeRows = dag.nodes
+    .map((node) => `| \`${node.id}\` | ${node.mode} | ${formatNodeList(node.dependencies || [])} | \`${node.prompt}\` |`)
+    .join("\n");
+  const layers = dag.parallelLayers
+    .map((layer, index) => `${index + 1}. ${formatNodeList(layer)}`)
+    .join("\n");
+
+  return `# Execution DAG
+
+Run: \`${relRunDir}\`
+Launch policy: \`${dag.launchPolicy}\`
+Enforcement: \`${dag.enforcement}\`
+
+## Worker Surfaces
+
+- Preferred: \`${dag.preferredSurfaces.join("`, `")}\`
+- Fallback: \`${dag.fallbackSurfaces.join("`, `")}\`
+- Fork policy: ${dag.forkPolicy}
+
+## Nodes
+
+| Node | Mode | Depends on | Prompt |
+| --- | --- | --- | --- |
+${nodeRows}
+
+## Parallel Layers
+
+${layers || "No valid layers; inspect `dag.json` before execution."}
+
+## Controller Rules
+
+- Launch only nodes listed as ready by \`run status --json\`.
+- Independent nodes in the same ready set may run in parallel.
+- Use \`agent-harness run node record\` for each worker result before launching dependent nodes.
+- Treat worker output as candidate evidence until the controller validates scope, verification, state sync, and required gates.
+- Do not use fork as the default execution surface; prefer a new Codex thread or Codex CLI subagent.
+`;
+}
+
+function buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }) {
+  const relRunDir = displayPath(cwd, runDir);
+  const relGoal = displayPath(cwd, goalPath);
+  const dependencies = node.dependencies?.length ? node.dependencies.join(", ") : "none";
+
+  return `# Agent Node Prompt: ${node.label}
+
+Run: \`${relRunDir}\`
+Goal: \`${relGoal}\`
+DAG node: \`${node.id}\`
+Depends on: \`${dependencies}\`
+Mode: \`${node.mode}\`
+
+You are an execution worker for one DAG node, not the controller thread.
+
+## Read First
+
+1. \`${relGoal}\`
+2. \`${relRunDir}/run.md\`
+3. \`${relRunDir}/dag.md\`
+4. \`${relRunDir}/prompt.md\`
+
+## Ownership
+
+${node.ownership}
+
+## Expected Output
+
+${node.expectedOutput}
+
+## Stop Conditions
+
+${node.stopConditions}
+
+## Surface Policy
+
+- Preferred surfaces are a new Codex thread or a Codex CLI subagent.
+- Do not use fork unless the controller explicitly approves it and restates your execution role.
+- Do not launch dependent nodes yourself.
+- Do not push, deploy, publish, open a PR, start a daemon, use credentials, use paid APIs, touch production, or perform destructive operations unless the goal and controller explicitly authorize it.
+
+## Return Contract
+
+Return an Execution Result Packet:
+
+\`\`\`text
+Execution Result Packet
+
+Goal:
+Thread:
+Node: ${node.id}
+Status:
+State change:
+Changed files:
+Summary:
+Validation:
+Known risks:
+Needs review:
+Commit:
+Controller notified:
+Worktree:
+Base commit:
+Head commit:
+Commit status:
+Actual model:
+Actual reasoning effort:
+Gate self-check:
+Deferred items:
+\`\`\`
+`;
+}
+
+function writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag, createdAt }) {
+  writeFileSync(join(runDir, "dag.json"), `${JSON.stringify(dag, null, 2)}\n`);
+  writeFileSync(join(runDir, "dag.md"), buildDagMarkdown({ cwd, runDir, dag }));
+
+  for (const node of dag.nodes) {
+    const agentDir = join(runDir, "agents", node.id);
+    mkdirSync(agentDir, { recursive: true });
+    writeFileSync(join(agentDir, "prompt.md"), buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }));
+    writeFileSync(join(agentDir, "status.json"), `${JSON.stringify({
+      node: node.id,
+      label: node.label,
+      phase: "prepared",
+      createdAt,
+      updatedAt: createdAt,
+      dependencies: node.dependencies || [],
+      mode: node.mode,
+      prompt: node.prompt,
+      result: node.result
+    }, null, 2)}\n`);
+  }
+}
+
 function extractVerificationCommands(verificationSection) {
   const commands = [];
   const fencePattern = /```(?:bash|sh)?\n([\s\S]*?)```/g;
@@ -3401,7 +4325,25 @@ function nextAvailableRunDir(basePath) {
   throw new Error(`Could not find an available run directory for ${basePath}`);
 }
 
-function buildRunMarkdown({ context, createdAt, cwd, goalPath, goalContent, runDir, taskSize, workMode, executionRole, acceptanceMap }) {
+function buildRunMarkdown({
+  context,
+  createdAt,
+  cwd,
+  goalPath,
+  goalContent,
+  runDir,
+  taskSize,
+  workMode,
+  executionRole,
+  conversationRoute,
+  executionContextLock,
+  deliveryState,
+  deliveryPolicy,
+  acceptanceMap,
+  specChecklist,
+  gateEvidence,
+  requiredGates
+}) {
   const relGoal = displayPath(cwd, goalPath);
   const relRunDir = displayPath(cwd, runDir);
   const stateSyncPathList = stateSyncPaths(context);
@@ -3429,9 +4371,32 @@ Run directory: \`${relRunDir}\`
 Harness contract: \`${context.contract}\`
 Work mode: \`${workMode}\`
 Execution role: \`${executionRole}\`
+Conversation route: \`${conversationRoute || "not-recorded"}\`
+Conversation lane: \`${executionContextLock.conversationLane || "not-recorded"}\`
+Controller thread: \`${executionContextLock.controllerThread || "not-recorded"}\`
+Execution cwd: \`${executionContextLock.executionCwd || cwd}\`
+Execution branch: \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`
+Execution slot: \`${executionContextLock.executionSlot || "not-recorded"}\`
+Remote-control worktree: \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`
 Task size: \`${taskSize}\`
+Delivery state: \`${deliveryState.state}\`
+Working tree dirty: \`${deliveryState.workingTreeDirty}\`
+Commit: \`${deliveryState.commit}\`
+Push: \`${deliveryState.push}\`
+PR: \`${deliveryState.pr}\`
+Merge: \`${deliveryState.merge}\`
+Release: \`${deliveryState.release}\`
+Target delivery state: \`${deliveryPolicy.target}\`
+Commit authorized: \`${deliveryPolicy.commitAuthorized}\`
+Push authorized: \`${deliveryPolicy.pushAuthorized}\`
+PR authorized: \`${deliveryPolicy.prAuthorized}\`
+Merge authorized: \`${deliveryPolicy.mergeAuthorized}\`
+Release authorized: \`${deliveryPolicy.releaseAuthorized}\`
 Acceptance map required: \`${acceptanceMap.required ? "yes" : "no"}\`
 Acceptance map items: \`${acceptanceMap.items.length}\`
+Spec checklist items: \`${specChecklist.items.length}\`
+Required gates: \`${requiredGates.length ? requiredGates.join(", ") : "none"}\`
+Required gate evidence items: \`${gateEvidence.items.length}\`
 
 ## Source Task
 
@@ -3442,11 +4407,18 @@ ${sourceTask}
 1. Read \`${relGoal}\` and its referenced spec before editing.
 2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
 3. Confirm the execution role. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
-4. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-5. Use \`subagents.md\` only as bounded guidance; small tasks can stay in one main-agent context.
-6. Run the verification commands from the goal.
-7. Record any command output summaries or follow-ups under this run directory.
-8. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+4. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
+5. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
+6. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+7. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
+8. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
+9. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
+10. Use \`agents/<node>/prompt.md\` for new Codex threads or Codex CLI subagents. Do not use fork as the default execution surface.
+11. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
+12. Run the verification commands from the goal.
+13. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
+14. Record any command output summaries or follow-ups under this run directory.
+15. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -3456,7 +4428,9 @@ ${verification}
 ## Boundaries
 
 - This prepared run packet does not start Codex, create a daemon, push, deploy, publish, or open a PR.
-- Direct execution remains manual until a stable Codex CLI file-prompt contract is confirmed.
+- Completion wording must not imply pushed, PR-open, merged, released, shipped, or deployed unless the delivery state records that evidence.
+- A completed run must reach its target delivery state. Use PR / merge / release evidence fields when Git alone cannot prove the target.
+- Direct worker launch remains controller-gated; the packet provides prompts and DAG constraints, not a background scheduler.
 - Stop if the goal conflicts with repository instructions, production constraints, or newer user instructions.
 `;
 }
@@ -3467,6 +4441,10 @@ function buildPromptMarkdown({ context, cwd, goalPath, goalContent }) {
   const stateSyncPathList = stateSyncPaths(context);
   const adapterPath = context.paths.adapterDocs || "";
   const executionRole = extractGoalExecutionRoleRaw(goalContent) || "missing";
+  const conversationRoute = extractConversationRouteRaw(goalContent) || "not-recorded";
+  const executionContextLock = executionContextLockDetails(goalContent);
+  const deliveryPolicy = deliveryPolicyDetails(goalContent);
+  const deliveryState = deliveryStateSnapshot(cwd);
 
   return `# Goal Execution Prompt
 
@@ -3480,6 +4458,13 @@ Requirements:
 - ${context.mode === "adapter" && adapterPath ? `Read \`${adapterPath}\` and apply its project-specific hard boundaries, preflight requirements, and state-sync rules.` : "Follow the repository instructions and configured harness paths."}
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
 - Follow the goal's Execution Role: \`${executionRole}\`.
+- Follow the goal's Conversation Route: \`${conversationRoute}\`.
+- Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
+- Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; PR \`${deliveryState.pr}\`; merge \`${deliveryState.merge}\`; release \`${deliveryState.release}\`.
+- Target Delivery State: \`${deliveryPolicy.target}\`; commit authorized \`${deliveryPolicy.commitAuthorized}\`; push authorized \`${deliveryPolicy.pushAuthorized}\`; PR authorized \`${deliveryPolicy.prAuthorized}\`; merge authorized \`${deliveryPolicy.mergeAuthorized}\`; release authorized \`${deliveryPolicy.releaseAuthorized}\`.
+- Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
+- If actual delivery state is below target after gates pass, continue the authorized commit / push / PR / merge / release pipeline before closeout.
+- Do not call local verification "merged", "shipped", or "done on main" unless commit / push / PR / merge / release evidence is recorded.
 - Do not push, deploy, publish, open a PR, start a daemon, or automatically launch additional Codex sessions unless the user explicitly asks.
 - If the checkout is dirty with unrelated work, use the worktree policy from the goal and project docs.
 - After implementation, run the goal's verification commands and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync.
@@ -3574,6 +4559,8 @@ Goal: \`${relGoal}\`
 
 ## Policy
 
+- Treat \`dag.json\` as the source of execution order. This file explains how to
+  split work; it does not override DAG dependencies or controller gates.
 - \`small\`: no subagent by default; the main agent owns exploration, implementation, and verification.
 - \`medium\`: split into \`explorer\` plus \`worker\`, or \`worker\` plus \`verification\`, when it reduces context load.
 - \`large\`: split into multiple workers only when file ownership is non-overlapping and merge responsibility is clear.
@@ -3610,14 +4597,23 @@ function runPrepare(args) {
   const createdAt = new Date().toISOString();
   const workMode = extractWorkMode(goalContent, cwd);
   const executionRole = extractGoalExecutionRoleRaw(goalContent);
+  const conversationRoute = extractConversationRouteRaw(goalContent);
+  const executionContextLock = executionContextLockDetails(goalContent);
+  const deliveryState = deliveryStateSnapshot(cwd);
+  const deliveryPolicy = deliveryPolicyDetails(goalContent);
   const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
+  const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
+  const gateEvidence = gateEvidenceDetails(goalContent, specContent);
+  const requiredGates = adapterRequiredCompletionGates(context);
   const taskSize = classifyTask(goalContent, workMode);
+  const executionDag = buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole });
   const runSlug = runSlugFromGoal(goalPath);
   const runDir = nextAvailableRunDir(join(cwd, paths.runs, `${runTimestamp()}-${runSlug}`));
-  const files = ["run.md", "prompt.md", "subagents.md", "status.json"];
+  const files = ["run.md", "prompt.md", "subagents.md", "dag.md", "dag.json", "agents", "status.json"];
   const logsDir = join(runDir, "logs");
 
   mkdirSync(logsDir, { recursive: true });
+  writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag: executionDag, createdAt });
   writeFileSync(join(runDir, "run.md"), buildRunMarkdown({
     context,
     createdAt,
@@ -3628,10 +4624,18 @@ function runPrepare(args) {
     taskSize,
     workMode,
     executionRole,
-    acceptanceMap
+    conversationRoute,
+    executionContextLock,
+    deliveryState,
+    deliveryPolicy,
+    acceptanceMap,
+    specChecklist,
+    gateEvidence,
+    requiredGates
   }));
   writeFileSync(join(runDir, "prompt.md"), buildPromptMarkdown({ context, cwd, goalPath, goalContent }));
   writeFileSync(join(runDir, "subagents.md"), buildSubagentsMarkdown({ cwd, goalPath, taskSize }));
+  const executionDagState = executionDagSnapshot(executionDag, runDir);
   writeFileSync(join(runDir, "status.json"), `${JSON.stringify({
     harnessContract: context.contract,
     phase: "prepared",
@@ -3642,21 +4646,148 @@ function runPrepare(args) {
     runDir: displayPath(cwd, runDir),
     workMode,
     executionRole,
+    conversationRoute,
+    executionContextLock: {
+      conversationLane: executionContextLock.conversationLane,
+      controllerThread: executionContextLock.controllerThread,
+      executionCwd: executionContextLock.executionCwd || cwd,
+      executionBranch: executionContextLock.executionBranch || deliveryState.branch,
+      executionSlot: executionContextLock.executionSlot,
+      remoteControlWorktree: executionContextLock.remoteControlWorktree
+    },
+    deliveryState,
+    deliveryPolicy,
     acceptanceMapRequired: acceptanceMap.required,
     acceptanceMapSource: acceptanceMap.source,
     acceptanceMapItemCount: acceptanceMap.items.length,
+    specAcceptanceChecklistSource: specChecklist.source,
+    specAcceptanceChecklistItemCount: specChecklist.items.length,
+    requiredGates,
+    requiredGateEvidenceSource: gateEvidence.source,
+    requiredGateEvidenceItemCount: gateEvidence.items.length,
     taskSize,
     files,
     logs: "logs/",
+    executionDag: executionDagState,
     verificationCommands: extractVerificationCommands(extractSection(goalContent, "Verification"))
   }, null, 2)}\n`);
 
   console.log(`Prepared run packet: ${displayPath(cwd, runDir)}`);
   console.log(`Prompt: ${displayPath(cwd, join(runDir, "prompt.md"))}`);
-  console.log("Next: open prompt.md in a new Codex session or paste it into /goal when ready.");
+  console.log(`DAG: ${displayPath(cwd, join(runDir, "dag.md"))}`);
+  console.log(`Ready nodes: ${executionDagState.readyNodes.join(", ") || "none"}`);
+  console.log("Next: launch ready node prompts in new Codex threads or Codex CLI subagents; avoid fork unless explicitly approved.");
 }
 
 const recordableRunPhases = new Set(["completed", "blocked"]);
+
+function runNodeRecord(args) {
+  const cwd = targetCwd(args);
+  if (!args.run || !args.node) {
+    throw new Error("Usage: agent-harness run node record --run <run-dir> --node <node-id> --phase completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--cwd PATH] [--json]");
+  }
+  if (!recordableRunNodePhases.has(args.phase)) {
+    throw new Error(`Invalid --phase: ${args.phase || "(missing)"}`);
+  }
+  if (!args.summary) {
+    throw new Error("Missing --summary <text>");
+  }
+  if (args.phase === "completed" && !args.verification) {
+    throw new Error("Completed DAG nodes require --verification evidence.");
+  }
+
+  const runDir = resolve(cwd, args.run);
+  const runStatusPath = join(runDir, "status.json");
+  if (!existsSync(runStatusPath)) {
+    throw new Error(`Missing ${displayPath(cwd, runStatusPath)}`);
+  }
+  const dag = readExecutionDag(runDir);
+  if (!dag) {
+    throw new Error(`Missing ${displayPath(cwd, join(runDir, "dag.json"))}`);
+  }
+  const node = dag.nodes.find((candidate) => candidate.id === args.node);
+  if (!node) {
+    throw new Error(`Unknown DAG node: ${args.node}`);
+  }
+
+  const before = executionDagSnapshot(dag, runDir);
+  const dependencies = node.dependencies || [];
+  const incompleteDependencies = dependencies.filter((dependency) => !before.completedNodes.includes(dependency));
+  if (args.phase === "completed" && incompleteDependencies.length) {
+    throw new Error(`Execution DAG node '${node.id}' cannot complete before dependencies: ${incompleteDependencies.join(", ")}`);
+  }
+
+  const now = new Date().toISOString();
+  const nodeStatus = {
+    ...readNodeStatus(runDir, node),
+    node: node.id,
+    label: node.label,
+    phase: args.phase,
+    updatedAt: now,
+    summary: args.summary,
+    verificationSummary: args.verification || "",
+    thread: args.thread || "",
+    surface: args.surface || "",
+    result: node.result
+  };
+  const resultPath = join(runDir, node.result);
+  const resultContent = `# DAG Node ${titleCase(args.phase)}: ${node.id}
+
+Updated: ${now}
+Run: \`${displayPath(cwd, runDir)}\`
+Node: \`${node.id}\`
+Thread: \`${args.thread || "Not recorded."}\`
+Surface: \`${args.surface || "Not recorded."}\`
+
+## Summary
+
+${args.summary}
+
+## Verification
+
+${args.verification || "Not recorded."}
+`;
+
+  writeFileSync(nodeStatusPath(runDir, node), `${JSON.stringify(nodeStatus, null, 2)}\n`);
+  writeFileSync(resultPath, resultContent);
+
+  const nextDagState = executionDagSnapshot(dag, runDir);
+  const runStatus = JSON.parse(readFileSync(runStatusPath, "utf8"));
+  const runPhase = nextDagState.blockedNodes.length
+    ? "blocked"
+    : nextDagState.allNodesCompleted
+      ? "ready-for-gate"
+      : "running";
+  const nextRunStatus = {
+    ...runStatus,
+    phase: runPhase,
+    updatedAt: now,
+    executionDag: nextDagState
+  };
+  writeFileSync(runStatusPath, `${JSON.stringify(nextRunStatus, null, 2)}\n`);
+
+  const payload = {
+    run: displayPath(cwd, runDir),
+    node: node.id,
+    status: displayPath(cwd, nodeStatusPath(runDir, node)),
+    result: displayPath(cwd, resultPath),
+    phase: args.phase,
+    readyNodes: nextDagState.readyNodes,
+    completedNodes: nextDagState.completedNodes,
+    blockedNodes: nextDagState.blockedNodes,
+    runPhase
+  };
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log(`Recorded DAG node ${args.phase}: ${node.id}`);
+  console.log(`Status: ${displayPath(cwd, nodeStatusPath(runDir, node))}`);
+  console.log(`Result: ${displayPath(cwd, resultPath)}`);
+  console.log(`Ready nodes: ${nextDagState.readyNodes.join(", ") || "none"}`);
+}
 
 function runRecord(args) {
   const cwd = targetCwd(args);
@@ -3679,27 +4810,71 @@ function runRecord(args) {
   const now = new Date().toISOString();
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
   const executionRole = status.executionRole || "unknown";
+  let deliveryState = applyDeliveryEvidence(deliveryStateSnapshot(cwd, { completed: args.phase === "completed" }), {
+    prUrl: args.prUrl || status.deliveryState?.pr,
+    mergeSha: args.mergeSha || status.deliveryState?.merge,
+    releaseRef: args.releaseRef || status.deliveryState?.release
+  });
   if (args.phase === "completed" && !args.verification) {
     throw new Error("Completed runs require --verification evidence.");
   }
   if (args.phase === "completed" && executionRole === "gate-only" && !args.gateEvidence) {
     throw new Error("Completed gate-only runs require --gate-evidence describing implementer output and acceptance evidence.");
   }
+  const dag = readExecutionDag(runDir);
+  const dagState = dag ? executionDagSnapshot(dag, runDir) : null;
+  if (args.phase === "completed" && dagState?.enforced && !dagState.allNodesCompleted) {
+    throw new Error(`Completed DAG runs require every execution DAG node to be completed; ready: ${dagState.readyNodes.join(", ") || "none"}, waiting: ${dagState.waitingNodes.join(", ") || "none"}.`);
+  }
+  const goalPath = status.goalPath ? resolveProjectPath(cwd, status.goalPath) : "";
+  const goalContent = goalPath && existsSync(goalPath) ? readFileSync(goalPath, "utf8") : "";
+  const specRel = goalContent ? extractInlinePath(goalContent, "Spec") : "";
+  const specAbs = specRel ? resolveProjectPath(cwd, specRel) : "";
+  const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
+  const deliveryPolicy = status.deliveryPolicy || deliveryPolicyDetails(goalContent);
+  const deliveryPolicyErrors = deliveryPolicyValidationErrors(deliveryPolicy);
+  if (deliveryPolicyErrors.length) {
+    throw new Error(`Delivery State policy validation failed:\n${deliveryPolicyErrors.map((error) => `- ${error}`).join("\n")}`);
+  }
   if (args.phase === "completed") {
-    const goalPath = status.goalPath ? resolveProjectPath(cwd, status.goalPath) : "";
     if (status.acceptanceMapRequired && (!goalPath || !existsSync(goalPath))) {
       throw new Error("Completed batch runs require a readable goal with Source Task Acceptance Map evidence.");
     }
-    if (goalPath && existsSync(goalPath)) {
-      const goalContent = readFileSync(goalPath, "utf8");
-      const specRel = extractInlinePath(goalContent, "Spec");
-      const specAbs = resolveProjectPath(cwd, specRel);
-      const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
+    if (goalContent) {
       const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
       const acceptanceMapErrors = acceptanceMapValidationErrors(acceptanceMap, { completed: true });
       if (acceptanceMapErrors.length) {
         throw new Error(`Source Task Acceptance Map validation failed:\n${acceptanceMapErrors.map((error) => `- ${error}`).join("\n")}`);
       }
+      const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
+      const checklistErrors = evidenceItemValidationErrors(specChecklist, {
+        sectionTitle: "Spec Acceptance Checklist",
+        itemTitle: "Item",
+        requireAcceptance: true,
+        completed: true,
+        requiredLabels: specChecklist.items.map((item) => item.label)
+      });
+      if (checklistErrors.length) {
+        throw new Error(`Spec Acceptance Checklist validation failed:\n${checklistErrors.map((error) => `- ${error}`).join("\n")}`);
+      }
+      const requiredGates = Array.isArray(status.requiredGates) ? status.requiredGates : [];
+      const gateEvidence = gateEvidenceDetails(goalContent, specContent);
+      if (requiredGates.length && !gateEvidence.section) {
+        throw new Error(`Required Gate Evidence must include adapter-required gate(s): ${requiredGates.join(", ")}.`);
+      }
+      const gateErrors = evidenceItemValidationErrors(gateEvidence, {
+        sectionTitle: "Required Gate Evidence",
+        itemTitle: "Gate",
+        completed: true,
+        requiredLabels: requiredGates
+      });
+      if (gateErrors.length) {
+        throw new Error(`Required Gate Evidence validation failed:\n${gateErrors.map((error) => `- ${error}`).join("\n")}`);
+      }
+    }
+    const deliveryTargetFailures = deliveryTargetErrors(deliveryPolicy, deliveryState);
+    if (deliveryTargetFailures.length) {
+      throw new Error(`Delivery target gate failed:\n${deliveryTargetFailures.map((error) => `- ${error}`).join("\n")}`);
     }
   }
   const nextStatus = {
@@ -3708,7 +4883,10 @@ function runRecord(args) {
     updatedAt: now,
     summary: args.summary,
     verificationSummary: args.verification || status.verificationSummary || "",
-    gateEvidence: args.gateEvidence || status.gateEvidence || ""
+    gateEvidence: args.gateEvidence || status.gateEvidence || "",
+    deliveryState,
+    deliveryPolicy,
+    executionDag: dagState || status.executionDag
   };
   const logsDir = join(runDir, "logs");
   mkdirSync(logsDir, { recursive: true });
@@ -3730,6 +4908,25 @@ ${args.verification || "Not recorded."}
 ## Gate Evidence
 
 ${args.gateEvidence || "Not recorded."}
+
+## Delivery State
+
+- State: \`${deliveryState.state}\`
+- Target: \`${deliveryPolicy.target}\`
+- Working tree dirty: \`${deliveryState.workingTreeDirty}\`
+- Branch: \`${deliveryState.branch || "none"}\`
+- Commit: \`${deliveryState.commit}\`
+- Push: \`${deliveryState.push}\`
+- PR: \`${deliveryState.pr}\`
+- Merge: \`${deliveryState.merge}\`
+- Release: \`${deliveryState.release}\`
+- Commit authorized: \`${deliveryPolicy.commitAuthorized}\`
+- Push authorized: \`${deliveryPolicy.pushAuthorized}\`
+- PR authorized: \`${deliveryPolicy.prAuthorized}\`
+- Merge authorized: \`${deliveryPolicy.mergeAuthorized}\`
+- Release authorized: \`${deliveryPolicy.releaseAuthorized}\`
+
+A completed run must reach Target delivery state. If actual state is below target after gates pass, continue the authorized delivery pipeline and rerun \`run record\` with PR / merge / release evidence when applicable.
 `;
 
   writeFileSync(statusPath, `${JSON.stringify(nextStatus, null, 2)}\n`);
@@ -3742,7 +4939,9 @@ ${args.gateEvidence || "Not recorded."}
     phase: args.phase,
     summary: args.summary,
     verificationSummary: nextStatus.verificationSummary,
-    gateEvidence: nextStatus.gateEvidence
+    gateEvidence: nextStatus.gateEvidence,
+    deliveryState,
+    deliveryPolicy
   };
 
   if (args.json) {
@@ -3753,6 +4952,7 @@ ${args.gateEvidence || "Not recorded."}
   console.log(`Recorded run ${args.phase}: ${displayPath(cwd, runDir)}`);
   console.log(`Status: ${displayPath(cwd, statusPath)}`);
   console.log(`Log: ${displayPath(cwd, logPath)}`);
+  console.log(`Delivery state: ${deliveryState.state}`);
 }
 
 function runStatus(args) {
@@ -3770,14 +4970,72 @@ function runStatus(args) {
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
   const expectedFiles = status.files || ["run.md", "prompt.md", "subagents.md", "status.json"];
   const missing = expectedFiles.filter((file) => !existsSync(join(runDir, file)));
+  const dag = readExecutionDag(runDir);
+  const dagState = dag ? executionDagSnapshot(dag, runDir) : status.executionDag || null;
+
+  const payload = {
+    run: displayPath(cwd, runDir),
+    phase: status.phase || "unknown",
+    goalPath: status.goalPath || "unknown",
+    workMode: status.workMode || "unknown",
+    executionRole: status.executionRole || "unknown",
+    conversationRoute: status.conversationRoute || "unknown",
+    executionContextLock: status.executionContextLock || null,
+    deliveryState: status.deliveryState || null,
+    deliveryPolicy: status.deliveryPolicy || null,
+    taskSize: status.taskSize || "unknown",
+    updatedAt: status.updatedAt || "unknown",
+    files: {
+      expected: expectedFiles,
+      missing
+    },
+    executionDag: dagState
+  };
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
 
   console.log(`Run: ${displayPath(cwd, runDir)}`);
   console.log(`Phase: ${status.phase || "unknown"}`);
   console.log(`Goal: ${status.goalPath || "unknown"}`);
   console.log(`Work mode: ${status.workMode || "unknown"}`);
+  console.log(`Execution role: ${status.executionRole || "unknown"}`);
+  console.log(`Conversation route: ${status.conversationRoute || "unknown"}`);
+  if (status.executionContextLock) {
+    console.log(`Execution cwd: ${status.executionContextLock.executionCwd || "unknown"}`);
+    console.log(`Execution branch: ${status.executionContextLock.executionBranch || "unknown"}`);
+    console.log(`Conversation lane: ${status.executionContextLock.conversationLane || "unknown"}`);
+  }
+  if (status.deliveryState) {
+    console.log(`Delivery state: ${status.deliveryState.state || "unknown"}`);
+    console.log(`Working tree dirty: ${status.deliveryState.workingTreeDirty || "unknown"}`);
+    console.log(`Commit: ${status.deliveryState.commit || "none"}`);
+    console.log(`Push: ${status.deliveryState.push || "none"}`);
+    console.log(`PR: ${status.deliveryState.pr || "none"}`);
+    console.log(`Merge: ${status.deliveryState.merge || "none"}`);
+    console.log(`Release: ${status.deliveryState.release || "none"}`);
+  }
+  if (status.deliveryPolicy) {
+    console.log(`Target delivery state: ${status.deliveryPolicy.target || "unknown"}`);
+    console.log(`Commit authorized: ${status.deliveryPolicy.commitAuthorized || "unknown"}`);
+    console.log(`Push authorized: ${status.deliveryPolicy.pushAuthorized || "unknown"}`);
+    console.log(`PR authorized: ${status.deliveryPolicy.prAuthorized || "unknown"}`);
+    console.log(`Merge authorized: ${status.deliveryPolicy.mergeAuthorized || "unknown"}`);
+    console.log(`Release authorized: ${status.deliveryPolicy.releaseAuthorized || "unknown"}`);
+  }
   console.log(`Task size: ${status.taskSize || "unknown"}`);
   console.log(`Updated: ${status.updatedAt || "unknown"}`);
   console.log(`Files: ${missing.length ? `missing ${missing.join(", ")}` : "ok"}`);
+  if (dagState) {
+    console.log(`DAG enforcement: ${dagState.enforcement || "unknown"}`);
+    console.log(`Ready nodes: ${dagState.readyNodes.join(", ") || "none"}`);
+    console.log(`Running nodes: ${dagState.runningNodes.join(", ") || "none"}`);
+    console.log(`Waiting nodes: ${dagState.waitingNodes.join(", ") || "none"}`);
+    console.log(`Completed nodes: ${dagState.completedNodes.join(", ") || "none"}`);
+    console.log(`Blocked nodes: ${dagState.blockedNodes.join(", ") || "none"}`);
+  }
 }
 
 function usage(lang = "en") {
@@ -3827,6 +5085,8 @@ function main() {
       goalValidate(args);
     } else if (command === "run" && subcommand === "prepare") {
       runPrepare(args);
+    } else if (command === "run" && subcommand === "node" && args._[2] === "record") {
+      runNodeRecord(args);
     } else if (command === "run" && subcommand === "record") {
       runRecord(args);
     } else if (command === "run" && subcommand === "status") {

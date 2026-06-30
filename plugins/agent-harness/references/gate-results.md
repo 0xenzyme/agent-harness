@@ -23,6 +23,9 @@ Next executable:
 - Candidate evidence from subagents, automation, inbox notes, or proposal
   competition is not accepted state until the control lane validates it and
   records the gate result.
+- Execution DAG node results are candidate evidence until recorded with
+  `run node record`; enforced DAG runs cannot be accepted until every node is
+  completed and dependency order has been respected.
 - In `gate-only` execution, the control lane must cite implementer output and
   verification evidence before accepting state. It should request corrections
   instead of directly rewriting implementation files.
@@ -32,6 +35,12 @@ Next executable:
 - Batch or merged source-task runs must include a `Source Task Acceptance Map`.
   The control lane must verify every mapped acceptance item before marking the
   run completed.
+- Goals with `Spec Acceptance Checklist` items must satisfy every checklist
+  item before completed run records can be accepted.
+- Adapter-required gates declared in `gates.requiredForCompletion` or
+  `gates.blocking` must have matching `Required Gate Evidence` with concrete
+  evidence and `Status: satisfied`. Technical verification is necessary but
+  cannot replace these gates.
 - Failed gates create a correction task, move the work back to an earlier
   state, or mark it blocked.
 - Deferred items must name where they are deferred and what unblocks them.

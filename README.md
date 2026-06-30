@@ -76,8 +76,8 @@ Typical adapter artifacts include:
 - `Milestones`: phase-level task DAGs, gates, and deferred registers.
 - `Specs`: accepted scope, non-goals, decisions, and validation.
 - `Goals`: executable handoff prompts.
-- `Runs / Logs`: one execution attempt, status, prompt, subagent guidance, and
-  evidence.
+- `Runs / Logs`: one execution attempt, status, prompt, execution DAG,
+  subagent guidance, worker node prompts, and evidence.
 - `Gate Records`: review, integration, acceptance, and state-sync decisions.
 
 ![Adapter Artifact Map](docs/assets/readme/adapter-artifact-map.png)

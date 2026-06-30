@@ -55,6 +55,37 @@ function latestFile(dir) {
   return join(dir, files[files.length - 1]);
 }
 
+function completeReadyDagNodes(cwd, runRelPath, label = "smoke") {
+  for (let guard = 0; guard < 20; guard += 1) {
+    const status = JSON.parse(run(["run", "status", "--cwd", cwd, "--run", runRelPath, "--json"]));
+    const dag = status.executionDag;
+    if (!dag?.enforced || dag.allNodesCompleted) {
+      return;
+    }
+    assert(dag.readyNodes.length > 0, `No ready DAG nodes for ${runRelPath}`);
+    for (const node of dag.readyNodes) {
+      run([
+        "run",
+        "node",
+        "record",
+        "--cwd",
+        cwd,
+        "--run",
+        runRelPath,
+        "--node",
+        node,
+        "--phase",
+        "completed",
+        "--summary",
+        `${label} completed ${node}`,
+        "--verification",
+        `${label} verification for ${node}`
+      ]);
+    }
+  }
+  throw new Error(`DAG did not complete within guard limit: ${runRelPath}`);
+}
+
 function collectFiles(dir, predicate) {
   const files = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -225,7 +256,7 @@ assertExcludes(
 );
 assertIncludes(
   executionRolesReference,
-  "Pause before editing when role, allowed scope, forbidden scope, verification, or",
+  "Pause before editing when role, conversation route, execution context lock,",
   "execution role reference should pause when role or authority boundaries are missing"
 );
 assertExcludes(
@@ -295,6 +326,14 @@ assert(existsSync(schemaPath), "config schema should be packaged with the plugin
 const configSchema = readJson(schemaPath);
 assert(configSchema.properties.contract.enum.includes("fixed"), "config schema should include fixed contract");
 assert(configSchema.properties.contract.enum.includes("adapter"), "config schema should include adapter contract");
+assert(
+  configSchema.properties.gates.properties.requiredForCompletion.type === "array",
+  "config schema should support adapter-required completion gates"
+);
+assert(
+  configSchema.properties.gates.properties.blocking.type === "array",
+  "config schema should support blocking gates"
+);
 const examplesDoc = readFileSync(join(repoRoot, "docs/examples/downstream-project-shapes.md"), "utf8");
 for (const needle of ["New Adapter Project", "Existing Adapter Project", "Non-Harness Project", "Messy Realistic Project"]) {
   assertIncludes(examplesDoc, needle, "downstream project shape examples should cover representative shapes");
@@ -342,19 +381,29 @@ assertExcludes(
 assertIncludes(rootReadme, "They are not installed as", "README should explain source adapter artifacts are not installed plugin content");
 assertIncludes(cliDoc, "--gate-evidence", "CLI reference should document gate-only run evidence");
 assertIncludes(cliDocZh, "--gate-evidence", "zh-CN CLI reference should document gate-only run evidence");
+assertIncludes(cliDoc, "run node record", "CLI reference should document DAG node result recording");
+assertIncludes(cliDocZh, "run node record", "zh-CN CLI reference should document DAG node result recording");
 const projectContractDoc = readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8");
-for (const needle of ["## Conversation Reconciliation Rules", "## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Agent-Neutral Delegation Rules"]) {
+for (const needle of ["## Conversation Reconciliation Rules", "## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Conversation Route And Execution Context Lock", "## Delivery State Gate", "## Agent-Neutral Delegation Rules", "`dag.json`"]) {
   assertIncludes(projectContractDoc, needle, "project contract should document execution roles");
 }
 const executeSkillDoc = readFileSync(join(repoRoot, "plugins/agent-harness/skills/execute/SKILL.md"), "utf8");
-for (const needle of ["gate-only", "implementer", "mixed", "main control", "--gate-evidence"]) {
+for (const needle of ["gate-only", "implementer", "mixed", "main control", "Execution Context Lock", "Delivery State", "--gate-evidence", "run node record"]) {
   assertIncludes(executeSkillDoc, needle, "execute skill should route control/gate requests by execution role");
 }
 const goalTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/goal.md"), "utf8");
 assertIncludes(goalTemplateDoc, "## Execution Role", "goal template should include an execution role section");
+assertIncludes(goalTemplateDoc, "## Conversation Route", "goal template should include conversation route section");
+assertIncludes(goalTemplateDoc, "## Execution Context Lock", "goal template should include execution context lock section");
+assertIncludes(goalTemplateDoc, "## Delivery State", "goal template should include delivery state section");
 const cliSource = readFileSync(cli, "utf8");
 assertIncludes(cliSource, "## Execution Role", "goal generator should include an execution role section");
+assertIncludes(cliSource, "## Conversation Route", "goal generator should include conversation route section");
+assertIncludes(cliSource, "deliveryState", "run status should expose delivery state");
+assertIncludes(cliSource, "deliveryPolicy", "run status should expose delivery target policy");
+assertIncludes(cliSource, "Delivery target gate failed", "run record should enforce delivery target");
 assertIncludes(cliSource, "gate-evidence", "run record should expose gate evidence input");
+assertIncludes(cliSource, "dag.json", "run prepare should expose execution DAG artifacts");
 
 const suiteDir = mkdtempSync(join(tmpdir(), "agent-harness-smoke-"));
 
@@ -616,16 +665,27 @@ try {
   const customGoalInspect = JSON.parse(run(["goal", "inspect", "--cwd", custom, "--goal", customGoal, "--json"]));
   assert(customGoalInspect.spec === "harness/specs/custom.md", "goal inspect should expose referenced spec");
   assert(customGoalInspect.executionRole === "implementer", "goal inspect should expose generated execution role");
+  assert(customGoalInspect.conversationRoute === "current-thread", "goal inspect should expose generated conversation route");
   assert(customGoalInspect.validation.ok === true, "goal inspect should include validation result");
   const customGoalValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", customGoal, "--json"]));
   assert(customGoalValidate.ok === true, "goal validate should pass for generated custom goal");
   assert(customGoalValidate.goal.executionRole === "implementer", "goal validate should expose execution role");
+  assert(customGoalValidate.goal.conversationRoute === "current-thread", "goal validate should expose conversation route");
+  assert(customGoalValidate.goal.executionContextLock.executionCwd === custom, "goal validate should expose execution cwd lock");
+  assert(customGoalValidate.goal.deliveryPolicy.target === "validated-local", "goal validate should expose delivery target");
   run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
   const customRuns = readdirSync(join(custom, "custom/runs")).sort();
   assert(customRuns.length > 0, "adapter run packet should use custom runs dir");
   const customRunStatus = readJson(join(custom, "custom/runs", customRuns[0], "status.json"));
   assert(customRunStatus.harnessContract === "adapter", "run status should record adapter mode");
   assert(customRunStatus.executionRole === "implementer", "run status should record execution role");
+  assert(customRunStatus.conversationRoute === "current-thread", "run status should record conversation route");
+  assert(customRunStatus.executionContextLock.executionCwd === custom, "run status should record execution cwd lock");
+  assert(customRunStatus.deliveryState.state, "run status should record delivery state");
+  assert(customRunStatus.deliveryPolicy.target === "validated-local", "run status should record delivery target");
+  const customRunStatusJson = JSON.parse(run(["run", "status", "--cwd", custom, "--run", join("custom/runs", customRuns[0]), "--json"]));
+  assert(customRunStatusJson.deliveryState.state === customRunStatus.deliveryState.state, "run status json should expose delivery state");
+  assert(customRunStatusJson.deliveryPolicy.target === "validated-local", "run status json should expose delivery target");
   assertIncludes(
     runFails([
       "run",
@@ -642,6 +702,35 @@ try {
     "Completed runs require --verification",
     "completed run record should require verification evidence"
   );
+  const committedTargetGoal = readFileSync(customGoal, "utf8")
+    .replace("Target delivery state: `validated-local`", "Target delivery state: `committed`")
+    .replace("Commit authorized: `no`", "Commit authorized: `yes`");
+  write(join(custom, "custom/goals/committed-target.md"), committedTargetGoal);
+  const committedTargetValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/committed-target.md", "--json"]));
+  assert(committedTargetValidate.ok === true, "committed delivery target with commit authorization should validate");
+  run(["run", "prepare", "--cwd", custom, "--goal", "custom/goals/committed-target.md"]);
+  const committedTargetRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-committed-target")).sort().at(-1);
+  assert(committedTargetRun, "committed target run should be prepared");
+  completeReadyDagNodes(custom, join("custom/runs", committedTargetRun), "committed-target");
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      custom,
+      "--run",
+      join("custom/runs", committedTargetRun),
+      "--phase",
+      "completed",
+      "--summary",
+      "verified but not delivered",
+      "--verification",
+      "verification passed"
+    ]),
+    "Delivery target gate failed",
+    "completed run record should reject delivery state below target"
+  );
+  completeReadyDagNodes(custom, join("custom/runs", customRuns[0]), "custom");
   const completedRecord = JSON.parse(run([
     "run",
     "record",
@@ -658,11 +747,18 @@ try {
     "--json"
   ]));
   assert(completedRecord.phase === "completed", "run record should report completed phase");
+  assert(completedRecord.deliveryState.state, "run record should report delivery state");
   assert(existsSync(join(custom, completedRecord.log)), "run record should write completed log");
   const completedRunStatus = readJson(join(custom, "custom/runs", customRuns[0], "status.json"));
   assert(completedRunStatus.phase === "completed", "run record should update status phase");
   assert(completedRunStatus.summary === "custom run completed", "run record should update summary");
   assert(completedRunStatus.verificationSummary === "smoke verification passed", "run record should update verification summary");
+  assert(completedRunStatus.deliveryState.state, "run record should persist delivery state");
+  assertIncludes(
+    readFileSync(join(custom, completedRecord.log), "utf8"),
+    "## Delivery State",
+    "run record log should include delivery-state proof"
+  );
   const customMaintainRecord = JSON.parse(run(["maintain", "tasks", "--cwd", custom, "--record", "--json"]));
   assert(customMaintainRecord.paths.taskIndex === "todolist.md", "maintain should use custom task index");
   assert(customMaintainRecord.paths.status === "custom/status.md", "maintain should use custom status path");
@@ -691,6 +787,241 @@ try {
   ]));
   assert(blockedRecord.phase === "blocked", "run record should report blocked phase");
   assert(existsSync(join(custom, blockedRecord.log)), "run record should write blocked log");
+
+  const largeDagGoal = `# Goal: Large DAG Work
+
+Spec: harness/specs/custom.md
+Status: Ready for execution from confirmed spec.
+
+## Source Task
+- \`todolist.md\`: \`P1 Ship custom path behavior\`
+
+## Read First
+1. \`AGENTS.md\`
+2. \`todolist.md\`
+3. \`harness/README.md\`
+4. \`.harness/config.json\`
+5. \`custom/status.md\`
+6. \`harness/specs/custom.md\`
+7. \`harness/goals/context.md\`
+8. \`docs/project-contract.md\`
+9. \`plugins/agent-harness/references/task-routing.md\`
+10. \`plugins/agent-harness/references/controller-communication.md\`
+11. \`plugins/agent-harness/skills/execute/SKILL.md\`
+12. \`plugins/agent-harness/templates/goal.md\`
+13. \`tests/smoke.mjs\`
+
+## Work Mode Recommendation
+Use \`worktree\`.
+
+## Execution Role
+Use \`implementer\`.
+
+## Conversation Route
+Use \`remote-control-worktree\`.
+
+## Execution Context Lock
+- Conversation lane: \`control-thread\`
+- Controller thread: \`thread-large-dag-smoke\`
+- Execution cwd: \`${custom}\`
+- Execution branch: \`smoke-worktree\`
+- Execution slot: \`custom\`
+- Remote-control worktree: \`yes\`
+
+## Delivery State
+- Target delivery state: \`validated-local\`
+- Commit authorized: \`no\`
+- Push authorized: \`no\`
+- PR authorized: \`no\`
+- Merge authorized: \`no\`
+- Release authorized: \`no\`
+
+## Scope
+- Update CLI behavior.
+- Update DAG artifacts.
+- Update node prompts.
+- Update run status.
+- Update run record gates.
+- Update docs.
+- Update skills.
+- Update templates.
+- Update smoke tests.
+- Preserve adapter paths.
+
+## Non-Goals
+- Do not push, deploy, publish, or open a PR.
+
+## Verification
+Manual verification evidence only.
+
+## Completion Conditions
+- DAG nodes are complete.
+
+## Pause Conditions
+- Pause on spec conflicts or newer instructions.
+- Pause for credentials or paid APIs.
+- Pause for destructive or production actions.
+- Pause for product direction.
+`;
+  write(join(custom, "custom/goals/large-dag.md"), largeDagGoal);
+  run(["run", "prepare", "--cwd", custom, "--goal", "custom/goals/large-dag.md"]);
+  const largeDagRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-large-dag")).sort().at(-1);
+  const largeDagRunRel = join("custom/runs", largeDagRun);
+  const largeDagRunDir = join(custom, largeDagRunRel);
+  const largeDagStatus = readJson(join(largeDagRunDir, "status.json"));
+  assert(largeDagStatus.taskSize === "large", "large DAG fixture should classify as large");
+  assert(largeDagStatus.conversationRoute === "remote-control-worktree", "worktree run should record remote-control route");
+  assert(largeDagStatus.executionContextLock.remoteControlWorktree === "yes", "worktree run should record remote-control lock");
+  assert(largeDagStatus.deliveryState.state, "worktree run should record delivery state");
+  assert(largeDagStatus.executionDag.enforced === true, "large DAG run should enforce node completion before run completion");
+  assert(existsSync(join(largeDagRunDir, "dag.json")), "run prepare should write machine-readable DAG");
+  assert(existsSync(join(largeDagRunDir, "dag.md")), "run prepare should write human-readable DAG");
+  assert(existsSync(join(largeDagRunDir, "agents/explorer/prompt.md")), "run prepare should write explorer prompt");
+  assert(existsSync(join(largeDagRunDir, "agents/cli-contract-worker/prompt.md")), "run prepare should write parallel worker prompt");
+  const largeDagStatusJson = JSON.parse(run(["run", "status", "--cwd", custom, "--run", largeDagRunRel, "--json"]));
+  assert(
+    JSON.stringify(largeDagStatusJson.executionDag.readyNodes) === JSON.stringify(["explorer"]),
+    "large DAG should initially expose only explorer as ready"
+  );
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      custom,
+      "--run",
+      largeDagRunRel,
+      "--phase",
+      "completed",
+      "--summary",
+      "premature completion",
+      "--verification",
+      "verification passed"
+    ]),
+    "Completed DAG runs require every execution DAG node",
+    "large DAG run completion should wait for all DAG nodes"
+  );
+  assertIncludes(
+    runFails([
+      "run",
+      "node",
+      "record",
+      "--cwd",
+      custom,
+      "--run",
+      largeDagRunRel,
+      "--node",
+      "cli-contract-worker",
+      "--phase",
+      "completed",
+      "--summary",
+      "worker tried to finish early",
+      "--verification",
+      "worker verification"
+    ]),
+    "cannot complete before dependencies",
+    "DAG node record should enforce dependencies"
+  );
+  const explorerNode = JSON.parse(run([
+    "run",
+    "node",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    largeDagRunRel,
+    "--node",
+    "explorer",
+    "--phase",
+    "completed",
+    "--summary",
+    "explorer mapped ownership",
+    "--verification",
+    "read-only review completed",
+    "--thread",
+    "thread-explorer",
+    "--surface",
+    "codex-app-create-thread",
+    "--json"
+  ]));
+  assert(
+    JSON.stringify(explorerNode.readyNodes) === JSON.stringify(["cli-contract-worker", "docs-skill-worker"]),
+    "DAG should release independent workers in parallel after explorer"
+  );
+  run([
+    "run",
+    "node",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    largeDagRunRel,
+    "--node",
+    "cli-contract-worker",
+    "--phase",
+    "completed",
+    "--summary",
+    "CLI worker completed",
+    "--verification",
+    "CLI smoke passed"
+  ]);
+  run([
+    "run",
+    "node",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    largeDagRunRel,
+    "--node",
+    "docs-skill-worker",
+    "--phase",
+    "completed",
+    "--summary",
+    "Docs worker completed",
+    "--verification",
+    "Docs smoke passed"
+  ]);
+  const workerDagStatus = JSON.parse(run(["run", "status", "--cwd", custom, "--run", largeDagRunRel, "--json"]));
+  assert(
+    JSON.stringify(workerDagStatus.executionDag.readyNodes) === JSON.stringify(["verification"]),
+    "DAG should release verification after both parallel workers complete"
+  );
+  run([
+    "run",
+    "node",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    largeDagRunRel,
+    "--node",
+    "verification",
+    "--phase",
+    "completed",
+    "--summary",
+    "verification completed",
+    "--verification",
+    "all DAG checks passed"
+  ]);
+  const finalDagStatus = JSON.parse(run(["run", "status", "--cwd", custom, "--run", largeDagRunRel, "--json"]));
+  assert(finalDagStatus.executionDag.allNodesCompleted === true, "DAG should report all nodes completed");
+  const completedDagRecord = JSON.parse(run([
+    "run",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    largeDagRunRel,
+    "--phase",
+    "completed",
+    "--summary",
+    "large DAG run accepted",
+    "--verification",
+    "all DAG checks passed",
+    "--json"
+  ]));
+  assert(completedDagRecord.phase === "completed", "completed DAG run should record after all nodes complete");
 
   const invalidGoalDir = join(custom, "custom/goals");
   write(join(invalidGoalDir, "missing-spec.md"), `# Goal: Missing Spec
@@ -743,6 +1074,24 @@ Manual verification evidence only.
     "Work Mode Recommendation",
     "invalid work mode should fail validation"
   );
+  write(
+    join(invalidGoalDir, "delivery-target-missing-auth.md"),
+    readFileSync(customGoal, "utf8").replace("Target delivery state: `validated-local`", "Target delivery state: `PR-open`")
+  );
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/delivery-target-missing-auth.md", "--json"]),
+    "Delivery State target PR-open requires Commit authorized: yes",
+    "delivery target beyond local should require matching authorization"
+  );
+  const worktreeMissingContextGoal = readFileSync(customGoal, "utf8")
+    .replace("Use `ask`", "Use `worktree`")
+    .replace(/## Conversation Route[\s\S]*?## Execution DAG/, "## Execution DAG");
+  write(join(invalidGoalDir, "worktree-missing-context.md"), worktreeMissingContextGoal);
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/worktree-missing-context.md", "--json"]),
+    "Worktree goals require a Conversation Route section",
+    "worktree goals should require conversation route and execution context lock"
+  );
   write(join(invalidGoalDir, "invalid-execution-role.md"), readFileSync(customGoal, "utf8").replace("Use `implementer`", "Use `observer`"));
   assertIncludes(
     runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/invalid-execution-role.md", "--json"]),
@@ -778,6 +1127,7 @@ Manual verification evidence only.
     "Completed gate-only runs require --gate-evidence",
     "gate-only completion should require gate evidence"
   );
+  completeReadyDagNodes(custom, join("custom/runs", gateOnlyRun), "gate-only");
   const gateOnlyRecord = JSON.parse(run([
     "run",
     "record",
@@ -914,6 +1264,143 @@ Manual verification evidence only.
     "Goal validation failed",
     "run prepare should reject invalid goals"
   );
+
+  const gated = join(suiteDir, "adapter-gated");
+  mkdirSync(gated, { recursive: true });
+  write(join(gated, ".harness/config.json"), `${JSON.stringify({
+    contract: "adapter",
+    projectName: "gated",
+    adapter: {
+      docs: "harness/README.md",
+      machineReadable: ".harness/config.json"
+    },
+    paths: {
+      taskIndex: "harness/tasks.md",
+      status: "harness/status.md",
+      specs: "harness/specs",
+      goals: "harness/goals",
+      milestones: "harness/milestones",
+      runs: ".harness/runs",
+      gateRecords: ".harness/runs",
+      deferredRegister: "harness/milestones",
+      mentalModels: "harness/mental-models",
+      mentalModelIndex: "harness/mental-models/README.md"
+    },
+    gates: {
+      enabled: ["spec", "execution", "integration", "content-quality", "source-coverage"],
+      requiredForCompletion: ["content-quality"],
+      blocking: ["source-coverage"],
+      optional: []
+    }
+  }, null, 2)}\n`);
+  write(join(gated, "harness/README.md"), "# Gated Adapter\n");
+  write(join(gated, "harness/status.md"), "# Status\n");
+  write(join(gated, "harness/specs/gated.md"), "# Gated Spec\n\nStatus: accepted\n");
+  mkdirSync(join(gated, "harness/milestones"), { recursive: true });
+  write(join(gated, "harness/tasks.md"), `# Tasks
+
+## Now
+
+- [ ] P1 Publish gated artifact.
+  - Acceptance: Technical verification and adapter gates pass.
+`);
+  assert(JSON.parse(run(["config", "validate", "--cwd", gated, "--json"])).ok === true, "gated adapter config should validate");
+  run([
+    "goal",
+    "create",
+    "--cwd",
+    gated,
+    "--task",
+    "Publish gated artifact",
+    "--spec",
+    "harness/specs/gated.md",
+    "--work-mode",
+    "local"
+  ]);
+  const gatedGoal = latestFile(join(gated, "harness/goals"));
+  const gatedGoalContent = readFileSync(gatedGoal, "utf8");
+  assertIncludes(gatedGoalContent, "Gate: `content-quality`", "generated goal should include required completion gate");
+  assertIncludes(gatedGoalContent, "Gate: `source-coverage`", "generated goal should include blocking gate");
+  const gatedGoalValidate = JSON.parse(run(["goal", "validate", "--cwd", gated, "--goal", gatedGoal, "--json"]));
+  assert(gatedGoalValidate.ok === true, "pending required gate evidence should validate before execution");
+  assert(gatedGoalValidate.goal.requiredGateEvidence.itemCount === 2, "goal validate should expose required gate evidence item count");
+  run(["run", "prepare", "--cwd", gated, "--goal", gatedGoal]);
+  const gatedRun = readdirSync(join(gated, ".harness/runs")).filter((name) => name.endsWith("-publish-gated-artifact")).sort().at(-1);
+  const gatedRunStatus = readJson(join(gated, ".harness/runs", gatedRun, "status.json"));
+  assert(
+    JSON.stringify(gatedRunStatus.requiredGates) === JSON.stringify(["content-quality", "source-coverage"]),
+    "run status should record adapter-required gates"
+  );
+  completeReadyDagNodes(gated, join(".harness/runs", gatedRun), "gated");
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      gated,
+      "--run",
+      join(".harness/runs", gatedRun),
+      "--phase",
+      "completed",
+      "--summary",
+      "technical verification passed but gates are pending",
+      "--verification",
+      "npm test passed"
+    ]),
+    "Required Gate Evidence validation failed",
+    "completed run should reject pending adapter-required gate evidence"
+  );
+  const checklistItem = `- Item: \`Product acceptance checklist\`
+  - Acceptance: \`Domain gate evidence must be reviewed before completion.\`
+  - Evidence: \`TBD\`
+  - Status: \`pending\`
+  - Unblocker: \`N/A\`
+
+`;
+  write(gatedGoal, gatedGoalContent.replace("## Required Gate Evidence", `${checklistItem}## Required Gate Evidence`));
+  run(["run", "prepare", "--cwd", gated, "--goal", gatedGoal]);
+  const checklistRun = readdirSync(join(gated, ".harness/runs")).filter((name) => name.endsWith("-publish-gated-artifact")).sort().at(-1);
+  completeReadyDagNodes(gated, join(".harness/runs", checklistRun), "checklist");
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      gated,
+      "--run",
+      join(".harness/runs", checklistRun),
+      "--phase",
+      "completed",
+      "--summary",
+      "technical verification passed but checklist is pending",
+      "--verification",
+      "npm test passed"
+    ]),
+    "Spec Acceptance Checklist validation failed",
+    "completed run should reject pending spec acceptance checklist evidence"
+  );
+  write(gatedGoal, readFileSync(gatedGoal, "utf8")
+    .replaceAll("`TBD`", "`Reviewed fixture gate evidence`")
+    .replaceAll("`pending`", "`satisfied`"));
+  run(["run", "prepare", "--cwd", gated, "--goal", gatedGoal]);
+  const acceptedGatedRun = readdirSync(join(gated, ".harness/runs")).filter((name) => name.endsWith("-publish-gated-artifact")).sort().at(-1);
+  completeReadyDagNodes(gated, join(".harness/runs", acceptedGatedRun), "accepted-gated");
+  const acceptedGatedRecord = JSON.parse(run([
+    "run",
+    "record",
+    "--cwd",
+    gated,
+    "--run",
+    join(".harness/runs", acceptedGatedRun),
+    "--phase",
+    "completed",
+    "--summary",
+    "gated run accepted",
+    "--verification",
+    "npm test passed",
+    "--json"
+  ]));
+  assert(acceptedGatedRecord.phase === "completed", "satisfied checklist and gate evidence should allow completion");
 
   const configuredInit = join(suiteDir, "configured-init-custom");
   mkdirSync(configuredInit, { recursive: true });

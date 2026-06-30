@@ -1,0 +1,290 @@
+[
+  {
+    "id": "ah_trigger_positive_orient_001",
+    "kind": "positive",
+    "user_request": "Use harness:orient in the current repo and tell me the next safe route.",
+    "expected_skills": ["harness:orient"],
+    "should_trigger": true,
+    "rationale": "Explicitly asks for read-only route orientation."
+  },
+  {
+    "id": "ah_trigger_positive_orient_002",
+    "kind": "positive",
+    "user_request": "Use harness to inspect project status, blockers, and what I should do next. Do not edit files.",
+    "expected_skills": ["harness:orient"],
+    "should_trigger": true,
+    "rationale": "Read-only status and next-action request."
+  },
+  {
+    "id": "ah_trigger_positive_orient_003",
+    "kind": "positive",
+    "user_request": "Check the harness task index and recommend whether this should be intake, goal, execute, or ask.",
+    "expected_skills": ["harness:orient"],
+    "should_trigger": true,
+    "rationale": "Route selection without mutation belongs to orient."
+  },
+  {
+    "id": "ah_trigger_positive_orient_004",
+    "kind": "positive",
+    "user_request": "Use harness to summarize the current adapter state and confirmation boundary.",
+    "expected_skills": ["harness:orient"],
+    "should_trigger": true,
+    "rationale": "Adapter state inspection and confirmation boundary are orient work."
+  },
+  {
+    "id": "ah_trigger_positive_orient_005",
+    "kind": "positive",
+    "user_request": "Tell me which harness mode should handle this repo before we change anything.",
+    "expected_skills": ["harness:orient"],
+    "should_trigger": true,
+    "rationale": "Mode recommendation before mutation is orient."
+  },
+  {
+    "id": "ah_trigger_positive_intake_001",
+    "kind": "positive",
+    "user_request": "Use harness:intake to triage this idea without implementing it: Add an import wizard.",
+    "expected_skills": ["harness:intake"],
+    "should_trigger": true,
+    "rationale": "Explicit intake request for a rough idea."
+  },
+  {
+    "id": "ah_trigger_positive_intake_002",
+    "kind": "positive",
+    "user_request": "Add this rough requirement to the harness backlog after previewing it: support CSV import.",
+    "expected_skills": ["harness:intake"],
+    "should_trigger": true,
+    "rationale": "Capture and optional record of a not-yet-accepted requirement."
+  },
+  {
+    "id": "ah_trigger_positive_intake_003",
+    "kind": "positive",
+    "user_request": "Use harness to classify this bug report and tell me whether it likely needs a spec.",
+    "expected_skills": ["harness:intake"],
+    "should_trigger": true,
+    "rationale": "Bug triage and spec-need hint are intake work."
+  },
+  {
+    "id": "ah_trigger_positive_intake_004",
+    "kind": "positive",
+    "user_request": "Promote this Idea Inbox note into the task index, preserving the raw note.",
+    "expected_skills": ["harness:intake"],
+    "should_trigger": true,
+    "rationale": "Idea Inbox promotion belongs to intake."
+  },
+  {
+    "id": "ah_trigger_positive_intake_005",
+    "kind": "positive",
+    "user_request": "Triage this not-yet-accepted feature request and do not start implementation.",
+    "expected_skills": ["harness:intake"],
+    "should_trigger": true,
+    "rationale": "The request is explicitly not executable scope."
+  },
+  {
+    "id": "ah_trigger_positive_init_001",
+    "kind": "positive",
+    "user_request": "Use harness:init in this repo and preview activation. Do not edit AGENTS.md.",
+    "expected_skills": ["harness:init"],
+    "should_trigger": true,
+    "rationale": "Explicit harness initialization and activation preview."
+  },
+  {
+    "id": "ah_trigger_positive_init_002",
+    "kind": "positive",
+    "user_request": "Adopt Agent Harness in this new project with the adapter contract.",
+    "expected_skills": ["harness:init"],
+    "should_trigger": true,
+    "rationale": "Harness adoption is init work."
+  },
+  {
+    "id": "ah_trigger_positive_init_003",
+    "kind": "positive",
+    "user_request": "Import my existing todolist.md into Agent Harness without creating a second task index.",
+    "expected_skills": ["harness:init"],
+    "should_trigger": true,
+    "rationale": "Config import and migration safety belong to init."
+  },
+  {
+    "id": "ah_trigger_positive_init_004",
+    "kind": "positive",
+    "user_request": "Run harness doctor and repair missing setup files if the dry run is safe.",
+    "expected_skills": ["harness:init"],
+    "should_trigger": true,
+    "rationale": "Setup repair and doctor belong to init."
+  },
+  {
+    "id": "ah_trigger_positive_init_005",
+    "kind": "positive",
+    "user_request": "Show me the project-scope activation snippet for Agent Harness.",
+    "expected_skills": ["harness:init"],
+    "should_trigger": true,
+    "rationale": "Activation snippet preview is init work."
+  },
+  {
+    "id": "ah_trigger_positive_execute_001",
+    "kind": "positive",
+    "user_request": "Use harness:execute for the confirmed goal in harness/goals/example.md. Verify and sync state.",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Explicit execution request for a confirmed goal."
+  },
+  {
+    "id": "ah_trigger_positive_execute_002",
+    "kind": "positive",
+    "user_request": "Implement the accepted spec. Scope, non-goals, verification, completion, and pause conditions are in the goal file.",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Executable scope is confirmed by a goal file."
+  },
+  {
+    "id": "ah_trigger_positive_execute_003",
+    "kind": "positive",
+    "user_request": "Act as the control lane and review this worker output against the confirmed run packet.",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Confirmed gate-only review belongs to execute."
+  },
+  {
+    "id": "ah_trigger_positive_execute_004",
+    "kind": "positive",
+    "user_request": "Complete the ready DAG node from this run packet, then record verification evidence.",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Confirmed DAG node execution belongs to execute."
+  },
+  {
+    "id": "ah_trigger_positive_execute_005",
+    "kind": "positive",
+    "user_request": "Run the requested verification for this accepted task and sync the harness status.",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Verification and state sync for accepted work are execute work."
+  },
+  {
+    "id": "ah_trigger_negative_001",
+    "kind": "negative",
+    "user_request": "What is Agent Harness? Answer in three sentences.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Simple explanation does not require harness workflow execution."
+  },
+  {
+    "id": "ah_trigger_negative_002",
+    "kind": "negative",
+    "user_request": "Show me the package version.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Simple command/query, not a harness workflow."
+  },
+  {
+    "id": "ah_trigger_negative_003",
+    "kind": "negative",
+    "user_request": "Review this unrelated React component for bugs.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "General code review does not imply harness state management."
+  },
+  {
+    "id": "ah_trigger_negative_004",
+    "kind": "negative",
+    "user_request": "Create a new Codex skill from this template.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Skill creation belongs to a different workflow."
+  },
+  {
+    "id": "ah_trigger_negative_005",
+    "kind": "negative",
+    "user_request": "Run npm test and tell me whether it passes.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "A direct verification command alone is not a harness workflow request."
+  },
+  {
+    "id": "ah_trigger_negative_006",
+    "kind": "negative",
+    "user_request": "Summarize the README changes in this diff.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Diff summarization does not require harness workflow routing."
+  },
+  {
+    "id": "ah_trigger_negative_007",
+    "kind": "negative",
+    "user_request": "Search the repo for TODO comments.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Local search is not a harness-specific workflow."
+  },
+  {
+    "id": "ah_trigger_negative_008",
+    "kind": "negative",
+    "user_request": "Explain the difference between fixed and adapter contracts.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Concept explanation can be answered from docs without running a workflow."
+  },
+  {
+    "id": "ah_trigger_negative_009",
+    "kind": "negative",
+    "user_request": "Format this Markdown table.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Markdown formatting is unrelated to harness orchestration."
+  },
+  {
+    "id": "ah_trigger_negative_010",
+    "kind": "negative",
+    "user_request": "Generate a logo for the project.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Image generation does not require Agent Harness."
+  },
+  {
+    "id": "ah_trigger_boundary_001",
+    "kind": "boundary",
+    "user_request": "Use harness to inspect this repo and fix the first easy issue you find.",
+    "expected_skills": ["harness:orient"],
+    "should_trigger": true,
+    "rationale": "Mixed inspection and mutation should start with orient and require confirmation before fixes."
+  },
+  {
+    "id": "ah_trigger_boundary_002",
+    "kind": "boundary",
+    "user_request": "Act as the control lane, but also patch the worker output if it is tiny.",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Control-lane wording triggers execute gate-only; patching requires explicit mixed approval."
+  },
+  {
+    "id": "ah_trigger_boundary_003",
+    "kind": "boundary",
+    "user_request": "Add this idea and immediately implement it.",
+    "expected_skills": ["harness:intake"],
+    "should_trigger": true,
+    "rationale": "Rough idea should be captured first; execution needs accepted boundaries."
+  },
+  {
+    "id": "ah_trigger_boundary_004",
+    "kind": "boundary",
+    "user_request": "Set up harness in this repo and update AGENTS.md for me.",
+    "expected_skills": ["harness:init"],
+    "should_trigger": true,
+    "rationale": "Setup belongs to init, but AGENTS.md mutation needs explicit approval after preview."
+  },
+  {
+    "id": "ah_trigger_boundary_005",
+    "kind": "boundary",
+    "user_request": "Complete this task, but I do not have a spec or verification command.",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Execute may trigger for route narrowing, but must pause or route to shape/goal."
+  },
+  {
+    "id": "ah_trigger_boundary_006",
+    "kind": "boundary",
+    "user_request": "Use harness on this non-harness repo and tell me what to do next.",
+    "expected_skills": ["harness:orient"],
+    "should_trigger": true,
+    "rationale": "Read-only inspection should report missing harness state and recommend init only if adoption is desired."
+  }
+]

@@ -54,6 +54,31 @@ Score each scenario from 0 to 2 for each criterion:
 
 Suggested minimum pass: 10 of 12 points with no boundary-preservation failure.
 
+## Skill Eval Cases
+
+Skill-level cases live under `skills/agent-harness/`:
+
+- `trigger_cases.yaml`: positive, negative, and boundary activation examples
+  for `harness:orient`, `harness:intake`, `harness:init`, and
+  `harness:execute`.
+- `task_cases.yaml`: deterministic task cases based on the fixture shapes in
+  this directory.
+- `transcript_rubric.md`: 0-2 human/model scoring rubric for agent
+  transcripts after deterministic checks pass.
+
+The case files use YAML-compatible JSON so the runner can stay dependency-free
+until the project needs a full YAML parser.
+
+Run the deterministic eval harness with:
+
+```bash
+npm run test:eval
+```
+
+This command validates trigger case coverage, materializes temporary fixture
+projects, runs CLI hard checks, and confirms read-only or dry-run scenarios do
+not write forbidden harness files.
+
 ## Initial Automated Checks
 
 The first implementation can use a simple runner that:

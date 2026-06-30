@@ -62,7 +62,8 @@ adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 
 - `Milestones`：阶段级 task DAG、gates 和 deferred registers。
 - `Specs`：已确认的范围、非目标、关键决策和验证方式。
 - `Goals`：可执行的 handoff prompts。
-- `Runs / Logs`：一次执行尝试、状态、prompt、subagent guidance 和 evidence。
+- `Runs / Logs`：一次执行尝试、状态、prompt、execution DAG、subagent
+  guidance、worker node prompts 和 evidence。
 - `Gate Records`：review、integration、acceptance 和 state-sync 决策。
 
 ![Adapter Artifact Map](docs/assets/readme/adapter-artifact-map.png)

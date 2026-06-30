@@ -59,6 +59,8 @@
       "execution",
       "integration"
     ],
+    "requiredForCompletion": [],
+    "blocking": [],
     "optional": [
       "walkthrough",
       "retrospective"

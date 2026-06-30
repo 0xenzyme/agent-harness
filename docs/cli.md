@@ -144,10 +144,25 @@ Prepare a run packet from a goal:
 node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
 ```
 
+Prepared run packets include `dag.json`, `dag.md`, and
+`agents/<node>/prompt.md` files. The controller may launch ready nodes in new
+Codex threads or Codex CLI subagents, but `run prepare` itself does not start
+workers. Run packets also record conversation route, execution context lock,
+and the current delivery state so local worktree execution is not confused with
+committed, pushed, merged, or shipped state.
+
 Inspect a prepared run:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
+node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+```
+
+Record one execution DAG node result before launching dependent nodes:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase completed --summary "Mapped implementation ownership" --verification "Read-only review completed"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
 ```
 
 Record a run outcome without modifying source files, pushing, or opening PRs:
@@ -157,3 +172,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Gate accepted" --verification "npm test passed" --gate-evidence "Reviewed implementer output and run evidence"
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
 ```
+
+`run record` refreshes delivery state in `status.json` and the run log. If the
+state is `implemented-local` or `validated-local`, next action is review the
+local diff and explicitly request commit / PR or discard.
+
+For completed runs, `run record` enforces the goal's Target delivery state. If
+the target is `PR-open`, `merged`, or `released/shipped`, pass external evidence
+with `--pr-url`, `--merge-sha`, or `--release-ref` after performing the
+authorized delivery step.
