@@ -1,12 +1,19 @@
 ---
 name: orient
-description: Read-only Agent Harness orientation for current state, tasks, blockers, and next route. / 只读定位当前项目状态、任务、阻塞与下一步路线。
+description: Read-only Agent Harness orientation for current state, tasks, blockers, and next route without mutation. Use for inspection, route recommendation, and confirmation boundaries. Do not use for harness adoption/init/import, idea recording, or confirmed implementation. / 只读定位当前项目状态、任务、阻塞与下一步路线；用于检查、路线建议和确认边界；不要用于接入/初始化/导入、记录想法或已确认执行。
 ---
 
 # Harness Orient
 
 Use this skill to understand the current project and recommend the next route
 without starting implementation.
+
+## Reference Map
+
+- Use [Route Decision](references/route-decision.md) when recommending the next
+  harness mode.
+- Use [Read-Only Boundary](references/read-only-boundary.md) when the request
+  mixes orientation with mutation or execution language.
 
 ## Workflow
 
@@ -40,6 +47,9 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
    before any mutation or implementation. The explanation should name the
    observable reason, such as task state, missing spec, ambiguity, risk,
    dirty checkout, or user intent.
+9. For ambiguous route selection, read
+   [Task Routing](../../references/task-routing.md) and use its route decision
+   fields without mutating project state.
 
 ## Boundaries
 

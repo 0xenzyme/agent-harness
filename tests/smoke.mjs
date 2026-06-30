@@ -76,6 +76,14 @@ function assertExcludes(value, needle, message) {
   assert(!value.includes(needle), message || `Expected output not to include ${needle}`);
 }
 
+function skillDoc(skillName) {
+  return readFileSync(join(repoRoot, "plugins/agent-harness/skills", skillName, "SKILL.md"), "utf8");
+}
+
+function frontmatterDescription(doc) {
+  return doc.match(/^description:\s*(.*)$/m)?.[1] || "";
+}
+
 const pluginManifest = readJson(join(repoRoot, "plugins/agent-harness/.codex-plugin/plugin.json"));
 const packageManifest = readJson(join(repoRoot, "package.json"));
 assert(pluginManifest.name === "harness", "plugin manifest should expose the short harness plugin name");
@@ -113,6 +121,130 @@ for (const legacySkillName of ["harness-adapter", "harness-goal", "harness-init"
     `legacy wrapper skill should not be shipped: ${legacySkillName}`
   );
 }
+const workflowSkillDocs = {
+  init: skillDoc("init"),
+  orient: skillDoc("orient"),
+  intake: skillDoc("intake"),
+  execute: skillDoc("execute")
+};
+const expectedSkillReferences = {
+  init: ["adoption-boundary.md", "migration-safety.md"],
+  orient: ["route-decision.md", "read-only-boundary.md"],
+  intake: ["capture-boundary.md", "promotion-rules.md"],
+  execute: ["routing-boundaries.md", "execution-roles.md", "completion-evidence.md"]
+};
+for (const [skillName, referenceFiles] of Object.entries(expectedSkillReferences)) {
+  const referencesDir = join(repoRoot, "plugins/agent-harness/skills", skillName, "references");
+  assert(existsSync(referencesDir), `${skillName} should ship local references instead of a thin single-file skill`);
+  for (const referenceFile of referenceFiles) {
+    const referencePath = join(referencesDir, referenceFile);
+    assert(existsSync(referencePath), `${skillName} should include references/${referenceFile}`);
+    assertIncludes(
+      workflowSkillDocs[skillName],
+      `references/${referenceFile}`,
+      `${skillName} SKILL.md should link references/${referenceFile}`
+    );
+    const referenceContent = readFileSync(referencePath, "utf8");
+    assertIncludes(referenceContent, "Use this reference", `${skillName}/${referenceFile} should state when to load it`);
+  }
+}
+const workflowSkillDescriptions = Object.fromEntries(
+  Object.entries(workflowSkillDocs).map(([name, doc]) => [name, frontmatterDescription(doc)])
+);
+const taskRoutingReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/task-routing.md"), "utf8");
+const executionRolesReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/skills/execute/references/execution-roles.md"),
+  "utf8"
+);
+const intakePromotionReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/skills/intake/references/promotion-rules.md"),
+  "utf8"
+);
+assertIncludes(
+  workflowSkillDescriptions.execute,
+  "Use only when scope, role, verification, completion conditions, and pause conditions are accepted",
+  "execute description should require accepted execution boundaries before routing"
+);
+assertIncludes(
+  workflowSkillDescriptions.execute,
+  "Do not use for read-only orientation",
+  "execute description should exclude read-only orientation"
+);
+assertIncludes(
+  workflowSkillDescriptions.execute,
+  "unconfirmed specs/goals",
+  "execute description should exclude unconfirmed specs/goals"
+);
+assertIncludes(
+  workflowSkillDescriptions.init,
+  "Do not use for read-only orientation",
+  "init description should not steal read-only orientation"
+);
+assertIncludes(
+  workflowSkillDescriptions.orient,
+  "Do not use for harness adoption/init/import",
+  "orient description should not steal setup/adoption work"
+);
+assertIncludes(
+  workflowSkillDescriptions.intake,
+  "Do not use for read-only orientation",
+  "intake description should not steal orientation"
+);
+assertIncludes(
+  workflowSkillDocs.execute,
+  "do not infer `mixed` from low-risk local work alone",
+  "execute should not self-authorize mixed execution from low risk alone"
+);
+assertIncludes(
+  taskRoutingReference,
+  "Do not infer `mixed` from low-risk local work alone",
+  "task-routing should not self-authorize mixed execution from low risk alone"
+);
+assertExcludes(
+  taskRoutingReference,
+  "low-risk and local enough",
+  "task-routing should not allow low-risk local work to grant mixed execution"
+);
+assertIncludes(
+  workflowSkillDocs.execute,
+  "If any of these are missing, route to",
+  "execute should route or pause when execution boundaries are missing"
+);
+assertExcludes(
+  workflowSkillDocs.execute,
+  "affects risk, cost, or product direction, pause and ask",
+  "execute should not make missing execution boundaries conditional on risk judgment"
+);
+assertIncludes(
+  executionRolesReference,
+  "Pause before editing when role, allowed scope, forbidden scope, verification, or",
+  "execution role reference should pause when role or authority boundaries are missing"
+);
+assertExcludes(
+  executionRolesReference,
+  "and the choice affects risk, cost, product",
+  "execution role reference should not make missing boundaries conditional on risk judgment"
+);
+assertIncludes(
+  intakePromotionReference,
+  "If any item is missing, route to",
+  "intake promotion should not route to execution with missing boundaries"
+);
+assertExcludes(
+  intakePromotionReference,
+  "If any item affects risk",
+  "intake promotion should not make missing execution boundaries conditional on risk judgment"
+);
+assertIncludes(
+  workflowSkillDocs.execute,
+  "../../references/task-routing.md",
+  "execute should route ambiguous work through the task-routing reference"
+);
+assertIncludes(
+  workflowSkillDocs.orient,
+  "../../references/task-routing.md",
+  "orient should route ambiguous work through the task-routing reference"
+);
 const designPrincipleFiles = [
   "docs/project-contract.md",
   "plugins/agent-harness/references/adapter-harness.md",

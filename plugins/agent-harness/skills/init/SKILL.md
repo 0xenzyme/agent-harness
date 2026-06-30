@@ -1,11 +1,18 @@
 ---
 name: init
-description: Adopt, initialize, import, or audit Agent Harness in a new or existing project. / 在新项目或现有项目中接入、初始化、导入或审计 Agent Harness。
+description: Adopt, initialize, import, or audit Agent Harness setup in a new or existing project. Use when the user wants harness adoption, config import, activation preview, or setup repair. Do not use for read-only orientation, next-step recommendations, idea intake, or confirmed implementation. / 用于 Agent Harness 接入、初始化、配置导入、activation preview 或 setup repair；不要用于只读定位、下一步建议、想法收集或已确认执行。
 ---
 
 # Harness Init
 
 Use this skill for low-frequency setup, adoption, migration, and repair checks.
+
+## Reference Map
+
+- Use [Adoption Boundary](references/adoption-boundary.md) before setup,
+  import, activation, or repair work.
+- Use [Migration Safety](references/migration-safety.md) before importing or
+  repairing an existing harness-like project.
 
 ## Workflow
 
@@ -49,6 +56,9 @@ node <plugin-root>/scripts/agent-harness.mjs activation snippet --cwd <project>
 
 ## Boundaries
 
+- For read-only project state or next-action requests, route to `orient`.
+- For confirmed implementation, route to `execute` after scope, role, and
+  verification are clear.
 - Do not overwrite existing files unless the user explicitly asks or a dry-run
   has made the change safe and clear.
 - Do not modify `AGENTS.md`; activation changes require explicit user approval

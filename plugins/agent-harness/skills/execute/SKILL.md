@@ -1,12 +1,21 @@
 ---
 name: execute
-description: Execute confirmed Agent Harness work with verification and state sync. / 执行已确认的 Agent Harness 工作，并完成验证与状态同步。
+description: Execute confirmed Agent Harness implementation or gate work with verification and state sync. Use only when scope, role, verification, completion conditions, and pause conditions are accepted. Do not use for read-only orientation, new idea intake, harness adoption/init/import, vague next-step questions, or unconfirmed specs/goals; route those to orient, intake, init, shape, goal, or ask. / 执行已确认的 Agent Harness 实现或 gate 工作，并完成验证与状态同步；仅在 scope、role、verification、completion conditions 和 pause conditions 已接受时使用；不要用于只读定位、新想法收集、harness 接入/初始化/导入、模糊下一步问题或未确认 specs/goals。
 ---
 
 # Harness Execute
 
 Use this skill when the user has authorized a concrete implementation slice or
 asked the current thread to act as the control lane for a confirmed task.
+
+## Reference Map
+
+- Use [Routing Boundaries](references/routing-boundaries.md) when the request
+  needs route selection before execution.
+- Use [Execution Roles](references/execution-roles.md) before editing files,
+  accepting worker output, or combining roles.
+- Use [Completion Evidence](references/completion-evidence.md) before marking
+  task, goal, run, or gate state complete.
 
 ## Workflow
 
@@ -26,16 +35,27 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
    - `implementer`: the current thread may edit files inside the authorized
      scope and then present evidence for acceptance.
    - `mixed`: the current thread may both edit and gate only when the user
-     explicitly accepts the tradeoff or the change is low-risk and local; state
-     the reason before editing.
+     explicitly accepts the tradeoff or the confirmed goal/run declares
+     `mixed`; do not infer `mixed` from low-risk local work alone.
    User language such as "control lane", "main control", "gate", "judge",
    "review", or "acceptance" defaults to `gate-only` unless the user clearly
    asks the current thread to implement directly.
 5. Confirm the executable scope, non-goals, verification commands, completion
-   conditions, and pause conditions. If any of these are missing and the choice
-   affects risk, cost, or product direction, pause and ask.
+   conditions, and pause conditions. If any of these are missing, route to
+   `shape`, `goal`, or `ask`, or pause for confirmation. Continue only when the
+   missing item is clearly not applicable or already supplied by a confirmed
+   spec, goal, or run.
    Briefly record why this is `shape`, `goal`, `execute`, `competition`, or
    `ask`, and record the execution role when it affects scope or acceptance.
+   For ambiguous routing, read [Task Routing](../../references/task-routing.md).
+   Conservative routing may switch to `orient`, `intake`, `init`, `shape`,
+   `goal`, or `ask`, or pause for confirmation; it must not grant broader
+   execution permission from inside `execute`.
+   For spec-heavy, product, content, security, data, or milestone work, turn
+   accepted spec acceptance into a `Spec Acceptance Checklist` before
+   implementation. If the checklist is missing and the difference between
+   technical completion and product acceptance matters, pause to shape or amend
+   the goal instead of implementing against vague prose.
 6. If the user asks what to do next before authorizing work, switch to orient:
 
 ```bash
@@ -53,15 +73,29 @@ node <plugin-root>/scripts/agent-harness.mjs goal validate --cwd <project> --goa
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
-node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <run-dir>
+node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <run-dir> --json
 ```
 
 9. If the role is `gate-only`, do not implement directly. Review the
    implementer output, compare it to the goal, run verification, and either
    accept state or request concrete corrections.
-10. If the role is `implementer` or accepted `mixed`, implement only the
-   authorized scope.
-11. Run verification, then update configured task/status/run evidence and record
+10. If the run packet has `dag.json`, use it as the execution order:
+   - Launch only `readyNodes` from `run status --json`.
+   - Nodes in the same ready set may run in parallel.
+   - Prefer fresh Codex App threads or Codex CLI subagents for workers.
+   - Do not use fork unless the controller explicitly approves inherited
+     context and restates the worker role and return contract.
+   - Record each worker result before launching dependents:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs run node record --cwd <project> --run <run-dir> --node <node-id> --phase completed --summary "<summary>" --verification "<verification summary>"
+node <plugin-root>/scripts/agent-harness.mjs run node record --cwd <project> --run <run-dir> --node <node-id> --phase blocked --summary "<blocker summary>"
+```
+
+11. If the role is `implementer` or accepted `mixed`, implement only the
+   authorized scope when the current thread owns the relevant DAG node or the
+   run is foreground-only.
+12. Run verification, then update configured task/status/run evidence and record
    deferred work. When deterministic maintenance is useful, preview or record
    it explicitly:
 
@@ -70,7 +104,7 @@ node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project>
 node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project> --record
 ```
 
-12. Record a run outcome when a run packet exists:
+13. Record a run outcome when a run packet exists:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <run-dir> --phase completed --summary "<summary>" --verification "<verification summary>" --gate-evidence "<gate-only evidence when needed>"
@@ -80,6 +114,8 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 ## Boundaries
 
 - Do not execute ambiguous product direction without confirmation.
+- Do not use route choice inside `execute` to grant implementation permission
+  that the user, confirmed goal, or run packet did not already provide.
 - Do not combine control-lane acceptance and implementation when the user has
   asked for gate-only, control-only, review-only, or acceptance-lane behavior.
 - Do not modify `AGENTS.md` or activation behavior without explicit approval.
@@ -87,15 +123,28 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
   production, perform destructive operations, or start daemons without explicit
   approval.
 - Do not mark work complete without verification and state sync.
+- Do not mark an enforced-DAG run complete before every DAG node is recorded as
+  completed with verification evidence.
+- Do not treat candidate evidence, worker self-tests, page existence, build
+  success, curl smoke checks, or narrative summaries as accepted completion
+  when the goal has checklist items or adapter-required gates.
 - Treat subagents, inbox threads, automation, and proposal competition as
   candidate evidence sources. The active control thread owns final acceptance
   after validation.
+- Treat forked threads as an exception, not a default worker surface; a fork
+  needs explicit controller approval because inherited context can confuse
+  controller and execution roles.
 - In `gate-only` mode, accepted state must cite implementer output plus
   concrete verification evidence; the control thread should not rewrite the
   candidate output itself.
 - Completed run records require verification evidence. Completed `gate-only`
   records also require gate evidence that names the implementer output and
   acceptance evidence reviewed by the control lane.
+- Completed runs with `Spec Acceptance Checklist` items require concrete
+  evidence and `Status: satisfied` for each item. Completed runs with
+  adapter-declared `gates.requiredForCompletion` or `gates.blocking` require
+  matching `Required Gate Evidence` items with concrete evidence and
+  `Status: satisfied`.
 - Keep accepted state inspectable: cite concrete task entries, specs, goals,
   run records, gate records, command summaries, or human review notes.
 - Keep plugin core docs and templates project-neutral; put local facts in the

@@ -1,12 +1,19 @@
 ---
 name: intake
-description: Capture and triage ideas, requirements, bugs, or Idea Inbox notes without implementing them. / 收集并分流想法、需求、bug 或 Idea Inbox notes，但不直接实现。
+description: Capture and triage ideas, requirements, bugs, or Idea Inbox notes without implementing them. Use for rough or not-yet-accepted work items. Do not use for read-only orientation, harness setup, or confirmed implementation. / 收集并分流想法、需求、bug 或 Idea Inbox notes，但不直接实现；用于粗略或尚未接受的工作项；不要用于只读定位、harness setup 或已确认执行。
 ---
 
 # Harness Intake
 
 Use this skill when the user brings a new idea or requirement while another
 workflow may already be in progress.
+
+## Reference Map
+
+- Use [Capture Boundary](references/capture-boundary.md) when deciding whether a
+  message belongs in intake.
+- Use [Promotion Rules](references/promotion-rules.md) before recording or
+  routing an intake candidate toward execution.
 
 ## Workflow
 
@@ -42,6 +49,8 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 ## Boundaries
 
 - Intake is capture, triage, and optional record. It is not execution.
+- For read-only project state or next-action requests, route to `orient`.
+- For harness setup or adoption, route to `init`.
 - Do not mutate the task index unless `--record` behavior or equivalent user
   approval is explicit.
 - Do not overwrite, delete, or reorganize existing tasks during intake.

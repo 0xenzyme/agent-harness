@@ -121,8 +121,8 @@ allowed to do.
 - `implementer`: the current thread may edit files inside the authorized scope
   and then present evidence for acceptance.
 - `mixed`: the current thread may both edit and gate only when the user
-  explicitly accepts that tradeoff, or the task is low-risk and local enough
-  that the route explanation names why mixed execution is acceptable.
+  explicitly accepts that tradeoff, or the confirmed goal/run declares `mixed`.
+  Do not infer `mixed` from low-risk local work alone.
 
 If the user says "main control", "control lane", "gate", "judge", "review",
 or "acceptance", default to `gate-only` unless they explicitly ask the current
