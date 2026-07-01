@@ -124,8 +124,9 @@ summaries, run records, gate reports, or human review notes.
 
 For DAG execution, the controller launches only ready nodes. A worker must not
 start or claim completion for a node whose dependencies have not been recorded
-as completed. Independent ready nodes may run in parallel through fresh Codex
-threads or Codex CLI subagents. Fork is not the default worker surface and
+as completed. Independent ready nodes may run in parallel through Codex CLI
+subagents. Fresh Codex threads are explicit, visible, long-lived handoff lanes,
+not the default worker surface. Fork is not the default worker surface and
 requires explicit controller approval.
 
 For worktree execution, the launch packet must include the conversation route

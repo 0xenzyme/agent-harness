@@ -129,7 +129,7 @@ The adapter should declare:
 - artifact paths and source-of-truth files
 - DB, production, Admin CLI, credential, paid-call, and destructive-operation
   boundaries
-- commit, PR, release, and ship policies
+- commit, review, integration, release, and ship policies
 - validation commands
 - enabled gates and project-specific gate details
 - UI harness or mental model locations when relevant
@@ -304,11 +304,17 @@ whether it can provide isolated execution, changed-file reporting,
 verification summaries, stop-condition reporting, and no-daemon / no-push
 compliance.
 
-Preferred worker surfaces are a new Codex App thread or a Codex CLI subagent.
+Preferred worker surface is a Codex CLI subagent. A new Codex App thread is an
+explicit, visible, long-lived handoff lane, not the default execution worker.
 Fork is not a default execution surface. A fork may be used only when the
 controller explicitly approves context inheritance and restates the worker's
 thread role, controller thread, allowed scope, return channel, and forbidden
 scope.
+
+If the current thread is `gate-only`, the harness should launch worker
+subagents by default when scope, verification, context lock, delivery target,
+and safety boundaries are clear. It should not routinely ask the user to choose
+between launching a worker and changing the control thread to `mixed`.
 
 When those capabilities are unavailable, route to foreground manual execution
 or `ask`; do not imply that parallel worker execution, cross-agent handoff, or
@@ -329,8 +335,8 @@ result packets.
   task lists.
 - Table-based or unknown task-index formats must refuse automatic recording
   rather than risk corrupting project state.
-- Intake must not create specs, goals, runs, branches, PRs, deployments, or
-  background automation.
+- Intake must not create specs, goals, runs, branches, review requests,
+  deployments, or background automation.
 - Idea Inbox Threads are capture lanes. They preserve raw notes, questions,
   and rough requirements while a control thread continues the active goal.
 - Promotion from Idea Inbox to accepted state requires intake / triage. The
@@ -344,8 +350,8 @@ result packets.
 - Competition may output candidate routes, tradeoffs, coverage union, risks,
   verification plans, and a recommendation.
 - Competition must not directly edit files, prepare runs, mark tasks done,
-  start daemons, create branches/worktrees, push, open PRs, deploy, or accept
-  state.
+  start daemons, create branches/worktrees, push, open review requests, deploy,
+  or accept state.
 - The control thread must validate the recommendation before routing to goal
   creation or execution.
 - This package currently documents the protocol; it does not install a
@@ -410,16 +416,16 @@ result packets.
   name a valid work mode and execution role, and provide verification or manual
   evidence guidance.
 - `run prepare` must not start daemons, spawn coding-agent sessions, push,
-  deploy, or open PRs. It may prepare per-node prompts for controller-launched
-  workers.
+  deploy, or open review requests. It may prepare per-node prompts for
+  controller-launched workers.
 - `run node record` records a single DAG node result. It must reject a completed
   node whose dependencies are not completed, and completed nodes require
   verification evidence.
 - `run record` updates only the target run directory's `status.json` and
-  `logs/`; it does not update source files, task indexes, PRs, deployments, or
-  releases. Completed records require verification evidence; completed
-  `gate-only` records also require gate evidence. Runs with enforced DAGs
-  cannot be completed until every DAG node is completed.
+  `logs/`; it does not update source files, task indexes, review requests,
+  deployments, or releases. Completed records require verification evidence;
+  completed `gate-only` records also require gate evidence. Runs with enforced
+  DAGs cannot be completed until every DAG node is completed.
 
 ## Conversation Route And Execution Context Lock
 
@@ -449,37 +455,45 @@ correct execution context.
 ## Delivery State Gate
 
 Implementation state and delivery state are distinct. Harness records must not
-describe local verified work as merged, shipped, or mainline complete unless
+describe local verified work as integrated, shipped, or mainline complete unless
 the delivery evidence proves it.
 
 Delivery state vocabulary:
 
 - `implemented-local`: implementation exists in the local working tree.
 - `validated-local`: implementation has verification evidence locally but is
-  not necessarily committed, pushed, reviewed, merged, released, or shipped.
+  not necessarily committed, pushed, reviewed, integrated, released, or shipped.
 - `committed`: a local commit records the work.
 - `pushed`: the commit is pushed to its upstream branch.
-- `PR-open`: a pull request is open.
-- `merged`: the work has merged to the target branch.
+- `review-open`: a provider-neutral review request is open, such as a GitHub
+  PR, GitLab MR, Gerrit change, or patch series.
+- `integrated`: the work has entered the target development line.
 - `released/shipped`: release or deploy evidence exists.
 
 Run records and closeout proof must include delivery state, dirty working tree
-status, commit, push, PR, merge, and release fields. If commit / push / PR /
-merge / release was not explicitly authorized or performed, final wording must
-say local implementation and verification are complete but uncommitted and
-unmerged. Dirty development worktrees are reviewable state, not durable
-completion state.
+status, commit, push, review, integration, and release fields. If commit /
+push / review / integration / release was not explicitly authorized or
+performed, final wording must say local implementation and verification are
+complete but not durably delivered. Dirty development worktrees are reviewable
+state, not durable completion state.
 
 `Delivery State` also declares a Target delivery state and authorization fields
-for commit, push, PR, merge, and release. `goal validate` must reject targets
-that cannot be reached with the recorded authorization. `run record --phase
-completed` must reject a run whose actual delivery state is below target.
+for commit, push, review, integration, and release. `goal validate` must reject
+targets that cannot be reached with the recorded authorization. `run record
+--phase completed` must reject a run whose actual delivery state is below
+target.
 
 When gates pass and the target is above `validated-local`, the harness route
 must continue the authorized delivery pipeline. It should not hand a passing
 dirty worktree back to the user as the normal endpoint. If authorization or
 external evidence is missing, record delivery pending and make the missing
 authorization/evidence the next action.
+
+For development goals, the default delivery intent is `integrate-after-gates`:
+commit the accepted work and integrate it into the target development line once
+the required gates pass. Release / ship remains separate and must be explicitly
+authorized. Local-only goals should lower the target to `validated-local`
+instead of putting commit, review, or integration into `Non-Goals`.
 
 ## Batch Acceptance Coverage
 

@@ -56,7 +56,7 @@ const commonTaskIndexCandidates = [
 
 const validExecutionRoles = new Set(["gate-only", "implementer", "mixed"]);
 const validConversationRoutes = new Set(["current-thread", "slot-thread", "remote-control-worktree"]);
-const deliveryStateOrder = ["implemented-local", "validated-local", "committed", "pushed", "PR-open", "merged", "released/shipped"];
+const deliveryStateOrder = ["implemented-local", "validated-local", "committed", "pushed", "review-open", "integrated", "released/shipped"];
 const validDeliveryStates = new Set(deliveryStateOrder);
 const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
@@ -72,6 +72,8 @@ function parseArgs(argv) {
     "gate-evidence",
     "goal",
     "idea",
+    "integrationRef",
+    "integration-ref",
     "lang",
     "contract",
     "mode",
@@ -81,6 +83,8 @@ function parseArgs(argv) {
     "pr-url",
     "projectName",
     "project-name",
+    "reviewUrl",
+    "review-url",
     "releaseRef",
     "release-ref",
     "mergeSha",
@@ -198,7 +202,7 @@ const messages = {
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
   agent-harness run node record --run <run-dir> --node <node-id> --phase completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--cwd PATH] [--json]
-  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
+  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--review-url <url>] [--integration-ref <ref>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
     initDone: "Agent Harness initialized in {cwd}",
     initCreated: "Created: {files}",
@@ -240,7 +244,7 @@ const messages = {
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
   agent-harness run node record --run <run-dir> --node <node-id> --phase completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--cwd PATH] [--json]
-  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
+  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--review-url <url>] [--integration-ref <ref>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
     initDone: "Agent Harness 已初始化: {cwd}",
     initCreated: "已创建: {files}",
@@ -1452,7 +1456,7 @@ If \`${configPath}\` exists, read it before substantial project work.
 ${adapterPath ? `- For \`contract: "adapter"\`, read the project adapter at \`${adapterPath}\` before goal, run, or implementation work.\n` : ""}- Read the configured task index at \`${taskIndex}\` and status file at \`${statusPath}\` before choosing or executing tasks.
 ${specsPath ? `- Read relevant specs under \`${specsPath}\` and goals under \`${goalsPath}\` before implementation.\n` : `- Read relevant goals under \`${goalsPath}\` before implementation.\n`}- For orientation or next-action requests, summarize current status and task state first; do not start implementation unless the user asks.
 - Use \`agent-harness doctor --cwd .\`, \`agent-harness orient next --cwd .\`, \`agent-harness goal create --cwd . --task "<task>"\`, and \`agent-harness run prepare --cwd . --goal <goal-file>\` when they fit the task.
-- Preserve existing project instructions. Pause before product-direction decisions, \`AGENTS.md\` changes, credentials, paid APIs, production access, destructive operations, branch/worktree changes, push, PR, deploy, release, daemons, watchers, or background automation.
+- Preserve existing project instructions. Pause before product-direction decisions, \`AGENTS.md\` changes, credentials, paid APIs, production access, destructive operations, branch/worktree changes, delivery steps above the active goal policy, deploy, release, daemons, watchers, or background automation.
 `;
 }
 
@@ -1648,7 +1652,7 @@ function orientationPayload(args) {
         "move from shaping into implementation when scope is ambiguous",
         "modify AGENTS.md or activation behavior",
         "create branches or worktrees",
-        "push, PR, deploy, release, daemon, watcher, credentials, paid API, production, or destructive actions"
+        "delivery above the active goal policy, deploy, release, daemon, watcher, credentials, paid API, production, or destructive actions"
       ]
     },
     warnings: context.warnings
@@ -1699,7 +1703,7 @@ function orientNext(args) {
   console.log("");
   console.log("Confirmation check:");
   console.log("- This command is read-only and did not start implementation.");
-  console.log("- Ask before moving into implementation, activation changes, branch/worktree changes, push/PR/deploy/release, credentials, paid APIs, production, destructive operations, daemons, or automation.");
+  console.log("- Ask before moving into implementation, activation changes, branch/worktree changes, delivery above the active goal policy, deploy, release, credentials, paid APIs, production, destructive operations, daemons, or automation.");
 }
 
 const validIntakePriorities = new Set(["P1", "P2", "P3"]);
@@ -2173,7 +2177,9 @@ function deliveryStateSnapshot(cwd, { completed = false } = {}) {
     changedPathCount: gitState.changedPathCount,
     commit: gitState.isRepo ? head || "none" : "none",
     push: pushed ? gitState.upstream : "none",
+    review: "none",
     pr: "none",
+    integration: "none",
     merge: "none",
     release: "none",
     statusShort: gitState.statusShort
@@ -2201,11 +2207,11 @@ function normalizeDeliveryState(value) {
   if (["push", "pushed"].includes(normalized)) {
     return "pushed";
   }
-  if (["pr", "pr-open", "pull-request", "pull-request-open"].includes(normalized)) {
-    return "PR-open";
+  if (["review-open", "review-request", "review-requested", "pr", "pr-open", "pull-request", "pull-request-open", "mr", "mr-open", "merge-request", "merge-request-open", "change", "change-open", "patch-series"].includes(normalized)) {
+    return "review-open";
   }
-  if (["merge", "merged"].includes(normalized)) {
-    return "merged";
+  if (["integrate", "integrated", "integration", "merge", "merged"].includes(normalized)) {
+    return "integrated";
   }
   if (["release", "released", "ship", "shipped", "released-shipped", "released/shipped"].includes(normalized)) {
     return "released/shipped";
@@ -2219,23 +2225,25 @@ function deliveryStateRank(state) {
 }
 
 function applyDeliveryEvidence(deliveryState, evidence = {}) {
-  const pr = evidence.prUrl || deliveryState.pr || "none";
-  const merge = evidence.mergeSha || deliveryState.merge || "none";
+  const review = evidence.reviewUrl || evidence.prUrl || deliveryState.review || deliveryState.pr || "none";
+  const integration = evidence.integrationRef || evidence.mergeSha || deliveryState.integration || deliveryState.merge || "none";
   const release = evidence.releaseRef || deliveryState.release || "none";
   let state = deliveryState.state;
   if (!missingEvidence(release)) {
     state = "released/shipped";
-  } else if (!missingEvidence(merge)) {
-    state = "merged";
-  } else if (!missingEvidence(pr)) {
-    state = "PR-open";
+  } else if (!missingEvidence(integration)) {
+    state = "integrated";
+  } else if (!missingEvidence(review)) {
+    state = "review-open";
   }
 
   return {
     ...deliveryState,
     state,
-    pr,
-    merge,
+    review,
+    pr: review,
+    integration,
+    merge: integration,
     release
   };
 }
@@ -2248,14 +2256,19 @@ function deliveryPolicyFromSection(section) {
       fields[match[1].trim().toLowerCase()] = cleanMapValue(match[2]);
     }
   }
-  const target = normalizeDeliveryState(fields["target delivery state"] || "validated-local") || "validated-local";
+  const target = normalizeDeliveryState(fields["target delivery state"] || "integrated") || "integrated";
+  const reviewAuthorized = fields["review authorized"] || fields["pr authorized"] || "no";
+  const integrationAuthorized = fields["integration authorized"] || fields["merge authorized"] || "no";
   return {
     section,
+    deliveryIntent: fields["delivery intent"] || "integrate-after-gates",
     target,
     commitAuthorized: fields["commit authorized"] || "no",
     pushAuthorized: fields["push authorized"] || "no",
-    prAuthorized: fields["pr authorized"] || "no",
-    mergeAuthorized: fields["merge authorized"] || "no",
+    reviewAuthorized,
+    prAuthorized: reviewAuthorized,
+    integrationAuthorized,
+    mergeAuthorized: integrationAuthorized,
     releaseAuthorized: fields["release authorized"] || "no"
   };
 }
@@ -2278,11 +2291,11 @@ function requiredDeliveryAuthorizations(target) {
   if (rank >= deliveryStateRank("pushed")) {
     requirements.push(["Push authorized", "pushAuthorized"]);
   }
-  if (rank >= deliveryStateRank("PR-open")) {
-    requirements.push(["PR authorized", "prAuthorized"]);
+  if (normalizeDeliveryState(target) === "review-open") {
+    requirements.push(["Review authorized", "reviewAuthorized"]);
   }
-  if (rank >= deliveryStateRank("merged")) {
-    requirements.push(["Merge authorized", "mergeAuthorized"]);
+  if (rank >= deliveryStateRank("integrated")) {
+    requirements.push(["Integration authorized", "integrationAuthorized"]);
   }
   if (rank >= deliveryStateRank("released/shipped")) {
     requirements.push(["Release authorized", "releaseAuthorized"]);
@@ -2298,8 +2311,8 @@ function deliveryPolicyValidationErrors(policy) {
   for (const [label, value] of [
     ["Commit authorized", policy.commitAuthorized],
     ["Push authorized", policy.pushAuthorized],
-    ["PR authorized", policy.prAuthorized],
-    ["Merge authorized", policy.mergeAuthorized],
+    ["Review authorized", policy.reviewAuthorized],
+    ["Integration authorized", policy.integrationAuthorized],
     ["Release authorized", policy.releaseAuthorized]
   ]) {
     if (value && !deliveryAuthValue(value)) {
@@ -2330,7 +2343,7 @@ function deliveryTargetErrors(policy, deliveryState) {
     const auth = requiredDeliveryAuthorizations(policy.target)
       .map(([label, key]) => `${label}: ${policy[key] || "no"}`)
       .join(", ");
-    errors.push(`After gates pass, continue the delivery pipeline (${auth || "no extra authorization required"}) and rerun run record with PR / merge / release evidence when applicable.`);
+    errors.push(`After gates pass, continue the delivery pipeline (${auth || "no extra authorization required"}) and rerun run record with review / integration / release evidence when applicable.`);
   }
   return errors;
 }
@@ -3037,22 +3050,26 @@ Use \`current-thread\`.
 
 ## Delivery State
 
-- Target delivery state: \`validated-local\`
-- Commit authorized: \`no\`
-- Push authorized: \`no\`
-- PR authorized: \`no\`
-- Merge authorized: \`no\`
+- Delivery intent: \`integrate-after-gates\`
+- Target delivery state: \`integrated\`
+- Commit authorized: \`yes\`
+- Push authorized: \`yes\`
+- Review authorized: \`no\`
+- Integration authorized: \`yes\`
 - Release authorized: \`no\`
 
-Completed runs must reach Target delivery state. If target is above
-\`validated-local\`, set the matching authorization fields to \`yes\` and
-continue delivery after verification instead of stopping in the worktree.
+Completed development runs must reach Target delivery state. By default,
+gate-passing implementation work is committed and integrated into the
+development mainline; release / ship remains out of scope unless the delivery
+policy explicitly authorizes it. Lower the target to \`validated-local\` only
+for local-only spikes, audits, or explicitly uncommitted work.
 
 ## Execution DAG
 
 Use \`run prepare\` to generate \`dag.json\`, \`dag.md\`, and per-node
-\`agents/<node>/prompt.md\` files. Prefer new Codex threads or Codex CLI
-subagents for worker nodes. Fork is not the default worker surface; use it only
+\`agents/<node>/prompt.md\` files. Prefer Codex CLI subagents for worker nodes.
+Create a new Codex thread only when the controller explicitly needs a visible,
+long-lived handoff lane. Fork is not the default worker surface; use it only
 when the controller explicitly approves inherited context.
 
 ## Spec Acceptance Checklist
@@ -3072,7 +3089,8 @@ ${requiredGateLines}
 
 ## Non-Goals
 
-- Do not push, deploy, publish, open a PR, or launch workers outside the run packet DAG unless separately requested.
+- Do not release, deploy, publish, or launch workers outside the run packet DAG unless separately requested.
+- Do not execute delivery steps above the Delivery State policy.
 - Do not make destructive changes without explicit user approval.
 - Do not add project-specific assumptions to the core harness contract.
 
@@ -3095,7 +3113,7 @@ If no deterministic command exists, document the manual verification evidence be
 ## Pause Conditions
 
 - The referenced spec is missing, unconfirmed, or conflicts with code, production constraints, or newer user instructions.
-- The work requires credentials, paid APIs, production access, destructive commands, push, PR, or release.
+- The work requires credentials, paid APIs, production access, destructive commands, release, or a delivery step above the Delivery State policy.
 - Product direction, file ownership, or worktree policy is unclear.
 - User gives new instructions that conflict with this goal.
 `;
@@ -3917,7 +3935,7 @@ function buildDagNode({ id, label, mode, dependencies = [], ownership, expectedO
   };
 }
 
-function defaultDagNodes(taskSize) {
+function defaultDagNodes(taskSize, executionRole) {
   if (taskSize === "ask") {
     return [
       buildDagNode({
@@ -3932,6 +3950,18 @@ function defaultDagNodes(taskSize) {
   }
 
   if (taskSize === "small") {
+    if (executionRole === "gate-only") {
+      return [
+        buildDagNode({
+          id: "worker",
+          label: "Worker Subagent",
+          mode: "write",
+          ownership: "the accepted goal scope in an isolated worker subagent; the controller remains gate-only",
+          expectedOutput: "focused patch, verification summary, changed files, and state-sync notes for controller review",
+          stopConditions: "scope growth, unclear ownership, credentials, destructive commands, production access, or missing verification"
+        })
+      ];
+    }
     return [
       buildDagNode({
         id: "main-agent",
@@ -4048,7 +4078,7 @@ function dagParallelLayers(nodes) {
 }
 
 function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole }) {
-  const nodes = defaultDagNodes(taskSize);
+  const nodes = defaultDagNodes(taskSize, executionRole);
   return {
     version: 1,
     goalPath: displayPath(cwd, goalPath),
@@ -4057,8 +4087,10 @@ function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole })
     executionRole,
     enforcement: taskSize === "medium" || taskSize === "large" ? "required-before-run-completion" : "advisory",
     launchPolicy: "controller-gated-manual",
-    preferredSurfaces: ["codex-app-create-thread", "codex-cli-subagent"],
-    fallbackSurfaces: ["manual-foreground"],
+    defaultWorkerSurface: "codex-cli-subagent",
+    preferredSurfaces: ["codex-cli-subagent"],
+    fallbackSurfaces: ["codex-app-create-thread", "manual-foreground"],
+    threadPolicy: "new Codex threads are explicit long-lived handoff lanes, not the default worker surface",
     forkPolicy: "fork is not a default execution surface; use only with explicit controller approval and a corrected role packet",
     nodes,
     edges: dagEdges(nodes),
@@ -4130,8 +4162,10 @@ function executionDagSnapshot(dag, runDir) {
     enforcement: dag.enforcement,
     enforced: dag.enforcement === "required-before-run-completion",
     launchPolicy: dag.launchPolicy,
+    defaultWorkerSurface: dag.defaultWorkerSurface,
     preferredSurfaces: dag.preferredSurfaces,
     fallbackSurfaces: dag.fallbackSurfaces,
+    threadPolicy: dag.threadPolicy,
     forkPolicy: dag.forkPolicy,
     nodeCount: dag.nodes.length,
     parallelLayers: dag.parallelLayers,
@@ -4174,8 +4208,10 @@ Enforcement: \`${dag.enforcement}\`
 
 ## Worker Surfaces
 
+- Default worker surface: \`${dag.defaultWorkerSurface}\`
 - Preferred: \`${dag.preferredSurfaces.join("`, `")}\`
 - Fallback: \`${dag.fallbackSurfaces.join("`, `")}\`
+- Thread policy: ${dag.threadPolicy}
 - Fork policy: ${dag.forkPolicy}
 
 ## Nodes
@@ -4192,9 +4228,11 @@ ${layers || "No valid layers; inspect `dag.json` before execution."}
 
 - Launch only nodes listed as ready by \`run status --json\`.
 - Independent nodes in the same ready set may run in parallel.
+- Use \`${dag.defaultWorkerSurface}\` by default for ready worker nodes.
+- Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
 - Use \`agent-harness run node record\` for each worker result before launching dependent nodes.
 - Treat worker output as candidate evidence until the controller validates scope, verification, state sync, and required gates.
-- Do not use fork as the default execution surface; prefer a new Codex thread or Codex CLI subagent.
+- Do not use fork as the default execution surface.
 `;
 }
 
@@ -4234,10 +4272,12 @@ ${node.stopConditions}
 
 ## Surface Policy
 
-- Preferred surfaces are a new Codex thread or a Codex CLI subagent.
+- Default worker surface is \`${dag.defaultWorkerSurface}\`.
+- Prefer Codex CLI subagents for bounded worker execution.
+- Create a new Codex thread only when the controller explicitly needs a visible, long-lived handoff lane.
 - Do not use fork unless the controller explicitly approves it and restates your execution role.
 - Do not launch dependent nodes yourself.
-- Do not push, deploy, publish, open a PR, start a daemon, use credentials, use paid APIs, touch production, or perform destructive operations unless the goal and controller explicitly authorize it.
+- Do not release, deploy, publish, start a daemon, use credentials, use paid APIs, touch production, perform destructive operations, or execute delivery steps above the Delivery State policy unless the goal and controller explicitly authorize it.
 
 ## Return Contract
 
@@ -4355,7 +4395,7 @@ function buildRunMarkdown({
   const adapterRequirementLines = context.mode === "adapter"
     ? [
       adapterPath ? `Read \`${adapterPath}\` before editing.` : "",
-      "Apply project adapter boundaries for credentials, paid calls, production, Admin CLI, DB, destructive actions, PRs, deploys, and releases.",
+      "Apply project adapter boundaries for credentials, paid calls, production, Admin CLI, DB, destructive actions, review requests, integration, deploys, and releases.",
       ...adapterRequirements.preflight.map((item) => `Preflight: ${item}`),
       ...adapterRequirements.stateSync.map((item) => `State sync: ${item}`)
     ].filter(Boolean)
@@ -4383,14 +4423,15 @@ Delivery state: \`${deliveryState.state}\`
 Working tree dirty: \`${deliveryState.workingTreeDirty}\`
 Commit: \`${deliveryState.commit}\`
 Push: \`${deliveryState.push}\`
-PR: \`${deliveryState.pr}\`
-Merge: \`${deliveryState.merge}\`
+Review: \`${deliveryState.review || deliveryState.pr}\`
+Integration: \`${deliveryState.integration || deliveryState.merge}\`
 Release: \`${deliveryState.release}\`
+Delivery intent: \`${deliveryPolicy.deliveryIntent}\`
 Target delivery state: \`${deliveryPolicy.target}\`
 Commit authorized: \`${deliveryPolicy.commitAuthorized}\`
 Push authorized: \`${deliveryPolicy.pushAuthorized}\`
-PR authorized: \`${deliveryPolicy.prAuthorized}\`
-Merge authorized: \`${deliveryPolicy.mergeAuthorized}\`
+Review authorized: \`${deliveryPolicy.reviewAuthorized}\`
+Integration authorized: \`${deliveryPolicy.integrationAuthorized}\`
 Release authorized: \`${deliveryPolicy.releaseAuthorized}\`
 Acceptance map required: \`${acceptanceMap.required ? "yes" : "no"}\`
 Acceptance map items: \`${acceptanceMap.items.length}\`
@@ -4413,7 +4454,7 @@ ${sourceTask}
 7. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
 8. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
 9. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
-10. Use \`agents/<node>/prompt.md\` for new Codex threads or Codex CLI subagents. Do not use fork as the default execution surface.
+10. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
 11. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
 12. Run the verification commands from the goal.
 13. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
@@ -4427,10 +4468,10 @@ ${verification}
 
 ## Boundaries
 
-- This prepared run packet does not start Codex, create a daemon, push, deploy, publish, or open a PR.
-- Completion wording must not imply pushed, PR-open, merged, released, shipped, or deployed unless the delivery state records that evidence.
-- A completed run must reach its target delivery state. Use PR / merge / release evidence fields when Git alone cannot prove the target.
-- Direct worker launch remains controller-gated; the packet provides prompts and DAG constraints, not a background scheduler.
+- This prepared run packet does not start Codex, create a daemon, push, deploy, publish, open a review request, or integrate changes by itself.
+- Completion wording must not imply pushed, review-open, integrated, released, shipped, or deployed unless the delivery state records that evidence.
+- A completed run must reach its target delivery state. Use review / integration / release evidence fields when Git alone cannot prove the target.
+- Direct worker launch remains controller-gated; the packet provides prompts and DAG constraints, not a background scheduler. For gate-only control lanes, launch subagents by default instead of changing the control thread into an implementer.
 - Stop if the goal conflicts with repository instructions, production constraints, or newer user instructions.
 `;
 }
@@ -4458,14 +4499,15 @@ Requirements:
 - ${context.mode === "adapter" && adapterPath ? `Read \`${adapterPath}\` and apply its project-specific hard boundaries, preflight requirements, and state-sync rules.` : "Follow the repository instructions and configured harness paths."}
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
 - Follow the goal's Execution Role: \`${executionRole}\`.
+- If Execution Role is \`gate-only\`, keep the current thread as controller and launch worker subagents by default. Do not ask the user to choose between worker launch and changing this thread to \`mixed\` unless subagent execution is unavailable or unsafe.
 - Follow the goal's Conversation Route: \`${conversationRoute}\`.
 - Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
-- Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; PR \`${deliveryState.pr}\`; merge \`${deliveryState.merge}\`; release \`${deliveryState.release}\`.
-- Target Delivery State: \`${deliveryPolicy.target}\`; commit authorized \`${deliveryPolicy.commitAuthorized}\`; push authorized \`${deliveryPolicy.pushAuthorized}\`; PR authorized \`${deliveryPolicy.prAuthorized}\`; merge authorized \`${deliveryPolicy.mergeAuthorized}\`; release authorized \`${deliveryPolicy.releaseAuthorized}\`.
+- Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; review \`${deliveryState.review || deliveryState.pr}\`; integration \`${deliveryState.integration || deliveryState.merge}\`; release \`${deliveryState.release}\`.
+- Target Delivery State: \`${deliveryPolicy.target}\`; delivery intent \`${deliveryPolicy.deliveryIntent}\`; commit authorized \`${deliveryPolicy.commitAuthorized}\`; push authorized \`${deliveryPolicy.pushAuthorized}\`; review authorized \`${deliveryPolicy.reviewAuthorized}\`; integration authorized \`${deliveryPolicy.integrationAuthorized}\`; release authorized \`${deliveryPolicy.releaseAuthorized}\`.
 - Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
-- If actual delivery state is below target after gates pass, continue the authorized commit / push / PR / merge / release pipeline before closeout.
-- Do not call local verification "merged", "shipped", or "done on main" unless commit / push / PR / merge / release evidence is recorded.
-- Do not push, deploy, publish, open a PR, start a daemon, or automatically launch additional Codex sessions unless the user explicitly asks.
+- If actual delivery state is below target after gates pass, continue the authorized commit / push / review / integration / release pipeline before closeout.
+- Do not call local verification "integrated", "shipped", or "done on main" unless commit / push / review / integration / release evidence is recorded.
+- Do not release, deploy, publish, start a daemon, or automatically launch additional Codex sessions unless the Delivery State policy and controller explicitly authorize it.
 - If the checkout is dirty with unrelated work, use the worktree policy from the goal and project docs.
 - After implementation, run the goal's verification commands and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync.
 
@@ -4477,8 +4519,13 @@ ${goalContent.trimEnd()}
 `;
 }
 
-function recommendedSubagentTasks(taskSize) {
+function recommendedSubagentTasks(taskSize, executionRole) {
   if (taskSize === "small") {
+    if (executionRole === "gate-only") {
+      return `Recommended for this run: \`small\`.
+
+The current thread is \`gate-only\`; launch one worker subagent for the implementation node and keep this thread for acceptance. Do not switch the controller to \`mixed\` unless the user explicitly requests same-thread implementation.`;
+    }
     return `Recommended for this run: \`small\`.
 
 No subagent is required. Keep exploration, implementation, and verification in the main context unless the task unexpectedly grows.`;
@@ -4550,7 +4597,7 @@ Do not split work yet. Pause for the user when product direction, production acc
 - Stop conditions: failing verification that requires scope expansion.`;
 }
 
-function buildSubagentsMarkdown({ cwd, goalPath, taskSize }) {
+function buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }) {
   const relGoal = displayPath(cwd, goalPath);
 
   return `# Subagent Split Guidance
@@ -4561,14 +4608,14 @@ Goal: \`${relGoal}\`
 
 - Treat \`dag.json\` as the source of execution order. This file explains how to
   split work; it does not override DAG dependencies or controller gates.
-- \`small\`: no subagent by default; the main agent owns exploration, implementation, and verification.
+- \`small\`: no subagent by default only when the current thread is \`implementer\` or accepted \`mixed\`; for \`gate-only\`, launch one worker subagent.
 - \`medium\`: split into \`explorer\` plus \`worker\`, or \`worker\` plus \`verification\`, when it reduces context load.
 - \`large\`: split into multiple workers only when file ownership is non-overlapping and merge responsibility is clear.
 - \`ask\`: pause before splitting when the work involves production, destructive actions, credentials, paid APIs, product direction, or unclear file ownership.
 
 Every subagent task must include context, goal path, read/write scope, file ownership, expected output, and stop conditions. Subagents must not revert user changes or edits owned by another agent.
 
-${recommendedSubagentTasks(taskSize)}
+${recommendedSubagentTasks(taskSize, executionRole)}
 `;
 }
 
@@ -4634,7 +4681,7 @@ function runPrepare(args) {
     requiredGates
   }));
   writeFileSync(join(runDir, "prompt.md"), buildPromptMarkdown({ context, cwd, goalPath, goalContent }));
-  writeFileSync(join(runDir, "subagents.md"), buildSubagentsMarkdown({ cwd, goalPath, taskSize }));
+  writeFileSync(join(runDir, "subagents.md"), buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }));
   const executionDagState = executionDagSnapshot(executionDag, runDir);
   writeFileSync(join(runDir, "status.json"), `${JSON.stringify({
     harnessContract: context.contract,
@@ -4676,7 +4723,8 @@ function runPrepare(args) {
   console.log(`Prompt: ${displayPath(cwd, join(runDir, "prompt.md"))}`);
   console.log(`DAG: ${displayPath(cwd, join(runDir, "dag.md"))}`);
   console.log(`Ready nodes: ${executionDagState.readyNodes.join(", ") || "none"}`);
-  console.log("Next: launch ready node prompts in new Codex threads or Codex CLI subagents; avoid fork unless explicitly approved.");
+  console.log(`Default worker surface: ${executionDagState.defaultWorkerSurface}`);
+  console.log("Next: launch ready node prompts as Codex CLI subagents by default; use new Codex threads only for explicit long-lived handoff lanes.");
 }
 
 const recordableRunPhases = new Set(["completed", "blocked"]);
@@ -4811,8 +4859,8 @@ function runRecord(args) {
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
   const executionRole = status.executionRole || "unknown";
   let deliveryState = applyDeliveryEvidence(deliveryStateSnapshot(cwd, { completed: args.phase === "completed" }), {
-    prUrl: args.prUrl || status.deliveryState?.pr,
-    mergeSha: args.mergeSha || status.deliveryState?.merge,
+    reviewUrl: args.reviewUrl || args.prUrl || status.deliveryState?.review || status.deliveryState?.pr,
+    integrationRef: args.integrationRef || args.mergeSha || status.deliveryState?.integration || status.deliveryState?.merge,
     releaseRef: args.releaseRef || status.deliveryState?.release
   });
   if (args.phase === "completed" && !args.verification) {
@@ -4913,20 +4961,21 @@ ${args.gateEvidence || "Not recorded."}
 
 - State: \`${deliveryState.state}\`
 - Target: \`${deliveryPolicy.target}\`
+- Delivery intent: \`${deliveryPolicy.deliveryIntent}\`
 - Working tree dirty: \`${deliveryState.workingTreeDirty}\`
 - Branch: \`${deliveryState.branch || "none"}\`
 - Commit: \`${deliveryState.commit}\`
 - Push: \`${deliveryState.push}\`
-- PR: \`${deliveryState.pr}\`
-- Merge: \`${deliveryState.merge}\`
+- Review: \`${deliveryState.review || deliveryState.pr}\`
+- Integration: \`${deliveryState.integration || deliveryState.merge}\`
 - Release: \`${deliveryState.release}\`
 - Commit authorized: \`${deliveryPolicy.commitAuthorized}\`
 - Push authorized: \`${deliveryPolicy.pushAuthorized}\`
-- PR authorized: \`${deliveryPolicy.prAuthorized}\`
-- Merge authorized: \`${deliveryPolicy.mergeAuthorized}\`
+- Review authorized: \`${deliveryPolicy.reviewAuthorized}\`
+- Integration authorized: \`${deliveryPolicy.integrationAuthorized}\`
 - Release authorized: \`${deliveryPolicy.releaseAuthorized}\`
 
-A completed run must reach Target delivery state. If actual state is below target after gates pass, continue the authorized delivery pipeline and rerun \`run record\` with PR / merge / release evidence when applicable.
+A completed run must reach Target delivery state. If actual state is below target after gates pass, continue the authorized delivery pipeline and rerun \`run record\` with review / integration / release evidence when applicable.
 `;
 
   writeFileSync(statusPath, `${JSON.stringify(nextStatus, null, 2)}\n`);
@@ -5013,16 +5062,17 @@ function runStatus(args) {
     console.log(`Working tree dirty: ${status.deliveryState.workingTreeDirty || "unknown"}`);
     console.log(`Commit: ${status.deliveryState.commit || "none"}`);
     console.log(`Push: ${status.deliveryState.push || "none"}`);
-    console.log(`PR: ${status.deliveryState.pr || "none"}`);
-    console.log(`Merge: ${status.deliveryState.merge || "none"}`);
+    console.log(`Review: ${status.deliveryState.review || status.deliveryState.pr || "none"}`);
+    console.log(`Integration: ${status.deliveryState.integration || status.deliveryState.merge || "none"}`);
     console.log(`Release: ${status.deliveryState.release || "none"}`);
   }
   if (status.deliveryPolicy) {
+    console.log(`Delivery intent: ${status.deliveryPolicy.deliveryIntent || "unknown"}`);
     console.log(`Target delivery state: ${status.deliveryPolicy.target || "unknown"}`);
     console.log(`Commit authorized: ${status.deliveryPolicy.commitAuthorized || "unknown"}`);
     console.log(`Push authorized: ${status.deliveryPolicy.pushAuthorized || "unknown"}`);
-    console.log(`PR authorized: ${status.deliveryPolicy.prAuthorized || "unknown"}`);
-    console.log(`Merge authorized: ${status.deliveryPolicy.mergeAuthorized || "unknown"}`);
+    console.log(`Review authorized: ${status.deliveryPolicy.reviewAuthorized || status.deliveryPolicy.prAuthorized || "unknown"}`);
+    console.log(`Integration authorized: ${status.deliveryPolicy.integrationAuthorized || status.deliveryPolicy.mergeAuthorized || "unknown"}`);
     console.log(`Release authorized: ${status.deliveryPolicy.releaseAuthorized || "unknown"}`);
   }
   console.log(`Task size: ${status.taskSize || "unknown"}`);

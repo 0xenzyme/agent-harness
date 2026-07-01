@@ -145,11 +145,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 ```
 
 Prepared run packets include `dag.json`, `dag.md`, and
-`agents/<node>/prompt.md` files. The controller may launch ready nodes in new
-Codex threads or Codex CLI subagents, but `run prepare` itself does not start
-workers. Run packets also record conversation route, execution context lock,
-and the current delivery state so local worktree execution is not confused with
-committed, pushed, merged, or shipped state.
+`agents/<node>/prompt.md` files. The controller launches ready worker nodes as
+Codex CLI subagents by default. New Codex threads are explicit, visible,
+long-lived handoff lanes, not the default worker surface. `run prepare` itself
+does not start workers. Run packets also record conversation route, execution
+context lock, and the current delivery state so local worktree execution is not
+confused with committed, pushed, integrated, or shipped state.
 
 Inspect a prepared run:
 
@@ -165,7 +166,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
 ```
 
-Record a run outcome without modifying source files, pushing, or opening PRs:
+Record a run outcome without modifying source files or performing delivery
+steps itself:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
@@ -174,10 +176,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 ```
 
 `run record` refreshes delivery state in `status.json` and the run log. If the
-state is `implemented-local` or `validated-local`, next action is review the
-local diff and explicitly request commit / PR or discard.
+state is `implemented-local` or `validated-local`, the run is still local-only
+unless the goal target is also local-only. Otherwise, continue the authorized
+delivery pipeline or record `delivery pending` with the missing evidence.
 
 For completed runs, `run record` enforces the goal's Target delivery state. If
-the target is `PR-open`, `merged`, or `released/shipped`, pass external evidence
-with `--pr-url`, `--merge-sha`, or `--release-ref` after performing the
-authorized delivery step.
+the target is `review-open`, `integrated`, or `released/shipped`, pass external
+evidence with `--review-url`, `--integration-ref`, or `--release-ref` after
+performing the authorized delivery step. `--pr-url` and `--merge-sha` remain
+compatibility aliases.

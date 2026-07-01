@@ -84,13 +84,18 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
 node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <run-dir> --json
 ```
 
-10. If the role is `gate-only`, do not implement directly. Review the
+10. If the role is `gate-only`, do not implement directly and do not ask the
+   user to choose between worker launch and changing the control thread to
+   `mixed`. Launch a worker subagent by default when scope, verification,
+   context lock, delivery target, and safety boundaries are clear. Review the
    implementer output, compare it to the goal, run verification, and either
    accept state or request concrete corrections.
 11. If the run packet has `dag.json`, use it as the execution order:
    - Launch only `readyNodes` from `run status --json`.
    - Nodes in the same ready set may run in parallel.
-   - Prefer fresh Codex App threads or Codex CLI subagents for workers.
+   - Prefer Codex CLI subagents for workers.
+   - Create a new Codex App thread only for an explicit, visible, long-lived
+     handoff lane.
    - Do not use fork unless the controller explicitly approves inherited
      context and restates the worker role and return contract.
    - Record each worker result before launching dependents:
@@ -121,12 +126,13 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 
 15. Report Delivery State explicitly. If the state is `implemented-local` or
     `validated-local`, say that local implementation / verification is complete
-    but it is uncommitted and unmerged unless the recorded commit / push / PR /
-    merge / release fields prove otherwise.
+    but it is not committed, pushed, reviewed, integrated, or released unless
+    the recorded delivery fields prove otherwise.
     If Target Delivery State is above the actual state and the goal authorizes
     the required delivery steps, continue the delivery pipeline before
-    closeout. Use `--pr-url`, `--merge-sha`, or `--release-ref` with
-    `run record` when Git alone cannot prove PR / merge / release state.
+    closeout. Use `--review-url`, `--integration-ref`, or `--release-ref` with
+    `run record` when Git alone cannot prove review / integration / release
+    state. `--pr-url` and `--merge-sha` are accepted as compatibility aliases.
     If Target Delivery State is above the actual state but authorization or
     external evidence is missing, report `delivery pending`; do not mark the
     run completed.
@@ -138,13 +144,16 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
   that the user, confirmed goal, or run packet did not already provide.
 - Do not combine control-lane acceptance and implementation when the user has
   asked for gate-only, control-only, review-only, or acceptance-lane behavior.
+- Do not present worker launch vs. `mixed` as a routine user choice. In
+  `gate-only`, default to worker subagent unless subagent execution is
+  unavailable, unsafe, or lacks enough context.
 - Do not describe dirty or uncommitted dev-worktree output as done on main,
-  merged, shipped, or released.
+  integrated, shipped, or released.
 - Do not mark a run completed below its Target Delivery State.
 - Do not modify `AGENTS.md` or activation behavior without explicit approval.
-- Do not push, open PRs, deploy, release, use credentials, use paid APIs, touch
-  production, perform destructive operations, or start daemons without explicit
-  approval.
+- Do not release, deploy, use credentials, use paid APIs, touch production,
+  perform destructive operations, start daemons, or execute delivery steps above
+  the Delivery State policy without explicit approval.
 - Do not mark work complete without verification and state sync.
 - Do not mark an enforced-DAG run complete before every DAG node is recorded as
   completed with verification evidence.

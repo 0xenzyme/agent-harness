@@ -160,8 +160,9 @@ When you want the current thread to act as main control, gate, reviewer, judge,
 or acceptance lane, say so explicitly; Harness treats that as `gate-only` by
 default. In `gate-only`, the control thread reviews candidate output and
 verification evidence, then accepts, blocks, or requests corrections without
-directly editing implementation files. Use `implementer` or `mixed` only when
-you want the same thread to edit files too.
+directly editing implementation files. Clear implementation work is delegated
+to a worker subagent by default. Use `implementer` or `mixed` only when you
+want the same thread to edit files too.
 
 The CLI remains available as deterministic tooling for agents, operators, and
 maintainers, but it is not the primary first-use path for most people. See
@@ -182,9 +183,10 @@ harness:init/import -> harness:orient or harness:intake -> confirmed spec/goal -
 ```
 
 Under the hood, Harness records route decisions, run packets, acceptance
-evidence, and status snapshots through deterministic local tooling. The
-tooling stays bounded: it does not start Codex, create a daemon, push, deploy,
-or open a PR.
+evidence, delivery state, and status snapshots through deterministic local
+tooling. The tooling stays bounded: it does not start Codex, create a daemon,
+deploy, or perform delivery steps by itself. Delivery proceeds through the
+active goal's Delivery State policy.
 
 Conditional plugin bootstrap remains deferred. The validated plugin manifest
 does not declare a session hook, so installed Agent Harness skills do not
@@ -240,7 +242,8 @@ The current version is intentionally bounded:
 - It recommends worktree behavior, but does not force branch creation.
 - It starts with report-only loops before unattended fix loops.
 - It makes escalation points explicit before credentials, paid APIs,
-  production access, destructive operations, push, PR, deploy, or release.
+  production access, destructive operations, delivery above the active goal
+  policy, deploy, or release.
 
 The goal is to increase development automation while keeping the control
 points, evidence, and escalation boundaries explicit.

@@ -178,16 +178,22 @@ release evidence must be supplied.
 ## Agent-Neutral Delegation
 
 Delegation is capability-driven, not Codex-specific. A controller may hand work
-to Codex App threads, Codex CLI subagents, another coding-agent worker, or no
-worker at all only when that surface can return a concrete result packet:
-changed files, summary, verification, known risks, stop conditions, and
-state-sync notes.
+to Codex CLI subagents, explicit Codex App handoff threads, another
+coding-agent worker, or no worker at all only when that surface can return a
+concrete result packet: changed files, summary, verification, known risks, stop
+conditions, and state-sync notes.
 
-Prefer a fresh Codex App thread or Codex CLI subagent for worker execution.
+Prefer Codex CLI subagents for worker execution. A new Codex App thread is for
+explicit, visible, long-lived handoff lanes, not the default worker surface.
 Avoid fork as the default because inherited history can confuse controller and
 execution roles. Use fork only when the controller explicitly approves inherited
 context and repeats the worker role, source controller thread, allowed scope,
 forbidden scope, return channel, and result packet contract.
+
+When the active conversation is `gate-only`, route clear implementation work to
+a worker subagent by default. Do not ask the user to choose between launching a
+worker and changing the controller to `mixed` unless subagent execution is
+unavailable, unsafe, or under-specified.
 
 Parallel worker execution must follow the run packet's execution DAG. Ready
 nodes with no unmet dependencies may be launched together; dependent nodes must

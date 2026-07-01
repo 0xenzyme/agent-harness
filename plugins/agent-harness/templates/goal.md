@@ -60,23 +60,27 @@ Use `current-thread`.
 
 ## Delivery State
 
-- Target delivery state: `validated-local`
-- Commit authorized: `no`
-- Push authorized: `no`
-- PR authorized: `no`
-- Merge authorized: `no`
+- Delivery intent: `integrate-after-gates`
+- Target delivery state: `integrated`
+- Commit authorized: `yes`
+- Push authorized: `yes`
+- Review authorized: `no`
+- Integration authorized: `yes`
 - Release authorized: `no`
 
-Completed runs must reach Target delivery state. If target is above
-`validated-local`, set the matching authorization fields to `yes` and continue
-delivery after verification instead of stopping in the worktree.
+Completed development runs must reach Target delivery state. By default,
+gate-passing implementation work is committed and integrated into the
+development mainline; release / ship remains out of scope unless the delivery
+policy explicitly authorizes it. Lower the target to `validated-local` only for
+local-only spikes, audits, or explicitly uncommitted work.
 
 ## Execution DAG
 
 Use `run prepare` to generate `dag.json`, `dag.md`, and per-node
-`agents/<node>/prompt.md` files. Prefer new Codex threads or Codex CLI subagents
-for worker nodes. Fork is not the default worker surface; use it only when the
-controller explicitly approves inherited context.
+`agents/<node>/prompt.md` files. Prefer Codex CLI subagents for worker nodes.
+Create a new Codex thread only when the controller explicitly needs a visible,
+long-lived handoff lane. Fork is not the default worker surface; use it only
+when the controller explicitly approves inherited context.
 
 ## Route Explanation
 
@@ -113,8 +117,9 @@ Technical verification is necessary but does not replace gate evidence.
 
 ## Non-Goals
 
-- Do not push, deploy, publish, open a PR, start a daemon, or launch workers
-  outside the run packet DAG unless explicitly requested.
+- Do not release, deploy, publish, start a daemon, or launch workers outside
+  the run packet DAG unless explicitly requested.
+- Do not execute delivery steps above the Delivery State policy.
 - Do not use credentials, paid APIs, production data, or destructive operations
   without explicit approval.
 
@@ -138,5 +143,5 @@ Technical verification is necessary but does not replace gate evidence.
   constraints, or newer user instructions.
 - Requirements are unclear in a way that affects cost, risk, compatibility, or
   product direction.
-- Credentials, paid APIs, production access, destructive operations, push, PR,
-  deploy, publish, or release are required.
+- Credentials, paid APIs, production access, destructive operations, release,
+  or a delivery step above the Delivery State policy is required.

@@ -388,7 +388,7 @@ for (const needle of ["## Conversation Reconciliation Rules", "## Execution Role
   assertIncludes(projectContractDoc, needle, "project contract should document execution roles");
 }
 const executeSkillDoc = readFileSync(join(repoRoot, "plugins/agent-harness/skills/execute/SKILL.md"), "utf8");
-for (const needle of ["gate-only", "implementer", "mixed", "main control", "Execution Context Lock", "Delivery State", "--gate-evidence", "run node record"]) {
+for (const needle of ["gate-only", "implementer", "mixed", "main control", "worker subagent by default", "Execution Context Lock", "Delivery State", "--gate-evidence", "run node record"]) {
   assertIncludes(executeSkillDoc, needle, "execute skill should route control/gate requests by execution role");
 }
 const goalTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/goal.md"), "utf8");
@@ -402,6 +402,8 @@ assertIncludes(cliSource, "## Conversation Route", "goal generator should includ
 assertIncludes(cliSource, "deliveryState", "run status should expose delivery state");
 assertIncludes(cliSource, "deliveryPolicy", "run status should expose delivery target policy");
 assertIncludes(cliSource, "Delivery target gate failed", "run record should enforce delivery target");
+assertIncludes(cliSource, "defaultWorkerSurface", "run status should expose default worker surface");
+assertIncludes(cliSource, "codex-cli-subagent", "run prepare should default workers to subagents");
 assertIncludes(cliSource, "gate-evidence", "run record should expose gate evidence input");
 assertIncludes(cliSource, "dag.json", "run prepare should expose execution DAG artifacts");
 
@@ -439,7 +441,9 @@ try {
     "--summary",
     "fixed run completed",
     "--verification",
-    "fixed smoke verification passed"
+    "fixed smoke verification passed",
+    "--integration-ref",
+    "fixed-smoke-mainline"
   ]);
   const fixedStatusBeforeMaintain = readFileSync(join(fixed, "harness/status.md"), "utf8");
   const fixedMaintainPreview = JSON.parse(run(["maintain", "tasks", "--cwd", fixed, "--json"]));
@@ -672,7 +676,9 @@ try {
   assert(customGoalValidate.goal.executionRole === "implementer", "goal validate should expose execution role");
   assert(customGoalValidate.goal.conversationRoute === "current-thread", "goal validate should expose conversation route");
   assert(customGoalValidate.goal.executionContextLock.executionCwd === custom, "goal validate should expose execution cwd lock");
-  assert(customGoalValidate.goal.deliveryPolicy.target === "validated-local", "goal validate should expose delivery target");
+  assert(customGoalValidate.goal.deliveryPolicy.target === "integrated", "goal validate should expose delivery target");
+  assert(customGoalValidate.goal.deliveryPolicy.deliveryIntent === "integrate-after-gates", "goal validate should expose delivery intent");
+  assert(customGoalValidate.goal.deliveryPolicy.integrationAuthorized === "yes", "goal validate should expose integration authorization");
   run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
   const customRuns = readdirSync(join(custom, "custom/runs")).sort();
   assert(customRuns.length > 0, "adapter run packet should use custom runs dir");
@@ -682,10 +688,10 @@ try {
   assert(customRunStatus.conversationRoute === "current-thread", "run status should record conversation route");
   assert(customRunStatus.executionContextLock.executionCwd === custom, "run status should record execution cwd lock");
   assert(customRunStatus.deliveryState.state, "run status should record delivery state");
-  assert(customRunStatus.deliveryPolicy.target === "validated-local", "run status should record delivery target");
+  assert(customRunStatus.deliveryPolicy.target === "integrated", "run status should record delivery target");
   const customRunStatusJson = JSON.parse(run(["run", "status", "--cwd", custom, "--run", join("custom/runs", customRuns[0]), "--json"]));
   assert(customRunStatusJson.deliveryState.state === customRunStatus.deliveryState.state, "run status json should expose delivery state");
-  assert(customRunStatusJson.deliveryPolicy.target === "validated-local", "run status json should expose delivery target");
+  assert(customRunStatusJson.deliveryPolicy.target === "integrated", "run status json should expose delivery target");
   assertIncludes(
     runFails([
       "run",
@@ -703,8 +709,7 @@ try {
     "completed run record should require verification evidence"
   );
   const committedTargetGoal = readFileSync(customGoal, "utf8")
-    .replace("Target delivery state: `validated-local`", "Target delivery state: `committed`")
-    .replace("Commit authorized: `no`", "Commit authorized: `yes`");
+    .replace("Target delivery state: `integrated`", "Target delivery state: `committed`");
   write(join(custom, "custom/goals/committed-target.md"), committedTargetGoal);
   const committedTargetValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/committed-target.md", "--json"]));
   assert(committedTargetValidate.ok === true, "committed delivery target with commit authorization should validate");
@@ -744,6 +749,8 @@ try {
     "custom run completed",
     "--verification",
     "smoke verification passed",
+    "--integration-ref",
+    "smoke-mainline",
     "--json"
   ]));
   assert(completedRecord.phase === "completed", "run record should report completed phase");
@@ -849,7 +856,7 @@ Use \`remote-control-worktree\`.
 - Preserve adapter paths.
 
 ## Non-Goals
-- Do not push, deploy, publish, or open a PR.
+- Do not release, deploy, publish, or execute delivery above the goal policy.
 
 ## Verification
 Manual verification evidence only.
@@ -873,6 +880,8 @@ Manual verification evidence only.
   assert(largeDagStatus.conversationRoute === "remote-control-worktree", "worktree run should record remote-control route");
   assert(largeDagStatus.executionContextLock.remoteControlWorktree === "yes", "worktree run should record remote-control lock");
   assert(largeDagStatus.deliveryState.state, "worktree run should record delivery state");
+  assert(largeDagStatus.executionDag.defaultWorkerSurface === "codex-cli-subagent", "large DAG should default worker surface to subagent");
+  assert(JSON.stringify(largeDagStatus.executionDag.preferredSurfaces) === JSON.stringify(["codex-cli-subagent"]), "large DAG should prefer only subagent by default");
   assert(largeDagStatus.executionDag.enforced === true, "large DAG run should enforce node completion before run completion");
   assert(existsSync(join(largeDagRunDir, "dag.json")), "run prepare should write machine-readable DAG");
   assert(existsSync(join(largeDagRunDir, "dag.md")), "run prepare should write human-readable DAG");
@@ -883,6 +892,7 @@ Manual verification evidence only.
     JSON.stringify(largeDagStatusJson.executionDag.readyNodes) === JSON.stringify(["explorer"]),
     "large DAG should initially expose only explorer as ready"
   );
+  assert(largeDagStatusJson.executionDag.defaultWorkerSurface === "codex-cli-subagent", "run status json should expose subagent default worker surface");
   assertIncludes(
     runFails([
       "run",
@@ -939,9 +949,9 @@ Manual verification evidence only.
     "--verification",
     "read-only review completed",
     "--thread",
-    "thread-explorer",
+    "subagent-explorer",
     "--surface",
-    "codex-app-create-thread",
+    "codex-cli-subagent",
     "--json"
   ]));
   assert(
@@ -1076,11 +1086,11 @@ Manual verification evidence only.
   );
   write(
     join(invalidGoalDir, "delivery-target-missing-auth.md"),
-    readFileSync(customGoal, "utf8").replace("Target delivery state: `validated-local`", "Target delivery state: `PR-open`")
+    readFileSync(customGoal, "utf8").replace("Target delivery state: `integrated`", "Target delivery state: `PR-open`")
   );
   assertIncludes(
     runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/delivery-target-missing-auth.md", "--json"]),
-    "Delivery State target PR-open requires Commit authorized: yes",
+    "Delivery State target review-open requires Review authorized: yes",
     "delivery target beyond local should require matching authorization"
   );
   const worktreeMissingContextGoal = readFileSync(customGoal, "utf8")
@@ -1105,9 +1115,15 @@ Manual verification evidence only.
   run(["run", "prepare", "--cwd", custom, "--goal", gateOnlyGoal]);
   const gateOnlyRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-gate-only")).sort().at(-1);
   assert(gateOnlyRun, "gate-only run should be prepared");
+  const gateOnlyStatus = readJson(join(custom, "custom/runs", gateOnlyRun, "status.json"));
   assert(
-    readJson(join(custom, "custom/runs", gateOnlyRun, "status.json")).executionRole === "gate-only",
+    gateOnlyStatus.executionRole === "gate-only",
     "gate-only run status should record execution role"
+  );
+  assert(gateOnlyStatus.executionDag.defaultWorkerSurface === "codex-cli-subagent", "gate-only run should default to subagent worker surface");
+  assert(
+    !Object.keys(gateOnlyStatus.executionDag.nodeStatus).includes("main-agent"),
+    "gate-only run should not prepare a current-thread main-agent implementation node"
   );
   assertIncludes(
     runFails([
@@ -1143,6 +1159,8 @@ Manual verification evidence only.
     "verification passed",
     "--gate-evidence",
     "Reviewed implementer output and accepted run evidence",
+    "--integration-ref",
+    "gate-only-smoke-mainline",
     "--json"
   ]));
   assert(gateOnlyRecord.gateEvidence.includes("Reviewed implementer output"), "gate-only record should expose gate evidence");
@@ -1164,11 +1182,20 @@ Use \`local\`.
 ## Execution Role
 Use \`implementer\`.
 
+## Delivery State
+- Delivery intent: \`integrate-after-gates\`
+- Target delivery state: \`integrated\`
+- Commit authorized: \`yes\`
+- Push authorized: \`yes\`
+- Review authorized: \`no\`
+- Integration authorized: \`yes\`
+- Release authorized: \`no\`
+
 ## Scope
 - Complete multiple source tasks as one batch.
 
 ## Non-Goals
-- Do not push, deploy, publish, or open a PR.
+- Do not release, deploy, publish, or execute delivery above the goal policy.
 
 ## Verification
 Manual verification evidence only.
@@ -1250,6 +1277,8 @@ Manual verification evidence only.
     "batch accepted with per-source evidence",
     "--verification",
     "verification passed",
+    "--integration-ref",
+    "batch-smoke-mainline",
     "--json"
   ]));
   assert(satisfiedBatchRecord.phase === "completed", "satisfied batch run should record completion");
@@ -1398,6 +1427,8 @@ Manual verification evidence only.
     "gated run accepted",
     "--verification",
     "npm test passed",
+    "--integration-ref",
+    "gated-smoke-mainline",
     "--json"
   ]));
   assert(acceptedGatedRecord.phase === "completed", "satisfied checklist and gate evidence should allow completion");

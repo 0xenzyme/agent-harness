@@ -2,12 +2,12 @@
 
 ## Focus
 
-- Current focus: Conversation routing / execution context lock and
-  delivery-target gates are implemented from the M2 GEO App repair defect
-  reports. Worktree goals now require route/lock proof, run packets record
-  conversation lane and execution cwd/branch, and completed run closeout must
-  reach the goal's target delivery state instead of stopping in a passing dirty
-  worktree.
+- Current focus: Delivery intent defaults are being corrected so generated
+  development goals do not cap successful worktree execution at
+  `validated-local`. The new default is provider-neutral
+  `integrate-after-gates`: commit accepted work and integrate it into the
+  development line after required gates pass, while keeping release / ship
+  separately authorized.
 
 ## Git
 
@@ -15,12 +15,30 @@
   work unless the user asks for an isolated worktree.
 - Current branch: codex/harden-harness-skills
 - Worktree notes: Work was done in the current checkout; no worktree, branch,
-  push, PR, deploy, daemon, watcher, or Codex session launch was created.
+  review request, deploy, daemon, watcher, or Codex session launch was created.
 
 ## Verification
 
 - Last checked: 2026-07-01
 - Last commands:
+  - Changed generated/manual goal Delivery State defaults from
+    `validated-local` to `integrated` with `Delivery intent:
+    integrate-after-gates`, commit/push/integration authorized, review
+    optional, and release unauthorized.
+  - Replaced provider-specific delivery vocabulary with `review-open` and
+    `integrated`; kept `PR-open`, `--pr-url`, `Merge authorized`, and
+    `--merge-sha` as compatibility aliases.
+  - Removed default Non-Goals / Pause Conditions that treated push / review /
+    integration as inherently user-blocking; delivery now pauses only when a
+    step exceeds the active Delivery State policy.
+  - Updated generated run packets, prompts, run record logs/status output,
+    `harness:execute`, project contract docs, CLI docs, README files, goal
+    template, and smoke tests for provider-neutral delivery.
+  - `node --check plugins/agent-harness/scripts/agent-harness.mjs`
+  - `node --check tests/smoke.mjs`
+  - `npm run test:smoke`
+  - `git diff --check`
+  - `npm run validate:plugin`
   - Added `Conversation Route`, `Execution Context Lock`, and `Delivery State`
     protocol fields to generated/manual goals, run packets, prompts, status,
     and run record logs.
@@ -34,6 +52,12 @@
     delivery state is below target.
   - Added `--pr-url`, `--merge-sha`, and `--release-ref` evidence fields for
     PR / merge / release delivery states that Git status alone cannot infer.
+  - Changed execution DAG worker-surface policy to default to
+    `codex-cli-subagent`; new Codex threads are explicit visible handoff lanes,
+    not default workers.
+  - Added gate-only DAG/run guidance so clear implementation work dispatches to
+    worker subagents rather than asking the user whether to switch the control
+    thread to `mixed`.
   - Updated `harness:execute`, execution-role guidance, controller packets,
     task routing, project contract docs, CLI docs, templates, and smoke tests.
   - `node --check plugins/agent-harness/scripts/agent-harness.mjs`

@@ -140,11 +140,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 ```
 
 准备好的 run packet 会包含 `dag.json`、`dag.md` 和
-`agents/<node>/prompt.md`。controller 可以把 ready nodes 分发给新的 Codex
-threads 或 Codex CLI subagents，但 `run prepare` 本身不会启动 workers。
-Run packet 也会记录 conversation route、execution context lock 和当前
-delivery state，避免把本地 worktree 执行误解为已 commit、push、merge 或
-ship。
+`agents/<node>/prompt.md`。controller 默认把 ready worker nodes 分发给
+Codex CLI subagents。新的 Codex thread 是显式、可见、长期的 handoff lane，
+不是默认 worker surface。`run prepare` 本身不会启动 workers。Run packet 也会
+记录 conversation route、execution context lock 和当前 delivery state，避免把
+本地 worktree 执行误解为已 commit、push、integrate 或 ship。
 
 查看已准备的 run：
 
@@ -160,7 +160,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
 ```
 
-记录 run 结果，不修改源码、不 push、不 open PR：
+记录 run 结果；`run record` 本身不修改源码，也不执行 delivery step：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
@@ -169,9 +169,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 ```
 
 `run record` 会刷新 `status.json` 和 run log 里的 delivery state。如果状态是
-`implemented-local` 或 `validated-local`，下一步应是 review local diff，然后
-显式请求 commit / PR 或 discard。
+`implemented-local` 或 `validated-local`，除非 goal target 本身就是本地态，
+否则应继续已授权的 delivery pipeline，或记录缺少的 evidence 为
+`delivery pending`。
 
 对 completed run，`run record` 会强制检查 goal 的 Target delivery state。
-如果目标是 `PR-open`、`merged` 或 `released/shipped`，在完成已授权的交付步骤后，
-用 `--pr-url`、`--merge-sha` 或 `--release-ref` 传入外部证据。
+如果目标是 `review-open`、`integrated` 或 `released/shipped`，在完成已授权的
+交付步骤后，用 `--review-url`、`--integration-ref` 或 `--release-ref` 传入
+外部证据。`--pr-url` 和 `--merge-sha` 仍作为兼容别名保留。

@@ -141,8 +141,9 @@ harness:init -> harness:orient or harness:intake -> confirmed spec/goal -> harne
 如果你希望当前 thread 作为 main control、gate、reviewer、judge 或 acceptance
 lane，请直接说明；Harness 默认把这种请求视为 `gate-only`。在 `gate-only`
 中，control thread 只审查 candidate output 和 verification evidence，然后
-accept、block 或要求 corrections，不直接修改 implementation files。只有当
-你希望同一个 thread 也改文件时，才使用 `implementer` 或 `mixed`。
+accept、block 或要求 corrections，不直接修改 implementation files。明确的
+implementation work 默认交给 worker subagent。只有当你希望同一个 thread 也
+改文件时，才使用 `implementer` 或 `mixed`。
 
 CLI 仍然保留，作为 agents、operators 和 maintainers 的确定性工具，但不是
 多数用户的 primary first-use path。详细命令示例见
@@ -161,8 +162,9 @@ harness:init/import -> harness:orient or harness:intake -> confirmed spec/goal -
 ```
 
 在底层，Harness 通过确定性的本地工具记录 route decisions、run packets、
-acceptance evidence 和 status snapshots。工具边界保持受控：不会启动
-Codex、创建 daemon、push、deploy 或 open PR。
+acceptance evidence、delivery state 和 status snapshots。工具边界保持受控：
+不会启动 Codex、创建 daemon、deploy，或自行执行 delivery step。Delivery 由
+当前 goal 的 Delivery State policy 控制。
 
 Conditional plugin bootstrap 仍然 defer。当前通过校验的 plugin manifest 不
 声明 session hook，因此安装 Agent Harness skills 不会向无 harness 项目注入
@@ -212,7 +214,8 @@ Codex 会读取 `.agents/plugins/marketplace.json` 并暴露 `harness` plugin。
 - 给 Codex 一个一致的方式来定位 task、spec、goal 和 run artifacts。
 - 推荐 worktree 行为，但不强制创建 branch。
 - 从 report-only loops 开始，而不是直接进入无人值守修复循环。
-- 在凭证、付费 API、生产访问、破坏性操作、push、PR、deploy 或 release 前显式暴露 escalation point。
+- 在凭证、付费 API、生产访问、破坏性操作、超出当前 goal policy 的 delivery、
+  deploy 或 release 前显式暴露 escalation point。
 
 目标是加强开发自动化，同时把控制点、evidence 和需要升级给人的边界保持清楚。
 
