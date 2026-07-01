@@ -2,22 +2,37 @@
 
 ## Now
 
-- [ ] Execute GitHub presentation pass for profile-pinned repository.
-  - Acceptance: Design and implement a complete GitHub presentation package:
-    profile-friendly README first screen, repository topics, social preview
-    asset, changelog/release notes, release tag plan, and verification docs.
-  - Source: User pinned `0xenzyme/agent-harness` to their GitHub profile and
-    asked to use Harness to design and execute the presentation work.
-  - Boundary: Do not change Agent Harness runtime protocol except where docs or
-    tests must reference the presentation surface. Do not use paid services,
-    destructive operations, or production credentials. GitHub remote metadata,
-    tag, and release actions may proceed only with available `gh` auth.
-
 ## Next
 
 ## Later
 
 ## Done
+
+- [x] Execute GitHub presentation pass for profile-pinned repository.
+  - Completed: Added README / README.zh-CN first-screen badges, positioning,
+    flow line, links, and social preview reference.
+  - Completed: Added `docs/assets/github/social-preview.svg`,
+    `docs/github-presentation.md`, `CHANGELOG.md`, `docs/releases/v0.4.0.md`,
+    and `LICENSE`.
+  - Completed: Added `npm run test:presentation` and extended `npm run
+    test:all` / smoke coverage to protect presentation assets and links.
+  - Completed: Applied GitHub repository description and topics for
+    `0xenzyme/agent-harness`.
+  - Completed: Pushed commit `1a622a5`, pushed tag `v0.4.0`, and created
+    GitHub Release `v0.4.0`.
+  - Source: User pinned `0xenzyme/agent-harness` to their GitHub profile and
+    asked to use Harness to design and execute the presentation work.
+  - Spec: `harness/specs/2026-07-02-github-presentation-pass.md`
+  - Goal: `harness/goals/2026-07-02-github-presentation-pass.md`
+  - Run: `.harness/runs/20260702-025928-github-presentation-pass/`
+  - Release: `https://github.com/0xenzyme/agent-harness/releases/tag/v0.4.0`
+  - Verification: `npm run test:presentation`, `npm run test:protocol`,
+    `npm run test:smoke`, `npm run test:all`, `npm run validate:plugin`,
+    `git diff --check`, `goal validate`, `run status`, `gh repo view`,
+    `git ls-remote --tags origin v0.4.0`, and `gh release view v0.4.0`.
+  - Boundary: No runtime protocol redesign, plugin activation change, website,
+    daemon/watcher, paid service, destructive operation, or production
+    credential was used.
 
 - [x] Bump Agent Harness version metadata to 0.4.0.
   - Completed: Updated `package.json` and

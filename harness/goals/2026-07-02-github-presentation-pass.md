@@ -1,7 +1,7 @@
 # Goal: GitHub Presentation Pass
 
 Spec: harness/specs/2026-07-02-github-presentation-pass.md
-Status: Ready for execution from confirmed spec.
+Status: Completed with released GitHub presentation evidence.
 
 ## Source Task
 
@@ -63,28 +63,28 @@ tag, applied GitHub repository metadata, and GitHub Release evidence.
 
 - Item: `Pinned card metadata`
   - Acceptance: Repository description and topics match the accepted spec, or a concrete GitHub auth/tooling blocker is recorded.
-  - Evidence: `TBD`
-  - Status: `pending`
+  - Evidence: `gh repo view confirmed description "Adapter-driven control plane for Codex and coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync." and topics agent-harness, agent-orchestration, ai-agents, automation, cli, codex, codex-plugin, coding-agents, developer-tools, productivity, task-management, workflow-automation.`
+  - Status: `satisfied`
   - Unblocker: `N/A`
 - Item: `README first screen`
   - Acceptance: README has badges, clear positioning, and links to capability matrix, changelog, release notes, and social preview assets.
-  - Evidence: `TBD`
-  - Status: `pending`
+  - Evidence: `README.md and README.zh-CN.md now include version/Codex/protocol/smoke/license badges, positioning copy, flow line, links to docs/HARNESSES.md, docs/github-presentation.md, CHANGELOG.md, docs/releases/v0.4.0.md, and docs/assets/github/social-preview.svg.`
+  - Status: `satisfied`
   - Unblocker: `N/A`
 - Item: `Social preview assets`
   - Acceptance: Source social preview asset exists under `docs/assets/github/`, with PNG output when local tooling supports it.
-  - Evidence: `TBD`
-  - Status: `pending`
+  - Evidence: `Added docs/assets/github/social-preview.svg. Local PNG rendering was probed; available tools did not produce an acceptable exact 1280x640 asset, so docs/github-presentation.md records SVG source and manual PNG upload/export guidance.`
+  - Status: `satisfied`
   - Unblocker: `N/A`
 - Item: `Release surface`
   - Acceptance: `CHANGELOG.md`, `docs/releases/v0.4.0.md`, Git tag `v0.4.0`, and GitHub Release are present, or exact blockers are recorded.
-  - Evidence: `TBD`
-  - Status: `pending`
+  - Evidence: `Added CHANGELOG.md and docs/releases/v0.4.0.md; pushed tag v0.4.0 to origin; gh release view confirmed https://github.com/0xenzyme/agent-harness/releases/tag/v0.4.0.`
+  - Status: `satisfied`
   - Unblocker: `N/A`
 - Item: `Verification and state sync`
   - Acceptance: Required verification passes and Harness task/status/goal/run records are synchronized.
-  - Evidence: `TBD`
-  - Status: `pending`
+  - Evidence: `Passed npm run test:presentation, npm run test:protocol, npm run test:smoke, npm run test:all, npm run validate:plugin, git diff --check, goal validate, run status, gh repo view, git ls-remote --tags origin v0.4.0, and gh release view v0.4.0. Harness task/status/goal/run records updated.`
+  - Status: `satisfied`
   - Unblocker: `N/A`
 
 ## Scope

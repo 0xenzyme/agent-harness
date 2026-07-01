@@ -2,6 +2,14 @@
 
 ## Focus
 
+- Current focus: GitHub presentation pass for the profile-pinned
+  `0xenzyme/agent-harness` repository is complete. README / README.zh-CN now
+  have badges, positioning, release links, and a social preview reference;
+  GitHub repository description and topics are applied; `v0.4.0` tag is pushed;
+  GitHub Release `v0.4.0` is published at
+  `https://github.com/0xenzyme/agent-harness/releases/tag/v0.4.0`. Delivery
+  reached released state for this presentation pass.
+
 - Current focus: Agent Harness version metadata is aligned at `0.4.0` in the
   local checkout after the Impeccable-inspired productization improvements.
   README, README.zh-CN, and `docs/versioning.md` now document the `0.4.0`
@@ -61,6 +69,34 @@
 
 - Last checked: 2026-07-02
 - Last commands:
+  - Created accepted spec
+    `harness/specs/2026-07-02-github-presentation-pass.md`.
+  - Created and validated goal
+    `harness/goals/2026-07-02-github-presentation-pass.md`.
+  - Prepared run packet
+    `.harness/runs/20260702-025928-github-presentation-pass/`.
+  - Added presentation assets and docs: `docs/assets/github/social-preview.svg`,
+    `docs/github-presentation.md`, `CHANGELOG.md`,
+    `docs/releases/v0.4.0.md`, and `LICENSE`.
+  - Updated README / README.zh-CN first screen with badges, positioning, release
+    links, and social preview reference.
+  - Added `npm run test:presentation` and updated `npm run test:all`, suite
+    routing docs, and smoke checks for presentation assets.
+  - Applied GitHub repository description and topics to
+    `0xenzyme/agent-harness` with authenticated `gh`.
+  - Verified locally with `npm run test:presentation`,
+    `npm run test:protocol`, `npm run test:smoke`, `npm run test:all`,
+    `npm run validate:plugin`, `git diff --check`, and `goal validate`.
+  - Committed `1a622a5` (`Polish GitHub presentation for v0.4.0`) and pushed
+    `main`.
+  - Created and pushed Git tag `v0.4.0`.
+  - Created GitHub Release `v0.4.0`:
+    `https://github.com/0xenzyme/agent-harness/releases/tag/v0.4.0`.
+  - Recorded completed run log
+    `.harness/runs/20260702-025928-github-presentation-pass/logs/20260702-030659-completed.md`
+    with delivery state `released/shipped`.
+  - Verified remote delivery with `gh repo view`,
+    `git ls-remote --tags origin v0.4.0`, and `gh release view v0.4.0`.
   - Updated Agent Harness version metadata from `0.3.0` to `0.4.0` in
     `package.json` and `plugins/agent-harness/.codex-plugin/plugin.json`.
   - Updated README, README.zh-CN, and `docs/versioning.md` so the documented
