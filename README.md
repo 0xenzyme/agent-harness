@@ -2,9 +2,43 @@
 
 [中文](README.zh-CN.md)
 
-Agent Harness is a reusable Codex workflow package for development projects.
-It gives each project a small control layer so more task coordination,
-execution preparation, verification, and state sync can move into automation.
+Agent Harness is a reusable Codex workflow package for development projects. It
+turns a project's accepted direction into an inspectable execution control
+layer so coding agents can carry more work from roadmap intent to verified
+state without the human acting as the task router.
+
+## Value Proposition
+
+Agent Harness is for the moment after the human has set direction.
+
+In a normal project, a user may define a roadmap such as `M1` through `M5`,
+discuss the product direction for `M5`, and decide that no more product
+judgment, credentials, production access, or destructive operation is needed.
+At that point, "complete M5" should not mean "write or accept the next small
+spec and stop." It should mean:
+
+```text
+accepted direction -> stage completion map -> executable goals / run DAG
+-> worker execution -> control-lane verification -> state sync
+```
+
+The human should still own direction, authorization, and true gates. Harness
+should own the remaining execution mechanics inside the project adapter:
+
+- discover the current task, roadmap, spec, goal, milestone, and run state;
+- turn broad stage requests such as `complete M5` into explicit stage items;
+- dispatch worker execution when the current thread is acting as main control;
+- verify concrete evidence before accepting state;
+- keep `tasks`, `status`, goals, runs, and gate records aligned;
+- pause only for real human gates such as unclear product direction,
+  conflicting constraints, credentials, paid APIs, production access,
+  destructive actions, or delivery above policy.
+
+The core promise is not "agents write files." The promise is that a coding
+agent can stop losing the plot between roadmap, spec, implementation,
+verification, and handoff. Parent milestones stay open until their mapped
+subitems are complete; source-spec acceptance such as `M5-S0` cannot silently
+become parent-stage completion for `M5`.
 
 ## Problem
 
@@ -52,6 +86,10 @@ Agent Harness keeps the control plane small and inspectable:
   project adapters and artifacts.
 - Route explanations stay lightweight: Codex should briefly say why it is
   orienting, shaping, executing, asking, using a worktree, or staying local.
+
+The runtime/control surfaces, default worker behavior, protocol anchors, and
+surface-appropriate verification suites are summarized in the
+[Agent Harness capability matrix](docs/HARNESSES.md).
 
 ## Influences
 
@@ -182,6 +220,19 @@ For documentation or plugin-surface changes in this repository, use:
 
 ```bash
 git diff --check
+npm run test:protocol
+npm run test:smoke
+npm run validate:plugin
+```
+
+Use the [capability matrix](docs/HARNESSES.md) to choose a narrower suite when
+only protocol anchors, smoke behavior, eval fixtures, or packaging changed.
+
+For legacy automation that has not adopted suite routing, the minimum local
+checks remain:
+
+```bash
+git diff --check
 npm run test:smoke
 npm run validate:plugin
 ```
@@ -257,7 +308,12 @@ plugin.
 
 ## Current Design Bias
 
-The current version is intentionally bounded:
+The current version is `0.4.0`. It adds the project-neutral
+[capability matrix](docs/HARNESSES.md), stable `harness-rule:*` protocol
+anchors, and `test:protocol` / `test:all` suite routing on top of the
+workflow-controller skill surface.
+
+This version is intentionally bounded:
 
 - It creates stable files and directories.
 - It gives Codex a consistent way to find project task, spec, goal, and run

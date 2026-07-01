@@ -18,23 +18,28 @@ Next executable:
 
 ## Rules
 
-- Evidence must be concrete: command result, run id, commit id, user review, or
-  other inspectable artifact.
+- Evidence must be concrete (`harness-rule:state-sync-evidence`): command
+  result, run id, commit id, user review, or other inspectable artifact.
 - Candidate evidence from subagents, automation, inbox notes, or proposal
   competition is not accepted state until the control lane validates it and
   records the gate result.
 - Execution DAG node results are candidate evidence until recorded with
   `run node record`; enforced DAG runs cannot be accepted until every node is
   completed and dependency order has been respected.
-- In `gate-only` execution, the control lane must cite implementer output and
-  verification evidence before accepting state. It should request corrections
-  instead of directly rewriting implementation files.
+- In `gate-only` execution (`harness-rule:gate-only-controller`), the control
+  lane must cite implementer output and verification evidence before accepting
+  state. It should request corrections instead of directly rewriting
+  implementation files.
 - Completed run records must include verification evidence. Completed
   `gate-only` records must also include explicit gate evidence that points to
   implementer output and acceptance review.
 - Batch or merged source-task runs must include a `Source Task Acceptance Map`.
   The control lane must verify every mapped acceptance item before marking the
   run completed.
+- Parent roadmap stage or milestone runs must include a `Stage Completion Map`
+  when implementation phasing declares subitems such as `M5-S0` and `M5-D1`.
+  The control lane must verify every mapped stage item before marking the parent
+  stage completed.
 - Goals with `Spec Acceptance Checklist` items must satisfy every checklist
   item before completed run records can be accepted.
 - Adapter-required gates declared in `gates.requiredForCompletion` or

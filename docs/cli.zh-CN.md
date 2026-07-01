@@ -13,8 +13,12 @@ reference。
 
 ## 验证命令
 
+[Agent Harness capability matrix](HARNESSES.md) 说明 protocol、smoke、eval
+和 plugin-validation suites 各自覆盖哪些 surface。
+
 ```bash
 git diff --check
+npm run test:protocol
 npm run validate:plugin
 npm run test:smoke
 ```
@@ -26,6 +30,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/t
 ```
 
 如果修改了 eval documentation 或 eval fixtures，运行 `npm run test:eval`。
+如果需要同时跑 protocol 和 smoke coverage，运行 `npm run test:all`。
 
 ## 初始化或导入项目
 

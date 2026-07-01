@@ -84,6 +84,12 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
    implementation. If the checklist is missing and the difference between
    technical completion and product acceptance matters, pause to shape or amend
    the goal instead of implementing against vague prose.
+   When the user asks to complete a roadmap stage or milestone, such as
+   "complete M5" or "推进完成M5", treat the target as whole-stage completion by
+   default. If the spec has implementation phasing items such as `M5-S0` and
+   `M5-D1`, create or require a `Stage Completion Map`; source-spec acceptance
+   alone must not mark the parent stage done unless the user explicitly narrowed
+   the task to that leaf stage.
 7. If the user asks what to do next before authorizing work, switch to orient:
 
 ```bash
@@ -122,6 +128,8 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
    [Controller Communication](../../references/controller-communication.md) and
    use the relevant launch, result, or integration packet fields. Worker output
    is candidate evidence only until the controller validates and accepts it.
+   This is `harness-rule:gate-only-controller`: the control lane stays the
+   acceptance lane and does not directly edit implementation files.
 11. If the run packet has `dag.json`, use it as the execution order:
    - Launch only `readyNodes` from `run status --json`.
    - Nodes in the same ready set may run in parallel.
@@ -171,6 +179,8 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
     `validated-local`, say that local implementation / verification is complete
     but it is not committed, pushed, reviewed, integrated, or released unless
     the recorded delivery fields prove otherwise.
+    This is `harness-rule:local-delivery-ceiling`: local verification is not
+    delivery evidence above the local ceiling.
     If Target Delivery State is above the actual state and the goal authorizes
     the required delivery steps, continue the delivery pipeline before
     closeout. Use `--review-url`, `--integration-ref`, or `--release-ref` with
@@ -225,6 +235,10 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
   adapter-declared `gates.requiredForCompletion` or `gates.blocking` require
   matching `Required Gate Evidence` items with concrete evidence and
   `Status: satisfied`.
+- Completed parent-stage runs with `Stage Completion Map` items require
+  concrete evidence and `Status: satisfied` for every stage item. Do not mark a
+  parent stage such as `M5` done after only `M5-S0` source-spec acceptance
+  unless the remaining implementation items are explicitly outside that stage.
 - Keep accepted state inspectable: cite concrete task entries, specs, goals,
   run records, gate records, command summaries, or human review notes.
 - Keep plugin core docs and templates project-neutral; put local facts in the

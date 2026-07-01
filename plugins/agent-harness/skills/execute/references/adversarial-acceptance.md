@@ -15,6 +15,10 @@ a user-facing final-answer template.
 - Did the work exceed scope, touch forbidden areas, or rely on unapproved
   authority?
 - Is the actual Delivery State below the Target Delivery State?
+- Is the user asking for whole stage / milestone completion while only a
+  source-spec or other leaf item is satisfied?
+- If there is a `Stage Completion Map`, are all stage items satisfied with
+  concrete evidence?
 - Are all `Spec Acceptance Checklist` items satisfied with concrete evidence?
 - Are adapter-required gates present and satisfied with concrete evidence?
 - Does any stale artifact conflict with newer conversation-confirmed state?

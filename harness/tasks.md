@@ -8,6 +8,72 @@
 
 ## Done
 
+- [x] Bump Agent Harness version metadata to 0.4.0.
+  - Completed: Updated `package.json` and
+    `plugins/agent-harness/.codex-plugin/plugin.json` from `0.3.0` to
+    `0.4.0`.
+  - Completed: Updated README, README.zh-CN, and `docs/versioning.md` so the
+    documented current version matches the capability matrix, stable
+    `harness-rule:*` anchors, and suite-routing work.
+  - Source: User requested a version bump and documentation update after the
+    Impeccable-inspired productization improvements were accepted.
+  - Verification: `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, `git diff --check`, and version alignment check.
+  - Boundary: Local metadata and docs only; no publish, release, commit, push,
+    review, or integration delivery was performed.
+
+- [x] Apply Impeccable-inspired harness productization improvements.
+  - Completed: Added `docs/HARNESSES.md` as the project-neutral Agent Harness
+    capability matrix for runtime/control surfaces, defaults, boundaries,
+    applicability, and suite-routing expectations.
+  - Completed: Added stable `harness-rule:*` anchors for gate-only controller
+    behavior, local delivery ceilings, default worker surface, project-neutral
+    core content, and state-sync evidence across canonical docs, references,
+    templates, and `harness:execute` guidance.
+  - Completed: Added deterministic protocol validation through
+    `scripts/test-suites.mjs`, `npm run test:protocol`, `npm run test:all`, and
+    smoke checks that protect the rule anchors and matrix links.
+  - Completed: Linked the matrix and suite-routing guidance from README,
+    README.zh-CN, install docs, CLI docs, and the project contract.
+  - Source: User request on 2026-07-01 after studying the updated
+    `impeccable` skill as a design and engineering reference.
+  - Goal: `harness/goals/2026-07-01-apply-impeccable-inspired-harness-productization-improvements.md`
+  - Run: `.harness/runs/20260701-235053-apply-impeccable-inspired-harness-productization-improvements/`
+  - Verification: `node --check scripts/test-suites.mjs`,
+    `node --check tests/smoke.mjs`,
+    `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`, `npm run test:all`,
+    `npm run validate:plugin`, `git diff --check`, `goal validate`, and
+    `run status --json`.
+  - Boundary: No provider-output build migration, plugin hook/bootstrap change,
+    daemon/watcher, deploy, publish, release, commit, push, review, or
+    integration delivery was performed.
+
+- [x] Add stage completion coverage gate for parent roadmap stages.
+  - Completed: Added `Stage Completion Map` parsing and validation so parent
+    roadmap stages such as `M5` cannot be marked complete after only a
+    source-spec leaf like `M5-S0`.
+  - Completed: `goal create --spec` now drafts a `Stage Completion Map` when a
+    parent stage task references a spec with `Implementation Phasing` items such
+    as `M5-S0` and `M5-D1`.
+  - Completed: `goal validate`, `run prepare`, `run status --json`, and
+    `run record --phase completed` now carry and enforce stage completion
+    evidence.
+  - Completed: Updated the project contract, `harness:execute` guidance,
+    completion/gate references, goal/spec templates, and smoke coverage.
+  - Completed: Follow-up documentation clarified the value proposition at the
+    start of `README.md` and `README.zh-CN.md`; `AGENTS.md` now keeps the same
+    value proposition as a source-repository development principle.
+  - Source: User reported that wiki `M5` was twice claimed complete while only
+    `M5-S0` source-spec acceptance was done and `M5-D1..D4` remained pending.
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `node --check tests/smoke.mjs`, `npm run test:smoke`,
+    `npm run validate:plugin`, `git diff --check`, and the wiki regression
+    `goal validate` now fails with `Stage completion goals require a Stage
+    Completion Map`.
+  - Boundary: Did not modify wiki state, deploy/publish the plugin, commit,
+    push, open PRs, release, or add daemons/watchers.
+
 - [x] Implement adapter migration ergonomics from geocn review.
   - Completed: Updated `orient next` to route by task state and spec readiness:
     P0/P1 `todo` / `spec-draft` tasks without spec route to shaping or

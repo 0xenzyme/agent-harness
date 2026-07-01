@@ -31,6 +31,10 @@ repository's own `harness/` and `.harness/` directories are its project adapter
 state, not packaged downstream state. Each downstream project owns its own
 adapter artifacts after `harness:init` or CLI init/import.
 
+The project-neutral
+[Agent Harness capability matrix](HARNESSES.md) summarizes available control
+surfaces, worker defaults, rule anchors, boundaries, and verification suites.
+
 ## Downstream Project Setup
 
 Once installed, ask Codex or another coding agent with access to the plugin to
@@ -167,12 +171,15 @@ For documentation or plugin-surface changes in this repository, run:
 
 ```bash
 git diff --check
+npm run test:protocol
 npm run test:smoke
 npm run validate:plugin
 node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goal harness/goals/<goal-file>.md
 ```
 
-Run `npm run test:eval` only when eval docs or eval fixtures change.
+Run `npm run test:eval` only when eval docs or eval fixtures change. Use
+`npm run test:all` when protocol and smoke coverage should both run before
+handoff; plugin validation remains the packaging gate.
 
 Project-neutral downstream shapes are documented in
 `docs/examples/downstream-project-shapes.md`. Evaluation fixture blueprints live

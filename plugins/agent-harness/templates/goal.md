@@ -25,6 +25,19 @@ update `Evidence` and `Status` before recording a completed run.
   - Status: `pending`
   - Unblocker: `N/A`
 
+## Stage Completion Map
+
+Use this section when the user asks to complete a roadmap stage / milestone such
+as `M5`. The parent stage is not complete until every map item is `satisfied`
+with concrete evidence. If the current goal is only a source-spec slice, name it
+as the leaf stage, such as `M5-S0`, and do not mark the parent stage done.
+
+- Item: `<stage item, e.g. M5-D1 Diagnosis Read Model>`
+  - Acceptance: `<what must be true for this stage item>`
+  - Evidence: `TBD`
+  - Status: `pending`
+  - Unblocker: `N/A`
+
 ## Read First
 
 - `AGENTS.md`
@@ -81,6 +94,10 @@ explicit user instruction; release / ship remains out of scope unless the
 delivery policy explicitly authorizes it. Lower the target to `validated-local`
 only for local-only spikes, audits, or explicitly uncommitted work.
 
+`harness-rule:local-delivery-ceiling`: `validated-local` is local verification
+evidence only; it is not commit, push, review, integration, release, or ship
+evidence.
+
 The locked Execution branch records where implementation happens. It is not
 automatically the integration target, and Harness core does not assume a branch
 named `main`.
@@ -134,6 +151,9 @@ Technical verification is necessary but does not replace gate evidence.
 - Do not execute delivery steps above the Delivery State policy.
 - Do not use credentials, paid APIs, production data, or destructive operations
   without explicit approval.
+- Preserve `harness-rule:project-neutral-core`: keep plugin templates generic;
+  put downstream product facts, credentials, provider policy, ports, and
+  production procedures in project adapters and artifacts.
 
 ## Verification
 

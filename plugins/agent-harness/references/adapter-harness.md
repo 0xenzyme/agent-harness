@@ -25,9 +25,10 @@ adapter contract = task with status + spec + DAG + goal + gate
 - Packaging discipline: plugin docs, install docs, skills, templates,
   marketplace metadata, validation commands, and version metadata should not
   describe behavior the package does not expose.
-- Project-neutral docs: plugin core examples and templates should not contain
-  private repo names, local absolute paths, customer names, provider-specific
-  rules, ports, credentials, or downstream production procedures.
+- Project-neutral docs (`harness-rule:project-neutral-core`): plugin core
+  examples and templates should not contain private repo names, local absolute
+  paths, customer names, provider-specific rules, ports, credentials, or
+  downstream production procedures.
 - Lightweight route explanation: when Codex changes workflow mode or work
   mode, it should briefly say why and name the confirmation boundary.
 - Role separation: control / gate threads should declare whether they are

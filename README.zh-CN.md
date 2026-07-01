@@ -2,7 +2,37 @@
 
 [English](README.md)
 
-Agent Harness 是一个面向开发项目的可复用 Codex workflow package。它为项目建立一个小型、文件化的控制层，让任务协调、执行准备、验证和状态同步能更多交给自动化处理。
+Agent Harness 是一个面向开发项目的可复用 Codex workflow package。它把项目中已经确认的方向转成可检查的执行控制层，让 coding agent 能从 roadmap 意图一路推进到 verified state，而不是让人持续充当任务调度器。
+
+## 价值主张
+
+Agent Harness 面向的是“人已经定完方向之后”的阶段。
+
+在真实项目里，用户经常会先定出 `M1` 到 `M5` 这样的 roadmap，讨论完 `M5`
+的产品方向，并判断后续不再需要产品判断、凭证、生产访问或破坏性操作。这个时候，
+“完成 M5” 不应该被解释成“写完或验收下一个小 spec 就停下”。它应该表示：
+
+```text
+accepted direction -> stage completion map -> executable goals / run DAG
+-> worker execution -> control-lane verification -> state sync
+```
+
+人仍然负责方向、授权和真正需要人工判断的 gate。Harness 应该在 project
+adapter 边界内负责剩余执行机制：
+
+- 读取当前 task、roadmap、spec、goal、milestone 和 run 状态；
+- 把 `complete M5` / `推进完成M5` 这类 broad stage request 展开成明确的
+  stage items；
+- 当当前 thread 是 main control 时，调度 worker execution；
+- 在接受状态前验证 concrete evidence；
+- 保持 `tasks`、`status`、goals、runs 和 gate records 对齐；
+- 只在真实 human gate 时暂停，例如产品方向不清、约束冲突、需要凭证、付费
+  API、生产访问、破坏性操作，或 delivery 超出 policy。
+
+核心承诺不是“agent 会改文件”。核心承诺是 coding agent 不会在 roadmap、
+spec、implementation、verification 和 handoff 之间丢失上下文。父级
+milestone 必须等 mapped subitems 全部完成后才能关闭；`M5-S0` 这样的
+source-spec acceptance 不能静默变成父级 `M5` completion。
 
 ## 问题
 
@@ -42,6 +72,10 @@ Agent Harness 保持控制平面小而可检查：
   口、provider policies 和生产流程属于 project adapters 与 artifacts。
 - Route explanations 保持 lightweight：Codex 应简短说明为什么正在
   orient、shape、execute、ask、使用 worktree 或留在 local checkout。
+
+runtime/control surfaces、默认 worker 行为、protocol anchors，以及不同
+surface 对应的验证套件，见
+[Agent Harness capability matrix](docs/HARNESSES.md)。
 
 ## Influences
 
@@ -164,6 +198,18 @@ records 或 human review notes。带有 `Spec Acceptance Checklist` 的 goal 必
 
 ```bash
 git diff --check
+npm run test:protocol
+npm run test:smoke
+npm run validate:plugin
+```
+
+只改 protocol anchors、smoke behavior、eval fixtures 或 packaging 时，可以
+根据 [capability matrix](docs/HARNESSES.md) 选择更窄的 suite。
+
+尚未接入 suite routing 的旧自动化，最低本地检查仍是：
+
+```bash
+git diff --check
 npm run test:smoke
 npm run validate:plugin
 ```
@@ -234,7 +280,12 @@ Codex 会读取 `.agents/plugins/marketplace.json` 并暴露 `harness` plugin。
 
 ## Current Design Bias
 
-当前设计刻意保持边界清晰：
+当前版本是 `0.4.0`。它在 workflow-controller skill surface 之上新增了
+project-neutral [capability matrix](docs/HARNESSES.md)、稳定的
+`harness-rule:*` protocol anchors，以及 `test:protocol` / `test:all` suite
+routing。
+
+当前版本刻意保持边界清晰：
 
 - 创建稳定的文件和目录。
 - 给 Codex 一个一致的方式来定位 task、spec、goal 和 run artifacts。

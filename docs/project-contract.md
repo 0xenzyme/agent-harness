@@ -2,6 +2,11 @@
 
 This contract defines how Agent Harness finds project control files.
 
+The project-neutral capability matrix is maintained in
+[`docs/HARNESSES.md`](HARNESSES.md). It summarizes the runtime/control
+surfaces, defaults, boundaries, applicability, verification expectations, and
+stable `harness-rule:*` anchors.
+
 Agent Harness supports two project contracts:
 
 - `fixed` (`contract: "fixed"`): fixed-path project contract.
@@ -188,9 +193,13 @@ principles:
 - packaging discipline: public docs, install docs, marketplace metadata, skill
   files, templates, validation commands, and version metadata must stay aligned
   with the behavior the plugin actually exposes.
-- project-neutral docs: plugin core docs, examples, and templates must avoid
+- project-neutral docs (`harness-rule:project-neutral-core`): plugin core docs,
+  examples, and templates must avoid
   private repository names, local absolute paths, customer names, provider-only
   rules, ports, credentials, and downstream production procedures.
+- state sync evidence (`harness-rule:state-sync-evidence`): accepted task,
+  status, goal, run, and gate state must cite concrete state-sync evidence,
+  not only candidate output or narrative summaries.
 - lightweight route explanation: at workflow transitions, the active coding
   agent should briefly state why it is choosing orientation, intake, shape,
   goal, execute, competition, local, worktree, or ask.
@@ -297,6 +306,11 @@ as plugin content.
 
 Execution role is independent from work mode:
 
+- `harness-rule:gate-only-controller`: a thread asked to act as main control,
+  gate, reviewer, judge, or acceptance lane defaults to `gate-only`. It may
+  review worker output and evidence, but it must not directly edit
+  implementation files or promote candidate evidence without controller review.
+
 - `gate-only`: current thread owns control / acceptance. It may inspect
   candidate implementation output, run verification, request corrections, and
   accept or block state. It must not directly edit implementation files.
@@ -326,6 +340,11 @@ capabilities and result packets. A worker surface must declare or demonstrate
 whether it can provide isolated execution, changed-file reporting,
 verification summaries, stop-condition reporting, and no-daemon / no-push
 compliance.
+
+`harness-rule:worker-surface-default`: prepared run packets default worker
+nodes to `codex-cli-subagent` when that surface is available. A new Codex App
+thread is an explicit long-lived handoff lane, and fork is not a default worker
+surface.
 
 Preferred worker surface is a Codex CLI subagent. A new Codex App thread is an
 explicit, visible, long-lived handoff lane, not the default execution worker.
@@ -505,6 +524,11 @@ Implementation state and delivery state are distinct. Harness records must not
 describe local verified work as integrated, shipped, or complete on an
 integration line unless the delivery evidence proves it.
 
+`harness-rule:local-delivery-ceiling`: `implemented-local` and
+`validated-local` are local evidence states only. They do not prove commit,
+push, review, integration, release, or ship state without matching delivery
+evidence.
+
 Delivery state vocabulary:
 
 - `implemented-local`: implementation exists in the local working tree.
@@ -569,6 +593,34 @@ items. `run record --phase completed` must reject batch runs unless every map
 item is `satisfied` and has concrete evidence. If any source task is deferred
 or blocked, the task must stay out of Done or the run should be recorded as
 blocked with an unblock condition.
+
+## Stage Completion Coverage
+
+When the user asks to complete a roadmap stage or milestone, such as
+`complete M5` or `推进完成M5`, the default target is whole-stage completion.
+Source-spec acceptance is only one stage item unless the user or artifact names
+the leaf explicitly, such as `M5-S0`.
+
+Goals or specs that represent parent stage completion and declare implementation
+phasing with items such as `M5-S0`, `M5-D1`, `M5-D2`, and `M5-D3` must include a
+`Stage Completion Map` before execution:
+
+```md
+## Stage Completion Map
+
+- Item: `M5-D1 Diagnosis Read Model`
+  - Acceptance: `diagnosis read model is implemented and verified`
+  - Evidence: `TBD`
+  - Status: `pending`
+  - Unblocker: `N/A`
+```
+
+`goal validate` must reject parent-stage goals that omit this map or omit
+required stage items from the referenced `Implementation Phasing`. `run record
+--phase completed` must reject stage runs unless every map item is `satisfied`
+and has concrete evidence. If only `M5-S0` is complete, the parent `M5` task
+must stay out of Done and the remaining `D*` items must remain visible in the
+task index, milestone, deferred register, or active stage map.
 
 ## Compatibility
 

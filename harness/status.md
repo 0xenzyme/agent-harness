@@ -2,6 +2,31 @@
 
 ## Focus
 
+- Current focus: Agent Harness version metadata is aligned at `0.4.0` in the
+  local checkout after the Impeccable-inspired productization improvements.
+  README, README.zh-CN, and `docs/versioning.md` now document the `0.4.0`
+  version line for the capability matrix, stable `harness-rule:*` anchors, and
+  suite-routing surface. Delivery remains local metadata/docs sync only; no
+  publish, release, commit, push, review, or integration action was performed.
+
+- Current focus: Impeccable-inspired Agent Harness productization improvements
+  are implemented and accepted in the local checkout. The work added the
+  project-neutral capability matrix `docs/HARNESSES.md`, stable
+  `harness-rule:*` anchors, deterministic protocol validation, and lightweight
+  suite routing through `npm run test:protocol` / `npm run test:all`. The
+  current thread acted as `gate-only` controller; implementation and
+  verification ran through the prepared DAG at
+  `.harness/runs/20260701-235053-apply-impeccable-inspired-harness-productization-improvements/`.
+  Delivery state remains local validation only; commit, push, review,
+  integration, publish, and release are not authorized.
+
+- Current focus: Stage completion coverage gate for parent roadmap stages is
+  implemented in the local checkout. The fix adds `Stage Completion Map` support
+  so a request such as `推进完成M5` is treated as whole-stage completion, and a
+  parent stage cannot be closed after only `M5-S0` source-spec acceptance while
+  `M5-D*` implementation items remain pending. Delivery state remains local;
+  commit, push, review, integration, publish, and release are not authorized.
+
 - Current focus: Agent Harness adapter migration ergonomics in the current
   checkout. The current thread was explicitly authorized as `mixed` for this
   local implementation/control pass after geocn adapter migration review.
@@ -34,8 +59,67 @@
 
 ## Verification
 
-- Last checked: 2026-07-01
+- Last checked: 2026-07-02
 - Last commands:
+  - Updated Agent Harness version metadata from `0.3.0` to `0.4.0` in
+    `package.json` and `plugins/agent-harness/.codex-plugin/plugin.json`.
+  - Updated README, README.zh-CN, and `docs/versioning.md` so the documented
+    current version matches the capability matrix, stable `harness-rule:*`
+    anchors, and suite-routing work.
+  - Version sync verification passed: direct version alignment check,
+    `npm run test:protocol`, `npm run test:smoke`, `npm run validate:plugin`,
+    and `git diff --check`.
+  - Recorded the Impeccable-inspired productization task in
+    `harness/tasks.md`.
+  - Created and validated spec-less goal
+    `harness/goals/2026-07-01-apply-impeccable-inspired-harness-productization-improvements.md`.
+  - Prepared run packet
+    `.harness/runs/20260701-235053-apply-impeccable-inspired-harness-productization-improvements/`
+    with execution role `gate-only`, default worker surface
+    `codex-cli-subagent`, and target delivery state `validated-local`.
+  - Recorded completed DAG nodes: `explorer`, `worker`, and `verification`.
+  - Added `docs/HARNESSES.md` as a project-neutral capability matrix for
+    runtime/control surfaces, defaults, boundaries, applicability, and
+    suite-routing expectations.
+  - Added stable `harness-rule:*` anchors for gate-only controller behavior,
+    local delivery ceilings, default worker surface, project-neutral core
+    content, and state-sync evidence.
+  - Added deterministic protocol validation with
+    `scripts/test-suites.mjs`, `npm run test:protocol`, `npm run test:all`, and
+    smoke checks for rule anchors and matrix links.
+  - Linked the capability matrix and suite-routing guidance from README,
+    README.zh-CN, install docs, CLI docs, and project-contract docs.
+  - Verification passed: `node --check scripts/test-suites.mjs`,
+    `node --check tests/smoke.mjs`,
+    `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`, `npm run test:all`,
+    `npm run validate:plugin`, `git diff --check`, `goal validate`, and
+    `run status --json`.
+  - Recorded completed run log
+    `.harness/runs/20260701-235053-apply-impeccable-inspired-harness-productization-improvements/logs/20260702-001312-completed.md`
+    with delivery state `validated-local`.
+  - Implemented `Stage Completion Map` parsing and validation in
+    `plugins/agent-harness/scripts/agent-harness.mjs`.
+  - Updated `goal create --spec` to generate pending stage map items from a
+    referenced spec's `Implementation Phasing` headings such as `M5-S0` and
+    `M5-D1`.
+  - Updated `run prepare`, `run status --json`, and
+    `run record --phase completed` so parent-stage runs carry and enforce stage
+    completion evidence.
+  - Updated stage-completion protocol docs in `docs/project-contract.md`,
+    `plugins/agent-harness/skills/execute/SKILL.md`, execute references,
+    `plugins/agent-harness/references/gate-results.md`, and goal/spec
+    templates.
+  - Added smoke coverage for missing, pending, and satisfied
+    `Stage Completion Map` cases.
+  - Verified the wiki regression: local
+    `agent-harness goal validate --cwd /Users/liuyj/project/wiki --goal docs/harness/goals/2026-07-01-m5-diagnosis-actions-briefs-reports.md`
+    now fails with `Stage completion goals require a Stage Completion Map`.
+  - `node --check plugins/agent-harness/scripts/agent-harness.mjs`
+  - `node --check tests/smoke.mjs`
+  - `npm run test:smoke`
+  - `npm run validate:plugin`
+  - `git diff --check`
   - Switched/confirmed branch `main`; branch is up to date with `origin/main`.
   - Recorded the docs engineering task in `harness/tasks.md`.
   - Created accepted spec

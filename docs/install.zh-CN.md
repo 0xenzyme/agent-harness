@@ -35,6 +35,9 @@ marketplace entry 指向：
 state，不会被安装到下游项目。下游项目在 `harness:init` 或 CLI
 `init` / `config import` 后，会拥有自己的 adapter artifacts。
 
+project-neutral 的 [Agent Harness capability matrix](HARNESSES.md) 汇总了
+control surfaces、worker defaults、rule anchors、边界和验证套件。
+
 ## 推荐入口
 
 大多数用户不需要先手动运行 CLI。安装 `harness` 后，推荐让 Codex 或另一个能
@@ -165,6 +168,7 @@ control branch、locked execution branch、integration target 和 release source
 
 ```bash
 git diff --check
+npm run test:protocol
 npm run test:smoke
 npm run validate:plugin
 ```
@@ -179,6 +183,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd . --goa
 
 ```bash
 npm run test:eval
+```
+
+如果交付前需要同时跑 protocol 和 smoke coverage，可以使用：
+
+```bash
+npm run test:all
 ```
 
 ## 继续阅读

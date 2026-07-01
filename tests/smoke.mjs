@@ -117,6 +117,78 @@ function frontmatterDescription(doc) {
 
 const pluginManifest = readJson(join(repoRoot, "plugins/agent-harness/.codex-plugin/plugin.json"));
 const packageManifest = readJson(join(repoRoot, "package.json"));
+assert(
+  packageManifest.scripts["deploy:local-plugin"] === "node tools/deploy-local-plugin.mjs",
+  "package.json should expose the local plugin cache deploy script"
+);
+assert(
+  packageManifest.scripts["test:protocol"] === "node scripts/test-suites.mjs protocol",
+  "package.json should expose the protocol suite"
+);
+assert(
+  packageManifest.scripts["test:all"] === "node scripts/test-suites.mjs all",
+  "package.json should expose the aggregate local test route"
+);
+const deployLocalPluginScriptPath = join(repoRoot, "tools/deploy-local-plugin.mjs");
+assert(existsSync(deployLocalPluginScriptPath), "local plugin deploy script should exist");
+const deployLocalPluginScript = readFileSync(deployLocalPluginScriptPath, "utf8");
+for (const needle of [
+  "validate:plugin",
+  "test:smoke",
+  "codex",
+  "plugin",
+  "remove",
+  "add",
+  "pluginSelector",
+  "personal",
+  "User-Facing Summary",
+  "Worker Runner Contract"
+]) {
+  assertIncludes(deployLocalPluginScript, needle, "local plugin deploy script should validate, reinstall, and verify cache sentinels");
+}
+const testSuitesScriptPath = join(repoRoot, "scripts/test-suites.mjs");
+assert(existsSync(testSuitesScriptPath), "suite routing script should exist");
+const testSuitesScript = readFileSync(testSuitesScriptPath, "utf8");
+for (const needle of [
+  "protocol",
+  "smoke",
+  "plugin",
+  "test:smoke",
+  "validate:plugin",
+  "harness-rule:gate-only-controller",
+  "harness-rule:local-delivery-ceiling",
+  "harness-rule:worker-surface-default",
+  "harness-rule:project-neutral-core",
+  "harness-rule:state-sync-evidence"
+]) {
+  assertIncludes(testSuitesScript, needle, "suite routing script should map protocol, smoke, plugin, and rule-anchor checks");
+}
+const capabilityMatrix = readFileSync(join(repoRoot, "docs/HARNESSES.md"), "utf8");
+for (const needle of [
+  "Agent Harness Capability Matrix",
+  "Runtime And Control Surfaces",
+  "Suite Routing",
+  "harness-rule:gate-only-controller",
+  "harness-rule:local-delivery-ceiling",
+  "harness-rule:worker-surface-default",
+  "harness-rule:project-neutral-core",
+  "harness-rule:state-sync-evidence",
+  "npm run test:protocol",
+  "npm run test:all"
+]) {
+  assertIncludes(capabilityMatrix, needle, "capability matrix should cover rule anchors, surfaces, and suite routing");
+}
+for (const [file, needle] of [
+  ["README.md", "docs/HARNESSES.md"],
+  ["README.zh-CN.md", "docs/HARNESSES.md"],
+  ["docs/install.md", "HARNESSES.md"],
+  ["docs/install.zh-CN.md", "HARNESSES.md"],
+  ["docs/cli.md", "HARNESSES.md"],
+  ["docs/cli.zh-CN.md", "HARNESSES.md"],
+  ["docs/project-contract.md", "HARNESSES.md"]
+]) {
+  assertIncludes(readFileSync(join(repoRoot, file), "utf8"), needle, `${file} should link the capability matrix`);
+}
 assert(pluginManifest.name === "harness", "plugin manifest should expose the short harness plugin name");
 assert(
   pluginManifest.version === packageManifest.version,
@@ -1522,6 +1594,165 @@ Manual verification evidence only.
     "--json"
   ]));
   assert(satisfiedBatchRecord.phase === "completed", "satisfied batch run should record completion");
+
+  write(join(custom, "harness/specs/m5.md"), `# M5 Spec
+
+Status: accepted
+
+## Implementation Phasing
+
+### M5-S0: Product Spec
+
+Accepted product source.
+
+### M5-D1: Diagnosis Read Model
+
+Future implementation goal.
+
+### M5-D2: Actions And Briefs
+
+Future implementation goal.
+`);
+  write(join(custom, "todolist.md"), `${readFileSync(join(custom, "todolist.md"), "utf8").trimEnd()}
+| M5 Diagnosis, Actions, Briefs, And Reports | dev | todo | P1 | [harness/specs/m5.md](harness/specs/m5.md) |
+`);
+  const generatedStageGoal = run([
+    "goal",
+    "create",
+    "--cwd",
+    custom,
+    "--task",
+    "M5 Diagnosis",
+    "--spec",
+    "harness/specs/m5.md",
+    "--dry-run"
+  ]);
+  assertIncludes(generatedStageGoal, "## Stage Completion Map", "parent stage goal creation should include a stage completion map");
+  assertIncludes(generatedStageGoal, "M5-D1: Diagnosis Read Model", "generated stage map should include implementation phasing items");
+  const stageGoalBase = `# Goal: M5 Diagnosis, Actions, Briefs, And Reports
+
+Spec: harness/specs/m5.md
+Status: Ready for execution from confirmed spec.
+
+## Source Task
+- \`todolist.md\`: \`P1 M5 Diagnosis, Actions, Briefs, And Reports\`
+
+## Read First
+1. \`harness/specs/m5.md\`
+
+## Work Mode Recommendation
+Use \`local\`.
+
+## Execution Role
+Use \`implementer\`.
+
+## Delivery State
+- Delivery intent: \`integrate-after-gates\`
+- Target delivery state: \`integrated\`
+- Commit authorized: \`yes\`
+- Push authorized: \`yes\`
+- Review authorized: \`no\`
+- Integration authorized: \`yes\`
+- Release authorized: \`no\`
+
+## Scope
+- Complete M5 as the parent roadmap stage.
+
+## Non-Goals
+- Do not release, deploy, publish, or execute delivery above the goal policy.
+
+## Verification
+Manual verification evidence only.
+
+## Completion Conditions
+- M5 is complete.
+
+## Pause Conditions
+- Pause on spec conflicts or newer instructions.
+- Pause for credentials or paid APIs.
+- Pause for destructive or production actions.
+- Pause for product direction.
+`;
+  write(join(invalidGoalDir, "stage-missing-map.md"), stageGoalBase);
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/stage-missing-map.md", "--json"]),
+    "Stage Completion Map",
+    "parent stage goals should require a stage completion map"
+  );
+  const pendingStageMap = `## Stage Completion Map
+
+- Item: \`M5-S0: Product Spec\`
+  - Acceptance: \`M5 product source spec is accepted.\`
+  - Evidence: \`Accepted spec fixture evidence\`
+  - Status: \`satisfied\`
+  - Unblocker: \`N/A\`
+- Item: \`M5-D1: Diagnosis Read Model\`
+  - Acceptance: \`Diagnosis read model is implemented and verified.\`
+  - Evidence: \`TBD\`
+  - Status: \`pending\`
+  - Unblocker: \`N/A\`
+- Item: \`M5-D2: Actions And Briefs\`
+  - Acceptance: \`Actions and briefs are implemented and verified.\`
+  - Evidence: \`TBD\`
+  - Status: \`pending\`
+  - Unblocker: \`N/A\`
+
+`;
+  write(join(invalidGoalDir, "stage-pending-map.md"), stageGoalBase.replace("## Scope", `${pendingStageMap}## Scope`));
+  const pendingStageValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/stage-pending-map.md", "--json"]));
+  assert(pendingStageValidate.ok === true, "pending stage completion map should validate before execution");
+  assert(pendingStageValidate.goal.stageCompletionMap.required === true, "parent stage goal should report stage map requirement");
+  assert(pendingStageValidate.goal.stageCompletionMap.itemCount === 3, "stage map should expose item count");
+  assert(pendingStageValidate.goal.stageCompletionMap.requiredLabels.length === 3, "stage map should expose implementation phasing labels");
+  run(["run", "prepare", "--cwd", custom, "--goal", "custom/goals/stage-pending-map.md"]);
+  const pendingStageRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-stage-pending-map")).sort().at(-1);
+  assert(pendingStageRun, "pending stage run should be prepared");
+  const pendingStageRunStatus = readJson(join(custom, "custom/runs", pendingStageRun, "status.json"));
+  assert(pendingStageRunStatus.stageCompletionMapRequired === true, "run status should record required stage completion map");
+  assert(pendingStageRunStatus.stageCompletionMapItemCount === 3, "run status should record stage completion map item count");
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      custom,
+      "--run",
+      join("custom/runs", pendingStageRun),
+      "--phase",
+      "completed",
+      "--summary",
+      "stage completed with pending D items",
+      "--verification",
+      "verification passed"
+    ]),
+    "Stage Completion Map validation failed",
+    "completed parent stage run should reject pending stage map items"
+  );
+  const satisfiedStageMap = pendingStageMap
+    .replaceAll("`TBD`", "`Verified by stage fixture evidence`")
+    .replaceAll("`pending`", "`satisfied`");
+  write(join(invalidGoalDir, "stage-satisfied-map.md"), stageGoalBase.replace("## Scope", `${satisfiedStageMap}## Scope`));
+  run(["run", "prepare", "--cwd", custom, "--goal", "custom/goals/stage-satisfied-map.md"]);
+  const satisfiedStageRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-stage-satisfied-map")).sort().at(-1);
+  const satisfiedStageRecord = JSON.parse(run([
+    "run",
+    "record",
+    "--cwd",
+    custom,
+    "--run",
+    join("custom/runs", satisfiedStageRun),
+    "--phase",
+    "completed",
+    "--summary",
+    "stage accepted with all D items",
+    "--verification",
+    "verification passed",
+    "--integration-ref",
+    "stage-smoke-mainline",
+    "--json"
+  ]));
+  assert(satisfiedStageRecord.phase === "completed", "satisfied stage map should allow parent stage completion");
+
   write(join(invalidGoalDir, "missing-section.md"), readFileSync(customGoal, "utf8").replace("## Completion Conditions", "## Completion Conditions Removed"));
   assertIncludes(
     runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/missing-section.md", "--json"]),

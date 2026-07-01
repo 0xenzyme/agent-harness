@@ -16,6 +16,10 @@ returns candidate evidence to the controller; it is not the acceptance lane.
 - `none`: no suitable worker exists; stay in foreground execution or route to
   `ask`.
 
+`harness-rule:worker-surface-default`: use `codex-cli-subagent` as the default
+bounded worker surface when available. Codex App threads are explicit
+long-lived handoff lanes, and fork is not a default worker surface.
+
 Use capability and safety to choose the surface. Do not treat worker
 availability as permission to broaden scope, skip verification, or change the
 controller's execution role.
