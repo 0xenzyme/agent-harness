@@ -2,25 +2,59 @@
 
 ## Focus
 
-- Current focus: Delivery intent defaults are being corrected so generated
-  development goals do not cap successful worktree execution at
-  `validated-local`. The new default is provider-neutral
-  `integrate-after-gates`: commit accepted work and integrate it into the
-  development line after required gates pass, while keeping release / ship
-  separately authorized.
+- Current focus: Agent Harness docs engineering audit on `main`.
+  The current thread is the `gate-only` main control lane. Spec
+  `harness/specs/2026-07-01-docs-engineering-audit.md`, goal
+  `harness/goals/2026-07-01-agent-harness-docs-engineering-audit.md`, and run
+  `.harness/runs/20260701-120641-agent-harness-docs-engineering-audit/` have
+  completed their DAG nodes, passed verification, and recorded completed run
+  evidence. A follow-up added lightweight Chinese install and usage docs
+  without creating a full Chinese contract mirror. Final delivery state remains
+  local documentation changes; commit, push, review, integration, publish, and
+  release are not authorized.
 
 ## Git
 
 - Preferred work mode: local for foreground contract / CLI / documentation
   work unless the user asks for an isolated worktree.
-- Current branch: codex/harden-harness-skills
-- Worktree notes: Work was done in the current checkout; no worktree, branch,
-  review request, deploy, daemon, watcher, or Codex session launch was created.
+- Current branch: main
+- Worktree notes: Work is in the current checkout per user instruction; no
+  additional worktree, branch, review request, deploy, daemon, watcher, or
+  release action was created. Worker implementation was routed through the run
+  DAG and accepted by the control lane after verification.
 
 ## Verification
 
 - Last checked: 2026-07-01
 - Last commands:
+  - Switched/confirmed branch `main`; branch is up to date with `origin/main`.
+  - Recorded the docs engineering task in `harness/tasks.md`.
+  - Created accepted spec
+    `harness/specs/2026-07-01-docs-engineering-audit.md`.
+  - Created and validated goal
+    `harness/goals/2026-07-01-agent-harness-docs-engineering-audit.md`.
+  - Prepared run packet
+    `.harness/runs/20260701-120641-agent-harness-docs-engineering-audit/`;
+    ready node is `explorer`, default worker surface is
+    `codex-cli-subagent`.
+  - Recorded completed DAG nodes: `explorer`, `cli-contract-worker`,
+    `docs-skill-worker`, and `verification`.
+  - Updated README files, CLI docs, install docs, project contract docs,
+    execute skill docs, plugin references, and the goal template for current
+    workflow-controller, delivery-state, subagent, and acceptance-gate
+    behavior.
+  - Updated goal/spec checklist and required gate evidence to `satisfied`.
+  - Verification passed: `git diff --check`, `npm run test:smoke`,
+    `npm run validate:plugin`, `goal validate`, and `run status --json`.
+  - `npm run test:eval` skipped because eval docs and fixtures were not
+    changed.
+  - Recorded completed run log
+    `.harness/runs/20260701-120641-agent-harness-docs-engineering-audit/logs/20260701-122720-completed.md`
+    with delivery state `validated-local`.
+  - Added `docs/install.zh-CN.md` and linked it from `README.zh-CN.md` and
+    `docs/cli.zh-CN.md`.
+  - Verified the Chinese docs follow-up with `git diff --check`,
+    `npm run test:smoke`, and `npm run validate:plugin`.
   - Changed generated/manual goal Delivery State defaults from
     `validated-local` to `integrated` with `Delivery intent:
     integrate-after-gates`, commit/push/integration authorized, review

@@ -8,6 +8,39 @@
 
 ## Done
 
+- [x] Add lightweight Chinese install and usage guide.
+  - Completed: Added `docs/install.zh-CN.md` as a Chinese user-facing guide
+    for installation, downstream adoption, workflow skill routing, main
+    control / worker boundaries, goal/run/evidence concepts, Delivery State
+    boundaries, and validation commands. Linked it from `README.zh-CN.md` and
+    `docs/cli.zh-CN.md`.
+  - Source: User agreed to add a lightweight Chinese explanation instead of a
+    full bilingual mirror of `docs/project-contract.md`.
+  - Verification: `git diff --check`, `npm run test:smoke`, and
+    `npm run validate:plugin`.
+  - Deferred: `docs/project-contract.md` remains the English protocol source
+    of truth; no full Chinese contract mirror was added.
+
+- [x] Complete Agent Harness docs engineering audit.
+  - Completed: Audited and synchronized the Agent Harness documentation
+    surface after recent delivery-state, gate-only, subagent, DAG, and
+    acceptance-gate changes. Updated public README files, CLI docs, install
+    docs, project contract docs, execute skill docs, plugin references, and the
+    goal template to align on workflow-controller entry paths,
+    `codex-cli-subagent` defaults, provider-neutral `review-open` /
+    `integrated` terminology, candidate evidence vs accepted completion, and
+    validation guidance.
+  - Source: Intake idea: 最近做了很多改动，想用 harness 做一次文档工程：审计并同步 Agent Harness 最近交付后的 README、CLI docs、project contract docs、workflow skill docs、templates 和验证说明，确保公开文档与当前 adapter / delivery-state / subagent / gate protocol 一致。当前线程作为 main control / gate-only，实施输出由 worker 完成，主控负责 goal、run、verification 和 acceptance state sync。
+  - Spec: `harness/specs/2026-07-01-docs-engineering-audit.md`
+  - Goal: `harness/goals/2026-07-01-agent-harness-docs-engineering-audit.md`
+  - Run: `.harness/runs/20260701-120641-agent-harness-docs-engineering-audit/`
+  - Verification: `git diff --check`, `npm run test:smoke`,
+    `npm run validate:plugin`, `goal validate`, and `run status --json`;
+    `npm run test:eval` was skipped because eval docs and fixtures were not
+    changed.
+  - Delivery: validated local only; no commit, push, review, integration,
+    publish, or release was authorized or performed.
+
 - [x] Fix delivery intent defaults for worktree-to-mainline flow.
   - Completed: Generated goals and the reusable goal template now default
     development delivery to `Delivery intent: integrate-after-gates` and

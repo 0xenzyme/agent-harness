@@ -31,7 +31,7 @@ These may support review but are not accepted completion by themselves:
 - the implementer output reviewed
 - the verification checked
 - the acceptance evidence used by the control lane
-- the merge decision or blocker
+- the integration decision or blocker
 
 ## DAG Completion
 
@@ -51,7 +51,9 @@ run needs matching `Required Gate Evidence` entries with concrete evidence and
 
 Completed state must reach the goal's Target Delivery State. Local verification
 can satisfy `validated-local`, but it cannot satisfy `committed`, `pushed`,
-`PR-open`, `merged`, or `released/shipped` without matching delivery evidence.
+`review-open`, `integrated`, or `released/shipped` without matching delivery
+evidence. `PR-open` and `merged` are accepted only as compatibility aliases for
+provider-specific inputs.
 
 If the target is above the actual state and the goal authorizes the required
 delivery steps, continue the delivery pipeline before closeout. If

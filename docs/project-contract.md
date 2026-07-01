@@ -281,14 +281,15 @@ Execution role is independent from work mode:
 - `implementer`: current thread may edit files within the accepted scope and
   provide verification evidence for review.
 - `mixed`: current thread may both edit and gate only when the user explicitly
-  accepts that tradeoff, or when the task is low-risk and local enough that the
-  route explanation records why mixed execution is acceptable.
+  accepts that tradeoff, or when the confirmed goal/run declares `mixed`. Do
+  not infer `mixed` from low-risk local work alone.
 
 If the user asks the thread to be "main control", "control lane", "gate",
 "judge", "reviewer", or "acceptance", default to `gate-only`. If the user
 asks the same thread to "implement", "modify", "fix", or "execute until
-complete", use `implementer` or `mixed` only after recording that role choice
-and the confirmation boundary.
+complete", use `implementer` unless the user explicitly accepts `mixed` or the
+confirmed goal/run declares `mixed`. Record the role choice and confirmation
+boundary before editing.
 
 `goal validate` must reject executable goals that do not name one of
 `gate-only`, `implementer`, or `mixed`. `run prepare` must carry the execution

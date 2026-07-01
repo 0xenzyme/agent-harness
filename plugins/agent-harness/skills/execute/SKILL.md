@@ -87,13 +87,14 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
 10. If the role is `gate-only`, do not implement directly and do not ask the
    user to choose between worker launch and changing the control thread to
    `mixed`. Launch a worker subagent by default when scope, verification,
-   context lock, delivery target, and safety boundaries are clear. Review the
-   implementer output, compare it to the goal, run verification, and either
-   accept state or request concrete corrections.
+   context lock, delivery target, and safety boundaries are clear; run packets
+   default worker nodes to `codex-cli-subagent`. Review the implementer output,
+   compare it to the goal, run verification, and either accept state or request
+   concrete corrections.
 11. If the run packet has `dag.json`, use it as the execution order:
    - Launch only `readyNodes` from `run status --json`.
    - Nodes in the same ready set may run in parallel.
-   - Prefer Codex CLI subagents for workers.
+   - Prefer `codex-cli-subagent` for workers.
    - Create a new Codex App thread only for an explicit, visible, long-lived
      handoff lane.
    - Do not use fork unless the controller explicitly approves inherited

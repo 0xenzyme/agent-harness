@@ -36,7 +36,10 @@ adapter contract = task with status + spec + DAG + goal + gate
   user explicitly authorizes same-thread implementation.
 - Agent-neutral delegation: worker surfaces are optional capability providers.
   They must return inspectable result packets before controller acceptance; if
-  no suitable worker exists, fall back to foreground execution or `ask`.
+  no suitable worker exists, fall back to foreground execution or `ask`. Run
+  packets default worker nodes to `codex-cli-subagent` when that surface is
+  available; Codex App threads are explicit long-lived handoff lanes, not the
+  default worker surface.
 
 ## Default Lifecycle
 

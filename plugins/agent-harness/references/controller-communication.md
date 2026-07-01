@@ -102,8 +102,8 @@ Delivery state:
 Target delivery state:
 Working tree dirty:
 Push:
-PR:
-Merge:
+Review:
+Integration:
 Release:
 Controller notified:
 Worktree:
@@ -135,12 +135,13 @@ packet must say so and name the locked cwd / branch. Workers must not apply
 patches in the control-lane cwd when it differs from the locked execution cwd.
 
 Delivery state is separate from implementation status. Local verification may
-return `validated-local`, but it must not be reported as pushed, PR-open,
-merged, released, or shipped unless those fields contain evidence.
+return `validated-local`, but it must not be reported as pushed, `review-open`,
+`integrated`, released, or shipped unless those fields contain evidence.
+`PR-open` and `merged` are compatibility aliases for provider-specific inputs.
 
 For `gate-only` acceptance, the controller must cite implementer output and
 gate evidence before marking a run completed. If that evidence is absent, the
-merge decision should be `request-fix`, `blocked`, or `hold-for-user`.
+integration decision should be `request-fix`, `blocked`, or `hold-for-user`.
 
 For batch or merged source-task work, the controller must preserve a
 `Source Task Acceptance Map`. Aggregate run evidence is not enough; each source
@@ -169,9 +170,9 @@ Secrets / provider / paid calls:
 Invariants:
 Deferred items:
 Follow-up tasks:
-Merge decision:
+Integration decision:
 State update:
 ```
 
-`Merge decision` must be one of `merge`, `request-fix`, `blocked`, or
-`hold-for-user`.
+`Integration decision` must be one of `integrate`, `request-fix`, `blocked`,
+or `hold-for-user`.

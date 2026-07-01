@@ -4,15 +4,28 @@
 skills。CLI 是 agents、operators、diagnostics、scripted adoption 和 plugin
 maintainers 使用的确定性工具。
 
-除非环境里已经有打包后的 `agent-harness` binary，否则在本仓库 checkout 中运
-行以下命令。
+如果你想先了解中文接入流程、main control / worker 分工、goal/run/evidence
+边界，先读 [`install.zh-CN.md`](install.zh-CN.md)。本页只保留 CLI command
+reference。
 
-## 验证 Plugin
+下面的例子使用 repo-local Node script path。如果环境里已经提供
+`agent-harness` binary，可以用同样的 subcommands 和 options 调用该 binary。
+
+## 验证命令
 
 ```bash
+git diff --check
 npm run validate:plugin
 npm run test:smoke
 ```
+
+对 goal-backed work，在准备或完成 run 前先验证 goal：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
+```
+
+如果修改了 eval documentation 或 eval fixtures，运行 `npm run test:eval`。
 
 ## 初始化或导入项目
 
@@ -140,11 +153,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 ```
 
 准备好的 run packet 会包含 `dag.json`、`dag.md` 和
-`agents/<node>/prompt.md`。controller 默认把 ready worker nodes 分发给
-Codex CLI subagents。新的 Codex thread 是显式、可见、长期的 handoff lane，
-不是默认 worker surface。`run prepare` 本身不会启动 workers。Run packet 也会
-记录 conversation route、execution context lock 和当前 delivery state，避免把
-本地 worktree 执行误解为已 commit、push、integrate 或 ship。
+`agents/<node>/prompt.md`。controller 默认把 ready worker nodes 分发到
+`codex-cli-subagent` surface。新的 Codex thread 是显式、可见、长期的
+handoff lane，不是默认 worker surface。`run prepare` 本身不会启动 workers。
+Run packet 也会记录 conversation route、execution context lock 和当前
+delivery state，避免把本地 worktree 执行误解为已 commit、push、integrate 或
+ship。
 
 查看已准备的 run：
 
@@ -168,10 +182,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
 ```
 
-`run record` 会刷新 `status.json` 和 run log 里的 delivery state。如果状态是
-`implemented-local` 或 `validated-local`，除非 goal target 本身就是本地态，
-否则应继续已授权的 delivery pipeline，或记录缺少的 evidence 为
-`delivery pending`。
+`run record` 会刷新 `status.json` 和 run log 里的 delivery state。
+`implemented-local` 和 `validated-local` 只证明 working-tree implementation 或
+local verification。只有当 target delivery state 不高于 `validated-local` 时，
+它们才足以支撑 completed run；否则应继续已授权的 delivery pipeline，或记录缺
+少的 evidence 为 `delivery pending`。
 
 对 completed run，`run record` 会强制检查 goal 的 Target delivery state。
 如果目标是 `review-open`、`integrated` 或 `released/shipped`，在完成已授权的

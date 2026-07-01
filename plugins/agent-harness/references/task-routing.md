@@ -164,16 +164,18 @@ branch, pause or migrate to the correct thread unless remote-control execution
 is explicitly allowed.
 
 Closeout must report Delivery State separately from implementation status:
-`implemented-local`, `validated-local`, `committed`, `pushed`, `PR-open`,
-`merged`, or `released/shipped`. If work is only dirty or uncommitted in a dev
-worktree, route the next action to review local diff, then explicit commit / PR
-or discard. Do not route that state as mainline done.
+`implemented-local`, `validated-local`, `committed`, `pushed`, `review-open`,
+`integrated`, or `released/shipped`. `PR-open` and `merged` are compatibility
+aliases for provider-specific inputs, not the primary terms. If work is only
+dirty or uncommitted in a dev worktree, route the next action to review local
+diff, then explicit commit / review request or discard. Do not route that state
+as integrated or mainline done.
 
 When the goal's Target Delivery State is above the actual state and the matching
 authorization fields are `yes`, route forward into the delivery pipeline
 instead of stopping at local validation. Only route to user handoff when the
-target is `validated-local`, authorization is missing, or external PR / merge /
-release evidence must be supplied.
+target is `validated-local`, authorization is missing, or external review /
+integration / release evidence must be supplied.
 
 ## Agent-Neutral Delegation
 
@@ -183,12 +185,14 @@ coding-agent worker, or no worker at all only when that surface can return a
 concrete result packet: changed files, summary, verification, known risks, stop
 conditions, and state-sync notes.
 
-Prefer Codex CLI subagents for worker execution. A new Codex App thread is for
-explicit, visible, long-lived handoff lanes, not the default worker surface.
-Avoid fork as the default because inherited history can confuse controller and
-execution roles. Use fork only when the controller explicitly approves inherited
-context and repeats the worker role, source controller thread, allowed scope,
-forbidden scope, return channel, and result packet contract.
+Prefer `codex-cli-subagent` for worker execution; run packets should default
+worker nodes to that surface when it is available. A new Codex App thread is
+for explicit, visible, long-lived handoff lanes, not the default worker
+surface. Avoid fork as the default because inherited history can confuse
+controller and execution roles. Use fork only when the controller explicitly
+approves inherited context and repeats the worker role, source controller
+thread, allowed scope, forbidden scope, return channel, and result packet
+contract.
 
 When the active conversation is `gate-only`, route clear implementation work to
 a worker subagent by default. Do not ask the user to choose between launching a

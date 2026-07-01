@@ -77,10 +77,11 @@ local-only spikes, audits, or explicitly uncommitted work.
 ## Execution DAG
 
 Use `run prepare` to generate `dag.json`, `dag.md`, and per-node
-`agents/<node>/prompt.md` files. Prefer Codex CLI subagents for worker nodes.
-Create a new Codex thread only when the controller explicitly needs a visible,
-long-lived handoff lane. Fork is not the default worker surface; use it only
-when the controller explicitly approves inherited context.
+`agents/<node>/prompt.md` files. Run packets default worker nodes to
+`codex-cli-subagent`; create a new Codex thread only when the controller
+explicitly needs a visible, long-lived handoff lane. Fork is not the default
+worker surface; use it only when the controller explicitly approves inherited
+context.
 
 ## Route Explanation
 

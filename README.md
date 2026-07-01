@@ -103,21 +103,21 @@ or the CLI initializes/imports that project.
 
 ## Plugin Skills
 
-Codex exposes the plugin as `harness`. It intentionally ships four workflow
-skills:
+Codex exposes the plugin as `harness`. The primary workflow-controller entry
+path is four workflow skills:
 
 - `harness:orient`: read-only project state, current todo, blockers, and next
   route recommendation.
+- `harness:init`: initialize a new project, migrate an existing project, run
+  doctor/import, and preview activation instructions.
 - `harness:intake`: capture and triage a new idea, requirement, bug, or Idea
   Inbox Thread note; record only after explicit approval.
 - `harness:execute`: implement a confirmed task, spec, goal, or run packet,
   then verify and sync task/status/run evidence.
-- `harness:init`: initialize a new project, migrate an existing project, run
-  doctor/import, and preview activation instructions.
 
 Older artifact-oriented wrapper skills are no longer shipped. Use the workflow
-skill that matches the route: `orient` for read-only state, `intake` for new
-ideas, `init` for setup/adoption, and `execute` for confirmed work.
+skill that matches the route: `init` for setup/adoption, `orient` for read-only
+state, `intake` for new ideas, and `execute` for confirmed work.
 
 Codex plugin metadata does not currently expose a project-confirmed localized
 description schema for this package. User-visible plugin and skill descriptions
@@ -128,9 +128,9 @@ fields, while runtime responses still follow the user's language.
 
 | Situation | Skill |
 | --- | --- |
+| Adopt Agent Harness in a project, migrate an existing task index, run doctor/import, or preview activation. | `harness:init` |
 | Check project status, todo, blockers, or next route without editing files. | `harness:orient` |
 | Capture or triage a new idea, requirement, bug, or capture-thread note. | `harness:intake` |
-| Adopt Agent Harness in a project, migrate an existing task index, run doctor/import, or preview activation. | `harness:init` |
 | Complete a confirmed task, spec, goal, or run packet and then verify and sync state. | `harness:execute` |
 
 ## Use With A Coding Agent
@@ -158,15 +158,38 @@ harness:init -> harness:orient or harness:intake -> confirmed spec/goal -> harne
 
 When you want the current thread to act as main control, gate, reviewer, judge,
 or acceptance lane, say so explicitly; Harness treats that as `gate-only` by
-default. In `gate-only`, the control thread reviews candidate output and
+default. In `gate-only`, the control thread reviews candidate worker output and
 verification evidence, then accepts, blocks, or requests corrections without
-directly editing implementation files. Clear implementation work is delegated
-to a worker subagent by default. Use `implementer` or `mixed` only when you
-want the same thread to edit files too.
+directly editing implementation files. Run packets default worker nodes to
+`codex-cli-subagent` when that surface is available. Use `implementer` or
+`mixed` only when you want the same thread to edit files too.
 
 The CLI remains available as deterministic tooling for agents, operators, and
 maintainers, but it is not the primary first-use path for most people. See
 the detailed [CLI reference](docs/cli.md) for command examples.
+
+## Acceptance And Validation
+
+Worker output, automation output, inbox notes, and proposal competition results
+are candidate evidence until the control lane validates them. Accepted
+completion needs concrete evidence such as files changed, command summaries,
+run records, gate records, or human review notes. Goals with a
+`Spec Acceptance Checklist` must satisfy every checklist item; adapter-required
+completion gates must appear under `Required Gate Evidence` with concrete
+evidence and `Status: satisfied`.
+
+For documentation or plugin-surface changes in this repository, use:
+
+```bash
+git diff --check
+npm run test:smoke
+npm run validate:plugin
+```
+
+Also run goal validation for the active goal; the install docs show the exact
+CLI form.
+
+Run `npm run test:eval` only when eval docs or eval fixtures change.
 
 ## Workflow
 

@@ -4,15 +4,25 @@ The primary user path is to ask Codex or another coding agent to use the
 `harness:*` workflow skills. The CLI is deterministic tooling for agents,
 operators, diagnostics, scripted adoption, and plugin maintainers.
 
-Run commands from a checked-out copy of this repository unless a packaged
-`agent-harness` binary is available in your environment.
+The examples below use the repo-local Node script path. If your environment
+provides an `agent-harness` binary, use the same subcommands and options with
+that binary.
 
-## Validate The Plugin
+## Validation Commands
 
 ```bash
+git diff --check
 npm run validate:plugin
 npm run test:smoke
 ```
+
+For goal-backed work, validate the goal before preparing or completing a run:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
+```
+
+Run `npm run test:eval` when eval documentation or eval fixtures change.
 
 ## Initialize Or Import Projects
 
@@ -145,12 +155,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 ```
 
 Prepared run packets include `dag.json`, `dag.md`, and
-`agents/<node>/prompt.md` files. The controller launches ready worker nodes as
-Codex CLI subagents by default. New Codex threads are explicit, visible,
-long-lived handoff lanes, not the default worker surface. `run prepare` itself
-does not start workers. Run packets also record conversation route, execution
-context lock, and the current delivery state so local worktree execution is not
-confused with committed, pushed, integrated, or shipped state.
+`agents/<node>/prompt.md` files. The controller launches ready worker nodes on
+the `codex-cli-subagent` surface by default. New Codex threads are explicit,
+visible, long-lived handoff lanes, not the default worker surface. `run prepare`
+itself does not start workers. Run packets also record conversation route,
+execution context lock, and the current delivery state so local worktree
+execution is not confused with committed, pushed, integrated, or shipped state.
 
 Inspect a prepared run:
 
@@ -175,10 +185,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
 ```
 
-`run record` refreshes delivery state in `status.json` and the run log. If the
-state is `implemented-local` or `validated-local`, the run is still local-only
-unless the goal target is also local-only. Otherwise, continue the authorized
-delivery pipeline or record `delivery pending` with the missing evidence.
+`run record` refreshes delivery state in `status.json` and the run log.
+`implemented-local` and `validated-local` prove only working-tree
+implementation or local verification. They satisfy a completed run only when
+the target delivery state is no higher than `validated-local`; otherwise,
+continue the authorized delivery pipeline or record `delivery pending` with the
+missing evidence.
 
 For completed runs, `run record` enforces the goal's Target delivery state. If
 the target is `review-open`, `integrated`, or `released/shipped`, pass external
