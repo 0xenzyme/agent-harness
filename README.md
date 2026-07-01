@@ -2,10 +2,24 @@
 
 [中文](README.zh-CN.md)
 
-Agent Harness is a reusable Codex workflow package for development projects. It
-turns a project's accepted direction into an inspectable execution control
-layer so coding agents can carry more work from roadmap intent to verified
-state without the human acting as the task router.
+[![Version](https://img.shields.io/badge/version-0.4.0-0f766e)](CHANGELOG.md)
+[![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
+[![Protocol](https://img.shields.io/badge/test-protocol_passed-2563eb)](scripts/test-suites.mjs)
+[![Smoke](https://img.shields.io/badge/smoke-passed-16a34a)](tests/smoke.mjs)
+[![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
+
+Agent Harness is an adapter-driven control plane for Codex and coding-agent
+work. It turns accepted direction into tasks, goals, run DAGs, worker
+execution, verification, gates, and state sync.
+
+```text
+accepted direction -> stage map -> goal -> run DAG -> worker -> gate -> state sync
+```
+
+[Capability Matrix](docs/HARNESSES.md) · [GitHub Presentation](docs/github-presentation.md) ·
+[Changelog](CHANGELOG.md) · [v0.4.0 Release Notes](docs/releases/v0.4.0.md)
+
+![Agent Harness social preview](docs/assets/github/social-preview.svg)
 
 ## Value Proposition
 

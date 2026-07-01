@@ -13,6 +13,7 @@
     "print-contract": "node plugins/agent-harness/scripts/agent-harness.mjs print-contract",
     "test:all": "node scripts/test-suites.mjs all",
     "test:eval": "node evals/run-agent-harness-eval.mjs",
+    "test:presentation": "node scripts/test-suites.mjs presentation",
     "test:protocol": "node scripts/test-suites.mjs protocol",
     "test:smoke": "node tests/smoke.mjs",
     "validate:plugin": "PYTHONPATH=tools/python-yaml-shim python3 \"${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py\" plugins/agent-harness"

@@ -18,6 +18,7 @@ reference。
 
 ```bash
 git diff --check
+npm run test:presentation
 npm run test:protocol
 npm run validate:plugin
 npm run test:smoke
@@ -29,8 +30,10 @@ npm run test:smoke
 node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
 ```
 
-如果修改了 eval documentation 或 eval fixtures，运行 `npm run test:eval`。
-如果需要同时跑 protocol 和 smoke coverage，运行 `npm run test:all`。
+如果修改了 README、GitHub presentation、social preview、changelog 或
+release notes，运行 `npm run test:presentation`。如果修改了 eval
+documentation 或 eval fixtures，运行 `npm run test:eval`。如果需要同时跑
+presentation、protocol 和 smoke coverage，运行 `npm run test:all`。
 
 ## 初始化或导入项目
 

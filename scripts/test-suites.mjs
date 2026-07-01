@@ -67,7 +67,30 @@ const matrixLinkExpectations = [
   ["docs/project-contract.md", "HARNESSES.md"]
 ];
 
+const presentationExpectations = [
+  ["README.md", "docs/assets/github/social-preview.svg"],
+  ["README.md", "docs/github-presentation.md"],
+  ["README.md", "CHANGELOG.md"],
+  ["README.md", "docs/releases/v0.4.0.md"],
+  ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
+  ["README.zh-CN.md", "docs/github-presentation.md"],
+  ["README.zh-CN.md", "CHANGELOG.md"],
+  ["README.zh-CN.md", "docs/releases/v0.4.0.md"],
+  ["docs/github-presentation.md", "Adapter-driven control plane for Codex and coding-agent work"],
+  ["docs/github-presentation.md", "codex-plugin"],
+  ["docs/github-presentation.md", "workflow-automation"],
+  ["docs/github-presentation.md", "docs/assets/github/social-preview.svg"],
+  ["CHANGELOG.md", "## 0.4.0 - 2026-07-02"],
+  ["docs/releases/v0.4.0.md", "Agent Harness v0.4.0"],
+  ["docs/assets/github/social-preview.svg", "Tasks"],
+  ["LICENSE", "MIT License"]
+];
+
 const suites = {
+  presentation: {
+    description: "GitHub README, social preview, changelog, release notes, and repo metadata guidance.",
+    command: "npm run test:presentation"
+  },
   protocol: {
     description: "Stable protocol anchors, capability matrix, and suite routing.",
     command: "npm run test:protocol"
@@ -105,6 +128,7 @@ function assertIncludesFile(path, needle, message) {
 
 function checkProtocol() {
   assertIncludesFile("package.json", "\"test:protocol\"", "package.json must expose test:protocol");
+  assertIncludesFile("package.json", "\"test:presentation\"", "package.json must expose test:presentation");
   assertIncludesFile("package.json", "\"test:all\"", "package.json must expose test:all");
   assertIncludesFile("docs/HARNESSES.md", "Agent Harness Capability Matrix");
 
@@ -121,6 +145,13 @@ function checkProtocol() {
   console.log("Protocol checks passed.");
 }
 
+function checkPresentation() {
+  for (const [file, needle] of presentationExpectations) {
+    assertIncludesFile(file, needle, `${file} must include presentation marker ${needle}`);
+  }
+  console.log("Presentation checks passed.");
+}
+
 function runNpmScript(name) {
   const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
   execFileSync(npmBin, ["run", name], {
@@ -134,7 +165,7 @@ function printSuites() {
   for (const [name, suite] of Object.entries(suites)) {
     console.log(`- ${name}: ${suite.command} - ${suite.description}`);
   }
-  console.log("- all: npm run test:all - Runs protocol and smoke suites.");
+  console.log("- all: npm run test:all - Runs presentation, protocol, and smoke suites.");
 }
 
 const mode = process.argv[2] || "--list";
@@ -143,7 +174,10 @@ if (mode === "--list" || mode === "list") {
   printSuites();
 } else if (mode === "protocol") {
   checkProtocol();
+} else if (mode === "presentation") {
+  checkPresentation();
 } else if (mode === "all") {
+  checkPresentation();
   checkProtocol();
   runNpmScript("test:smoke");
 } else {

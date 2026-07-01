@@ -2,6 +2,17 @@
 
 ## Now
 
+- [ ] Execute GitHub presentation pass for profile-pinned repository.
+  - Acceptance: Design and implement a complete GitHub presentation package:
+    profile-friendly README first screen, repository topics, social preview
+    asset, changelog/release notes, release tag plan, and verification docs.
+  - Source: User pinned `0xenzyme/agent-harness` to their GitHub profile and
+    asked to use Harness to design and execute the presentation work.
+  - Boundary: Do not change Agent Harness runtime protocol except where docs or
+    tests must reference the presentation surface. Do not use paid services,
+    destructive operations, or production credentials. GitHub remote metadata,
+    tag, and release actions may proceed only with available `gh` auth.
+
 ## Next
 
 ## Later

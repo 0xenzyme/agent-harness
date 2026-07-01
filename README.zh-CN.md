@@ -2,7 +2,24 @@
 
 [English](README.md)
 
-Agent Harness 是一个面向开发项目的可复用 Codex workflow package。它把项目中已经确认的方向转成可检查的执行控制层，让 coding agent 能从 roadmap 意图一路推进到 verified state，而不是让人持续充当任务调度器。
+[![Version](https://img.shields.io/badge/version-0.4.0-0f766e)](CHANGELOG.md)
+[![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
+[![Protocol](https://img.shields.io/badge/test-protocol_passed-2563eb)](scripts/test-suites.mjs)
+[![Smoke](https://img.shields.io/badge/smoke-passed-16a34a)](tests/smoke.mjs)
+[![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
+
+Agent Harness 是一个面向 Codex 和 coding-agent work 的 adapter-driven
+control plane。它把已经确认的方向转成 tasks、goals、run DAGs、worker
+execution、verification、gates 和 state sync。
+
+```text
+accepted direction -> stage map -> goal -> run DAG -> worker -> gate -> state sync
+```
+
+[Capability Matrix](docs/HARNESSES.md) · [GitHub Presentation](docs/github-presentation.md) ·
+[Changelog](CHANGELOG.md) · [v0.4.0 Release Notes](docs/releases/v0.4.0.md)
+
+![Agent Harness social preview](docs/assets/github/social-preview.svg)
 
 ## 价值主张
 

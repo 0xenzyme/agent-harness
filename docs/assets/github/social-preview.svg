@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Harness social preview</title>
+  <desc id="desc">Adapter-driven control plane for coding-agent work.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="0.52" stop-color="#0b1726"/>
+      <stop offset="1" stop-color="#10231f"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.5" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#a3e635"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#020617" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <path d="M80 500H1200" stroke="#1f2937" stroke-width="1"/>
+  <path d="M80 140H1200" stroke="#1f2937" stroke-width="1"/>
+  <path d="M132 498V142M372 498V142M612 498V142M852 498V142M1092 498V142" stroke="#142033" stroke-width="1"/>
+
+  <g filter="url(#soft)">
+    <rect x="82" y="86" width="1116" height="468" rx="22" fill="#0f172a" stroke="#263449"/>
+    <rect x="82" y="86" width="1116" height="6" fill="url(#line)"/>
+  </g>
+
+  <text x="128" y="174" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="70" font-weight="760" letter-spacing="0">Agent Harness</text>
+  <text x="132" y="226" fill="#cbd5e1" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="28" font-weight="500" letter-spacing="0">Adapter-driven control plane for Codex and coding-agent work</text>
+
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="24" font-weight="700">
+    <rect x="130" y="304" width="156" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="162" y="349" fill="#e2e8f0">Tasks</text>
+    <rect x="326" y="304" width="156" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="360" y="349" fill="#e2e8f0">Goals</text>
+    <rect x="522" y="304" width="156" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="564" y="349" fill="#e2e8f0">Runs</text>
+    <rect x="718" y="304" width="156" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="754" y="349" fill="#e2e8f0">Gates</text>
+    <rect x="914" y="304" width="214" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="952" y="349" fill="#e2e8f0">State Sync</text>
+  </g>
+
+  <g stroke="url(#line)" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M288 340H322"/>
+    <path d="M484 340H518"/>
+    <path d="M680 340H714"/>
+    <path d="M876 340H910"/>
+  </g>
+
+  <g fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="22" font-weight="520">
+    <text x="132" y="452">accepted direction -> stage map -> run DAG -> worker execution -> verification evidence</text>
+    <text x="132" y="490">v0.4.0 / Codex plugin / protocol checks / smoke checks</text>
+  </g>
+</svg>

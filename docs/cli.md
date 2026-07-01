@@ -15,6 +15,7 @@ and plugin-validation suites to the surfaces they cover.
 
 ```bash
 git diff --check
+npm run test:presentation
 npm run test:protocol
 npm run validate:plugin
 npm run test:smoke
@@ -26,8 +27,10 @@ For goal-backed work, validate the goal before preparing or completing a run:
 node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
 ```
 
-Run `npm run test:eval` when eval documentation or eval fixtures change. Run
-`npm run test:all` when protocol and smoke coverage should both run.
+Run `npm run test:presentation` when README, GitHub presentation, social
+preview, changelog, or release-note surfaces change. Run `npm run test:eval`
+when eval documentation or eval fixtures change. Run `npm run test:all` when
+presentation, protocol, and smoke coverage should all run.
 
 ## Initialize Or Import Projects
 

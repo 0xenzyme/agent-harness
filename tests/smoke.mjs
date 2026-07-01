@@ -126,6 +126,10 @@ assert(
   "package.json should expose the protocol suite"
 );
 assert(
+  packageManifest.scripts["test:presentation"] === "node scripts/test-suites.mjs presentation",
+  "package.json should expose the presentation suite"
+);
+assert(
   packageManifest.scripts["test:all"] === "node scripts/test-suites.mjs all",
   "package.json should expose the aggregate local test route"
 );
@@ -151,8 +155,10 @@ assert(existsSync(testSuitesScriptPath), "suite routing script should exist");
 const testSuitesScript = readFileSync(testSuitesScriptPath, "utf8");
 for (const needle of [
   "protocol",
+  "presentation",
   "smoke",
   "plugin",
+  "test:presentation",
   "test:smoke",
   "validate:plugin",
   "harness-rule:gate-only-controller",
@@ -173,10 +179,25 @@ for (const needle of [
   "harness-rule:worker-surface-default",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
+  "npm run test:presentation",
   "npm run test:protocol",
   "npm run test:all"
 ]) {
   assertIncludes(capabilityMatrix, needle, "capability matrix should cover rule anchors, surfaces, and suite routing");
+}
+for (const [file, needle] of [
+  ["README.md", "docs/assets/github/social-preview.svg"],
+  ["README.md", "docs/github-presentation.md"],
+  ["README.md", "CHANGELOG.md"],
+  ["README.md", "docs/releases/v0.4.0.md"],
+  ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
+  ["docs/github-presentation.md", "codex-plugin"],
+  ["CHANGELOG.md", "## 0.4.0 - 2026-07-02"],
+  ["docs/releases/v0.4.0.md", "Agent Harness v0.4.0"],
+  ["docs/assets/github/social-preview.svg", "Agent Harness"],
+  ["LICENSE", "MIT License"]
+]) {
+  assertIncludes(readFileSync(join(repoRoot, file), "utf8"), needle, `${file} should preserve GitHub presentation surface`);
 }
 for (const [file, needle] of [
   ["README.md", "docs/HARNESSES.md"],

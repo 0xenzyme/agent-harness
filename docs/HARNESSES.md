@@ -39,11 +39,12 @@ canonical references named by `npm run test:protocol`.
 
 | Suite | Command | Use when |
 | --- | --- | --- |
+| Presentation | `npm run test:presentation` | README first screen, social preview assets, changelog, release notes, or GitHub metadata guidance changes. |
 | Protocol | `npm run test:protocol` | Rule anchors, capability matrix links, suite routing, or protocol docs change. |
 | Smoke | `npm run test:smoke` | CLI behavior, adapter contracts, templates, generated run packets, or smoke fixtures change. |
 | Eval | `npm run test:eval` | Evaluation docs or evaluation fixtures change. |
 | Plugin validation | `npm run validate:plugin` | Plugin manifest, skill files, references, templates, package surface, or installable plugin content changes. |
-| Local all-tests route | `npm run test:all` | Protocol and smoke coverage should both run before handoff. Plugin validation remains a separate packaging gate. |
+| Local all-tests route | `npm run test:all` | Presentation, protocol, and smoke coverage should run before handoff. Plugin validation remains a separate packaging gate. |
 
 ## Applicability
 
