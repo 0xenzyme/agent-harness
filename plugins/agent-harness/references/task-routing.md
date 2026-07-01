@@ -2,6 +2,9 @@
 
 Task routing chooses the lightest harness flow that is still safe.
 
+Use [First-Principles Scope](first-principles-scope.md) when objective, source
+of truth, scope, non-goals, verification, or pause triggers are ambiguous.
+
 ## Decision Inputs
 
 - Priority: `P0`, `P1`, `P2`, `P3`.
@@ -125,6 +128,25 @@ Do not route directly from Idea Inbox to `execute` unless the control lane has
 accepted scope, non-goals, verification, completion conditions, and pause
 conditions.
 
+## Task-State Recommendations
+
+`orient next` must not recommend a command that the goal toolchain will reject.
+
+Before recommending execution, reduce the request through the
+first-principles scope check: objective, source of truth, hard constraints,
+non-goals, verification evidence, and pause trigger must be concrete enough to
+execute safely.
+
+- P0/P1 `todo` or `spec-draft` without a linked spec routes to `shape` or
+  accepted-scope confirmation, not `goal create`.
+- `spec-ready` with a linked spec routes to
+  `goal create --spec <spec-path>`.
+- `spec-ready` without a linked spec routes to fixing the task/spec link first.
+- `goal-ready` routes to an existing goal when one is linked or discoverable:
+  validate the goal and prepare a run. If no goal exists, create one from the
+  confirmed spec or use the explicit `--allow-no-spec` path only when accepted
+  scope is already the source of truth.
+
 ## Execution Roles
 
 Execution role is separate from work mode. Work mode says where work happens
@@ -169,7 +191,7 @@ Closeout must report Delivery State separately from implementation status:
 aliases for provider-specific inputs, not the primary terms. If work is only
 dirty or uncommitted in a dev worktree, route the next action to review local
 diff, then explicit commit / review request or discard. Do not route that state
-as integrated or mainline done.
+as integrated or complete on the integration line.
 
 When the goal's Target Delivery State is above the actual state and the matching
 authorization fields are `yes`, route forward into the delivery pipeline
@@ -184,6 +206,10 @@ to Codex CLI subagents, explicit Codex App handoff threads, another
 coding-agent worker, or no worker at all only when that surface can return a
 concrete result packet: changed files, summary, verification, known risks, stop
 conditions, and state-sync notes.
+
+Use [Worker Runner Contract](worker-runner-contract.md) before worker launch or
+acceptance. The contract makes worker output candidate evidence, not accepted
+state.
 
 Prefer `codex-cli-subagent` for worker execution; run packets should default
 worker nodes to that surface when it is available. A new Codex App thread is

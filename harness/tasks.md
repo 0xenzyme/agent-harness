@@ -8,6 +8,49 @@
 
 ## Done
 
+- [x] Implement adapter migration ergonomics from geocn review.
+  - Completed: Updated `orient next` to route by task state and spec readiness:
+    P0/P1 `todo` / `spec-draft` tasks without spec route to shaping or
+    accepted-scope confirmation, `spec-ready` tasks with linked specs route to
+    `goal create --spec`, and `goal-ready` tasks prefer existing goal
+    validation plus `run prepare`.
+  - Completed: Added `config import` path overrides for status, specs, goals,
+    milestones, runs, gate records, deferred register, and mental-model paths.
+    `--dry-run --json` now includes the proposed config payload.
+  - Completed: Added explicit spec-less adapter goal support through
+    `goal create --allow-no-spec`. Generated goals persist `Spec Policy:
+    allow-no-spec`, and validation still requires Scope, Non-Goals,
+    Verification, Completion Conditions, Pause Conditions, Execution Role, and
+    Delivery State.
+  - Completed: Updated CLI docs, install docs, project contract docs, workflow
+    skill guidance, task-routing reference, goal template, and smoke coverage.
+  - Deferred: Table-based `maintain tasks --record` task-index writeback
+    remains refused. The project contract now records the follow-up boundary:
+    only implement table status updates when row matching is by unique task
+    title, a recognized `Status` column, and a bounded status transition.
+  - Source: geocn adapter migration review accepted by user on 2026-07-01.
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `node --check tests/smoke.mjs`, `npm run test:smoke`, `git diff --check`,
+    `npm run validate:plugin`, and `config validate --json`.
+  - Boundary: Did not modify geocn, publish the plugin, add hooks/daemons/
+    watchers, create branches/worktrees, commit, push, open PRs, deploy,
+    release, or refactor the whole CLI.
+
+- [x] Decouple integration-line wording from `main`.
+  - Completed: Replaced branch-bound integration wording with `target
+    integration line` / `complete on the integration line`. Updated the
+    project contract, task-routing reference, execute skill guidance,
+    execution-role reference, goal template, generated goal content, and
+    Chinese install guide to clarify that Harness core does not assume the
+    integration line is named `main`.
+  - Source: User noted that current work assumed `main` as the primary
+    development branch and asked to fix the adaptability issue.
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `git diff --check`, `npm run test:smoke`, and
+    `npm run validate:plugin`.
+  - Boundary: No new required schema field was added; branch choices remain
+    adapter / goal / user-instruction owned.
+
 - [x] Add lightweight Chinese install and usage guide.
   - Completed: Added `docs/install.zh-CN.md` as a Chinese user-facing guide
     for installation, downstream adoption, workflow skill routing, main

@@ -16,6 +16,22 @@ asked the current thread to act as the control lane for a confirmed task.
   accepting worker output, or combining roles.
 - Use [Completion Evidence](references/completion-evidence.md) before marking
   task, goal, run, or gate state complete.
+- Use [First-Principles Scope](../../references/first-principles-scope.md)
+  when scope, source of truth, verification, or pause triggers are ambiguous
+  before execution.
+- Use [Worker Runner Contract](../../references/worker-runner-contract.md)
+  before launching, prompting, recording, or accepting worker / subagent output.
+- Use [Controller Communication](../../references/controller-communication.md)
+  before launching workers, handing off DAG nodes, or accepting worker result
+  packets.
+- Use [Gate Results](../../references/gate-results.md) before recording
+  acceptance, integration, or adapter-required gate outcomes.
+- Use [Adversarial Acceptance](references/adversarial-acceptance.md) before
+  accepting worker output, recording completed state, or reporting a gate as
+  passed.
+- Use [User-Facing Closeout](references/user-facing-closeout.md) before the
+  final response to compress execution evidence into a clear delivery-state
+  summary.
 
 ## Workflow
 
@@ -56,6 +72,10 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
    Briefly record why this is `shape`, `goal`, `execute`, `competition`, or
    `ask`, and record the execution role when it affects scope or acceptance.
    For ambiguous routing, read [Task Routing](../../references/task-routing.md).
+   If source of truth, scope, non-goals, verification, or pause triggers are
+   ambiguous, also read
+   [First-Principles Scope](../../references/first-principles-scope.md) before
+   choosing a route.
    Conservative routing may switch to `orient`, `intake`, `init`, `shape`,
    `goal`, or `ask`, or pause for confirmation; it must not grant broader
    execution permission from inside `execute`.
@@ -74,8 +94,14 @@ node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project>
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task "<task title>" --spec <spec-path>
+node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task "<task title>" --allow-no-spec
 node <plugin-root>/scripts/agent-harness.mjs goal validate --cwd <project> --goal <goal-file>
 ```
+
+Use `--allow-no-spec` only when accepted scope is already explicit and no
+separate spec is intended. Spec-less goals must still validate Scope,
+Non-Goals, Verification, Completion Conditions, Pause Conditions, Execution
+Role, and Delivery State.
 
 9. Prepare or inspect a run packet when useful for controlled execution:
 
@@ -90,11 +116,18 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
    context lock, delivery target, and safety boundaries are clear; run packets
    default worker nodes to `codex-cli-subagent`. Review the implementer output,
    compare it to the goal, run verification, and either accept state or request
-   concrete corrections.
+   concrete corrections. Before launching, prompting, recording, or accepting
+   worker output, read
+   [Worker Runner Contract](../../references/worker-runner-contract.md) and
+   [Controller Communication](../../references/controller-communication.md) and
+   use the relevant launch, result, or integration packet fields. Worker output
+   is candidate evidence only until the controller validates and accepts it.
 11. If the run packet has `dag.json`, use it as the execution order:
    - Launch only `readyNodes` from `run status --json`.
    - Nodes in the same ready set may run in parallel.
    - Prefer `codex-cli-subagent` for workers.
+   - Use `templates/worker-prompt.md` as the stable prompt shape when preparing
+     manual or generated worker handoffs.
    - Create a new Codex App thread only for an explicit, visible, long-lived
      handoff lane.
    - Do not use fork unless the controller explicitly approves inherited
@@ -125,7 +158,16 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <run-dir> --phase blocked --summary "<blocker summary>"
 ```
 
-15. Report Delivery State explicitly. If the state is `implemented-local` or
+15. Before accepting worker output, recording completed state, or reporting a
+    gate as passed, read
+    [Adversarial Acceptance](references/adversarial-acceptance.md) and try to
+    reject completion against scope, accepted evidence, required gates, Delivery
+    State, stale artifacts, and closeout clarity.
+16. Before accepting gate, integration, or adapter-required state, read
+    [Gate Results](../../references/gate-results.md) and cite concrete evidence
+    for the gate decision. Candidate evidence is not accepted state until the
+    control lane validates it.
+17. Report Delivery State explicitly. If the state is `implemented-local` or
     `validated-local`, say that local implementation / verification is complete
     but it is not committed, pushed, reviewed, integrated, or released unless
     the recorded delivery fields prove otherwise.
@@ -137,6 +179,11 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
     If Target Delivery State is above the actual state but authorization or
     external evidence is missing, report `delivery pending`; do not mark the
     run completed.
+18. Before the final answer, read
+    [User-Facing Closeout](references/user-facing-closeout.md) and summarize
+    changed files or reviewed output, verification, Delivery State, and remaining
+    blocker or next action. Do not paste full run or gate packets unless the user
+    asks for audit or handoff detail.
 
 ## Boundaries
 
@@ -148,8 +195,8 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 - Do not present worker launch vs. `mixed` as a routine user choice. In
   `gate-only`, default to worker subagent unless subagent execution is
   unavailable, unsafe, or lacks enough context.
-- Do not describe dirty or uncommitted dev-worktree output as done on main,
-  integrated, shipped, or released.
+- Do not describe dirty or uncommitted dev-worktree output as complete on the
+  integration line, integrated, shipped, or released.
 - Do not mark a run completed below its Target Delivery State.
 - Do not modify `AGENTS.md` or activation behavior without explicit approval.
 - Do not release, deploy, use credentials, use paid APIs, touch production,

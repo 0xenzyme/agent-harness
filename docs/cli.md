@@ -40,6 +40,13 @@ node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/t
 node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
 ```
 
+Existing projects can override adapter artifact paths during import. Use
+`--dry-run --json` to inspect the full proposed config before writing:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --status docs/status.md --specs docs/specs --goals docs/goals --milestones docs/milestones --runs .harness/runs --gate-records .harness/runs --deferred-register docs/milestones --mental-model docs/mental-model.md --mental-model-index docs/mental-model.md --mental-models docs/mental-models --dry-run --json
+```
+
 If a project already has `todolist.md`, `init --contract adapter` preserves it
 instead of creating a parallel `harness/tasks.md`. A real `config import`
 writes the machine config and creates missing support artifacts such as the
@@ -79,6 +86,12 @@ Summarize current status and recommend the next action without starting work:
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
 ```
+
+`orient next` routes by task state. For P0/P1 `todo` or `spec-draft` tasks
+without a spec, it recommends shaping or confirming accepted scope instead of
+printing an unusable `goal create` command. `spec-ready` tasks with a linked
+spec route to `goal create --spec ...`; `goal-ready` tasks prefer existing goal
+validation and `run prepare`.
 
 ## Intake And Maintenance
 
@@ -134,11 +147,23 @@ Create a goal handoff from the configured task index:
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
 ```
 
-The adapter contract requires an accepted spec:
+By default, adapter goals should reference an accepted spec:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
+
+For accepted adapter scope that intentionally has no separate spec, use the
+explicit spec-less path:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --allow-no-spec
+```
+
+Without `--allow-no-spec`, adapter goal creation still fails when `--spec` is
+omitted. Spec-less goals must validate the same execution safety fields:
+`Scope`, `Non-Goals`, `Verification`, `Completion Conditions`, `Pause
+Conditions`, `Execution Role`, and `Delivery State`.
 
 List, inspect, and validate goals before preparing a run:
 

@@ -39,7 +39,8 @@ adapter contract = task with status + spec + DAG + goal + gate
   no suitable worker exists, fall back to foreground execution or `ask`. Run
   packets default worker nodes to `codex-cli-subagent` when that surface is
   available; Codex App threads are explicit long-lived handoff lanes, not the
-  default worker surface.
+  default worker surface. Worker launches and result acceptance follow
+  `references/worker-runner-contract.md`.
 
 ## Default Lifecycle
 

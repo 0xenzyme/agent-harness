@@ -114,6 +114,28 @@ agent-harness config import --cwd <project> --task-index todolist.md --dry-run
 agent-harness config import --cwd <project> --task-index todolist.md
 ```
 
+Import supports adapter path overrides for existing projects that already have
+their own artifact layout:
+
+```bash
+agent-harness config import --cwd <project> --task-index todolist.md \
+  --status docs/status.md \
+  --specs docs/specs \
+  --goals docs/goals \
+  --milestones docs/milestones \
+  --runs .harness/runs \
+  --gate-records .harness/runs \
+  --deferred-register docs/milestones \
+  --mental-model docs/mental-model.md \
+  --mental-model-index docs/mental-model.md \
+  --mental-models docs/mental-models \
+  --dry-run --json
+```
+
+`--dry-run --json` reports the proposed config before writing. Import must not
+create a second task index when a configured or discovered task index such as
+`todolist.md` already exists.
+
 The real import also creates required support artifacts that do not split
 project state, including the configured status file and runs/specs/goals/
 milestones directories when missing.
@@ -336,6 +358,11 @@ result packets.
   task lists.
 - Table-based or unknown task-index formats must refuse automatic recording
   rather than risk corrupting project state.
+- `maintain tasks --record` may read table-based task indexes, but it must
+  refuse automatic task-index writes until table row updates can be matched by
+  a unique task title, a recognized `Status` column, and a bounded status
+  transition. Status snapshots may still be written to the configured status
+  file.
 - Intake must not create specs, goals, runs, branches, review requests,
   deployments, or background automation.
 - Idea Inbox Threads are capture lanes. They preserve raw notes, questions,
@@ -413,9 +440,10 @@ result packets.
 - `status.json` stores machine-readable run state.
 - `logs/` is reserved for command output summaries and automation logs.
 - `goal validate` is the gate before `run prepare`: executable goals must
-  reference a repo-local confirmed spec, include required execution sections,
-  name a valid work mode and execution role, and provide verification or manual
-  evidence guidance.
+  reference a repo-local confirmed spec unless they explicitly declare `Spec
+  Policy: allow-no-spec`, include required execution sections, name a valid
+  work mode and execution role, and provide verification or manual evidence
+  guidance.
 - `run prepare` must not start daemons, spawn coding-agent sessions, push,
   deploy, or open review requests. It may prepare per-node prompts for
   controller-launched workers.
@@ -453,11 +481,29 @@ correct execution context.
 `goal validate` must reject `worktree` goals that omit this route/lock or set
 `remote-control-worktree` without `Remote-control worktree: yes`.
 
+## Spec-Less Goal Policy
+
+Adapter goal creation is strict by default: omitting `--spec` fails unless the
+caller explicitly passes `--allow-no-spec`. The generated goal records:
+
+```md
+Spec: TBD
+Spec Policy: allow-no-spec
+Status: Ready for execution from accepted scope without a separate spec.
+```
+
+Spec-less goals do not weaken execution safety. `goal validate` must still
+require `Scope`, `Non-Goals`, `Verification`, `Completion Conditions`, `Pause
+Conditions`, `Execution Role`, and `Delivery State`. The goal's accepted scope
+acts as the source of truth for execution, and pause conditions must cover
+accepted-scope conflicts, newer instructions, credentials, paid APIs,
+production access, destructive operations, and product direction.
+
 ## Delivery State Gate
 
 Implementation state and delivery state are distinct. Harness records must not
-describe local verified work as integrated, shipped, or mainline complete unless
-the delivery evidence proves it.
+describe local verified work as integrated, shipped, or complete on an
+integration line unless the delivery evidence proves it.
 
 Delivery state vocabulary:
 
@@ -468,7 +514,7 @@ Delivery state vocabulary:
 - `pushed`: the commit is pushed to its upstream branch.
 - `review-open`: a provider-neutral review request is open, such as a GitHub
   PR, GitLab MR, Gerrit change, or patch series.
-- `integrated`: the work has entered the target development line.
+- `integrated`: the work has entered the target integration line.
 - `released/shipped`: release or deploy evidence exists.
 
 Run records and closeout proof must include delivery state, dirty working tree
@@ -477,6 +523,12 @@ push / review / integration / release was not explicitly authorized or
 performed, final wording must say local implementation and verification are
 complete but not durably delivered. Dirty development worktrees are reviewable
 state, not durable completion state.
+
+Harness core does not assume the integration line is named `main`. The current
+control branch, locked execution branch, target integration line, and release
+source may differ. Project adapters, confirmed goals, or explicit user
+instructions own those branch decisions; otherwise the current checkout is only
+execution context, not proof of the integration target.
 
 `Delivery State` also declares a Target delivery state and authorization fields
 for commit, push, review, integration, and release. `goal validate` must reject
@@ -491,7 +543,7 @@ external evidence is missing, record delivery pending and make the missing
 authorization/evidence the next action.
 
 For development goals, the default delivery intent is `integrate-after-gates`:
-commit the accepted work and integrate it into the target development line once
+commit the accepted work and integrate it into the target integration line once
 the required gates pass. Release / ship remains separate and must be explicitly
 authorized. Local-only goals should lower the target to `validated-local`
 instead of putting commit, review, or integration into `Non-Goals`.

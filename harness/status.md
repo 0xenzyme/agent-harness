@@ -2,16 +2,23 @@
 
 ## Focus
 
-- Current focus: Agent Harness docs engineering audit on `main`.
-  The current thread is the `gate-only` main control lane. Spec
+- Current focus: Agent Harness adapter migration ergonomics in the current
+  checkout. The current thread was explicitly authorized as `mixed` for this
+  local implementation/control pass after geocn adapter migration review.
+  Implemented `orient next` task-state routing, `config import` path
+  overrides, and controlled `goal create --allow-no-spec` support. Table-based
+  task-index writeback remains deferred with a documented implementation
+  boundary. The prior docs engineering audit also remains in the same local
+  dirty checkout: spec
   `harness/specs/2026-07-01-docs-engineering-audit.md`, goal
   `harness/goals/2026-07-01-agent-harness-docs-engineering-audit.md`, and run
   `.harness/runs/20260701-120641-agent-harness-docs-engineering-audit/` have
   completed their DAG nodes, passed verification, and recorded completed run
   evidence. A follow-up added lightweight Chinese install and usage docs
-  without creating a full Chinese contract mirror. Final delivery state remains
-  local documentation changes; commit, push, review, integration, publish, and
-  release are not authorized.
+  without creating a full Chinese contract mirror. Another follow-up decoupled
+  integration-line wording from branch name `main`. Final delivery state
+  remains local documentation changes; commit, push, review, integration,
+  publish, and release are not authorized.
 
 ## Git
 
@@ -20,8 +27,10 @@
 - Current branch: main
 - Worktree notes: Work is in the current checkout per user instruction; no
   additional worktree, branch, review request, deploy, daemon, watcher, or
-  release action was created. Worker implementation was routed through the run
-  DAG and accepted by the control lane after verification.
+  release action was created. `main` is the current execution branch for this
+  repository, not a core Harness assumption about every project's integration
+  line. Worker implementation was routed through the run DAG and accepted by
+  the control lane after verification.
 
 ## Verification
 
@@ -55,6 +64,34 @@
     `docs/cli.zh-CN.md`.
   - Verified the Chinese docs follow-up with `git diff --check`,
     `npm run test:smoke`, and `npm run validate:plugin`.
+  - Replaced branch-bound integration wording with `target integration line` /
+    `complete on the integration line`.
+  - Clarified in `docs/project-contract.md`, the goal template, generated goal
+    content, task-routing reference, execute skill docs, and Chinese install
+    guide that Harness core does not assume the integration line is named
+    `main`; branch choices belong to the adapter, confirmed goal, or explicit
+    user instruction.
+  - Verified the branch-adaptability follow-up with
+    `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `git diff --check`, `npm run test:smoke`, and
+    `npm run validate:plugin`.
+  - Implemented geocn adapter migration ergonomics: `orient next` now avoids
+    unusable goal creation recommendations for P0/P1 missing-spec tasks,
+    `config import` accepts adapter path overrides and exposes
+    `proposedConfig` in `--dry-run --json`, and adapter spec-less goal creation
+    is available only through explicit `--allow-no-spec`.
+  - Added validation for spec-less goals so they still require Scope,
+    Non-Goals, Verification, Completion Conditions, Pause Conditions,
+    Execution Role, and Delivery State. Run packets and prompts no longer ask
+    workers to read a `TBD` spec for explicit spec-less goals.
+  - Documented table-based `maintain tasks --record` task-index writeback as
+    deferred until row matching is uniquely by task title, a recognized
+    `Status` column, and a bounded status transition.
+  - Verified the geocn migration ergonomics follow-up with
+    `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `node --check tests/smoke.mjs`, `npm run test:smoke`,
+    `git diff --check`, `npm run validate:plugin`, and
+    `config validate --json`.
   - Changed generated/manual goal Delivery State defaults from
     `validated-local` to `integrated` with `Delivery intent:
     integrate-after-gates`, commit/push/integration authorized, review

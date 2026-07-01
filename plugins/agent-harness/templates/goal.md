@@ -1,7 +1,13 @@
 # Goal: {Task Name}
 
 Spec:
+Spec Policy:
 Status: Ready for execution from confirmed spec.
+
+Use `Spec Policy: allow-no-spec` only when accepted scope is the source of
+truth and there is intentionally no separate spec. Spec-less goals still require
+Scope, Non-Goals, Verification, Completion Conditions, Pause Conditions,
+Execution Role, and Delivery State.
 
 ## Source Task
 
@@ -24,7 +30,7 @@ update `Evidence` and `Status` before recording a completed run.
 - `AGENTS.md`
 - Project adapter
 - `.harness/config.json`
-- Spec
+- Spec, unless `Spec Policy: allow-no-spec` is declared
 
 ## Work Mode Recommendation
 
@@ -70,9 +76,14 @@ Use `current-thread`.
 
 Completed development runs must reach Target delivery state. By default,
 gate-passing implementation work is committed and integrated into the
-development mainline; release / ship remains out of scope unless the delivery
-policy explicitly authorizes it. Lower the target to `validated-local` only for
-local-only spikes, audits, or explicitly uncommitted work.
+target integration line declared by the project adapter, confirmed goal, or
+explicit user instruction; release / ship remains out of scope unless the
+delivery policy explicitly authorizes it. Lower the target to `validated-local`
+only for local-only spikes, audits, or explicitly uncommitted work.
+
+The locked Execution branch records where implementation happens. It is not
+automatically the integration target, and Harness core does not assume a branch
+named `main`.
 
 ## Execution DAG
 
@@ -140,8 +151,8 @@ Technical verification is necessary but does not replace gate evidence.
 
 ## Pause Conditions
 
-- The goal conflicts with the spec, adapter, repo instructions, production
-  constraints, or newer user instructions.
+- The goal conflicts with the spec or accepted scope, adapter, repo
+  instructions, production constraints, or newer user instructions.
 - Requirements are unclear in a way that affects cost, risk, compatibility, or
   product direction.
 - Credentials, paid APIs, production access, destructive operations, release,

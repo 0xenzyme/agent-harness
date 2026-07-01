@@ -16,6 +16,11 @@ Use this reference when orientation needs to recommend the next harness mode.
 
 ## Output Shape
 
+This shape is a control packet for route reasoning. It is not the default final
+answer. After forming it, use
+[User-Facing Summary](user-facing-summary.md) to produce the final user-facing
+decision prompt unless the user asks for audit, evidence, or handoff detail.
+
 ```text
 Route Decision
 

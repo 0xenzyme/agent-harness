@@ -30,28 +30,39 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 node <plugin-root>/scripts/agent-harness.mjs config validate --cwd <project>
 ```
 
-4. For a new adapter-contract project, initialize explicitly:
+4. Audit, doctor, and activation-preview requests are read-only by default. Stop
+   after reporting the current setup unless the user explicitly asks to
+   initialize, import, or repair harness files.
+5. For a new adapter-contract project, initialize only after explicit setup
+   intent:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs init --cwd <project> --contract adapter
 ```
 
-5. For an existing project with a task index such as `todolist.md`, import the
-   adapter config without creating a second task index:
+6. For an existing project with a task index such as `todolist.md`, import the
+   adapter config only after explicit import / repair intent and without
+   creating a second task index:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs config import --cwd <project> --task-index todolist.md --dry-run
 node <plugin-root>/scripts/agent-harness.mjs config import --cwd <project> --task-index todolist.md
 ```
 
-6. Print the project-scope activation snippet instead of silently editing
+   When the existing project already owns non-default artifact paths, pass
+   path overrides such as `--status`, `--specs`, `--goals`, `--milestones`,
+   `--runs`, `--gate-records`, `--deferred-register`, `--mental-model`,
+   `--mental-model-index`, and `--mental-models`. Prefer `--dry-run --json`
+   before writing so the proposed config can be inspected.
+
+7. Print the project-scope activation snippet instead of silently editing
    project instructions:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs activation snippet --cwd <project>
 ```
 
-7. Report contract, created paths, missing optional paths, activation status,
+8. Report contract, created paths, missing optional paths, activation status,
    config schema validation, and the recommended first orientation command.
 
 ## Boundaries
@@ -59,6 +70,9 @@ node <plugin-root>/scripts/agent-harness.mjs activation snippet --cwd <project>
 - For read-only project state or next-action requests, route to `orient`.
 - For confirmed implementation, route to `execute` after scope, role, and
   verification are clear.
+- For audit, doctor, or activation-preview requests, do not run mutating
+  `init`, `config import`, or repair commands unless the user explicitly asks
+  for setup writes.
 - Do not overwrite existing files unless the user explicitly asks or a dry-run
   has made the change safe and clear.
 - Do not modify `AGENTS.md`; activation changes require explicit user approval

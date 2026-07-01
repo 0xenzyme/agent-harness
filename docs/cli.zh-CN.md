@@ -42,6 +42,13 @@ node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/t
 node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
 ```
 
+已有项目可以在 import 时覆盖 adapter artifact paths。使用 `--dry-run --json`
+先检查完整 proposed config：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --status docs/status.md --specs docs/specs --goals docs/goals --milestones docs/milestones --runs .harness/runs --gate-records .harness/runs --deferred-register docs/milestones --mental-model docs/mental-model.md --mental-model-index docs/mental-model.md --mental-models docs/mental-models --dry-run --json
+```
+
 如果项目已经有 `todolist.md`，`init --contract adapter` 会沿用它，不会再创
 建并行的 `harness/tasks.md`。真实执行 `config import` 会写入 machine
 config，并创建缺失的支持产物，例如配置的 status 文件和 runs 目录。
@@ -79,6 +86,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
 ```
+
+`orient next` 会按 task state 选择路线。P0/P1 的 `todo` 或 `spec-draft` task
+如果没有 spec，会推荐 shape / 确认 accepted scope，而不是输出不可执行的
+`goal create`。带 spec 的 `spec-ready` 会推荐 `goal create --spec ...`；
+`goal-ready` 会优先推荐已有 goal validation 和 `run prepare`。
 
 ## Intake And Maintenance
 
@@ -132,11 +144,22 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/proje
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
 ```
 
-adapter contract 要求 goal 引用已确认的 spec：
+默认情况下，adapter goal 应引用已确认的 spec：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
+
+如果 adapter scope 已经被接受，但明确没有单独 spec，使用显式 spec-less 路径：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --allow-no-spec
+```
+
+不带 `--allow-no-spec` 时，adapter `goal create` 省略 `--spec` 仍会失败。
+Spec-less goal 不能降低安全要求：仍必须验证 `Scope`、`Non-Goals`、
+`Verification`、`Completion Conditions`、`Pause Conditions`、`Execution Role`
+和 `Delivery State`。
 
 准备 run 之前，列出、查看并验证 goals：
 

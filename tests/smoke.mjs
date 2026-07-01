@@ -160,9 +160,15 @@ const workflowSkillDocs = {
 };
 const expectedSkillReferences = {
   init: ["adoption-boundary.md", "migration-safety.md"],
-  orient: ["route-decision.md", "read-only-boundary.md"],
+  orient: ["route-decision.md", "read-only-boundary.md", "user-facing-summary.md"],
   intake: ["capture-boundary.md", "promotion-rules.md"],
-  execute: ["routing-boundaries.md", "execution-roles.md", "completion-evidence.md"]
+  execute: [
+    "routing-boundaries.md",
+    "execution-roles.md",
+    "completion-evidence.md",
+    "adversarial-acceptance.md",
+    "user-facing-closeout.md"
+  ]
 };
 for (const [skillName, referenceFiles] of Object.entries(expectedSkillReferences)) {
   const referencesDir = join(repoRoot, "plugins/agent-harness/skills", skillName, "references");
@@ -183,6 +189,18 @@ const workflowSkillDescriptions = Object.fromEntries(
   Object.entries(workflowSkillDocs).map(([name, doc]) => [name, frontmatterDescription(doc)])
 );
 const taskRoutingReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/task-routing.md"), "utf8");
+const firstPrinciplesScopeReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/references/first-principles-scope.md"),
+  "utf8"
+);
+const workerRunnerContractReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/references/worker-runner-contract.md"),
+  "utf8"
+);
+const workerPromptTemplate = readFileSync(
+  join(repoRoot, "plugins/agent-harness/templates/worker-prompt.md"),
+  "utf8"
+);
 const orientRouteDecisionReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/skills/orient/references/route-decision.md"),
   "utf8"
@@ -193,6 +211,14 @@ const controllerCommunicationReference = readFileSync(
 );
 const executionRolesReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/skills/execute/references/execution-roles.md"),
+  "utf8"
+);
+const adversarialAcceptanceReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/skills/execute/references/adversarial-acceptance.md"),
+  "utf8"
+);
+const adoptionBoundaryReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/skills/init/references/adoption-boundary.md"),
   "utf8"
 );
 const intakePromotionReference = readFileSync(
@@ -280,6 +306,96 @@ assertIncludes(
   "execute should route ambiguous work through the task-routing reference"
 );
 assertIncludes(
+  workflowSkillDocs.execute,
+  "../../references/first-principles-scope.md",
+  "execute should load first-principles scope before ambiguous execution"
+);
+assertIncludes(
+  workflowSkillDocs.execute,
+  "../../references/worker-runner-contract.md",
+  "execute should load worker runner contract before worker launch or acceptance"
+);
+assertIncludes(
+  workflowSkillDocs.execute,
+  "../../references/controller-communication.md",
+  "execute should load controller communication packets before worker handoff or acceptance"
+);
+assertIncludes(
+  workflowSkillDocs.execute,
+  "../../references/gate-results.md",
+  "execute should load gate result rules before accepting gate or integration state"
+);
+assertIncludes(
+  workflowSkillDocs.execute,
+  "references/adversarial-acceptance.md",
+  "execute should adversarially review completion before accepting state"
+);
+assertIncludes(
+  workflowSkillDocs.execute,
+  "User-Facing Closeout",
+  "execute should compress execution evidence into a user-facing closeout"
+);
+assertIncludes(
+  taskRoutingReference,
+  "First-Principles Scope",
+  "task-routing should expose the first-principles scope check"
+);
+assertIncludes(
+  firstPrinciplesScopeReference,
+  "Use this reference before routing ambiguous work",
+  "first-principles scope reference should state when to load it"
+);
+assertIncludes(
+  firstPrinciplesScopeReference,
+  "route to `intake`, `shape`, `goal`, state sync, or\n`ask` before execution",
+  "first-principles scope should route unclear work away from execution"
+);
+assertIncludes(
+  workerRunnerContractReference,
+  "Use this reference before launching, prompting, recording, or accepting",
+  "worker runner contract should state when to load it"
+);
+assertIncludes(
+  workerRunnerContractReference,
+  "A worker is an execution surface that\nreturns candidate evidence to the controller",
+  "worker runner contract should define worker output as candidate evidence"
+);
+assertIncludes(
+  workerRunnerContractReference,
+  "Do not update accepted task, status, goal, run, gate, or release state",
+  "worker runner contract should forbid workers from mutating accepted state"
+);
+assertIncludes(
+  workerPromptTemplate,
+  "You are an execution worker for one DAG node",
+  "worker prompt template should constrain worker identity"
+);
+assertIncludes(
+  workerPromptTemplate,
+  "Return candidate evidence only",
+  "worker prompt template should prevent worker self-acceptance"
+);
+assertIncludes(
+  adversarialAcceptanceReference,
+  "Try to reject completion before accepting it",
+  "adversarial acceptance should force a rejection pass before completion"
+);
+assertIncludes(
+  adversarialAcceptanceReference,
+  "If any check fails, do not mark the task, goal, run, or gate complete",
+  "adversarial acceptance should block completion when evidence is missing"
+);
+assertIncludes(
+  workflowSkillDocs.init,
+  "Audit, doctor, and activation-preview requests are read-only by default",
+  "init should keep setup audit and activation preview read-only by default"
+);
+assertIncludes(
+  adoptionBoundaryReference,
+  "activation-preview requests as read-only",
+  "adoption boundary should keep audit and activation-preview requests read-only by default"
+);
+assertIncludes(
   workflowSkillDocs.orient,
   "../../references/task-routing.md",
   "orient should route ambiguous work through the task-routing reference"
@@ -303,6 +419,16 @@ assertIncludes(
   controllerCommunicationReference,
   "Supersedes",
   "controller packets should record which older plan a revised decision replaces"
+);
+assertIncludes(
+  controllerCommunicationReference,
+  "Worker Runner Contract",
+  "controller communication should link worker runner contract"
+);
+assertIncludes(
+  controllerCommunicationReference,
+  "templates/worker-prompt.md",
+  "controller communication should point worker launches at the prompt template"
 );
 const designPrincipleFiles = [
   "docs/project-contract.md",
@@ -381,10 +507,12 @@ assertExcludes(
 assertIncludes(rootReadme, "They are not installed as", "README should explain source adapter artifacts are not installed plugin content");
 assertIncludes(cliDoc, "--gate-evidence", "CLI reference should document gate-only run evidence");
 assertIncludes(cliDocZh, "--gate-evidence", "zh-CN CLI reference should document gate-only run evidence");
+assertIncludes(cliDoc, "--allow-no-spec", "CLI reference should document explicit spec-less goals");
+assertIncludes(cliDocZh, "--allow-no-spec", "zh-CN CLI reference should document explicit spec-less goals");
 assertIncludes(cliDoc, "run node record", "CLI reference should document DAG node result recording");
 assertIncludes(cliDocZh, "run node record", "zh-CN CLI reference should document DAG node result recording");
 const projectContractDoc = readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8");
-for (const needle of ["## Conversation Reconciliation Rules", "## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Conversation Route And Execution Context Lock", "## Delivery State Gate", "## Agent-Neutral Delegation Rules", "`dag.json`"]) {
+for (const needle of ["## Conversation Reconciliation Rules", "## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Conversation Route And Execution Context Lock", "## Spec-Less Goal Policy", "`--allow-no-spec`", "table-based task indexes", "## Delivery State Gate", "## Agent-Neutral Delegation Rules", "`dag.json`"]) {
   assertIncludes(projectContractDoc, needle, "project contract should document execution roles");
 }
 const executeSkillDoc = readFileSync(join(repoRoot, "plugins/agent-harness/skills/execute/SKILL.md"), "utf8");
@@ -406,6 +534,8 @@ assertIncludes(cliSource, "defaultWorkerSurface", "run status should expose defa
 assertIncludes(cliSource, "codex-cli-subagent", "run prepare should default workers to subagents");
 assertIncludes(cliSource, "gate-evidence", "run record should expose gate evidence input");
 assertIncludes(cliSource, "dag.json", "run prepare should expose execution DAG artifacts");
+assertIncludes(cliSource, "allow-no-spec", "goal create should expose explicit spec-less goal input");
+assertIncludes(cliSource, "Spec Policy", "goal generator should persist spec-less policy");
 
 const suiteDir = mkdtempSync(join(tmpdir(), "agent-harness-smoke-"));
 
@@ -520,6 +650,13 @@ try {
   const adapterOrientJson = JSON.parse(run(["orient", "next", "--cwd", adapter, "--json"]));
   assert(adapterOrientJson.tasks.ready[0].title === "Define the next concrete task", "orient json should expose ready task");
   assert(adapterOrientJson.recommendation.title === "Define the next concrete task", "orient json should recommend ready task");
+  assert(adapterOrientJson.recommendation.route === "shape", "P1 todo without spec should route to shaping");
+  assert(adapterOrientJson.recommendation.goalCommand === "", "P1 todo without spec should not recommend unusable goal create");
+  assertIncludes(
+    run(["orient", "next", "--cwd", adapter]),
+    "not recommended until spec or accepted scope is confirmed",
+    "orient text should avoid unusable goal create for missing-spec task"
+  );
   const adapterTasksBeforeIntake = readFileSync(join(adapter, "harness/tasks.md"), "utf8");
   const adapterIntakePreview = JSON.parse(run([
     "intake",
@@ -571,6 +708,27 @@ try {
     "plugins/agent-harness/references/",
     "adapter goal should not reference plugin source paths"
   );
+  write(join(adapter, "harness/specs/ready.md"), "# Ready Spec\n\nStatus: accepted\n");
+  write(join(adapter, "harness/goals/existing.md"), "# Existing Goal\n");
+  write(join(adapter, "harness/tasks.md"), `# Project Tasks
+
+| Task | Type | Status | Priority | Doc |
+| --- | --- | --- | --- | --- |
+| Ship from accepted spec | development | spec-ready | P1 | [harness/specs/ready.md](harness/specs/ready.md) |
+`);
+  const specReadyOrient = JSON.parse(run(["orient", "next", "--cwd", adapter, "--json"]));
+  assert(specReadyOrient.recommendation.route === "goal", "spec-ready with spec should route to goal creation");
+  assertIncludes(specReadyOrient.recommendation.goalCommand, "--spec \"harness/specs/ready.md\"", "spec-ready recommendation should include spec path");
+  write(join(adapter, "harness/tasks.md"), `# Project Tasks
+
+| Task | Type | Status | Priority | Doc |
+| --- | --- | --- | --- | --- |
+| Continue accepted goal | development | goal-ready | P1 | [harness/goals/existing.md](harness/goals/existing.md) |
+`);
+  const goalReadyOrient = JSON.parse(run(["orient", "next", "--cwd", adapter, "--json"]));
+  assert(goalReadyOrient.recommendation.route === "goal-ready", "goal-ready should route to existing goal handling");
+  assertIncludes(goalReadyOrient.recommendation.goalCommand, "goal validate", "goal-ready recommendation should validate existing goal");
+  assertIncludes(goalReadyOrient.recommendation.goalCommand, "run prepare", "goal-ready recommendation should prepare a run after validation");
 
   const custom = join(suiteDir, "adapter-custom");
   mkdirSync(custom, { recursive: true });
@@ -652,6 +810,11 @@ try {
   assertIncludes(customGoalDryRun, "Confirm paid provider calls", "custom goal should include adapter preflight");
   assertIncludes(customGoalDryRun, "Update todolist.md", "custom goal should include adapter state sync");
   assertExcludes(customGoalDryRun, "plugins/agent-harness/references/", "custom goal should not include plugin source paths");
+  assertIncludes(
+    runFails(["goal", "create", "--cwd", custom, "--task", "Ship custom path behavior", "--dry-run"]),
+    "requires --spec <spec-path> unless --allow-no-spec",
+    "adapter goal create should remain strict without explicit spec-less flag"
+  );
   run([
     "goal",
     "create",
@@ -795,6 +958,65 @@ try {
   assert(blockedRecord.phase === "blocked", "run record should report blocked phase");
   assert(existsSync(join(custom, blockedRecord.log)), "run record should write blocked log");
 
+  const specLess = join(suiteDir, "adapter-spec-less");
+  mkdirSync(specLess, { recursive: true });
+  run(["init", "--cwd", specLess, "--contract", "adapter"]);
+  write(join(specLess, "harness/tasks.md"), `# Project Tasks
+
+| Task | Type | Status | Priority | Doc |
+| --- | --- | --- | --- | --- |
+| Execute accepted scope without spec | development | goal-ready | P1 |  |
+`);
+  assertIncludes(
+    runFails(["goal", "create", "--cwd", specLess, "--task", "Execute accepted scope without spec"]),
+    "requires --spec <spec-path> unless --allow-no-spec",
+    "adapter goal create should reject missing spec by default"
+  );
+  const specLessDryRun = run([
+    "goal",
+    "create",
+    "--cwd",
+    specLess,
+    "--task",
+    "Execute accepted scope without spec",
+    "--allow-no-spec",
+    "--dry-run"
+  ]);
+  assertIncludes(specLessDryRun, "Spec Policy: allow-no-spec", "spec-less goal dry-run should persist explicit policy");
+  assertIncludes(specLessDryRun, "## Delivery State", "spec-less goal should include delivery state");
+  run([
+    "goal",
+    "create",
+    "--cwd",
+    specLess,
+    "--task",
+    "Execute accepted scope without spec",
+    "--allow-no-spec"
+  ]);
+  const specLessGoal = latestFile(join(specLess, "harness/goals"));
+  const specLessValidation = JSON.parse(run(["goal", "validate", "--cwd", specLess, "--goal", specLessGoal, "--json"]));
+  assert(specLessValidation.ok === true, "explicit spec-less goal should validate");
+  assert(specLessValidation.goal.specPolicy === "allow-no-spec", "goal validate should expose spec-less policy");
+  write(join(specLess, "harness/goals/spec-less-missing-policy.md"), readFileSync(specLessGoal, "utf8").replace("Spec Policy: allow-no-spec\n", ""));
+  assertIncludes(
+    runFails(["goal", "validate", "--cwd", specLess, "--goal", "harness/goals/spec-less-missing-policy.md", "--json"]),
+    "unless Spec Policy is allow-no-spec",
+    "spec-less goal without explicit policy should fail validation"
+  );
+  run(["run", "prepare", "--cwd", specLess, "--goal", specLessGoal]);
+  const specLessRun = readdirSync(join(specLess, ".harness/runs")).filter((name) => name.endsWith("-execute-accepted-scope-without-spec")).sort().at(-1);
+  assert(specLessRun, "spec-less run should be prepared");
+  assertIncludes(
+    readFileSync(join(specLess, ".harness/runs", specLessRun, "run.md"), "utf8"),
+    "none (allow-no-spec)",
+    "spec-less run packet should not pretend a spec exists"
+  );
+  assertExcludes(
+    readFileSync(join(specLess, ".harness/runs", specLessRun, "prompt.md"), "utf8"),
+    "and `TBD` before making edits",
+    "spec-less run prompt should not ask workers to read TBD"
+  );
+
   const largeDagGoal = `# Goal: Large DAG Work
 
 Spec: harness/specs/custom.md
@@ -887,6 +1109,24 @@ Manual verification evidence only.
   assert(existsSync(join(largeDagRunDir, "dag.md")), "run prepare should write human-readable DAG");
   assert(existsSync(join(largeDagRunDir, "agents/explorer/prompt.md")), "run prepare should write explorer prompt");
   assert(existsSync(join(largeDagRunDir, "agents/cli-contract-worker/prompt.md")), "run prepare should write parallel worker prompt");
+  const cliWorkerPrompt = readFileSync(join(largeDagRunDir, "agents/cli-contract-worker/prompt.md"), "utf8");
+  assertIncludes(
+    cliWorkerPrompt,
+    "plugins/agent-harness/references/worker-runner-contract.md",
+    "generated worker prompts should load the worker runner contract"
+  );
+  assertIncludes(
+    cliWorkerPrompt,
+    "Your output is candidate evidence only",
+    "generated worker prompts should prevent worker self-acceptance"
+  );
+  assertIncludes(
+    cliWorkerPrompt,
+    "Do not update accepted task, status, goal, run, gate, integration, release, or ship state",
+    "generated worker prompts should forbid accepted-state mutation"
+  );
+  assertIncludes(cliWorkerPrompt, "Delivery state:", "worker result packet should report delivery state");
+  assertIncludes(cliWorkerPrompt, "Working tree dirty:", "worker result packet should report dirty state");
   const largeDagStatusJson = JSON.parse(run(["run", "status", "--cwd", custom, "--run", largeDagRunRel, "--json"]));
   assert(
     JSON.stringify(largeDagStatusJson.executionDag.readyNodes) === JSON.stringify(["explorer"]),
@@ -1565,6 +1805,66 @@ Manual verification evidence only.
   assert(existsSync(join(discovered, "harness/mental-models/04-ownership-boundary.md")), "import should create ownership model");
   assert(!existsSync(join(discovered, "harness/tasks.md")), "import should not create a second task index");
   assertIncludes(run(["doctor", "--cwd", discovered]), "Harness files: ok", "imported project should still pass doctor");
+
+  const importCustomPaths = join(suiteDir, "adapter-import-custom-paths");
+  mkdirSync(importCustomPaths, { recursive: true });
+  write(join(importCustomPaths, "harness/README.md"), "# Harness Adapter\n");
+  write(join(importCustomPaths, "todolist.md"), `# Todo List
+
+| Task | Type | Status | Priority | Doc |
+| --- | --- | --- | --- | --- |
+| Preserve existing adapter paths | docs | todo | P1 |  |
+`);
+  write(join(importCustomPaths, "docs/mental-model.md"), "# Existing Mental Model\n");
+  mkdirSync(join(importCustomPaths, "docs/milestones"), { recursive: true });
+  const importOverrideArgs = [
+    "config",
+    "import",
+    "--cwd",
+    importCustomPaths,
+    "--task-index",
+    "todolist.md",
+    "--status",
+    "docs/status.md",
+    "--specs",
+    "docs/specs",
+    "--goals",
+    "docs/goals",
+    "--milestones",
+    "docs/milestones",
+    "--runs",
+    ".harness/runs",
+    "--gate-records",
+    "docs/gates",
+    "--deferred-register",
+    "docs/milestones",
+    "--mental-model",
+    "docs/mental-model.md",
+    "--mental-model-index",
+    "docs/mental-model.md",
+    "--mental-models",
+    "docs/mental-models"
+  ];
+  const importOverridesDryRun = JSON.parse(run([...importOverrideArgs, "--dry-run", "--json"]));
+  assert(importOverridesDryRun.dryRun === true, "override import dry-run should report dryRun=true");
+  assert(importOverridesDryRun.proposedConfig.paths.taskIndex === "todolist.md", "override import should preserve todolist task index");
+  assert(importOverridesDryRun.proposedConfig.paths.status === "docs/status.md", "override import should include custom status path");
+  assert(importOverridesDryRun.proposedConfig.paths.milestones === "docs/milestones", "override import should include custom milestones path");
+  assert(importOverridesDryRun.proposedConfig.paths.deferredRegister === "docs/milestones", "override import should include custom deferred register path");
+  assert(importOverridesDryRun.proposedConfig.paths.mentalModel === "docs/mental-model.md", "override import should include single mental model path");
+  assert(importOverridesDryRun.proposedConfig.paths.mentalModelIndex === "docs/mental-model.md", "override import should include custom mental model index");
+  assert(importOverridesDryRun.proposedConfig.paths.mentalModels === "docs/mental-models", "override import should include custom mental models dir");
+  assert(!existsSync(join(importCustomPaths, ".harness/config.json")), "override import dry-run should not write config");
+  const importedOverrides = JSON.parse(run([...importOverrideArgs, "--json"]));
+  assert(importedOverrides.paths.taskIndex === "todolist.md", "override import should preserve task index on write");
+  assert(existsSync(join(importCustomPaths, ".harness/config.json")), "override import should write config");
+  assert(existsSync(join(importCustomPaths, "docs/status.md")), "override import should create custom status");
+  assert(existsSync(join(importCustomPaths, "docs/specs")), "override import should create custom specs dir");
+  assert(existsSync(join(importCustomPaths, "docs/goals")), "override import should create custom goals dir");
+  assert(existsSync(join(importCustomPaths, "docs/mental-models/01-user-scenario.md")), "override import should create custom mental model artifacts");
+  assert(!existsSync(join(importCustomPaths, "harness/tasks.md")), "override import should not create a second task index");
+  assert(!existsSync(join(importCustomPaths, "harness/mental-models")), "override import should not create default mental model dir");
+  assertIncludes(readFileSync(join(importCustomPaths, "docs/mental-model.md"), "utf8"), "Existing Mental Model", "override import should not overwrite existing mental model file");
 
   const initExisting = join(suiteDir, "adapter-init-existing");
   mkdirSync(initExisting, { recursive: true });

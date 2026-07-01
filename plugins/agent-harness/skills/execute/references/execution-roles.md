@@ -46,6 +46,7 @@ allowed scope, forbidden scope, verification, or acceptance authority is
 missing. Continue only when the missing item is clearly not applicable or
 already supplied by a confirmed spec, goal, or run.
 
-Do not describe local implementation as integrated, shipped, or mainline
-complete unless Delivery State evidence records the commit, push, review,
-integration, and release state that supports that wording.
+Do not describe local implementation as integrated, shipped, or complete on the
+integration line unless Delivery State evidence records the commit, push,
+review, integration, and release state that supports that wording. Harness core
+does not assume that line is named `main`.

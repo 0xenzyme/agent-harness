@@ -14,6 +14,8 @@ without starting implementation.
   harness mode.
 - Use [Read-Only Boundary](references/read-only-boundary.md) when the request
   mixes orientation with mutation or execution language.
+- Use [User-Facing Summary](references/user-facing-summary.md) before the final
+  response to translate route evidence into a concise user decision prompt.
 
 ## Workflow
 
@@ -57,6 +59,11 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 10. For ambiguous route selection, read
    [Task Routing](../../references/task-routing.md) and use its route decision
    fields without mutating project state.
+11. Before the final answer, read
+    [User-Facing Summary](references/user-facing-summary.md) and compress the
+    control evidence into the current situation, stop reason, and exact user
+    choice. Do not paste a full route packet unless the user asks for audit or
+    handoff detail.
 
 ## Boundaries
 

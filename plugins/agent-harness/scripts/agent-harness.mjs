@@ -77,6 +77,8 @@ function parseArgs(argv) {
     "lang",
     "contract",
     "mode",
+    "deferredRegister",
+    "deferred-register",
     "phase",
     "priority",
     "prUrl",
@@ -87,12 +89,25 @@ function parseArgs(argv) {
     "review-url",
     "releaseRef",
     "release-ref",
+    "gateRecords",
+    "gate-records",
     "mergeSha",
     "merge-sha",
+    "mentalModel",
+    "mental-model",
+    "mentalModelIndex",
+    "mental-model-index",
+    "mentalModels",
+    "mental-models",
     "node",
     "run",
     "section",
     "summary",
+    "status",
+    "specs",
+    "goals",
+    "milestones",
+    "runs",
     "surface",
     "spec",
     "taskIndex",
@@ -103,7 +118,7 @@ function parseArgs(argv) {
     "workMode",
     "work-mode"
   ]);
-  const booleanOptions = new Set(["dryRun", "dry-run", "force", "help", "json", "record"]);
+  const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "dryRun", "dry-run", "force", "help", "json", "record"]);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -193,10 +208,10 @@ const messages = {
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config validate [--cwd PATH] [--json]
-  agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
+  agent-harness config import [--cwd PATH] [--task-index PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--work-mode local|worktree|ask] [--dry-run] [--force]
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run] [--force]
   agent-harness goal list [--cwd PATH] [--json]
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
@@ -235,10 +250,10 @@ const messages = {
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config validate [--cwd PATH] [--json]
-  agent-harness config import [--cwd PATH] [--task-index PATH] [--dry-run] [--force] [--json]
+  agent-harness config import [--cwd PATH] [--task-index PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--work-mode local|worktree|ask] [--dry-run] [--force]
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run] [--force]
   agent-harness goal list [--cwd PATH] [--json]
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
@@ -550,6 +565,22 @@ function validateConfiguredPaths(config, contract) {
   return errors;
 }
 
+function validateConfigPayloadObject(config) {
+  const errors = [];
+  let contract = "fixed";
+  try {
+    contract = normalizeHarnessContract(config);
+  } catch (error) {
+    errors.push(error.message);
+  }
+  errors.push(...validateJsonSchemaValue(config, readConfigSchema()));
+  errors.push(...validateConfiguredPaths(config, contract));
+  return {
+    ok: errors.length === 0,
+    errors
+  };
+}
+
 function configValidationPayload(cwd) {
   const configPath = findConfigRelPath(cwd);
   const schemaPathAbs = join(schemaRoot, configSchemaFile);
@@ -623,18 +654,25 @@ function discoverAdapterProject(cwd, options = {}) {
   const adapterDocs = options.adapterDocs
     || firstExistingPath(cwd, [adapterContract.adapterDocs, "docs/harness/README.md"]);
   const taskIndex = chooseExistingTaskIndex(cwd, options.taskIndex || "");
-  const specs = firstExistingPath(cwd, [adapterContract.specs, "docs/specs"]);
-  const goals = firstExistingPath(cwd, [adapterContract.goals, "docs/goals"]);
-  const milestones = firstExistingPath(cwd, [adapterContract.milestones, "docs/milestones"]);
+  const specs = options.specs || firstExistingPath(cwd, [adapterContract.specs, "docs/specs"]);
+  const goals = options.goals || firstExistingPath(cwd, [adapterContract.goals, "docs/goals"]);
+  const milestones = options.milestones || firstExistingPath(cwd, [adapterContract.milestones, "docs/milestones"]);
   const hasAdapterArtifacts = Boolean(adapterDocs && (taskIndex || specs || goals || milestones));
 
   return {
     detected: hasAdapterArtifacts,
     adapterDocs,
     taskIndex,
+    status: options.status || "",
     specs,
     goals,
-    milestones
+    milestones,
+    runs: options.runs || "",
+    gateRecords: options.gateRecords || "",
+    deferredRegister: options.deferredRegister || "",
+    mentalModel: options.mentalModel || "",
+    mentalModelIndex: options.mentalModelIndex || "",
+    mentalModels: options.mentalModels || ""
   };
 }
 
@@ -654,7 +692,10 @@ function buildAdapterConfigPayload(projectName, discovery = {}) {
   payload.paths.gateRecords = discovery.gateRecords || payload.paths.gateRecords || payload.paths.runs || adapterContract.gateRecords;
   payload.paths.deferredRegister = discovery.deferredRegister || payload.paths.deferredRegister || payload.paths.milestones || adapterContract.deferredRegister;
   payload.paths.mentalModels = discovery.mentalModels || payload.paths.mentalModels || adapterContract.mentalModels;
-  payload.paths.mentalModelIndex = discovery.mentalModelIndex || payload.paths.mentalModelIndex || adapterContract.mentalModelIndex;
+  if (discovery.mentalModel) {
+    payload.paths.mentalModel = discovery.mentalModel;
+  }
+  payload.paths.mentalModelIndex = discovery.mentalModelIndex || discovery.mentalModel || payload.paths.mentalModelIndex || adapterContract.mentalModelIndex;
 
   return payload;
 }
@@ -970,7 +1011,17 @@ function configImport(args) {
   const activeConfigRelPath = findConfigRelPath(cwd);
   const discovery = discoverAdapterProject(cwd, {
     taskIndex: args.taskIndex,
-    adapterDocs: args.adapterDocs
+    adapterDocs: args.adapterDocs,
+    status: args.status,
+    specs: args.specs,
+    goals: args.goals,
+    milestones: args.milestones,
+    runs: args.runs,
+    gateRecords: args.gateRecords,
+    deferredRegister: args.deferredRegister,
+    mentalModel: args.mentalModel,
+    mentalModelIndex: args.mentalModelIndex,
+    mentalModels: args.mentalModels
   });
 
   if (!discovery.detected) {
@@ -989,6 +1040,10 @@ function configImport(args) {
   }
 
   const configPayload = buildAdapterConfigPayload(projectName, discovery);
+  const configValidation = validateConfigPayloadObject(configPayload);
+  if (!configValidation.ok) {
+    throw new Error(`Proposed adapter config is invalid:\n${configValidation.errors.map((error) => `- ${error}`).join("\n")}`);
+  }
   const paths = resolvedAdapterPaths(configPayload, configRelPath);
 
   const payload = {
@@ -1006,6 +1061,8 @@ function configImport(args) {
     created: [],
     contract: "adapter",
     cwd,
+    proposedConfig: configPayload,
+    configValidation,
     paths
   };
 
@@ -1539,6 +1596,130 @@ function taskSummary(task) {
   };
 }
 
+function pathInConfiguredDir(relPath, dirPath) {
+  const cleanedPath = cleanLinkedTarget(relPath);
+  const cleanedDir = cleanLinkedTarget(dirPath).replace(/\/+$/g, "");
+  return Boolean(cleanedPath && cleanedDir && (cleanedPath === cleanedDir || cleanedPath.startsWith(`${cleanedDir}/`)));
+}
+
+function taskLinkedDocs(task) {
+  return extractLinkedDocPaths(detailValue(task, "Doc"));
+}
+
+function taskSpecPath(task, paths) {
+  const explicit = cleanLinkedTarget(detailValue(task, "Spec"));
+  if (explicit) {
+    return explicit;
+  }
+  return taskLinkedDocs(task).find((docPath) => pathInConfiguredDir(docPath, paths.specs)) || "";
+}
+
+function taskGoalPath(task, paths) {
+  const explicit = cleanLinkedTarget(detailValue(task, "Goal"));
+  if (explicit) {
+    return explicit;
+  }
+  return taskLinkedDocs(task).find((docPath) => pathInConfiguredDir(docPath, paths.goals)) || "";
+}
+
+function existingGoalForTask(cwd, paths, task) {
+  const goalsPath = paths.goals || fixedContract.goals;
+  for (const goalPath of goalFiles(cwd, goalsPath)) {
+    const source = goalSourceTask(readFileSync(goalPath, "utf8"));
+    if (source.title && normalizedTaskTitle(source.title) === normalizedTaskTitle(task.title)) {
+      return displayPath(cwd, goalPath);
+    }
+  }
+  return "";
+}
+
+function shellQuote(value) {
+  return `"${String(value).replace(/(["\\$`])/g, "\\$1")}"`;
+}
+
+function recommendationForTask(task, context, reason) {
+  const status = taskStatus(task);
+  const priority = priorityRank(task.priority);
+  const specPath = taskSpecPath(task, context.paths);
+  const linkedGoalPath = taskGoalPath(task, context.paths);
+  const existingGoalPath = linkedGoalPath || existingGoalForTask(context.cwd, context.paths, task);
+  const titleArg = shellQuote(task.title);
+  const specArg = specPath ? ` --spec ${shellQuote(specPath)}` : "";
+
+  const base = {
+    title: task.title,
+    taskState: status || "unspecified",
+    priority: task.priority || "",
+    spec: specPath,
+    goal: existingGoalPath,
+    reason,
+    route: "",
+    startPrompt: "",
+    goalCommand: ""
+  };
+
+  if (status === "goal-ready") {
+    if (existingGoalPath) {
+      return {
+        ...base,
+        route: "goal-ready",
+        startPrompt: `Validate existing goal for: ${task.title}`,
+        goalCommand: `agent-harness goal validate --cwd . --goal ${shellQuote(existingGoalPath)} && agent-harness run prepare --cwd . --goal ${shellQuote(existingGoalPath)}`
+      };
+    }
+    return {
+      ...base,
+      route: "goal-ready",
+      startPrompt: `Create a goal from accepted scope for: ${task.title}`,
+      goalCommand: specPath
+        ? `agent-harness goal create --cwd . --task ${titleArg}${specArg}`
+        : `agent-harness goal create --cwd . --task ${titleArg} --allow-no-spec`
+    };
+  }
+
+  if (status === "spec-ready") {
+    if (specPath) {
+      return {
+        ...base,
+        route: "goal",
+        startPrompt: `Create a goal from the accepted spec for: ${task.title}`,
+        goalCommand: `agent-harness goal create --cwd . --task ${titleArg}${specArg}`
+      };
+    }
+    return {
+      ...base,
+      route: "shape",
+      startPrompt: `Link or confirm the accepted spec for: ${task.title}`,
+      goalCommand: ""
+    };
+  }
+
+  if (["todo", "spec-draft"].includes(status) && priority <= 1 && !specPath) {
+    return {
+      ...base,
+      route: "shape",
+      startPrompt: `Shape or confirm scope/spec before creating a goal for: ${task.title}`,
+      goalCommand: ""
+    };
+  }
+
+  if (specPath) {
+    return {
+      ...base,
+      route: "goal",
+      startPrompt: `Create a goal from the linked spec for: ${task.title}`,
+      goalCommand: `agent-harness goal create --cwd . --task ${titleArg}${specArg}`
+    };
+  }
+
+  return {
+    ...base,
+    route: "shape",
+    startPrompt: `Confirm accepted scope before goal creation for: ${task.title}`,
+    goalCommand: ""
+  };
+}
+
 function isBlockedTask(task) {
   const status = taskStatus(task);
   return ["blocked", "paused", "action-needed"].includes(status);
@@ -1598,20 +1779,23 @@ function orientationPayload(args) {
   const inProgress = tasks.filter(isInProgressTask).sort(taskSort);
   const done = tasks.filter(isDoneTask).sort(taskSort);
   const recommendationTask = ready[0] || inProgress[0] || blocked[0] || null;
+  const recommendationReason = recommendationTask
+    ? ready[0] === recommendationTask
+      ? "highest-priority ready task from the configured task index"
+      : inProgress[0] === recommendationTask
+        ? "no ready task found; continue the active in-progress task"
+        : "no ready or in-progress task found; unblock the highest-priority blocked task"
+    : "";
   const recommendation = recommendationTask
-    ? {
-      title: recommendationTask.title,
-      reason: ready[0] === recommendationTask
-        ? "highest-priority ready task from the configured task index"
-        : inProgress[0] === recommendationTask
-          ? "no ready task found; continue the active in-progress task"
-          : "no ready or in-progress task found; unblock the highest-priority blocked task",
-      startPrompt: `Use harness to work on: ${recommendationTask.title}`,
-      goalCommand: `agent-harness goal create --cwd . --task "${recommendationTask.title}"`
-    }
+    ? recommendationForTask(recommendationTask, context, recommendationReason)
     : {
       title: "",
+      taskState: "",
+      priority: "",
+      spec: "",
+      goal: "",
       reason: "no parsed tasks found in the configured task index",
+      route: "",
       startPrompt: "",
       goalCommand: ""
     };
@@ -1695,8 +1879,15 @@ function orientNext(args) {
   if (payload.recommendation.title) {
     console.log(`- ${payload.recommendation.title}`);
     console.log(`- Reason: ${payload.recommendation.reason}`);
+    console.log(`- Route: ${payload.recommendation.route}`);
     console.log(`- To start: ${payload.recommendation.startPrompt}`);
-    console.log(`- Goal command: ${payload.recommendation.goalCommand}`);
+    if (payload.recommendation.spec) {
+      console.log(`- Spec: ${payload.recommendation.spec}`);
+    }
+    if (payload.recommendation.goal) {
+      console.log(`- Goal: ${payload.recommendation.goal}`);
+    }
+    console.log(`- Goal command: ${payload.recommendation.goalCommand || "not recommended until spec or accepted scope is confirmed"}`);
   } else {
     console.log(`- ${payload.recommendation.reason}`);
   }
@@ -2955,7 +3146,7 @@ function stateSyncPaths(context) {
   ]);
 }
 
-function buildGoalContent({ task, context, specPath, workMode }) {
+function buildGoalContent({ task, context, specPath, workMode, allowNoSpec = false }) {
   const heading = titleCase(task.title);
   const paths = context.paths;
   const taskIndexPath = paths.taskIndex || paths.tasks;
@@ -2964,6 +3155,13 @@ function buildGoalContent({ task, context, specPath, workMode }) {
   const acceptance = detailValue(task, "Acceptance") || "Define concrete acceptance before implementation.";
   const notes = detailValue(task, "Notes");
   const spec = specPath || detailValue(task, "Spec") || "TBD";
+  const hasConfirmedSpec = !missingSpecValue(spec);
+  const specPolicyLine = !hasConfirmedSpec && allowNoSpec ? "Spec Policy: allow-no-spec\n" : "";
+  const statusLine = hasConfirmedSpec
+    ? "Ready for execution from confirmed spec."
+    : allowNoSpec
+      ? "Ready for execution from accepted scope without a separate spec."
+      : "Draft goal handoff; execute only after the spec is confirmed by the user.";
   const docValue = detailValue(task, "Doc");
   const linkedDocs = extractLinkedDocPaths(docValue);
   const selectedWorkMode = workMode || "ask";
@@ -2975,7 +3173,7 @@ function buildGoalContent({ task, context, specPath, workMode }) {
     context.mode === "adapter" ? paths.adapterDocs : "",
     existingReadPath(context, paths.config),
     existingReadPath(context, statusPath),
-    spec !== "TBD" ? spec : "",
+    hasConfirmedSpec ? spec : "",
     ...linkedDocs
   ]);
 
@@ -3009,7 +3207,7 @@ function buildGoalContent({ task, context, specPath, workMode }) {
   return `# Goal: ${heading}
 
 Spec: ${spec}
-Status: ${spec !== "TBD" ? "Ready for execution from confirmed spec." : "Draft goal handoff; execute only after the spec is confirmed by the user."}
+${specPolicyLine}Status: ${statusLine}
 
 ## Source Task
 
@@ -3021,7 +3219,7 @@ ${readFirstList}
 
 ## Work Mode Recommendation
 
-Use \`${selectedWorkMode}\` until the goal has a confirmed spec and clear file ownership.
+Use \`${selectedWorkMode}\` until the goal has ${hasConfirmedSpec ? "a confirmed spec" : "accepted scope"} and clear file ownership.
 
 ## Execution Role
 
@@ -3060,9 +3258,14 @@ Use \`current-thread\`.
 
 Completed development runs must reach Target delivery state. By default,
 gate-passing implementation work is committed and integrated into the
-development mainline; release / ship remains out of scope unless the delivery
-policy explicitly authorizes it. Lower the target to \`validated-local\` only
-for local-only spikes, audits, or explicitly uncommitted work.
+target integration line declared by the project adapter, confirmed goal, or
+explicit user instruction; release / ship remains out of scope unless the
+delivery policy explicitly authorizes it. Lower the target to \`validated-local\`
+only for local-only spikes, audits, or explicitly uncommitted work.
+
+The locked Execution branch records where implementation happens. It is not
+automatically the integration target, and Harness core does not assume a branch
+named \`main\`.
 
 ## Execution DAG
 
@@ -3112,7 +3315,7 @@ If no deterministic command exists, document the manual verification evidence be
 
 ## Pause Conditions
 
-- The referenced spec is missing, unconfirmed, or conflicts with code, production constraints, or newer user instructions.
+- The referenced spec or accepted scope is missing, unconfirmed, or conflicts with code, production constraints, or newer user instructions.
 - The work requires credentials, paid APIs, production access, destructive commands, release, or a delivery step above the Delivery State policy.
 - Product direction, file ownership, or worktree policy is unclear.
 - User gives new instructions that conflict with this goal.
@@ -3125,13 +3328,13 @@ function goalCreate(args) {
   const paths = context.paths;
   const taskQuery = args.task;
   if (!taskQuery) {
-    throw new Error("Usage: agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--work-mode local|worktree|ask] [--dry-run]");
+    throw new Error("Usage: agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run]");
   }
   if (args.workMode && !validWorkModes.has(args.workMode)) {
     throw new Error(`Invalid --work-mode: ${args.workMode}`);
   }
-  if (context.mode === "adapter" && !args.spec) {
-    throw new Error("Adapter goal creation requires --spec <spec-path>.");
+  if (context.mode === "adapter" && !args.spec && !args.allowNoSpec) {
+    throw new Error("Adapter goal creation requires --spec <spec-path> unless --allow-no-spec is explicitly set.");
   }
 
   const taskIndexRelPath = paths.taskIndex || paths.tasks;
@@ -3151,7 +3354,8 @@ function goalCreate(args) {
     task,
     context,
     specPath: args.spec,
-    workMode: args.workMode
+    workMode: args.workMode,
+    allowNoSpec: Boolean(args.allowNoSpec)
   });
 
   if (args.dryRun) {
@@ -3178,6 +3382,15 @@ function goalTitle(content, goalPath) {
 function extractStatusLine(content) {
   const match = content.match(/^Status:\s+(.+?)\s*$/m);
   return match ? match[1].trim() : "";
+}
+
+function extractSpecPolicyRaw(content) {
+  const match = content.match(/^Spec Policy:\s+`?([^\n`]+)`?\s*$/m);
+  return match ? match[1].trim().toLowerCase() : "";
+}
+
+function missingSpecValue(value) {
+  return !value || /^(tbd|n\/a|none|not specified)$/i.test(cleanMapValue(value));
 }
 
 function resolveProjectPath(cwd, relPath) {
@@ -3574,6 +3787,7 @@ function goalMetadata(cwd, goalPath) {
     path: displayPath(cwd, goalPath),
     title: goalTitle(content, goalPath),
     status: extractStatusLine(content),
+    specPolicy: extractSpecPolicyRaw(content),
     spec,
     specPath: specInProject && specAbs ? displayPath(cwd, specAbs) : spec,
     specExists,
@@ -3637,8 +3851,14 @@ function validateGoal(cwd, goalPath) {
 
   const metadata = goalMetadata(cwd, goalPath);
   const spec = metadata.spec;
-  if (!spec || spec.toLowerCase() === "tbd") {
-    errors.push("Spec must point to a repo-local spec file, not TBD.");
+  const allowNoSpec = metadata.specPolicy === "allow-no-spec";
+  if (metadata.specPolicy && !allowNoSpec) {
+    errors.push(`Spec Policy must be allow-no-spec when present; found ${metadata.specPolicy}.`);
+  }
+  if (missingSpecValue(spec)) {
+    if (!allowNoSpec) {
+      errors.push("Spec must point to a repo-local spec file, not TBD, unless Spec Policy is allow-no-spec.");
+    }
   } else {
     const specAbs = resolveProjectPath(cwd, spec);
     if (!isInsideProject(cwd, specAbs)) {
@@ -3655,6 +3875,7 @@ function validateGoal(cwd, goalPath) {
     ["Read First", "readFirst"],
     ["Work Mode Recommendation", "workModeRecommendation"],
     ["Execution Role", "executionRole"],
+    ["Delivery State", "deliveryState"],
     ["Scope", "scope"],
     ["Non-Goals", "nonGoals"],
     ["Verification", "verification"],
@@ -3668,7 +3889,7 @@ function validateGoal(cwd, goalPath) {
   }
 
   const readFirst = extractSection(content, "Read First");
-  if (spec && spec.toLowerCase() !== "tbd" && !readFirst.includes(spec)) {
+  if (!missingSpecValue(spec) && !readFirst.includes(spec)) {
     errors.push("Read First must include the referenced spec path.");
   }
 
@@ -4231,6 +4452,7 @@ ${layers || "No valid layers; inspect `dag.json` before execution."}
 - Use \`${dag.defaultWorkerSurface}\` by default for ready worker nodes.
 - Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
 - Use \`agent-harness run node record\` for each worker result before launching dependent nodes.
+- Read \`plugins/agent-harness/references/worker-runner-contract.md\` before launching or accepting worker output.
 - Treat worker output as candidate evidence until the controller validates scope, verification, state sync, and required gates.
 - Do not use fork as the default execution surface.
 `;
@@ -4250,6 +4472,9 @@ Depends on: \`${dependencies}\`
 Mode: \`${node.mode}\`
 
 You are an execution worker for one DAG node, not the controller thread.
+Your output is candidate evidence only. The controller is the only lane that
+may accept state, update accepted task/status/run/gate records, or mark work
+complete.
 
 ## Read First
 
@@ -4257,6 +4482,8 @@ You are an execution worker for one DAG node, not the controller thread.
 2. \`${relRunDir}/run.md\`
 3. \`${relRunDir}/dag.md\`
 4. \`${relRunDir}/prompt.md\`
+5. \`plugins/agent-harness/references/worker-runner-contract.md\`
+6. \`plugins/agent-harness/templates/worker-prompt.md\`
 
 ## Ownership
 
@@ -4277,6 +4504,8 @@ ${node.stopConditions}
 - Create a new Codex thread only when the controller explicitly needs a visible, long-lived handoff lane.
 - Do not use fork unless the controller explicitly approves it and restates your execution role.
 - Do not launch dependent nodes yourself.
+- Do not update accepted task, status, goal, run, gate, integration, release, or ship state.
+- Do not mark work complete; return candidate evidence for controller acceptance.
 - Do not release, deploy, publish, start a daemon, use credentials, use paid APIs, touch production, perform destructive operations, or execute delivery steps above the Delivery State policy unless the goal and controller explicitly authorize it.
 
 ## Return Contract
@@ -4297,6 +4526,13 @@ Validation:
 Known risks:
 Needs review:
 Commit:
+Delivery state:
+Target delivery state:
+Working tree dirty:
+Push:
+Review:
+Integration:
+Release:
 Controller notified:
 Worktree:
 Base commit:
@@ -4390,6 +4626,11 @@ function buildRunMarkdown({
   const adapterPath = context.paths.adapterDocs || "";
   const adapterRequirements = adapterRequirementLists(context);
   const spec = extractInlinePath(goalContent, "Spec") || "Not specified";
+  const specPolicy = extractSpecPolicyRaw(goalContent);
+  const specDisplay = missingSpecValue(spec) && specPolicy === "allow-no-spec" ? "none (allow-no-spec)" : spec;
+  const specCheckpoint = missingSpecValue(spec) && specPolicy === "allow-no-spec"
+    ? `Read \`${relGoal}\`; no separate spec is declared, so the goal's Scope, Non-Goals, Verification, Completion Conditions, and Pause Conditions are authoritative.`
+    : `Read \`${relGoal}\` and its referenced spec before editing.`;
   const sourceTask = extractSection(goalContent, "Source Task") || "Not specified";
   const verification = extractSection(goalContent, "Verification") || "No explicit verification section was found in the goal.";
   const adapterRequirementLines = context.mode === "adapter"
@@ -4406,7 +4647,7 @@ function buildRunMarkdown({
 Created: ${createdAt}
 Phase: prepared
 Goal: \`${relGoal}\`
-Spec: \`${spec}\`
+Spec: \`${specDisplay}\`
 Run directory: \`${relRunDir}\`
 Harness contract: \`${context.contract}\`
 Work mode: \`${workMode}\`
@@ -4445,7 +4686,7 @@ ${sourceTask}
 
 ## Manual Checkpoints
 
-1. Read \`${relGoal}\` and its referenced spec before editing.
+1. ${specCheckpoint}
 2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
 3. Confirm the execution role. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
 4. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
@@ -4479,6 +4720,10 @@ ${verification}
 function buildPromptMarkdown({ context, cwd, goalPath, goalContent }) {
   const relGoal = displayPath(cwd, goalPath);
   const spec = extractInlinePath(goalContent, "Spec") || "the spec referenced by the goal";
+  const specPolicy = extractSpecPolicyRaw(goalContent);
+  const readGoalInstruction = missingSpecValue(spec) && specPolicy === "allow-no-spec"
+    ? `Read \`${relGoal}\` before making edits; this goal uses \`Spec Policy: allow-no-spec\`, so its Scope, Non-Goals, Verification, Completion Conditions, and Pause Conditions are authoritative.`
+    : `Read \`${relGoal}\` and \`${spec}\` before making edits.`;
   const stateSyncPathList = stateSyncPaths(context);
   const adapterPath = context.paths.adapterDocs || "";
   const executionRole = extractGoalExecutionRoleRaw(goalContent) || "missing";
@@ -4495,7 +4740,7 @@ In \`${cwd}\`, execute this goal:
 
 Requirements:
 
-- Read \`${relGoal}\` and \`${spec}\` before making edits.
+- ${readGoalInstruction}
 - ${context.mode === "adapter" && adapterPath ? `Read \`${adapterPath}\` and apply its project-specific hard boundaries, preflight requirements, and state-sync rules.` : "Follow the repository instructions and configured harness paths."}
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
 - Follow the goal's Execution Role: \`${executionRole}\`.
@@ -4506,7 +4751,7 @@ Requirements:
 - Target Delivery State: \`${deliveryPolicy.target}\`; delivery intent \`${deliveryPolicy.deliveryIntent}\`; commit authorized \`${deliveryPolicy.commitAuthorized}\`; push authorized \`${deliveryPolicy.pushAuthorized}\`; review authorized \`${deliveryPolicy.reviewAuthorized}\`; integration authorized \`${deliveryPolicy.integrationAuthorized}\`; release authorized \`${deliveryPolicy.releaseAuthorized}\`.
 - Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
 - If actual delivery state is below target after gates pass, continue the authorized commit / push / review / integration / release pipeline before closeout.
-- Do not call local verification "integrated", "shipped", or "done on main" unless commit / push / review / integration / release evidence is recorded.
+- Do not call local verification "integrated", "shipped", or "complete on the integration line" unless commit / push / review / integration / release evidence is recorded.
 - Do not release, deploy, publish, start a daemon, or automatically launch additional Codex sessions unless the Delivery State policy and controller explicitly authorize it.
 - If the checkout is dirty with unrelated work, use the worktree policy from the goal and project docs.
 - After implementation, run the goal's verification commands and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync.

@@ -20,8 +20,11 @@ Treat these as possible source of truth:
 2. Run `config inspect`.
 3. Run `config validate` when config exists.
 4. For existing task indexes, run `config import --dry-run`.
-5. Report planned writes and preserved paths.
-6. Apply import only after the dry-run is clear or the user explicitly approves.
+5. Use import path overrides for existing artifact locations such as custom
+   status, specs, goals, milestones, runs, gate records, deferred register, and
+   mental-model paths. Prefer `--dry-run --json` when checking these paths.
+6. Report planned writes, preserved paths, and the proposed config.
+7. Apply import only after the dry-run is clear or the user explicitly approves.
 
 ## Never
 

@@ -22,11 +22,14 @@ existing project.
 
 - Run `doctor` first.
 - Inspect and validate config before writing.
+- Treat audit, doctor, and activation-preview requests as read-only unless the
+  user explicitly asks to initialize, import, or repair harness files.
 - Prefer dry-run import for existing projects.
 - Print activation snippets; do not edit `AGENTS.md` automatically.
 - Preserve existing task indexes such as `todolist.md`.
 
 ## Stop Conditions
 
-Pause when setup would overwrite existing files, change activation behavior,
-create duplicate task indexes, or conflict with the existing contract.
+Pause when setup would write files without explicit setup intent, overwrite
+existing files, change activation behavior, create duplicate task indexes, or
+conflict with the existing contract.

@@ -8,6 +8,11 @@ proposal competition, and inbox notes may produce candidate evidence, but they
 do not update accepted task/status/run state until the controller validates the
 evidence and records the decision.
 
+Use [Worker Runner Contract](worker-runner-contract.md) before launching,
+prompting, recording, or accepting worker output. Worker output is candidate
+evidence only; accepted state is written by the controller after verification
+and gate review.
+
 Idea Inbox notes should return raw context plus intake recommendations.
 Competition notes should return route candidates plus risks. Neither packet is
 an execution order until the controller accepts it and records the next state.
@@ -57,6 +62,7 @@ Goal:
 DAG node:
 Thread role:
 Controller thread:
+Worker surface:
 Conversation route:
 Conversation lane:
 Execution cwd:
@@ -64,6 +70,8 @@ Execution branch:
 Execution slot:
 Remote-control worktree:
 Return channel:
+Prompt artifact:
+Output artifact:
 Recommended model:
 Recommended reasoning effort:
 Why this level:
@@ -129,6 +137,11 @@ subagents. Fresh Codex threads are explicit, visible, long-lived handoff lanes,
 not the default worker surface. Fork is not the default worker surface and
 requires explicit controller approval.
 
+Worker prompts should follow `templates/worker-prompt.md`: the worker identity,
+controller, execution context lock, allowed scope, forbidden scope, validation,
+stop conditions, and return contract must be explicit. A worker must not update
+accepted task, status, goal, run, gate, or release state.
+
 For worktree execution, the launch packet must include the conversation route
 and execution context lock. If a worker is remote-controlling a worktree, the
 packet must say so and name the locked cwd / branch. Workers must not apply
@@ -142,6 +155,8 @@ return `validated-local`, but it must not be reported as pushed, `review-open`,
 For `gate-only` acceptance, the controller must cite implementer output and
 gate evidence before marking a run completed. If that evidence is absent, the
 integration decision should be `request-fix`, `blocked`, or `hold-for-user`.
+Worker self-tests, narrative summaries, and unreviewed result packets are not
+accepted state.
 
 For batch or merged source-task work, the controller must preserve a
 `Source Task Acceptance Map`. Aggregate run evidence is not enough; each source

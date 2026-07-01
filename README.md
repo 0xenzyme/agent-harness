@@ -153,7 +153,7 @@ Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-titl
 The normal user-level flow is:
 
 ```text
-harness:init -> harness:orient or harness:intake -> confirmed spec/goal -> harness:execute -> verification -> state sync
+harness:init -> harness:orient or harness:intake -> confirmed spec/accepted scope/goal -> harness:execute -> verification -> state sync
 ```
 
 When you want the current thread to act as main control, gate, reviewer, judge,
@@ -202,7 +202,7 @@ approval, credentials, production access, or unblocking decisions are needed.
 The intended user-level adapter workflow is:
 
 ```text
-harness:init/import -> harness:orient or harness:intake -> confirmed spec/goal -> harness:execute -> verify -> state sync
+harness:init/import -> harness:orient or harness:intake -> confirmed spec/accepted scope/goal -> harness:execute -> verify -> state sync
 ```
 
 Under the hood, Harness records route decisions, run packets, acceptance

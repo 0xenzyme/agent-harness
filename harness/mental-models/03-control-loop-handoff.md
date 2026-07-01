@@ -18,6 +18,27 @@ The loop should stay foreground and auditable by default. Preparing a run packet
 is not the same as launching an agent, daemon, watcher, deploy, push, release,
 or PR.
 
+## Control Records And User Closeout
+
+Control packets and final answers serve different readers.
+
+- `Route Decision`, `Execution Result Packet`, `Gate Result`, and similar
+  packet formats are control-plane records. They preserve route reasoning,
+  evidence, acceptance, and handoff state for another controller or worker.
+- Final answers are user-facing closeouts. They should translate the packet into
+  the current situation, verification state, delivery state, blocker, and exact
+  user choice or next action.
+- Workflow skills should define their closeout shape at the point where agents
+  repeatedly fail: `orient` returns a decision prompt, `execute` returns a
+  delivery-state closeout, `init` separates read-only audit from setup writes,
+  and `intake` preserves the preview / record boundary.
+- References should be added to constrain repeated model failure modes, not to
+  turn every response into a long template.
+
+The operating principle is: keep the control plane rigorous and the user
+surface clear. Packets belong to acceptance and handoff; final answers belong to
+human decision-making.
+
 ## Goal And Run Boundary
 
 `goal` and `run` are separate steps:

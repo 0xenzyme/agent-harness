@@ -136,7 +136,7 @@ Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-titl
 常规用户级流程是：
 
 ```text
-harness:init -> harness:orient or harness:intake -> confirmed spec/goal -> harness:execute -> verification -> state sync
+harness:init -> harness:orient or harness:intake -> confirmed spec/accepted scope/goal -> harness:execute -> verification -> state sync
 ```
 
 如果你希望当前 thread 作为 main control、gate、reviewer、judge 或 acceptance
@@ -182,7 +182,7 @@ npm run validate:plugin
 推荐的用户级 adapter workflow：
 
 ```text
-harness:init/import -> harness:orient or harness:intake -> confirmed spec/goal -> harness:execute -> verify -> state sync
+harness:init/import -> harness:orient or harness:intake -> confirmed spec/accepted scope/goal -> harness:execute -> verify -> state sync
 ```
 
 在底层，Harness 通过确定性的本地工具记录 route decisions、run packets、

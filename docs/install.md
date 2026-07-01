@@ -61,6 +61,14 @@ node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/t
 node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
 ```
 
+For projects that already use paths such as `docs/mental-model.md` or
+`docs/milestones`, pass path overrides and inspect the proposed config before
+writing:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --milestones docs/milestones --deferred-register docs/milestones --mental-model docs/mental-model.md --mental-model-index docs/mental-model.md --mental-models docs/mental-models --dry-run --json
+```
+
 The real import writes `.harness/config.json` and creates missing
 support artifacts such as the configured status file and runs directory. It
 does not create a second task index.
@@ -104,11 +112,17 @@ node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
 ```
 
-In the adapter contract, create goals from confirmed specs:
+In the adapter contract, create goals from confirmed specs by default:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
+
+If an adapter task has accepted scope but intentionally no standalone spec,
+use `--allow-no-spec`. The generated goal records `Spec Policy:
+allow-no-spec` and still must validate `Scope`, `Non-Goals`, `Verification`,
+`Completion Conditions`, `Pause Conditions`, `Execution Role`, and `Delivery
+State`.
 
 ## Skill Entry Points
 
