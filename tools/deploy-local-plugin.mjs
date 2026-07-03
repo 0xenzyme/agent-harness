@@ -16,7 +16,14 @@ const pluginVersion = process.env.AGENT_HARNESS_PLUGIN_VERSION || pluginManifest
 const pluginSelector = process.env.AGENT_HARNESS_PLUGIN_SELECTOR || `${pluginName}@${marketplace}`;
 const codexHome = resolve(process.env.CODEX_HOME || join(homedir(), ".codex"));
 const cacheDir = resolve(codexHome, "plugins/cache", marketplace, pluginName, pluginVersion);
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const validationRoute = "validate:plugin";
+const smokeRoute = "test:smoke";
+const smokeEnv = {
+  AGENT_HARNESS_LANG: "en",
+  LANG: "C",
+  LC_ALL: "C",
+  LC_MESSAGES: "C"
+};
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -27,10 +34,18 @@ function commandLabel(command, args) {
 }
 
 function run(command, args, options = {}) {
+  const useShell = process.platform === "win32"
+    && !command.includes("\\")
+    && !command.includes("/")
+    && !existsSync(command);
   const result = spawnSync(command, args, {
     cwd: repoRoot,
-    env: process.env,
+    env: {
+      ...process.env,
+      ...(options.env || {})
+    },
     encoding: "utf8",
+    shell: useShell,
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit"
   });
 
@@ -91,15 +106,26 @@ function assertCacheSentinels() {
   }
 }
 
-console.log("Validating local plugin source...");
-run(npmCommand, ["run", "validate:plugin"]);
-run(npmCommand, ["run", "test:smoke"]);
+console.log(`Validating local plugin source (${validationRoute})...`);
+run(process.execPath, ["tools/validate-plugin.mjs"]);
+console.log(`Running local smoke suite (${smokeRoute})...`);
+run(process.execPath, ["tests/smoke.mjs"], { env: smokeEnv });
 
 console.log(`Refreshing Codex plugin cache for ${pluginSelector}...`);
 run("codex", ["plugin", "--help"], { capture: true });
+const marketplaceAdd = run("codex", ["plugin", "marketplace", "add", repoRoot], {
+  allowFailure: true,
+  capture: true
+});
+if (marketplaceAdd.status !== 0) {
+  const captured = `${marketplaceAdd.stdout || ""}${marketplaceAdd.stderr || ""}`.trim();
+  if (!/already|exists|configured/i.test(captured)) {
+    throw new Error(`Could not register marketplace ${JSON.stringify(marketplace)} from ${repoRoot}.\n\n${captured}`);
+  }
+}
 const marketplaceList = run("codex", ["plugin", "marketplace", "list"], { capture: true });
 if (!marketplaceList.stdout.includes(marketplace)) {
-  throw new Error(`Codex plugin marketplace ${JSON.stringify(marketplace)} is not registered.`);
+  console.warn(`Warning: marketplace list does not show ${JSON.stringify(marketplace)} after registration.`);
 }
 if (!marketplaceList.stdout.includes(repoRoot)) {
   console.warn(`Warning: marketplace list does not show this repo root: ${repoRoot}`);

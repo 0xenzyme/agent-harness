@@ -16,7 +16,7 @@
     "test:presentation": "node scripts/test-suites.mjs presentation",
     "test:protocol": "node scripts/test-suites.mjs protocol",
     "test:smoke": "node tests/smoke.mjs",
-    "validate:plugin": "PYTHONPATH=tools/python-yaml-shim python3 \"${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py\" plugins/agent-harness"
+    "validate:plugin": "node tools/validate-plugin.mjs"
   },
   "license": "MIT"
 }
