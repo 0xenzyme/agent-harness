@@ -13,6 +13,11 @@ Execution Role, and Delivery State.
 
 -
 
+`harness-rule:terminology-boundary`: user-facing hierarchy is
+`Roadmap -> Milestone -> Goal -> Task -> Run`. `P0` / `P1` / `P2` / `P3`
+are priorities only, `M*` identifies roadmap milestones, and Runs are
+execution attempts rather than threads or sessions.
+
 ## Source Task Acceptance Map
 
 Use this section when one goal merges multiple source tasks or describes batch
@@ -25,15 +30,16 @@ update `Evidence` and `Status` before recording a completed run.
   - Status: `pending`
   - Unblocker: `N/A`
 
-## Stage Completion Map
+## Milestone Completion Map
 
-Use this section when the user asks to complete a roadmap stage / milestone such
-as `M5`. The parent stage is not complete until every map item is `satisfied`
-with concrete evidence. If the current goal is only a source-spec slice, name it
-as the leaf stage, such as `M5-S0`, and do not mark the parent stage done.
+Use this section when the user asks to complete a roadmap milestone such as
+`M5`. The parent milestone is not complete until every map item is `satisfied`
+with concrete evidence. If the current goal is only a source-spec slice, name
+it as the leaf item, such as `M5-S0`, and do not mark the parent milestone
+done.
 
-- Item: `<stage item, e.g. M5-D1 Diagnosis Read Model>`
-  - Acceptance: `<what must be true for this stage item>`
+- Item: `<milestone item, e.g. M5-D1 Diagnosis Read Model>`
+  - Acceptance: `<what must be true for this milestone item>`
   - Evidence: `TBD`
   - Status: `pending`
   - Unblocker: `N/A`
@@ -71,11 +77,20 @@ Use `current-thread`.
 ## Execution Context Lock
 
 - Conversation lane: `current-thread`
+- Parent controller thread: `N/A`
 - Controller thread: `current-thread`
+- Accepted-state owner: `current-thread`
 - Execution cwd: `TBD`
 - Execution branch: `TBD`
 - Execution slot: `N/A`
 - Remote-control worktree: `no`
+
+`harness-rule:child-controller-boundary`: if this goal is handed to a visible
+long-lived thread, declare whether that thread is a `child-controller` or an
+`execution-worker`. A child controller may write accepted state only inside the
+authorized scope named here and reports snapshots, decision requests, and final
+result packets to the parent controller. An execution worker returns candidate
+evidence only.
 
 ## Delivery State
 
@@ -101,6 +116,14 @@ evidence.
 The locked Execution branch records where implementation happens. It is not
 automatically the integration target, and Harness core does not assume a branch
 named `main`.
+
+## User-Facing Closeout
+
+`harness-rule:need-user-digest`: final answers must include explicit `Need user`
+and `Remaining` values. Use `Need user: None` when no true pause trigger or
+human action remains. Use `Remaining: None` when no non-user follow-up remains.
+List only concrete decisions, manual verification, authorization, external
+evidence, or blockers instead of asking broad confirmation questions.
 
 ## Execution DAG
 

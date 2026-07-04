@@ -57,7 +57,7 @@ Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-titl
 | 接入新项目、迁移已有 task index、运行 doctor/import，或预览 activation。 | `harness:init` |
 | 只读查看状态、todo、blocker 和下一步 route，不改文件。 | `harness:orient` |
 | 收集或 triage 新想法、需求、bug、capture-thread note。 | `harness:intake` |
-| 执行已确认的 task、spec、goal、run，并完成验证和状态同步。 | `harness:execute` |
+| 执行已确认的 goal、spec、task breakdown、run，并完成验证和状态同步。 | `harness:execute` |
 
 旧的 artifact-oriented `harness-*` wrapper skills 不再发布。新用法应按 route
 选择上面的四个 workflow skills。
@@ -124,12 +124,14 @@ control lane 升级成 `mixed`。
 Agent Harness 的工作单元可以理解为：
 
 ```text
-task with status + spec + DAG + goal + gate
+roadmap -> milestone -> goal -> tasks -> run -> evidence
 ```
 
-小任务不一定每次都需要单独的 spec、goal 和 run，但它们的边界仍应清楚：
-scope、non-goals、verification、completion conditions 和 pause conditions
-应能被检查。
+`Goal` 是 Harness 的主要工作单位。`Task` 是 Goal 内部的 checklist 或
+execution breakdown。`Run` 是一次执行尝试和 evidence record，不等于
+Codex thread 或 session。小任务不一定每次都需要单独的 spec、goal 和 run，
+但它们的边界仍应清楚：scope、non-goals、verification、completion
+conditions 和 pause conditions 应能被检查。
 
 创建 goal 和 run packet 的常见 CLI：
 

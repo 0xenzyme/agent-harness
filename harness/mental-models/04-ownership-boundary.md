@@ -13,7 +13,7 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
   validation, references, skills, and templates
 - project adapter owns artifact paths, source-of-truth rules, hard boundaries,
   validation commands, enabled gates, and release policy
-- artifacts record task state, decisions, evidence, status, handoffs, and
+- artifacts record Goal state, decisions, evidence, status, handoffs, and
   durable project facts
 
 Plugin core must not absorb downstream-specific product names, database rules,

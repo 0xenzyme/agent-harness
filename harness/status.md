@@ -2,6 +2,70 @@
 
 ## Focus
 
+- Current focus: The earlier bundled lower-friction workflow intake has been
+  split into separate Goals in the Goal index. The lightweight
+  human-verification checklist / Need-user digest Goal is implemented and
+  verified in the local checkout. `harness-rule:need-user-digest` now requires
+  routine closeouts to state `Need user: None` / `Remaining: None` when no true
+  pause trigger or follow-up exists, while concrete human decisions,
+  user-required manual verification, authorization, credentials/paid APIs,
+  production access, destructive-operation approval, product direction, or
+  external evidence remain explicit `Need user` items. Spec:
+  `harness/specs/2026-07-04-lightweight-human-verification-checklist-need-user-digest.md`;
+  goal:
+  `harness/goals/2026-07-04-shape-lightweight-human-verification-checklist-and-need-user-digest.md`;
+  run:
+  `.harness/runs/20260704-170345-shape-lightweight-human-verification-checklist-and-need-user-digest/`.
+  The remaining open split Goals now track Level 0 Fast Path direct-execution
+  policy, EnvContext focus / intent routing, and control-theory feedback-loop
+  research separately. Delivery state is `validated-local`; no commit, push,
+  review, integration, publish, release, deploy, production access, daemon,
+  watcher, paid API, credential, or destructive operation was performed.
+
+- Current focus: Current project adapter and storage artifacts are aligned with
+  the Goal-first terminology in the local checkout. `harness/README.md` now
+  declares `Roadmap -> Milestone -> Goal -> Task -> Run`, intent normalization,
+  and the compatibility boundary for the existing `harness/tasks.md` /
+  `taskIndex` storage path. `harness/mental-models/` now describes Goal state,
+  Goal index storage, Goal-internal Tasks, Runs as execution attempts, and
+  Milestones as roadmap outcomes. `harness/tasks.md` and `harness/status.md`
+  now use `Milestone Completion Map` as the formal project-state term, with
+  `Stage Completion Map` only where documenting legacy compatibility. Delivery
+  state is `validated-local`; no commit, push, review, integration, publish,
+  release, deploy, production access, daemon, watcher, paid API, credential, or
+  destructive operation was performed.
+
+- Current focus: Agent Harness README diagram refresh is implemented and
+  verified in the local checkout. `docs/assets/readme/adapter-model.png` and
+  `docs/assets/readme/adapter-execution-model.png` were regenerated from new
+  SVG sources to present `Roadmap -> Milestone -> Goal -> Task -> Run`,
+  with `Goal` as the main work unit, `Task` as internal breakdown, and `Run`
+  as evidence attempt. `docs/assets/readme/adapter-artifact-map.png` was
+  inspected and left unchanged because it already uses `Milestones` and no
+  `Stage` term. Spec:
+  `harness/specs/2026-07-04-agent-harness-readme-diagram-refresh.md`; goal:
+  `harness/goals/2026-07-04-refresh-agent-harness-readme-diagrams-for-terminology-hierarchy.md`;
+  run:
+  `.harness/runs/20260704-160154-refresh-agent-harness-readme-diagrams-for-terminology-hierarchy/`.
+  Delivery state is `validated-local`; no commit, push, review, integration,
+  publish, release, deploy, production access, daemon, watcher, paid API,
+  credential, or destructive operation was performed.
+
+- Current focus: Agent Harness terminology simplification is implemented and
+  verified in the local checkout. User-facing terminology now follows
+  `Roadmap -> Milestone -> Goal -> Task -> Run`; `P0` / `P1` / `P2` / `P3`
+  are documented as priority only; `Milestone Completion Map` is the new
+  generated/CLI term; legacy `Stage Completion Map` remains readable as a
+  compatibility alias only. Spec:
+  `harness/specs/2026-07-04-agent-harness-terminology-simplification.md`;
+  goal:
+  `harness/goals/2026-07-04-shape-agent-harness-terminology-simplification-and-prioritystage-separation.md`;
+  run:
+  `.harness/runs/20260704-154151-shape-agent-harness-terminology-simplification-and-prioritystage-separation/`.
+  Delivery state is `validated-local`; no commit, push, review, integration,
+  publish, release, deploy, production access, daemon, watcher, paid API,
+  credential, or destructive operation was performed.
+
 - Current focus: GitHub presentation pass for the profile-pinned
   `0xenzyme/agent-harness` repository is complete. README / README.zh-CN now
   have badges, positioning, release links, and a social preview reference;
@@ -28,10 +92,12 @@
   Delivery state remains local validation only; commit, push, review,
   integration, publish, and release are not authorized.
 
-- Current focus: Stage completion coverage gate for parent roadmap stages is
-  implemented in the local checkout. The fix adds `Stage Completion Map` support
-  so a request such as `推进完成M5` is treated as whole-stage completion, and a
-  parent stage cannot be closed after only `M5-S0` source-spec acceptance while
+- Current focus: Milestone completion coverage gate for parent roadmap
+  milestones is implemented in the local checkout. The fix now presents
+  `Milestone Completion Map` in new artifacts and CLI output, with legacy
+  `Stage Completion Map` accepted only as compatibility input. A request such
+  as `推进完成M5` is treated as whole-milestone completion, and a parent
+  milestone cannot be closed after only `M5-S0` source-spec acceptance while
   `M5-D*` implementation items remain pending. Delivery state remains local;
   commit, push, review, integration, publish, and release are not authorized.
 
@@ -67,8 +133,113 @@
 
 ## Verification
 
-- Last checked: 2026-07-02
+- Last checked: 2026-07-04
 - Last commands:
+  - Created accepted spec
+    `harness/specs/2026-07-04-lightweight-human-verification-checklist-need-user-digest.md`.
+  - Created and validated goal
+    `harness/goals/2026-07-04-shape-lightweight-human-verification-checklist-and-need-user-digest.md`
+    with execution role `mixed`, current-thread route, current checkout lock,
+    and target delivery state `validated-local`.
+  - Prepared run packet
+    `.harness/runs/20260704-170345-shape-lightweight-human-verification-checklist-and-need-user-digest/`;
+    recorded completed DAG nodes: `explorer`, `cli-contract-worker`,
+    `docs-skill-worker`, and `verification`.
+  - Added `harness-rule:need-user-digest` to the capability matrix, project
+    contract docs, `harness:execute` closeout guidance, user-facing closeout
+    reference, Controller communication packets, goal template, generated run
+    packets, and worker prompt template.
+  - Updated generated run and execution prompts so routine closeouts use
+    `Need user: None` and `Remaining: None` instead of broad confirmation
+    questions.
+  - Added deterministic coverage in `scripts/test-suites.mjs` and
+    `tests/smoke.mjs` for the closeout reference, Controller packets, worker
+    prompts, generated `run.md`, generated `prompt.md`, and generated worker
+    prompts.
+  - Verification passed: `node --check
+    plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, `git diff --check`, `goal validate`, and
+    `run status --json`.
+  - Split the bundled lower-friction workflow intake in `harness/tasks.md` into
+    four separate Next Goals: human-verification checklist / Need-user digest,
+    Level 0 Fast Path direct-execution policy, EnvContext focus / intent
+    routing, and control-theory feedback-loop research.
+  - Preserved completed terminology, README diagram, and current project
+    adapter/storage terminology records as Done instead of duplicating them in
+    Next.
+  - Updated current project adapter `harness/README.md` with the
+    `Roadmap -> Milestone -> Goal -> Task -> Run` terminology contract, intent
+    normalization, and compatibility note for `harness/tasks.md` / `taskIndex`
+    storage.
+  - Updated `harness/mental-models/` to use Goal state, Goal index storage,
+    Goal-internal Tasks, Runs as execution attempts, and Milestones as roadmap
+    outcomes.
+  - Updated `harness/tasks.md` and `harness/status.md` project-state records to
+    use `Milestone Completion Map` as the formal term, with `Stage Completion
+    Map` only as legacy compatibility language.
+  - Validation passed: `git diff --check` and terminology scans over
+    `harness/README.md`, `harness/tasks.md`, `harness/status.md`, and
+    `harness/mental-models/`.
+  - Created accepted diagram refresh spec
+    `harness/specs/2026-07-04-agent-harness-readme-diagram-refresh.md`.
+  - Created, narrowed, and validated goal
+    `harness/goals/2026-07-04-refresh-agent-harness-readme-diagrams-for-terminology-hierarchy.md`
+    with execution role `mixed` and target delivery state `validated-local`.
+  - Prepared run packet
+    `.harness/runs/20260704-160154-refresh-agent-harness-readme-diagrams-for-terminology-hierarchy/`
+    and recorded completed DAG nodes: `explorer`, `worker`, and
+    `verification`.
+  - Added maintained SVG sources
+    `docs/assets/readme/adapter-model.svg` and
+    `docs/assets/readme/adapter-execution-model.svg`, then regenerated
+    `adapter-model.png` and `adapter-execution-model.png` with `sips` at
+    1672x941.
+  - Visually inspected regenerated PNGs for legibility, overlap, and current
+    `Roadmap -> Milestone -> Goal -> Task -> Run` terminology; inspected
+    `adapter-artifact-map.png` and left it unchanged because it already uses
+    `Milestones` and no `Stage` term.
+  - Extended `scripts/test-suites.mjs` and `tests/smoke.mjs` to protect README
+    diagram links, SVG terminology, and removal of the old task-first artifact
+    phrase.
+  - Verification passed: `sips -g pixelWidth -g pixelHeight`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:presentation`, `npm run test:protocol`,
+    `npm run test:smoke`, `npm run validate:plugin`, and
+    `git diff --check`.
+  - Created accepted terminology spec
+    `harness/specs/2026-07-04-agent-harness-terminology-simplification.md`.
+  - Created, narrowed, and validated goal
+    `harness/goals/2026-07-04-shape-agent-harness-terminology-simplification-and-prioritystage-separation.md`
+    with execution role `mixed` and target delivery state `validated-local`.
+  - Prepared run packet
+    `.harness/runs/20260704-154151-shape-agent-harness-terminology-simplification-and-prioritystage-separation/`
+    and recorded completed DAG nodes: `explorer`, `cli-contract-worker`,
+    `docs-skill-worker`, and `verification`.
+  - Updated README, README.zh-CN, CLI/install docs, project contract docs,
+    execute/intake skill guidance, completion/adversarial/gate references,
+    task-routing, goal/spec/task-index templates, social preview text, and
+    GitHub presentation flow for the terminology hierarchy and Milestone
+    wording.
+  - Updated `plugins/agent-harness/scripts/agent-harness.mjs` to generate and
+    report `Milestone Completion Map`, preserve legacy `Stage Completion Map`
+    reads, expose primary `milestoneCompletionMap*` status fields, and keep
+    legacy `stageCompletionMap*` aliases.
+  - Added `harness-rule:terminology-boundary` protocol coverage and smoke
+    checks for hierarchy, priority-only labels, intent normalization, Run/thread
+    separation, Milestone Completion Map generation, and legacy Stage alias
+    compatibility.
+  - Verification passed: `node --check
+    plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, and `git diff --check`.
+  - Goal validation passed for
+    `harness/goals/2026-07-04-shape-agent-harness-terminology-simplification-and-prioritystage-separation.md`.
+  - Recorded completed run log
+    `.harness/runs/20260704-154151-shape-agent-harness-terminology-simplification-and-prioritystage-separation/logs/20260704-155322-completed.md`
+    with delivery state `validated-local`.
   - Created accepted spec
     `harness/specs/2026-07-02-github-presentation-pass.md`.
   - Created and validated goal
@@ -134,23 +305,24 @@
   - Recorded completed run log
     `.harness/runs/20260701-235053-apply-impeccable-inspired-harness-productization-improvements/logs/20260702-001312-completed.md`
     with delivery state `validated-local`.
-  - Implemented `Stage Completion Map` parsing and validation in
+  - Implemented `Milestone Completion Map` parsing and validation in
     `plugins/agent-harness/scripts/agent-harness.mjs`.
-  - Updated `goal create --spec` to generate pending stage map items from a
-    referenced spec's `Implementation Phasing` headings such as `M5-S0` and
+  - Updated `goal create --spec` to generate pending Milestone map items from
+    a referenced spec's `Implementation Phasing` headings such as `M5-S0` and
     `M5-D1`.
   - Updated `run prepare`, `run status --json`, and
-    `run record --phase completed` so parent-stage runs carry and enforce stage
-    completion evidence.
-  - Updated stage-completion protocol docs in `docs/project-contract.md`,
+    `run record --phase completed` so parent Milestone runs carry and enforce
+    Milestone completion evidence.
+  - Updated Milestone-completion protocol docs in `docs/project-contract.md`,
     `plugins/agent-harness/skills/execute/SKILL.md`, execute references,
     `plugins/agent-harness/references/gate-results.md`, and goal/spec
     templates.
   - Added smoke coverage for missing, pending, and satisfied
-    `Stage Completion Map` cases.
+    `Milestone Completion Map` cases.
   - Verified the wiki regression: local
     `agent-harness goal validate --cwd /Users/liuyj/project/wiki --goal docs/harness/goals/2026-07-01-m5-diagnosis-actions-briefs-reports.md`
-    now fails with `Stage completion goals require a Stage Completion Map`.
+    now fails with `Milestone completion goals require a Milestone Completion
+    Map`.
   - `node --check plugins/agent-harness/scripts/agent-harness.mjs`
   - `node --check tests/smoke.mjs`
   - `npm run test:smoke`

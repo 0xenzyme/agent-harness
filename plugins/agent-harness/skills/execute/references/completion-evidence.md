@@ -43,10 +43,10 @@ completed with verification evidence.
 When a goal has `Spec Acceptance Checklist` items, every item needs concrete
 evidence and `Status: satisfied`.
 
-When a parent stage / milestone goal has `Stage Completion Map` items, every
-stage item needs concrete evidence and `Status: satisfied`. A source-spec item
-such as `M5-S0` does not complete the parent `M5` while `M5-D*` implementation
-items remain pending.
+When a parent milestone goal has `Milestone Completion Map` items, every
+milestone item needs concrete evidence and `Status: satisfied`. A source-spec
+item such as `M5-S0` does not complete the parent `M5` while `M5-D*`
+implementation items remain pending.
 
 When an adapter declares `gates.requiredForCompletion` or `gates.blocking`, the
 run needs matching `Required Gate Evidence` entries with concrete evidence and

@@ -3172,7 +3172,7 @@ function generatedStageCompletionMapSection({ task, context, spec }) {
   - Status: \`pending\`
   - Unblocker: \`N/A\``).join("\n");
 
-  return `## Stage Completion Map
+  return `## Milestone Completion Map
 
 ${items}
 
@@ -3676,8 +3676,8 @@ function stageCompletionSignalText(content) {
 function hasWholeStageSignal(content) {
   const text = stageCompletionSignalText(content);
   return /\b(?:whole|entire|full)\s+(?:milestone|stage)\b/i.test(text)
-    || /\b(?:complete|finish|推进完成|完成)\b[\s\S]{0,80}\b(?:milestone|stage|roadmap|M\d+)\b/i.test(text)
-    || /\b(?:milestone|stage|roadmap)\b[\s\S]{0,80}\b(?:complete|done|completion)\b/i.test(text);
+    || /\b(?:complete|finish|推进完成|完成)\b[\s\S]{0,80}\b(?:M\d+|milestone\s+M\d+|stage\s+M\d+|roadmap\s+M\d+)\b/i.test(text)
+    || /\b(?:M\d+|milestone\s+M\d+|stage\s+M\d+|roadmap\s+M\d+)\b[\s\S]{0,80}\b(?:complete|done|completion|完成)\b/i.test(text);
 }
 
 function stageCompletionRequiredLabels(goalContent, specContent = "") {
@@ -3712,14 +3712,24 @@ function stageCompletionMapRequired(goalContent, specContent, requiredLabels) {
 }
 
 function stageCompletionMapDetails(goalContent, specContent = "") {
-  const goalSection = extractSection(goalContent, "Stage Completion Map");
-  const specSection = extractSection(specContent, "Stage Completion Map");
-  const section = goalSection || specSection;
+  const goalMilestoneSection = extractSection(goalContent, "Milestone Completion Map");
+  const specMilestoneSection = extractSection(specContent, "Milestone Completion Map");
+  const goalLegacyStageSection = extractSection(goalContent, "Stage Completion Map");
+  const specLegacyStageSection = extractSection(specContent, "Stage Completion Map");
+  const section = goalMilestoneSection || specMilestoneSection || goalLegacyStageSection || specLegacyStageSection;
   const requiredLabels = stageCompletionRequiredLabels(goalContent, specContent);
   return {
     required: stageCompletionMapRequired(goalContent, specContent, requiredLabels),
     requiredLabels,
-    source: goalSection ? "goal" : specSection ? "spec" : "",
+    source: goalMilestoneSection
+      ? "goal"
+      : specMilestoneSection
+        ? "spec"
+        : goalLegacyStageSection
+          ? "goal-legacy-stage"
+          : specLegacyStageSection
+            ? "spec-legacy-stage"
+            : "",
     section,
     items: section ? parseEvidenceItems(section, "Item") : []
   };
@@ -3912,12 +3922,12 @@ function stageCompletionMapValidationErrors(mapDetails, { completed = false } = 
   }
 
   if (mapDetails.required && !mapDetails.section) {
-    errors.push("Stage completion goals require a Stage Completion Map.");
+    errors.push("Milestone completion goals require a Milestone Completion Map.");
     return errors;
   }
 
   if (!mapDetails.items.length) {
-    errors.push("Stage Completion Map must include at least one '- Item:' item.");
+    errors.push("Milestone Completion Map must include at least one '- Item:' item.");
     return errors;
   }
 
@@ -3929,7 +3939,7 @@ function stageCompletionMapValidationErrors(mapDetails, { completed = false } = 
     : mapDetails.requiredLabels;
 
   errors.push(...evidenceItemValidationErrors(mapDetails, {
-    sectionTitle: "Stage Completion Map",
+    sectionTitle: "Milestone Completion Map",
     itemTitle: "Item",
     requireAcceptance: true,
     requiredLabels: completedRequiredLabels,
@@ -3981,6 +3991,13 @@ function goalMetadata(cwd, goalPath) {
       itemCount: acceptanceMap.items.length,
       items: acceptanceMap.items
     },
+    milestoneCompletionMap: {
+      required: stageCompletionMap.required,
+      requiredLabels: stageCompletionMap.requiredLabels,
+      source: stageCompletionMap.source,
+      itemCount: stageCompletionMap.items.length,
+      items: stageCompletionMap.items
+    },
     stageCompletionMap: {
       required: stageCompletionMap.required,
       requiredLabels: stageCompletionMap.requiredLabels,
@@ -4007,7 +4024,8 @@ function goalMetadata(cwd, goalPath) {
       executionContextLock: Boolean(extractSection(content, "Execution Context Lock")),
       deliveryState: Boolean(extractSection(content, "Delivery State")),
       sourceTaskAcceptanceMap: Boolean(extractSection(content, "Source Task Acceptance Map")),
-      stageCompletionMap: Boolean(extractSection(content, "Stage Completion Map")),
+      milestoneCompletionMap: Boolean(extractSection(content, "Milestone Completion Map")),
+      stageCompletionMap: Boolean(extractSection(content, "Milestone Completion Map") || extractSection(content, "Stage Completion Map")),
       specAcceptanceChecklist: Boolean(extractSection(content, "Spec Acceptance Checklist")),
       requiredGateEvidence: Boolean(extractSection(content, "Required Gate Evidence")),
       scope: Boolean(extractSection(content, "Scope")),
@@ -4224,7 +4242,7 @@ function goalInspect(args) {
   console.log(`Work mode: ${payload.workMode || "missing"}`);
   console.log(`Execution role: ${payload.executionRole || "missing"}`);
   console.log(`Acceptance map: ${payload.acceptanceMap?.required ? `${payload.acceptanceMap.itemCount} item(s)` : "not required"}`);
-  console.log(`Stage completion map: ${payload.stageCompletionMap?.required ? `${payload.stageCompletionMap.itemCount} item(s)` : "not required"}`);
+  console.log(`Milestone completion map: ${payload.milestoneCompletionMap?.required ? `${payload.milestoneCompletionMap.itemCount} item(s)` : "not required"}`);
   console.log(`Spec checklist: ${payload.specAcceptanceChecklist?.itemCount || 0} item(s)`);
   console.log(`Required gate evidence: ${payload.requiredGateEvidence?.itemCount || 0} item(s)`);
   console.log(`Validation: ${validation.ok ? "ok" : "failed"}`);
@@ -4713,6 +4731,8 @@ Changed files:
 Summary:
 Validation:
 Known risks:
+Need user:
+Remaining:
 Needs review:
 Commit:
 Delivery state:
@@ -4866,9 +4886,9 @@ Integration authorized: \`${deliveryPolicy.integrationAuthorized}\`
 Release authorized: \`${deliveryPolicy.releaseAuthorized}\`
 Acceptance map required: \`${acceptanceMap.required ? "yes" : "no"}\`
 Acceptance map items: \`${acceptanceMap.items.length}\`
-Stage completion map required: \`${stageCompletionMap.required ? "yes" : "no"}\`
-Stage completion map items: \`${stageCompletionMap.items.length}\`
-Stage completion required items: \`${stageCompletionMap.requiredLabels.length ? stageCompletionMap.requiredLabels.join(", ") : "none"}\`
+Milestone completion map required: \`${stageCompletionMap.required ? "yes" : "no"}\`
+Milestone completion map items: \`${stageCompletionMap.items.length}\`
+Milestone completion required items: \`${stageCompletionMap.requiredLabels.length ? stageCompletionMap.requiredLabels.join(", ") : "none"}\`
 Spec checklist items: \`${specChecklist.items.length}\`
 Required gates: \`${requiredGates.length ? requiredGates.join(", ") : "none"}\`
 Required gate evidence items: \`${gateEvidence.items.length}\`
@@ -4885,7 +4905,7 @@ ${sourceTask}
 4. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
 5. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
 6. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-7. If a stage completion map is required, update every stage item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+7. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
 8. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
 9. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
 10. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
@@ -4893,8 +4913,9 @@ ${sourceTask}
 12. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
 13. Run the verification commands from the goal.
 14. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
-15. Record any command output summaries or follow-ups under this run directory.
-16. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+15. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
+16. Record any command output summaries or follow-ups under this run directory.
+17. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -4946,6 +4967,7 @@ Requirements:
 - Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
 - If actual delivery state is below target after gates pass, continue the authorized commit / push / review / integration / release pipeline before closeout.
 - Do not call local verification "integrated", "shipped", or "complete on the integration line" unless commit / push / review / integration / release evidence is recorded.
+- Final user-facing closeout must include explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` for routine closeouts with no true pause trigger or follow-up instead of asking broad confirmation questions.
 - Do not release, deploy, publish, start a daemon, or automatically launch additional Codex sessions unless the Delivery State policy and controller explicitly authorize it.
 - If the checkout is dirty with unrelated work, use the worktree policy from the goal and project docs.
 - After implementation, run the goal's verification commands and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync.
@@ -5148,6 +5170,10 @@ function runPrepare(args) {
     acceptanceMapRequired: acceptanceMap.required,
     acceptanceMapSource: acceptanceMap.source,
     acceptanceMapItemCount: acceptanceMap.items.length,
+    milestoneCompletionMapRequired: stageCompletionMap.required,
+    milestoneCompletionMapSource: stageCompletionMap.source,
+    milestoneCompletionMapItemCount: stageCompletionMap.items.length,
+    milestoneCompletionMapRequiredLabels: stageCompletionMap.requiredLabels,
     stageCompletionMapRequired: stageCompletionMap.required,
     stageCompletionMapSource: stageCompletionMap.source,
     stageCompletionMapItemCount: stageCompletionMap.items.length,
@@ -5333,8 +5359,9 @@ function runRecord(args) {
     if (status.acceptanceMapRequired && (!goalPath || !existsSync(goalPath))) {
       throw new Error("Completed batch runs require a readable goal with Source Task Acceptance Map evidence.");
     }
-    if (status.stageCompletionMapRequired && (!goalPath || !existsSync(goalPath))) {
-      throw new Error("Completed stage runs require a readable goal with Stage Completion Map evidence.");
+    const milestoneCompletionRequired = Boolean(status.milestoneCompletionMapRequired || status.stageCompletionMapRequired);
+    if (milestoneCompletionRequired && (!goalPath || !existsSync(goalPath))) {
+      throw new Error("Completed milestone runs require a readable goal with Milestone Completion Map evidence.");
     }
     if (goalContent) {
       const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
@@ -5345,7 +5372,7 @@ function runRecord(args) {
       const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
       const stageCompletionMapErrors = stageCompletionMapValidationErrors(stageCompletionMap, { completed: true });
       if (stageCompletionMapErrors.length) {
-        throw new Error(`Stage Completion Map validation failed:\n${stageCompletionMapErrors.map((error) => `- ${error}`).join("\n")}`);
+        throw new Error(`Milestone Completion Map validation failed:\n${stageCompletionMapErrors.map((error) => `- ${error}`).join("\n")}`);
       }
       const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
       const checklistErrors = evidenceItemValidationErrors(specChecklist, {
@@ -5485,11 +5512,17 @@ function runStatus(args) {
     executionContextLock: status.executionContextLock || null,
     deliveryState: status.deliveryState || null,
     deliveryPolicy: status.deliveryPolicy || null,
+    milestoneCompletionMap: {
+      required: Boolean(status.milestoneCompletionMapRequired || status.stageCompletionMapRequired),
+      source: status.milestoneCompletionMapSource || status.stageCompletionMapSource || "",
+      itemCount: status.milestoneCompletionMapItemCount || status.stageCompletionMapItemCount || 0,
+      requiredLabels: status.milestoneCompletionMapRequiredLabels || status.stageCompletionMapRequiredLabels || []
+    },
     stageCompletionMap: {
-      required: Boolean(status.stageCompletionMapRequired),
-      source: status.stageCompletionMapSource || "",
-      itemCount: status.stageCompletionMapItemCount || 0,
-      requiredLabels: status.stageCompletionMapRequiredLabels || []
+      required: Boolean(status.stageCompletionMapRequired || status.milestoneCompletionMapRequired),
+      source: status.stageCompletionMapSource || status.milestoneCompletionMapSource || "",
+      itemCount: status.stageCompletionMapItemCount || status.milestoneCompletionMapItemCount || 0,
+      requiredLabels: status.stageCompletionMapRequiredLabels || status.milestoneCompletionMapRequiredLabels || []
     },
     taskSize: status.taskSize || "unknown",
     updatedAt: status.updatedAt || "unknown",

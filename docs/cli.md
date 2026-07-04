@@ -95,11 +95,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
 ```
 
-`orient next` routes by task state. For P0/P1 `todo` or `spec-draft` tasks
-without a spec, it recommends shaping or confirming accepted scope instead of
-printing an unusable `goal create` command. `spec-ready` tasks with a linked
-spec route to `goal create --spec ...`; `goal-ready` tasks prefer existing goal
-validation and `run prepare`.
+`orient next` routes by task state. `P0` / `P1` / `P2` / `P3` are priorities
+only, not task or milestone identifiers. For `P0` / `P1` `todo` or
+`spec-draft` tasks without a spec, it recommends shaping or confirming accepted
+scope instead of printing an unusable `goal create` command. `spec-ready` tasks
+with a linked spec route to `goal create --spec ...`; `goal-ready` tasks prefer
+existing goal validation and `run prepare`.
 
 ## Intake And Maintenance
 
@@ -149,11 +150,20 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/proje
 
 ## Goals And Runs
 
+User-facing hierarchy is `Roadmap -> Milestone -> Goal -> Task -> Run`.
+`Goal` is the main Harness work unit. `Task` means a concrete checklist or
+execution breakdown inside a Goal. A `Run` is one execution attempt and
+evidence record, not a Codex thread or session.
+
 Create a goal handoff from the configured task index:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
 ```
+
+The `--task` flag is a compatibility lookup into the configured task index. It
+creates a `Goal`; it does not make the task-index title the primary Harness work
+unit.
 
 By default, adapter goals should reference an accepted spec:
 

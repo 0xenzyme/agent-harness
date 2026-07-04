@@ -77,16 +77,16 @@ evidence.
   - Status: `pending`
   - Unblocker: `N/A`
 
-## Stage Completion Map
+## Milestone Completion Map
 
-Use this section when the goal is to complete a roadmap stage / milestone such
-as `M5`, especially when the spec has `Implementation Phasing` with `S*` or
-`D*` subgoals. Parent stage completion requires every item to be `satisfied`
+Use this section when the goal is to complete a roadmap milestone such as `M5`,
+especially when the spec has `Implementation Phasing` with `S*` or `D*`
+subgoals. Parent milestone completion requires every item to be `satisfied`
 with concrete evidence; a source-spec-only slice should be named as the leaf
-stage, such as `M5-S0`, instead of marking the parent stage done.
+item, such as `M5-S0`, instead of marking the parent milestone done.
 
-- Item: `<stage item, e.g. M5-D1 Diagnosis Read Model>`
-  - Acceptance: `<what must be true for this stage item>`
+- Item: `<milestone item, e.g. M5-D1 Diagnosis Read Model>`
+  - Acceptance: `<what must be true for this milestone item>`
   - Evidence: `TBD`
   - Status: `pending`
   - Unblocker: `N/A`

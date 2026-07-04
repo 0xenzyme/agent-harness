@@ -13,6 +13,48 @@ Agent Harness supports two project contracts:
 - `adapter` (`contract: "adapter"`): adapter-driven project contract with configurable
   artifact paths.
 
+## User-Facing Terminology
+
+`harness-rule:terminology-boundary`: keep priority, milestone, goal, task, and
+run boundaries explicit in user-facing docs, generated artifacts, templates,
+and CLI output.
+
+The formal user-facing hierarchy is:
+
+```text
+Roadmap -> Milestone -> Goal -> Task -> Run
+```
+
+- `Roadmap`: longer-range product or engineering direction.
+- `Milestone`: a phase-level roadmap outcome such as `M5`. It is usually too
+  large for Harness to promise in one execution. Milestone completion is
+  derived from evidence across multiple Goals.
+- `Goal`: the main Harness work unit. Users confirm the Goal direction,
+  scope, and acceptance points. Most Goals should finish in one Run, but a Goal
+  may take multiple Runs.
+- `Task`: a concrete breakdown item inside a Goal, such as checklist items,
+  execution steps, or sub-work. Users should be able to inspect Tasks to see
+  what a Goal contains.
+- `Run`: one execution attempt and evidence record. A Run is not a Codex
+  thread, session, worker, or worktree identity.
+- `Priority`: `P0`, `P1`, `P2`, and `P3` mean priority only. They are not task
+  names, stages, or milestone identifiers.
+- `Spec`: a user-visible specification, constraint, and acceptance document.
+
+Intent normalization:
+
+- "complete this task", "develop this task", or "用 harness 做这个任务" maps to
+  `Goal` by default.
+- "what steps/subtasks/checklist are inside this task?" maps to `Tasks`.
+- "complete M2", "完成 M2", or "推进 M5" maps to `Milestone`.
+- "run it again", "this execution", or "上次失败那次" maps to `Run`.
+- `P0` / `P1` / `P2` / `P3` maps to `Priority`.
+- `Spec`, "document", "文档", "规格", or "验收标准" maps to `Spec`.
+
+`Stage` was renamed to `Milestone`. New docs, templates, generated artifacts,
+and CLI output should use `Milestone`. Existing legacy artifacts with
+`Stage Completion Map` remain readable as compatibility input only.
+
 ## Fixed Contract
 
 Fixed projects use these paths:
@@ -353,6 +395,14 @@ controller explicitly approves context inheritance and restates the worker's
 thread role, controller thread, allowed scope, return channel, and forbidden
 scope.
 
+`harness-rule:child-controller-boundary`: any visible long-lived thread must be
+launched as either a child controller or an execution worker. A child controller
+owns accepted task/status/goal/run/gate state only inside the authorized scope
+named by the launch packet. Its parent controller receives status snapshots,
+decision requests, and final result packets for portfolio or milestone sync,
+not duplicate same-scope acceptance. An execution worker remains candidate
+evidence only.
+
 If the current thread is `gate-only`, the harness should launch worker
 subagents by default when scope, verification, context lock, delivery target,
 and safety boundaries are clear. It should not routinely ask the user to choose
@@ -441,6 +491,9 @@ result packets.
 
 - [x] Completed task title
 ```
+
+In task indexes, the `P*` prefix is priority only. It must not be used as the
+task name, milestone number, or roadmap phase identifier.
 
 ## Run Rules
 
@@ -572,6 +625,31 @@ the required gates pass. Release / ship remains separate and must be explicitly
 authorized. Local-only goals should lower the target to `validated-local`
 instead of putting commit, review, or integration into `Non-Goals`.
 
+## User-Facing Closeout And Need User Digest
+
+`harness-rule:need-user-digest`: final answers are user-facing closeouts, not
+raw control packets. Routine closeouts must state `Need user: None` when no true
+pause trigger exists and `Remaining: None` when no non-user follow-up remains.
+
+Use this default shape:
+
+```text
+Work completed: <what changed or what gate was reviewed>.
+Verification: <commands or checks run, with pass/fail status>.
+Delivery state: <implemented-local | validated-local | committed | pushed | review-open | integrated | released/shipped | delivery pending>.
+Need user: <concrete decision, manual verification, authorization, external evidence, or None>.
+Remaining: <missing verification, delivery pending, follow-up, blocker, or None>.
+```
+
+`Need user` is only for concrete human action: a decision, required manual
+verification, authorization, credential or paid API handoff, production access,
+destructive-operation approval, product-direction choice, or external evidence
+that the agent cannot provide. Agent-performed manual inspection belongs in
+`Verification`; it does not create a user need by itself.
+
+Do not end routine work by asking broad questions such as whether there is
+anything else to confirm. If no user action is needed, say so explicitly.
+
 ## Batch Acceptance Coverage
 
 When a goal or spec merges multiple source tasks, or describes batch /
@@ -594,19 +672,19 @@ item is `satisfied` and has concrete evidence. If any source task is deferred
 or blocked, the task must stay out of Done or the run should be recorded as
 blocked with an unblock condition.
 
-## Stage Completion Coverage
+## Milestone Completion Coverage
 
-When the user asks to complete a roadmap stage or milestone, such as
-`complete M5` or `推进完成M5`, the default target is whole-stage completion.
-Source-spec acceptance is only one stage item unless the user or artifact names
-the leaf explicitly, such as `M5-S0`.
+When the user asks to complete a roadmap milestone, such as `complete M5` or
+`推进完成M5`, the default target is whole-milestone completion. Source-spec
+acceptance is only one milestone item unless the user or artifact names the
+leaf explicitly, such as `M5-S0`.
 
-Goals or specs that represent parent stage completion and declare implementation
-phasing with items such as `M5-S0`, `M5-D1`, `M5-D2`, and `M5-D3` must include a
-`Stage Completion Map` before execution:
+Goals or specs that represent parent milestone completion and declare
+implementation phasing with items such as `M5-S0`, `M5-D1`, `M5-D2`, and
+`M5-D3` must include a `Milestone Completion Map` before execution:
 
 ```md
-## Stage Completion Map
+## Milestone Completion Map
 
 - Item: `M5-D1 Diagnosis Read Model`
   - Acceptance: `diagnosis read model is implemented and verified`
@@ -615,12 +693,17 @@ phasing with items such as `M5-S0`, `M5-D1`, `M5-D2`, and `M5-D3` must include a
   - Unblocker: `N/A`
 ```
 
-`goal validate` must reject parent-stage goals that omit this map or omit
-required stage items from the referenced `Implementation Phasing`. `run record
---phase completed` must reject stage runs unless every map item is `satisfied`
-and has concrete evidence. If only `M5-S0` is complete, the parent `M5` task
-must stay out of Done and the remaining `D*` items must remain visible in the
-task index, milestone, deferred register, or active stage map.
+`goal validate` must reject parent milestone goals that omit this map or omit
+required milestone items from the referenced `Implementation Phasing`.
+`run record --phase completed` must reject milestone runs unless every map item
+is `satisfied` and has concrete evidence. If only `M5-S0` is complete, the
+parent `M5` milestone must stay open and the remaining `D*` items must remain
+visible in the task index, milestone, deferred register, or active milestone
+map.
+
+Legacy migration note: `Stage Completion Map` was renamed to
+`Milestone Completion Map`. New artifacts should use the milestone name;
+existing legacy artifacts may still be read for compatibility.
 
 ## Compatibility
 

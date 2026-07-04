@@ -39,7 +39,7 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 ```
 
 6. If the task index format is unsupported for automatic writes, give the exact
-   entry to add and leave execution to a later confirmed task.
+   entry to add and leave execution to a later confirmed goal.
 7. If the user wants to implement the idea immediately, route to `execute`
    only after the scope and confirmation boundary are clear.
 8. For Idea Inbox Thread promotion, preserve the raw note, summarize only what

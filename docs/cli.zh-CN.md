@@ -95,10 +95,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
 ```
 
-`orient next` 会按 task state 选择路线。P0/P1 的 `todo` 或 `spec-draft` task
-如果没有 spec，会推荐 shape / 确认 accepted scope，而不是输出不可执行的
-`goal create`。带 spec 的 `spec-ready` 会推荐 `goal create --spec ...`；
-`goal-ready` 会优先推荐已有 goal validation 和 `run prepare`。
+`orient next` 会按 task state 选择路线。`P0` / `P1` / `P2` / `P3` 只表示
+priority，不是 task 或 milestone 标识。`P0` / `P1` 的 `todo` 或
+`spec-draft` task 如果没有 spec，会推荐 shape / 确认 accepted scope，而不
+是输出不可执行的 `goal create`。带 spec 的 `spec-ready` 会推荐
+`goal create --spec ...`；`goal-ready` 会优先推荐已有 goal validation 和
+`run prepare`。
 
 ## Intake And Maintenance
 
@@ -146,11 +148,19 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/proje
 
 ## Goals And Runs
 
+用户可见术语主线是 `Roadmap -> Milestone -> Goal -> Task -> Run`。`Goal`
+是 Harness 的主要工作单位。`Task` 是 Goal 内部的 checklist 或 execution
+breakdown。`Run` 是一次执行尝试和 evidence record，不等于 Codex thread
+或 session。
+
 从配置的 task index 创建 goal handoff：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
 ```
+
+`--task` 是兼容性的 task index lookup。它创建的是 `Goal`，不会把
+task-index title 变成 Harness 的主要工作单位。
 
 默认情况下，adapter goal 应引用已确认的 spec：
 

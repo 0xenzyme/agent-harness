@@ -9,11 +9,11 @@
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
 Agent Harness 是一个面向 Codex 和 coding-agent work 的 adapter-driven
-control plane。它把已经确认的方向转成 tasks、goals、run DAGs、worker
-execution、verification、gates 和 state sync。
+control plane。它把已经确认的方向转成 milestones、goals、goal-internal
+tasks、runs、worker execution、verification、gates 和 state sync。
 
 ```text
-accepted direction -> stage map -> goal -> run DAG -> worker -> gate -> state sync
+roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
 ```
 
 [Capability Matrix](docs/HARNESSES.md) · [GitHub Presentation](docs/github-presentation.md) ·
@@ -30,16 +30,16 @@ Agent Harness 面向的是“人已经定完方向之后”的阶段。
 “完成 M5” 不应该被解释成“写完或验收下一个小 spec 就停下”。它应该表示：
 
 ```text
-accepted direction -> stage completion map -> executable goals / run DAG
+accepted direction -> milestone completion map -> executable goals / run DAG
 -> worker execution -> control-lane verification -> state sync
 ```
 
 人仍然负责方向、授权和真正需要人工判断的 gate。Harness 应该在 project
 adapter 边界内负责剩余执行机制：
 
-- 读取当前 task、roadmap、spec、goal、milestone 和 run 状态；
-- 把 `complete M5` / `推进完成M5` 这类 broad stage request 展开成明确的
-  stage items；
+- 读取当前 roadmap、milestone、spec、goal、task 和 run 状态；
+- 把 `complete M5` / `推进完成M5` 这类 milestone request 展开成明确的
+  milestone items；
 - 当当前 thread 是 main control 时，调度 worker execution；
 - 在接受状态前验证 concrete evidence；
 - 保持 `tasks`、`status`、goals、runs 和 gate records 对齐；
@@ -110,12 +110,23 @@ adapter contract 项目通过 `.harness/config.json` 和 project adapter 解析 
 
 - `Task Index`：当前任务和 backlog 的 source of truth。
 - `Roadmap`：更长期的产品或工程方向。
-- `Milestones`：阶段级 task DAG、gates 和 deferred registers。
+- `Milestones`：roadmap 上的阶段性成果、gates 和 deferred registers。
 - `Specs`：已确认的范围、非目标、关键决策和验证方式。
-- `Goals`：可执行的 handoff prompts。
+- `Goals`：带 scope、acceptance 和内部 tasks 的主要工作单元。
+- `Tasks`：Goal 内部的 checklist 或 execution breakdown。
 - `Runs / Logs`：一次执行尝试、状态、prompt、execution DAG、subagent
   guidance、worker node prompts 和 evidence。
 - `Gate Records`：review、integration、acceptance 和 state-sync 决策。
+
+用户可见术语主线是：
+
+```text
+Roadmap -> Milestone -> Goal -> Task -> Run
+```
+
+`Goal` 是 Harness 的主要工作单位。`Task` 是 Goal 内部的具体拆解。`Run`
+是一次执行尝试和 evidence record，不等于 thread 或 session。`P0` / `P1`
+/ `P2` / `P3` 只表示优先级；`M1` / `M2` / `M5` 表示 roadmap milestone。
 
 ![Adapter Artifact Map](docs/assets/readme/adapter-artifact-map.png)
 
@@ -148,8 +159,8 @@ Codex 会把这个 plugin 暴露为 `harness`。主要 workflow-controller entry
   activation instructions。
 - `harness:intake`：捕获和 triage 新想法、新需求、bug 或 Idea Inbox
   Thread notes；只有明确确认后才 record。
-- `harness:execute`：执行已确认的 task、spec、goal 或 run packet，然后验
-  证并同步 task/status/run evidence。
+- `harness:execute`：执行已确认的 goal、spec、task breakdown 或 run
+  packet，然后验证并同步 task/status/run evidence。
 
 旧的 artifact-oriented wrapper skills 不再发布。按 route 选择 workflow
 skill：setup/adoption 用 `init`，只读状态用 `orient`，新想法用 `intake`，
@@ -166,7 +177,7 @@ bilingual fallback；运行时回复仍按用户语言输出。
 | 给项目接入 Agent Harness、迁移已有 task index、运行 doctor/import，或预览 activation。 | `harness:init` |
 | 只读查看项目状态、todo、blockers 或下一步 route，不编辑文件。 | `harness:orient` |
 | 捕获或 triage 新想法、新需求、bug 或 capture-thread note。 | `harness:intake` |
-| 完成已确认的 task、spec、goal 或 run packet，然后验证并同步状态。 | `harness:execute` |
+| 完成已确认的 goal、spec、task breakdown 或 run packet，然后验证并同步状态。 | `harness:execute` |
 
 ## Use With A Coding Agent
 

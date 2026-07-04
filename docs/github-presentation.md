@@ -37,7 +37,7 @@ The README first screen should communicate:
 
 - project identity: `Agent Harness`;
 - category: adapter-driven control plane for coding-agent work;
-- concrete flow: `accepted direction -> stage map -> goal -> run DAG -> worker -> gate -> state sync`;
+- concrete flow: `roadmap -> milestone -> goal -> tasks -> run -> gate -> state sync`;
 - trust signals: version, Codex plugin, protocol checks, smoke checks, license;
 - routes to the capability matrix, changelog, release notes, and social preview.
 

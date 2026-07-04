@@ -4,9 +4,130 @@
 
 ## Next
 
+- [ ] P2 Shape Level 0 Fast Path direct-execution policy.
+  - Source: Split from the 2026-07-04 intake idea: "一些简单的任务，应该直接执行，而不需要 harness（我理解这么做有风险，所以需要讨论）后者 sub worker".
+  - Acceptance: Define when a small Goal can be executed directly without full Harness Goal/Run ceremony or sub worker delegation; include risk thresholds, execution role boundaries, verification, and pause conditions.
+  - Notes: Classification=shape; Needs spec=yes; This changes default routing behavior and must preserve Controller / worker boundaries.
+
+- [ ] P2 Shape EnvContext focus and intent-routing model for Harness.
+  - Source: Split from the 2026-07-04 intake idea and screenshot: add intent recognition inspired by EnvContext layers and `focus` filtering.
+  - Acceptance: Define which context layers Harness should expose for `orient`, `intake`, `shape`, `goal`, and `execute`; include focus presets, token/noise controls, and how intent normalization routes user language to `Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`.
+  - Notes: Classification=shape; Needs spec=yes; Builds on the completed terminology and intent-normalization work.
+
+- [ ] P3 Research control-theory feedback loop model for Harness.
+  - Source: Split from the 2026-07-04 intake idea: "要不要学习控制论，利用控制论的思想来改造".
+  - Acceptance: Produce a bounded research note mapping control-theory concepts such as controller, plant, sensor, feedback, error, setpoint, stability, and saturation to Harness routing, gates, evidence, and pause conditions; recommend whether this should become a product spec.
+  - Notes: Classification=research; Needs spec=no for research note, yes before protocol changes.
+
 ## Later
 
 ## Done
+
+- [x] Shape lightweight human-verification checklist and Need-user digest.
+  - Completed: Added `harness-rule:need-user-digest` so user-facing closeouts
+    explicitly report `Need user` and `Remaining`.
+  - Completed: Updated `harness:execute` closeout guidance, the user-facing
+    closeout reference, project contract docs, Controller packets, goal and
+    worker prompt templates, generated run packets, and deterministic checks so
+    routine closeouts use `Need user: None` / `Remaining: None` when no true
+    pause trigger or follow-up remains.
+  - Completed: Preserved the boundary that concrete human decisions,
+    user-required manual verification, authorization, credentials/paid APIs,
+    production access, destructive-operation approval, product direction, or
+    external evidence belong in `Need user`; agent-performed manual inspection
+    belongs in `Verification`.
+  - Source: Split from the 2026-07-04 intake idea about simplifying
+    human-verification checklists and reducing repeated confirmation asks.
+  - Spec:
+    `harness/specs/2026-07-04-lightweight-human-verification-checklist-need-user-digest.md`
+  - Goal:
+    `harness/goals/2026-07-04-shape-lightweight-human-verification-checklist-and-need-user-digest.md`
+  - Run:
+    `.harness/runs/20260704-170345-shape-lightweight-human-verification-checklist-and-need-user-digest/`
+  - Verification: `node --check
+    plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, `git diff --check`, `goal validate`, and
+    `run status --json`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
+
+- [x] Align current project adapter and storage artifacts with Goal-first terminology.
+  - Completed: Updated `harness/README.md` to define the project adapter
+    terminology contract as `Roadmap -> Milestone -> Goal -> Task -> Run`,
+    including intent normalization and the compatibility boundary for the
+    existing `harness/tasks.md` / `taskIndex` storage path.
+  - Completed: Updated `harness/mental-models/` so project storage and usage
+    models describe Goal state, Goal index storage, Goal-internal Tasks, Runs
+    as execution attempts, and Milestones as roadmap outcomes.
+  - Completed: Updated current project status and completed Goal records to use
+    `Milestone Completion Map` as the formal term, leaving `Stage Completion
+    Map` only where documenting legacy compatibility.
+  - Source: User asked on 2026-07-04 to update the current project's adapter
+    and storage files to the new terminology.
+  - Verification: `git diff --check` and terminology scans over
+    `harness/README.md`, `harness/tasks.md`, `harness/status.md`, and
+    `harness/mental-models/`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
+
+- [x] Refresh Agent Harness README diagrams for terminology hierarchy.
+  - Completed: Added maintained SVG sources for
+    `docs/assets/readme/adapter-model.png` and
+    `docs/assets/readme/adapter-execution-model.png`, then regenerated both
+    PNGs with `sips` at 1672x941.
+  - Completed: Updated diagram content to present
+    `Roadmap -> Milestone -> Goal -> Task -> Run`, with `Goal` as the main
+    work unit, `Task` as internal breakdown, and `Run` as evidence attempt.
+  - Completed: Inspected `docs/assets/readme/adapter-artifact-map.png` and left
+    it unchanged because it already uses `Milestones` and no `Stage` term.
+  - Completed: Extended presentation/smoke checks to protect README diagram
+    links, SVG terminology, and the removal of the old task-first phrase.
+  - Source: User agreed on 2026-07-04 that this Controller thread should finish
+    the docs improvement task after inspecting whether diagrams need to be
+    redone.
+  - Spec: `harness/specs/2026-07-04-agent-harness-readme-diagram-refresh.md`
+  - Goal: `harness/goals/2026-07-04-refresh-agent-harness-readme-diagrams-for-terminology-hierarchy.md`
+  - Run: `.harness/runs/20260704-160154-refresh-agent-harness-readme-diagrams-for-terminology-hierarchy/`
+  - Verification: `sips -g pixelWidth -g pixelHeight`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:presentation`, `npm run test:protocol`,
+    `npm run test:smoke`, `npm run validate:plugin`, and
+    `git diff --check`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
+
+- [x] Shape Agent Harness terminology simplification and priority/milestone separation.
+  - Completed: Created accepted terminology spec with user-confirmed decisions:
+    `Roadmap -> Milestone -> Goal -> Task -> Run`; `Goal` as the main work
+    unit; `Task` as Goal-internal breakdown; `Run` as execution attempt and
+    evidence record; `P0` / `P1` / `P2` / `P3` as priority only.
+  - Completed: Updated README, README.zh-CN, CLI/install docs, project
+    contract, execute/intake skill guidance, references, templates, social
+    preview text, and GitHub presentation flow to use `Milestone` in new
+    user-facing terminology.
+  - Completed: Updated CLI generation/status/record output to use
+    `Milestone Completion Map` while preserving legacy `Stage Completion Map`
+    compatibility input and JSON aliases.
+  - Completed: Added `harness-rule:terminology-boundary` protocol coverage and
+    smoke tests for priority separation, intent normalization, Run/thread
+    boundary, milestone completion output, and legacy Stage compatibility.
+  - Source: Intake idea was superseded by user-confirmed terminology decisions
+    on 2026-07-04.
+  - Spec: `harness/specs/2026-07-04-agent-harness-terminology-simplification.md`
+  - Goal: `harness/goals/2026-07-04-shape-agent-harness-terminology-simplification-and-prioritystage-separation.md`
+  - Run: `.harness/runs/20260704-154151-shape-agent-harness-terminology-simplification-and-prioritystage-separation/`
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `node --check scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`, `npm run validate:plugin`,
+    and `git diff --check`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
 
 - [x] Execute GitHub presentation pass for profile-pinned repository.
   - Completed: Added README / README.zh-CN first-screen badges, positioning,
@@ -75,15 +196,15 @@
     daemon/watcher, deploy, publish, release, commit, push, review, or
     integration delivery was performed.
 
-- [x] Add stage completion coverage gate for parent roadmap stages.
-  - Completed: Added `Stage Completion Map` parsing and validation so parent
-    roadmap stages such as `M5` cannot be marked complete after only a
+- [x] Add milestone completion coverage gate for parent roadmap milestones.
+  - Completed: Added `Milestone Completion Map` parsing and validation so
+    parent roadmap milestones such as `M5` cannot be marked complete after only a
     source-spec leaf like `M5-S0`.
-  - Completed: `goal create --spec` now drafts a `Stage Completion Map` when a
-    parent stage task references a spec with `Implementation Phasing` items such
-    as `M5-S0` and `M5-D1`.
+  - Completed: `goal create --spec` now drafts a `Milestone Completion Map`
+    when a parent Milestone Goal references a spec with `Implementation
+    Phasing` items such as `M5-S0` and `M5-D1`.
   - Completed: `goal validate`, `run prepare`, `run status --json`, and
-    `run record --phase completed` now carry and enforce stage completion
+    `run record --phase completed` now carry and enforce Milestone completion
     evidence.
   - Completed: Updated the project contract, `harness:execute` guidance,
     completion/gate references, goal/spec templates, and smoke coverage.
@@ -95,16 +216,16 @@
   - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
     `node --check tests/smoke.mjs`, `npm run test:smoke`,
     `npm run validate:plugin`, `git diff --check`, and the wiki regression
-    `goal validate` now fails with `Stage completion goals require a Stage
-    Completion Map`.
+    `goal validate` now fails with `Milestone completion goals require a
+    Milestone Completion Map`.
   - Boundary: Did not modify wiki state, deploy/publish the plugin, commit,
     push, open PRs, release, or add daemons/watchers.
 
 - [x] Implement adapter migration ergonomics from geocn review.
-  - Completed: Updated `orient next` to route by task state and spec readiness:
-    P0/P1 `todo` / `spec-draft` tasks without spec route to shaping or
-    accepted-scope confirmation, `spec-ready` tasks with linked specs route to
-    `goal create --spec`, and `goal-ready` tasks prefer existing goal
+  - Completed: Updated `orient next` to route by Goal state and spec readiness:
+    P0/P1 `todo` / `spec-draft` Goals without spec route to shaping or
+    accepted-scope confirmation, `spec-ready` Goals with linked specs route to
+    `goal create --spec`, and `goal-ready` Goals prefer existing goal
     validation plus `run prepare`.
   - Completed: Added `config import` path overrides for status, specs, goals,
     milestones, runs, gate records, deferred register, and mental-model paths.
@@ -476,8 +597,9 @@
 - [x] Add idea / requirement intake flow.
   - Completed: Added `agent-harness intake idea` for read-only idea /
     requirement preview and explicit `--record` append to supported markdown
-    task indexes. The command classifies ideas, detects related tasks/artifacts,
-    suggests title/priority/section/acceptance/spec need, refuses table-based
+    Goal indexes. The command classifies ideas, detects related Goals, Tasks,
+    and artifacts, suggests title/priority/section/acceptance/spec need,
+    refuses table-based
     writes safely, and never starts implementation.
   - Spec: `harness/specs/2026-06-29-idea-requirement-intake-flow-design.md`
   - Goal: `harness/goals/2026-06-29-idea-requirement-intake-flow.md`
@@ -552,7 +674,7 @@
   - Run: `.harness/runs/20260621-215607-add-a-smarter-worktree-recommendation-command/`
   - Verification: `npm run validate:plugin`, current-repo recommend/doctor checks, and temporary-project checks for `local`, `worktree`, `ask`, non-git, and invalid config.
 - [x] Test Agent Harness on one real downstream project
-  - Completed: report-only init test used a local downstream project; first `doctor` showed all harness files missing, `init` created only the configured task index, machine config, status file, and harness directories.
+  - Completed: report-only init test used a local downstream project; first `doctor` showed all harness files missing, `init` created only the configured Goal index storage, machine config, status file, and harness directories.
   - Verification: repeated `init` reported no file changes and hashes for the three generated files stayed unchanged, confirming no overwrite behavior.
 - [x] Add language-aware command output
   - Completed: CLI user-facing output for `init`, `doctor`, and help/usage supports `en` and `zh-CN` through `--lang`, `AGENT_HARNESS_LANG`, optional `language.default`, system locale, and fallback `en`.

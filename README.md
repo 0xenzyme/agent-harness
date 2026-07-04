@@ -9,11 +9,11 @@
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
 Agent Harness is an adapter-driven control plane for Codex and coding-agent
-work. It turns accepted direction into tasks, goals, run DAGs, worker
-execution, verification, gates, and state sync.
+work. It turns accepted direction into milestones, goals, goal-internal tasks,
+runs, worker execution, verification, gates, and state sync.
 
 ```text
-accepted direction -> stage map -> goal -> run DAG -> worker -> gate -> state sync
+roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
 ```
 
 [Capability Matrix](docs/HARNESSES.md) · [GitHub Presentation](docs/github-presentation.md) ·
@@ -32,15 +32,15 @@ At that point, "complete M5" should not mean "write or accept the next small
 spec and stop." It should mean:
 
 ```text
-accepted direction -> stage completion map -> executable goals / run DAG
+accepted direction -> milestone completion map -> executable goals / run DAG
 -> worker execution -> control-lane verification -> state sync
 ```
 
 The human should still own direction, authorization, and true gates. Harness
 should own the remaining execution mechanics inside the project adapter:
 
-- discover the current task, roadmap, spec, goal, milestone, and run state;
-- turn broad stage requests such as `complete M5` into explicit stage items;
+- discover the current roadmap, milestone, spec, goal, task, and run state;
+- turn milestone requests such as `complete M5` into explicit milestone items;
 - dispatch worker execution when the current thread is acting as main control;
 - verify concrete evidence before accepting state;
 - keep `tasks`, `status`, goals, runs, and gate records aligned;
@@ -52,7 +52,7 @@ The core promise is not "agents write files." The promise is that a coding
 agent can stop losing the plot between roadmap, spec, implementation,
 verification, and handoff. Parent milestones stay open until their mapped
 subitems are complete; source-spec acceptance such as `M5-S0` cannot silently
-become parent-stage completion for `M5`.
+become parent milestone completion for `M5`.
 
 ## Problem
 
@@ -125,12 +125,24 @@ Typical adapter artifacts include:
 
 - `Task Index`: the active task/backlog source of truth.
 - `Roadmap`: longer-range product or engineering direction.
-- `Milestones`: phase-level task DAGs, gates, and deferred registers.
+- `Milestones`: phase-level roadmap outcomes, gates, and deferred registers.
 - `Specs`: accepted scope, non-goals, decisions, and validation.
-- `Goals`: executable handoff prompts.
+- `Goals`: executable work units with scope, acceptance, and internal tasks.
+- `Tasks`: goal-internal checklist or execution breakdown items.
 - `Runs / Logs`: one execution attempt, status, prompt, execution DAG,
   subagent guidance, worker node prompts, and evidence.
 - `Gate Records`: review, integration, acceptance, and state-sync decisions.
+
+The user-facing terminology line is:
+
+```text
+Roadmap -> Milestone -> Goal -> Task -> Run
+```
+
+`Goal` is the main Harness work unit. `Task` means a concrete breakdown inside
+a Goal. `Run` is an execution attempt and evidence record, not a thread or
+session. `P0` / `P1` / `P2` / `P3` are priorities only; `M1` / `M2` / `M5`
+refer to roadmap milestones.
 
 ![Adapter Artifact Map](docs/assets/readme/adapter-artifact-map.png)
 
@@ -164,8 +176,8 @@ path is four workflow skills:
   doctor/import, and preview activation instructions.
 - `harness:intake`: capture and triage a new idea, requirement, bug, or Idea
   Inbox Thread note; record only after explicit approval.
-- `harness:execute`: implement a confirmed task, spec, goal, or run packet,
-  then verify and sync task/status/run evidence.
+- `harness:execute`: implement a confirmed goal, spec, task breakdown, or run
+  packet, then verify and sync task/status/run evidence.
 
 Older artifact-oriented wrapper skills are no longer shipped. Use the workflow
 skill that matches the route: `init` for setup/adoption, `orient` for read-only
@@ -183,7 +195,7 @@ fields, while runtime responses still follow the user's language.
 | Adopt Agent Harness in a project, migrate an existing task index, run doctor/import, or preview activation. | `harness:init` |
 | Check project status, todo, blockers, or next route without editing files. | `harness:orient` |
 | Capture or triage a new idea, requirement, bug, or capture-thread note. | `harness:intake` |
-| Complete a confirmed task, spec, goal, or run packet and then verify and sync state. | `harness:execute` |
+| Complete a confirmed goal, spec, task breakdown, or run packet and then verify and sync state. | `harness:execute` |
 
 ## Use With A Coding Agent
 

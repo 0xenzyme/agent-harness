@@ -6,7 +6,8 @@ description: Execute confirmed Agent Harness implementation or gate work with ve
 # Harness Execute
 
 Use this skill when the user has authorized a concrete implementation slice or
-asked the current thread to act as the control lane for a confirmed task.
+asked the current thread to act as the control lane for a confirmed goal or
+run.
 
 ## Reference Map
 
@@ -84,12 +85,12 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
    implementation. If the checklist is missing and the difference between
    technical completion and product acceptance matters, pause to shape or amend
    the goal instead of implementing against vague prose.
-   When the user asks to complete a roadmap stage or milestone, such as
-   "complete M5" or "推进完成M5", treat the target as whole-stage completion by
-   default. If the spec has implementation phasing items such as `M5-S0` and
-   `M5-D1`, create or require a `Stage Completion Map`; source-spec acceptance
-   alone must not mark the parent stage done unless the user explicitly narrowed
-   the task to that leaf stage.
+   When the user asks to complete a roadmap milestone, such as "complete M5" or
+   "推进完成M5", treat the target as whole-milestone completion by default. If
+   the spec has implementation phasing items such as `M5-S0` and `M5-D1`,
+   create or require a `Milestone Completion Map`; source-spec acceptance alone
+   must not mark the parent milestone done unless the user explicitly narrowed
+   the work to that leaf item.
 7. If the user asks what to do next before authorizing work, switch to orient:
 
 ```bash
@@ -191,9 +192,11 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
     run completed.
 18. Before the final answer, read
     [User-Facing Closeout](references/user-facing-closeout.md) and summarize
-    changed files or reviewed output, verification, Delivery State, and remaining
-    blocker or next action. Do not paste full run or gate packets unless the user
-    asks for audit or handoff detail.
+    changed files or reviewed output, verification, Delivery State, `Need user`,
+    and `Remaining`. This is `harness-rule:need-user-digest`: say
+    `Need user: None` and `Remaining: None` for routine closeouts when no true
+    pause trigger or follow-up remains. Do not paste full run or gate packets
+    unless the user asks for audit or handoff detail.
 
 ## Boundaries
 
@@ -235,10 +238,11 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
   adapter-declared `gates.requiredForCompletion` or `gates.blocking` require
   matching `Required Gate Evidence` items with concrete evidence and
   `Status: satisfied`.
-- Completed parent-stage runs with `Stage Completion Map` items require
-  concrete evidence and `Status: satisfied` for every stage item. Do not mark a
-  parent stage such as `M5` done after only `M5-S0` source-spec acceptance
-  unless the remaining implementation items are explicitly outside that stage.
+- Completed parent milestone runs with `Milestone Completion Map` items require
+  concrete evidence and `Status: satisfied` for every milestone item. Do not
+  mark a parent milestone such as `M5` done after only `M5-S0` source-spec
+  acceptance unless the remaining implementation items are explicitly outside
+  that milestone.
 - Keep accepted state inspectable: cite concrete task entries, specs, goals,
   run records, gate records, command summaries, or human review notes.
 - Keep plugin core docs and templates project-neutral; put local facts in the

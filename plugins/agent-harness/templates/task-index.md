@@ -4,6 +4,9 @@
 | --- | --- | --- | --- | --- |
 | Define the next concrete task | development | todo | P1 |  |
 
+`Priority` uses `P0`, `P1`, `P2`, or `P3` only. It is not the task name,
+roadmap milestone, or execution phase.
+
 ## Task Kinds
 
 - `development`: scoped implementation, review, repair, or documentation work.

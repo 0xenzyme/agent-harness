@@ -58,9 +58,11 @@ Forbidden scope:
 - Include state-sync evidence (`harness-rule:state-sync-evidence`) such as
   changed files, verification, known risks, dirty state, Delivery State, and
   deferred items.
+- Include concrete `Need user` and `Remaining` values. Use `Need user: None`
+  and `Remaining: None` when no true pause trigger or follow-up remains.
 
 ## Return Contract
 
 Return an `Execution Result Packet` with changed files, validation, known risks,
-dirty state, Delivery State, deferred items, and whether the controller was
-notified.
+dirty state, Delivery State, `Need user`, `Remaining`, deferred items, and
+whether the controller was notified.

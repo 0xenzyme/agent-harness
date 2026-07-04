@@ -149,7 +149,7 @@ usage to one of the four workflow skills instead.
 | Setup, migration, config import, doctor, or activation preview. | `harness:init` |
 | Read-only status, todo, blocker, and next-route inspection. | `harness:orient` |
 | New idea, requirement, bug, or capture-thread note triage. | `harness:intake` |
-| Confirmed task, spec, goal, run, verification, and state sync. | `harness:execute` |
+| Confirmed goal, spec, task breakdown, run, verification, and state sync. | `harness:execute` |
 
 ## Packaging Discipline
 
@@ -159,10 +159,11 @@ commands, and version metadata describe the same shipped behavior. Public
 examples should stay project-neutral; project-specific policy belongs in the
 target project's adapter and artifacts.
 
-Run records are evidence artifacts, not source edits. Completed run records
-must include verification evidence; `gate-only` completed records must also
-include gate evidence that cites implementer output and acceptance evidence.
-Candidate output is not accepted completion by itself. Goals with a
+Run records are evidence artifacts, not source edits or Codex thread/session
+identity. Completed run records must include verification evidence; `gate-only`
+completed records must also include gate evidence that cites implementer output
+and acceptance evidence. Candidate output is not accepted completion by itself.
+Goals with a
 `Spec Acceptance Checklist` must satisfy every checklist item, and
 adapter-required gates must be recorded under `Required Gate Evidence` with
 concrete evidence and `Status: satisfied`.

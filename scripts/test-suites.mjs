@@ -18,6 +18,15 @@ const ruleAnchors = [
     ]
   },
   {
+    id: "harness-rule:terminology-boundary",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/templates/goal.md"
+    ]
+  },
+  {
     id: "harness-rule:local-delivery-ceiling",
     files: [
       "docs/HARNESSES.md",
@@ -34,6 +43,27 @@ const ruleAnchors = [
       "docs/project-contract.md",
       "plugins/agent-harness/references/worker-runner-contract.md",
       "plugins/agent-harness/templates/worker-prompt.md"
+    ]
+  },
+  {
+    id: "harness-rule:child-controller-boundary",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/controller-communication.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/templates/goal.md"
+    ]
+  },
+  {
+    id: "harness-rule:need-user-digest",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/controller-communication.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/skills/execute/references/user-facing-closeout.md",
+      "plugins/agent-harness/templates/goal.md"
     ]
   },
   {
@@ -69,10 +99,14 @@ const matrixLinkExpectations = [
 
 const presentationExpectations = [
   ["README.md", "docs/assets/github/social-preview.svg"],
+  ["README.md", "docs/assets/readme/adapter-model.png"],
+  ["README.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
   ["README.md", "docs/releases/v0.4.0.md"],
   ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-model.png"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.zh-CN.md", "docs/github-presentation.md"],
   ["README.zh-CN.md", "CHANGELOG.md"],
   ["README.zh-CN.md", "docs/releases/v0.4.0.md"],
@@ -83,6 +117,10 @@ const presentationExpectations = [
   ["CHANGELOG.md", "## 0.4.0 - 2026-07-02"],
   ["docs/releases/v0.4.0.md", "Agent Harness v0.4.0"],
   ["docs/assets/github/social-preview.svg", "Tasks"],
+  ["docs/assets/readme/adapter-model.svg", "Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run"],
+  ["docs/assets/readme/adapter-model.svg", "milestones, goals, runs"],
+  ["docs/assets/readme/adapter-execution-model.svg", "Milestone"],
+  ["docs/assets/readme/adapter-execution-model.svg", "Goals are the primary execution unit"],
   ["LICENSE", "MIT License"]
 ];
 
@@ -149,6 +187,11 @@ function checkPresentation() {
   for (const [file, needle] of presentationExpectations) {
     assertIncludesFile(file, needle, `${file} must include presentation marker ${needle}`);
   }
+  const adapterModelDiagram = readRepoFile("docs/assets/readme/adapter-model.svg");
+  assert(
+    !adapterModelDiagram.includes("tasks, specs, goals, runs"),
+    "adapter-model.svg must not preserve the old task-first diagram phrase"
+  );
   console.log("Presentation checks passed.");
 }
 

@@ -162,8 +162,11 @@ for (const needle of [
   "test:smoke",
   "validate:plugin",
   "harness-rule:gate-only-controller",
+  "harness-rule:terminology-boundary",
   "harness-rule:local-delivery-ceiling",
   "harness-rule:worker-surface-default",
+  "harness-rule:child-controller-boundary",
+  "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence"
 ]) {
@@ -175,8 +178,11 @@ for (const needle of [
   "Runtime And Control Surfaces",
   "Suite Routing",
   "harness-rule:gate-only-controller",
+  "harness-rule:terminology-boundary",
   "harness-rule:local-delivery-ceiling",
   "harness-rule:worker-surface-default",
+  "harness-rule:child-controller-boundary",
+  "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
   "npm run test:presentation",
@@ -187,10 +193,14 @@ for (const needle of [
 }
 for (const [file, needle] of [
   ["README.md", "docs/assets/github/social-preview.svg"],
+  ["README.md", "docs/assets/readme/adapter-model.png"],
+  ["README.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
   ["README.md", "docs/releases/v0.4.0.md"],
   ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-model.png"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.png"],
   ["docs/github-presentation.md", "codex-plugin"],
   ["CHANGELOG.md", "## 0.4.0 - 2026-07-02"],
   ["docs/releases/v0.4.0.md", "Agent Harness v0.4.0"],
@@ -198,6 +208,24 @@ for (const [file, needle] of [
   ["LICENSE", "MIT License"]
 ]) {
   assertIncludes(readFileSync(join(repoRoot, file), "utf8"), needle, `${file} should preserve GitHub presentation surface`);
+}
+const adapterModelDiagram = readFileSync(join(repoRoot, "docs/assets/readme/adapter-model.svg"), "utf8");
+const adapterExecutionDiagram = readFileSync(join(repoRoot, "docs/assets/readme/adapter-execution-model.svg"), "utf8");
+for (const needle of ["Roadmap", "Milestone", "Goal", "Tasks", "Run", "Evidence"]) {
+  assertIncludes(adapterModelDiagram, needle, "adapter model diagram should expose the current terminology hierarchy");
+}
+assertIncludes(
+  adapterModelDiagram,
+  "Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run",
+  "adapter model diagram should show the current terminology chain"
+);
+assertExcludes(
+  adapterModelDiagram,
+  "tasks, specs, goals, runs",
+  "adapter model diagram should not preserve the old task-first artifact phrase"
+);
+for (const needle of ["Roadmap", "Milestone", "Goal", "Tasks", "Run", "Verify", "Gate", "Sync"]) {
+  assertIncludes(adapterExecutionDiagram, needle, "adapter execution diagram should expose the current execution terminology");
 }
 for (const [file, needle] of [
   ["README.md", "docs/HARNESSES.md"],
@@ -308,6 +336,10 @@ const executionRolesReference = readFileSync(
 );
 const adversarialAcceptanceReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/skills/execute/references/adversarial-acceptance.md"),
+  "utf8"
+);
+const userFacingCloseoutReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/skills/execute/references/user-facing-closeout.md"),
   "utf8"
 );
 const adoptionBoundaryReference = readFileSync(
@@ -429,6 +461,26 @@ assertIncludes(
   "execute should compress execution evidence into a user-facing closeout"
 );
 assertIncludes(
+  workflowSkillDocs.execute,
+  "Need user: None",
+  "execute closeout guidance should state when no user action is needed"
+);
+assertIncludes(
+  userFacingCloseoutReference,
+  "Need user: <concrete decision, manual verification, authorization, external",
+  "user-facing closeout should include a Need user line"
+);
+assertIncludes(
+  userFacingCloseoutReference,
+  "Remaining: <missing verification, delivery pending, follow-up, blocker, or",
+  "user-facing closeout should separate Remaining from Need user"
+);
+assertIncludes(
+  userFacingCloseoutReference,
+  "Do not ask broad confirmation questions",
+  "user-facing closeout should avoid routine confirmation questions"
+);
+assertIncludes(
   taskRoutingReference,
   "First-Principles Scope",
   "task-routing should expose the first-principles scope check"
@@ -467,6 +519,11 @@ assertIncludes(
   workerPromptTemplate,
   "Return candidate evidence only",
   "worker prompt template should prevent worker self-acceptance"
+);
+assertIncludes(
+  workerPromptTemplate,
+  "Need user: None",
+  "worker prompt template should tell workers how to report no user need"
 );
 assertIncludes(
   adversarialAcceptanceReference,
@@ -522,6 +579,56 @@ assertIncludes(
   controllerCommunicationReference,
   "templates/worker-prompt.md",
   "controller communication should point worker launches at the prompt template"
+);
+assertIncludes(
+  controllerCommunicationReference,
+  "Accepted-state owner",
+  "controller communication should declare accepted-state ownership for child controller handoff"
+);
+assertIncludes(
+  controllerCommunicationReference,
+  "Parent return channel",
+  "controller communication should define parent return channel for child controllers"
+);
+assertIncludes(
+  controllerCommunicationReference,
+  "Need user:",
+  "controller packets should carry concrete user needs"
+);
+assertIncludes(
+  controllerCommunicationReference,
+  "Need user: None",
+  "controller packets should state when no user action is needed"
+);
+assertIncludes(
+  taskRoutingReference,
+  "child-controller",
+  "task-routing should distinguish child controllers from execution workers"
+);
+assertIncludes(
+  taskRoutingReference,
+  "Roadmap -> Milestone -> Goal -> Task -> Run",
+  "task-routing should define the formal user-facing terminology hierarchy"
+);
+assertIncludes(
+  taskRoutingReference,
+  "用 harness 做这个任务",
+  "task-routing should normalize Chinese task phrasing to Goal"
+);
+assertIncludes(
+  taskRoutingReference,
+  "`P0` / `P1` / `P2` / `P3` -> `Priority`",
+  "task-routing should separate priority labels from task and milestone names"
+);
+assertIncludes(
+  taskRoutingReference,
+  "`Stage` was renamed to `Milestone`",
+  "task-routing should keep Stage only as a migration alias"
+);
+assertIncludes(
+  readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8"),
+  "Run is not a Codex\n  thread, session, worker, or worktree identity",
+  "project contract should keep Run separate from thread/session identity"
 );
 const designPrincipleFiles = [
   "docs/project-contract.md",
@@ -652,6 +759,12 @@ try {
   const fixedRun = readdirSync(join(fixed, ".harness/runs")).sort().at(-1);
   const fixedRunStatus = readJson(join(fixed, ".harness/runs", fixedRun, "status.json"));
   assert(fixedRunStatus.executionRole === "implementer", "run prepare should record generated goal execution role");
+  const fixedRunMarkdown = readFileSync(join(fixed, ".harness/runs", fixedRun, "run.md"), "utf8");
+  const fixedPromptMarkdown = readFileSync(join(fixed, ".harness/runs", fixedRun, "prompt.md"), "utf8");
+  assertIncludes(fixedRunMarkdown, "Need user: None", "run packet should tell agents how to close with no user need");
+  assertIncludes(fixedRunMarkdown, "Remaining: None", "run packet should tell agents how to close with no remaining work");
+  assertIncludes(fixedPromptMarkdown, "Need user: None", "execution prompt should tell agents how to close with no user need");
+  assertIncludes(fixedPromptMarkdown, "Remaining: None", "execution prompt should tell agents how to close with no remaining work");
   run([
     "run",
     "record",
@@ -1220,6 +1333,8 @@ Manual verification evidence only.
   );
   assertIncludes(cliWorkerPrompt, "Delivery state:", "worker result packet should report delivery state");
   assertIncludes(cliWorkerPrompt, "Working tree dirty:", "worker result packet should report dirty state");
+  assertIncludes(cliWorkerPrompt, "Need user:", "worker result packet should report concrete user needs");
+  assertIncludes(cliWorkerPrompt, "Remaining:", "worker result packet should report remaining follow-up separately");
   const largeDagStatusJson = JSON.parse(run(["run", "status", "--cwd", custom, "--run", largeDagRunRel, "--json"]));
   assert(
     JSON.stringify(largeDagStatusJson.executionDag.readyNodes) === JSON.stringify(["explorer"]),
@@ -1648,8 +1763,8 @@ Future implementation goal.
     "harness/specs/m5.md",
     "--dry-run"
   ]);
-  assertIncludes(generatedStageGoal, "## Stage Completion Map", "parent stage goal creation should include a stage completion map");
-  assertIncludes(generatedStageGoal, "M5-D1: Diagnosis Read Model", "generated stage map should include implementation phasing items");
+  assertIncludes(generatedStageGoal, "## Milestone Completion Map", "parent milestone goal creation should include a milestone completion map");
+  assertIncludes(generatedStageGoal, "M5-D1: Diagnosis Read Model", "generated milestone map should include implementation phasing items");
   const stageGoalBase = `# Goal: M5 Diagnosis, Actions, Briefs, And Reports
 
 Spec: harness/specs/m5.md
@@ -1677,7 +1792,7 @@ Use \`implementer\`.
 - Release authorized: \`no\`
 
 ## Scope
-- Complete M5 as the parent roadmap stage.
+- Complete M5 as the parent roadmap milestone.
 
 ## Non-Goals
 - Do not release, deploy, publish, or execute delivery above the goal policy.
@@ -1697,10 +1812,10 @@ Manual verification evidence only.
   write(join(invalidGoalDir, "stage-missing-map.md"), stageGoalBase);
   assertIncludes(
     runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/stage-missing-map.md", "--json"]),
-    "Stage Completion Map",
-    "parent stage goals should require a stage completion map"
+    "Milestone Completion Map",
+    "parent milestone goals should require a milestone completion map"
   );
-  const pendingStageMap = `## Stage Completion Map
+  const pendingStageMap = `## Milestone Completion Map
 
 - Item: \`M5-S0: Product Spec\`
   - Acceptance: \`M5 product source spec is accepted.\`
@@ -1721,16 +1836,22 @@ Manual verification evidence only.
 `;
   write(join(invalidGoalDir, "stage-pending-map.md"), stageGoalBase.replace("## Scope", `${pendingStageMap}## Scope`));
   const pendingStageValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/stage-pending-map.md", "--json"]));
-  assert(pendingStageValidate.ok === true, "pending stage completion map should validate before execution");
-  assert(pendingStageValidate.goal.stageCompletionMap.required === true, "parent stage goal should report stage map requirement");
-  assert(pendingStageValidate.goal.stageCompletionMap.itemCount === 3, "stage map should expose item count");
-  assert(pendingStageValidate.goal.stageCompletionMap.requiredLabels.length === 3, "stage map should expose implementation phasing labels");
+  assert(pendingStageValidate.ok === true, "pending milestone completion map should validate before execution");
+  assert(pendingStageValidate.goal.milestoneCompletionMap.required === true, "parent milestone goal should report milestone map requirement");
+  assert(pendingStageValidate.goal.milestoneCompletionMap.itemCount === 3, "milestone map should expose item count");
+  assert(pendingStageValidate.goal.milestoneCompletionMap.requiredLabels.length === 3, "milestone map should expose implementation phasing labels");
+  assert(pendingStageValidate.goal.stageCompletionMap.required === true, "legacy stage map alias should remain available in validation output");
+  const legacyStageMap = pendingStageMap.replace("## Milestone Completion Map", "## Stage Completion Map");
+  write(join(invalidGoalDir, "stage-legacy-map.md"), stageGoalBase.replace("## Scope", `${legacyStageMap}## Scope`));
+  const legacyStageValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/stage-legacy-map.md", "--json"]));
+  assert(legacyStageValidate.ok === true, "legacy Stage Completion Map should remain readable as compatibility input");
   run(["run", "prepare", "--cwd", custom, "--goal", "custom/goals/stage-pending-map.md"]);
   const pendingStageRun = readdirSync(join(custom, "custom/runs")).filter((name) => name.endsWith("-stage-pending-map")).sort().at(-1);
   assert(pendingStageRun, "pending stage run should be prepared");
   const pendingStageRunStatus = readJson(join(custom, "custom/runs", pendingStageRun, "status.json"));
-  assert(pendingStageRunStatus.stageCompletionMapRequired === true, "run status should record required stage completion map");
-  assert(pendingStageRunStatus.stageCompletionMapItemCount === 3, "run status should record stage completion map item count");
+  assert(pendingStageRunStatus.milestoneCompletionMapRequired === true, "run status should record required milestone completion map");
+  assert(pendingStageRunStatus.milestoneCompletionMapItemCount === 3, "run status should record milestone completion map item count");
+  assert(pendingStageRunStatus.stageCompletionMapRequired === true, "legacy run status alias should record required milestone completion map");
   assertIncludes(
     runFails([
       "run",
@@ -1742,12 +1863,12 @@ Manual verification evidence only.
       "--phase",
       "completed",
       "--summary",
-      "stage completed with pending D items",
+      "milestone completed with pending D items",
       "--verification",
       "verification passed"
     ]),
-    "Stage Completion Map validation failed",
-    "completed parent stage run should reject pending stage map items"
+    "Milestone Completion Map validation failed",
+    "completed parent milestone run should reject pending milestone map items"
   );
   const satisfiedStageMap = pendingStageMap
     .replaceAll("`TBD`", "`Verified by stage fixture evidence`")
@@ -1765,14 +1886,14 @@ Manual verification evidence only.
     "--phase",
     "completed",
     "--summary",
-    "stage accepted with all D items",
+    "milestone accepted with all D items",
     "--verification",
     "verification passed",
     "--integration-ref",
-    "stage-smoke-mainline",
+    "milestone-smoke-mainline",
     "--json"
   ]));
-  assert(satisfiedStageRecord.phase === "completed", "satisfied stage map should allow parent stage completion");
+  assert(satisfiedStageRecord.phase === "completed", "satisfied milestone map should allow parent milestone completion");
 
   write(join(invalidGoalDir, "missing-section.md"), readFileSync(customGoal, "utf8").replace("## Completion Conditions", "## Completion Conditions Removed"));
   assertIncludes(

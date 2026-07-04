@@ -7,7 +7,8 @@ of truth, scope, non-goals, verification, or pause triggers are ambiguous.
 
 ## Decision Inputs
 
-- Priority: `P0`, `P1`, `P2`, `P3`.
+- Priority: `P0`, `P1`, `P2`, `P3`; these labels mean priority only and are
+  not task names, stages, or milestone identifiers.
 - Scope: single-file, single-area, cross-area, cross-module, milestone.
 - Product or domain risk.
 - Source-of-truth risk.
@@ -18,6 +19,40 @@ of truth, scope, non-goals, verification, or pause triggers are ambiguous.
   including explicit user or controller decisions that revise older artifacts.
 - User intent: question, discussion, review, or implementation.
 - Requested execution role: `gate-only`, `implementer`, or `mixed`.
+
+## Terminology And Intent Normalization
+
+`harness-rule:terminology-boundary`: keep priority, milestone, goal, task, and
+run boundaries explicit before choosing a Harness route.
+
+Formal user-facing hierarchy:
+
+```text
+Roadmap -> Milestone -> Goal -> Task -> Run
+```
+
+- `Milestone`: a phase-level roadmap outcome such as `M5`; completion is
+  derived from evidence across multiple Goals.
+- `Goal`: the main Harness work unit. Users confirm direction, scope, and
+  acceptance points.
+- `Task`: concrete breakdown inside a Goal, such as checklist or execution
+  steps.
+- `Run`: one execution attempt and evidence record, not a thread/session
+  identity.
+- `Spec`: a specification, constraint, and acceptance document.
+
+Normalize natural-language user intent before routing:
+
+- "complete this task", "develop this task", or "用 harness 做这个任务" -> `Goal`
+- "what steps/subtasks/checklist are inside this task?" -> `Tasks`
+- "complete M2", "完成 M2", or "推进 M5" -> `Milestone`
+- "run it again", "this execution", or "上次失败那次" -> `Run`
+- `P0` / `P1` / `P2` / `P3` -> `Priority`
+- `Spec`, "document", "文档", "规格", or "验收标准" -> `Spec`
+
+`Stage` was renamed to `Milestone`. New routing docs and generated artifacts
+should use `Milestone`; existing `Stage Completion Map` artifacts are legacy
+compatibility input.
 
 ## Task Kinds
 
@@ -219,6 +254,14 @@ controller and execution roles. Use fork only when the controller explicitly
 approves inherited context and repeats the worker role, source controller
 thread, allowed scope, forbidden scope, return channel, and result packet
 contract.
+
+`harness-rule:child-controller-boundary`: when a new visible thread is used, the
+handoff must declare whether the thread is a `child-controller` or an
+`execution-worker`. A child controller owns accepted state only inside its
+authorized scope and reports snapshots, decision requests, and final result
+packets to the parent controller. An execution worker returns candidate
+evidence only. Do not let a parent controller and child controller both accept
+the same scope unless a superseding decision records which authority changed.
 
 When the active conversation is `gate-only`, route clear implementation work to
 a worker subagent by default. Do not ask the user to choose between launching a

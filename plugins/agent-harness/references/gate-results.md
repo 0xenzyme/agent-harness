@@ -36,10 +36,10 @@ Next executable:
 - Batch or merged source-task runs must include a `Source Task Acceptance Map`.
   The control lane must verify every mapped acceptance item before marking the
   run completed.
-- Parent roadmap stage or milestone runs must include a `Stage Completion Map`
-  when implementation phasing declares subitems such as `M5-S0` and `M5-D1`.
-  The control lane must verify every mapped stage item before marking the parent
-  stage completed.
+- Parent roadmap milestone runs must include a `Milestone Completion Map` when
+  implementation phasing declares subitems such as `M5-S0` and `M5-D1`. The
+  control lane must verify every mapped milestone item before marking the
+  parent milestone completed.
 - Goals with `Spec Acceptance Checklist` items must satisfy every checklist
   item before completed run records can be accepted.
 - Adapter-required gates declared in `gates.requiredForCompletion` or

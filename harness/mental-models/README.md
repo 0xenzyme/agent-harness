@@ -2,13 +2,19 @@
 
 Agent Harness is a file-based control plane for Codex work. It does not own a
 product domain, start workers, or execute release actions by itself. Its job is
-to make task state, execution context, handoffs, gates, and evidence explicit
+to make Goal state, execution context, handoffs, gates, and evidence explicit
 enough that another Codex session or human can safely continue the loop.
 
 The reusable adapter formula is:
 
 ```text
-adapter contract = task with status + spec + DAG + goal + gate
+adapter contract = goal with tasks + spec + run + gate + evidence
+```
+
+User-facing terminology follows:
+
+```text
+Roadmap -> Milestone -> Goal -> Task -> Run
 ```
 
 The core rule is:
@@ -34,7 +40,7 @@ Agent Harness has three layers:
    templates, and deterministic CLI helpers.
 2. Project adapter: project-specific artifact paths, source-of-truth rules,
    hard boundaries, validation commands, and enabled gates.
-3. Documentation artifacts: task indexes, specs, goals, milestones, gate
+3. Documentation artifacts: Goal indexes, specs, goals, milestones, gate
    records, run logs, status files, mental models, and deferred registers.
 
 Fixed-contract projects keep the original fixed file contract.
@@ -48,7 +54,8 @@ the harness in a new project, migrate an existing project into the harness
 system, activate harness instructions, or trigger normal post-activation
 workflows.
 
-Read `02-work-unit.md` when deciding which artifacts a task needs.
+Read `02-work-unit.md` when deciding which artifacts a Goal needs and how its
+Tasks should be represented.
 
 Read `03-control-loop-handoff.md` when creating goals, preparing runs,
 recording verification, or passing work to another session.

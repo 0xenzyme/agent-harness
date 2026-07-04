@@ -3,10 +3,19 @@
 Use these packet formats when a controller thread coordinates execution
 threads or records gate outcomes.
 
-The controller thread is the acceptance lane. Other threads, automation,
-proposal competition, and inbox notes may produce candidate evidence, but they
-do not update accepted task/status/run state until the controller validates the
-evidence and records the decision.
+The controller thread is the acceptance lane for its authorized scope. Other
+threads, automation, proposal competition, and inbox notes may produce
+candidate evidence, but they do not update accepted task/status/run state until
+the controller validates the evidence and records the decision.
+
+`harness-rule:child-controller-boundary`: a visible long-lived thread must
+declare whether it is a child controller or an execution worker before work
+starts. A child controller may own accepted state only inside the authorized
+scope named by the launch packet. The parent controller keeps portfolio,
+roadmap, or milestone visibility through snapshots, decision requests, and
+final result packets; it must not repeat same-scope acceptance unless it
+explicitly supersedes the child controller's authority and records the stale
+state risk.
 
 Use [Worker Runner Contract](worker-runner-contract.md) before launching,
 prompting, recording, or accepting worker output. Worker output is candidate
@@ -25,6 +34,7 @@ Status Snapshot
 Milestone:
 Current gate:
 Running threads:
+Child controllers:
 DAG ready nodes:
 DAG blocked nodes:
 Done:
@@ -32,6 +42,10 @@ Blocked:
 Next executable:
 Need user:
 ```
+
+Use `Need user: None` when no true pause trigger or concrete user action is
+needed. This is `harness-rule:need-user-digest`; do not turn routine snapshots
+or closeouts into broad confirmation requests.
 
 ## Decision Request
 
@@ -61,7 +75,9 @@ Goal Launch Packet
 Goal:
 DAG node:
 Thread role:
+Parent controller thread:
 Controller thread:
+Accepted-state owner:
 Worker surface:
 Conversation route:
 Conversation lane:
@@ -70,6 +86,7 @@ Execution branch:
 Execution slot:
 Remote-control worktree:
 Return channel:
+Parent return channel:
 Prompt artifact:
 Output artifact:
 Recommended model:
@@ -86,9 +103,19 @@ Expected delivery state:
 Target delivery state:
 Delivery authorization:
 Commit expectation:
+Allowed state writes:
 Return contract:
+Report cadence:
 Notify on:
 ```
+
+`Thread role` must distinguish `child-controller` from `execution-worker` when
+the surface is a visible long-lived thread. Use `Accepted-state owner` and
+`Allowed state writes` to name exactly which lane may update accepted
+task/status/goal/run/gate state. For a child controller, `Parent return channel`
+is for parent-level status sync and true-gate escalation, not for duplicate
+same-scope acceptance. For an execution worker, the result remains candidate
+evidence only.
 
 ## Execution Result Packet
 
@@ -104,6 +131,8 @@ Changed files:
 Summary:
 Validation:
 Known risks:
+Need user:
+Remaining:
 Needs review:
 Commit:
 Delivery state:
@@ -114,6 +143,7 @@ Review:
 Integration:
 Release:
 Controller notified:
+Parent controller notified:
 Worktree:
 Base commit:
 Head commit:
@@ -124,8 +154,9 @@ Gate self-check:
 Deferred items:
 ```
 
-Validation and known risks must be concrete. If nothing was found, write
-`None identified` instead of leaving fields blank.
+Validation, known risks, `Need user`, and `Remaining` must be concrete. If
+nothing was found, write `None identified` for risks and `None` for `Need user`
+or `Remaining` instead of leaving fields blank.
 
 State changes should point to inspectable evidence: changed files, command
 summaries, run records, gate reports, or human review notes.
@@ -185,6 +216,8 @@ Secrets / provider / paid calls:
 Invariants:
 Deferred items:
 Follow-up tasks:
+Need user:
+Remaining:
 Integration decision:
 State update:
 ```
