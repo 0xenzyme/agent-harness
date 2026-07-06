@@ -7,6 +7,42 @@ The project-neutral capability matrix is maintained in
 surfaces, defaults, boundaries, applicability, verification expectations, and
 stable `harness-rule:*` anchors.
 
+The control-theory inspired stability model is maintained in
+[`docs/cybernetic-stability.md`](cybernetic-stability.md). It describes how
+Harness uses intent/setpoint selection, sensor freshness, measurement
+snapshots, remaining-gap comparison, feedback quality, and stability /
+saturation pause triggers.
+
+`harness-rule:cybernetic-stability`: Harness should control toward an explicit
+target using fresh observations, measurement snapshots, remaining-gap
+comparison, feedback-quality checks, and stability/saturation pause triggers.
+
+## Cybernetic Stability
+
+Harness uses the cybernetic stability model as internal product language, not
+as required user-facing jargon.
+
+- `harness-rule:intent-setpoint-selection`: recognize user intent before
+  routing and treat the normalized target as the setpoint. A request may target
+  a `Milestone`, `Goal`, goal-internal `Task`, `Run`, `Priority`, `Spec`,
+  question, research note, or ask boundary.
+- `harness-rule:sensor-freshness`: prefer newer explicit user instructions and
+  fresh local observations such as `git status`, `git diff`, command output,
+  and freshly run tests over stale artifacts. Report conflicts instead of
+  silently choosing older state.
+- `harness-rule:measurement-snapshot`: before execution and closeout, summarize
+  target, observed state, evidence, conflicts or stale artifacts, delivery
+  state, user-decision state, and remaining gap.
+- `harness-rule:remaining-gap`: every non-trivial loop should state what gap
+  was closed and what remains. If no gap shrank, re-orient or pause.
+- `harness-rule:feedback-quality`: distinguish strong, weak, stale, delayed,
+  and advisory feedback. Low-quality feedback is not completion evidence.
+- `harness-rule:stability-saturation`: pause or re-route when routes oscillate,
+  verification repeats ineffectively, stale state conflicts with fresh state,
+  context is saturated, authority is missing, credentials / paid APIs /
+  production / destructive approval are needed, or external feedback is
+  delayed.
+
 Agent Harness supports two project contracts:
 
 - `fixed` (`contract: "fixed"`): fixed-path project contract.
@@ -45,7 +81,7 @@ Intent normalization:
 
 - "complete this task", "develop this task", or "用 harness 做这个任务" maps to
   `Goal` by default.
-- "what steps/subtasks/checklist are inside this task?" maps to `Tasks`.
+- "what steps/subtasks/checklist are inside this task?" maps to `Task`.
 - "complete M2", "完成 M2", or "推进 M5" maps to `Milestone`.
 - "run it again", "this execution", or "上次失败那次" maps to `Run`.
 - `P0` / `P1` / `P2` / `P3` maps to `Priority`.
@@ -54,6 +90,68 @@ Intent normalization:
 `Stage` was renamed to `Milestone`. New docs, templates, generated artifacts,
 and CLI output should use `Milestone`. Existing legacy artifacts with
 `Stage Completion Map` remain readable as compatibility input only.
+
+## Context Focus Routing
+
+`harness-rule:context-focus-routing`: Harness selects context in two steps.
+First normalize user intent to `Milestone`, `Goal`, `Task`, `Run`,
+`Priority`, or `Spec`; then choose the smallest useful context focus for the
+workflow. A focus preset narrows what the agent reads. It must not reinterpret
+priorities as work units, treat a parent milestone as one leaf goal, or let old
+artifacts override newer conversation-confirmed decisions.
+
+Public guidance should use `context focus` and `focus preset`. `EnvContext`
+remains an internal design reference only; do not turn it into a public user
+concept, parameter, config/schema field, storage migration, activation change,
+or external dependency.
+
+Harness context layers:
+
+- `entry/channel`: workflow entry, request source, thread role, conversation
+  route, and whether the lane is controller, child controller, or worker.
+- `modality`: text, screenshot, file, URL, terminal output, or other input
+  shape that changes what evidence can be trusted.
+- `dialog`: current conversation-confirmed decisions, stale artifacts,
+  superseded plans, `Need user`, open questions, and confirmation boundaries.
+- `project/world`: adapter, config, task/status/spec/goal/run state, git
+  posture, delivery posture, and external risk.
+- `capability`: available workflow skills, tools, worker surfaces,
+  deterministic commands, and validation limits.
+- `self/control`: current lane, execution role, accepted-state owner, allowed
+  writes, delivery authorization, completion conditions, and pause conditions.
+
+Default focus presets:
+
+- `orient`: current state, route recommendation, blockers, stale artifacts,
+  delivery posture, and next safe action. Avoid implementation details unless
+  they explain the route.
+- `intake`: raw idea, duplicates or related work, proposed priority, likely
+  route, and whether a spec or accepted scope is needed. Avoid execution
+  artifacts unless they prove duplication or dependency.
+- `shape`: decisions, alternatives, source of truth, non-goals, acceptance,
+  risks, verification, and pause triggers. Avoid detailed implementation files
+  until the shape is accepted.
+- `goal`: accepted spec or explicit accepted scope, source task acceptance,
+  role, context lock, delivery policy, verification, completion conditions,
+  and state-sync obligations.
+- `execute`: goal/spec/run packet, execution DAG, allowed and forbidden scope,
+  implementation-relevant files, verification commands, delivery target, and
+  state-sync requirements.
+
+Token, noise, and lost-in-the-middle controls:
+
+- Read conversation-confirmed decisions, repo instructions, adapter/config,
+  current task/status, and the active spec/goal/run before broad docs.
+- Prefer the current run packet and directly linked artifacts over historical
+  run logs. Summarize old logs by path and evidence unless their details are
+  directly relevant.
+- Load modality-specific evidence only when the user supplied that modality or
+  when it is required to resolve the route.
+- Keep stale or conflicting artifacts visible as route evidence, but do not
+  expand into unrelated history after the current source of truth is clear.
+- Put source of truth, non-goals, verification, completion conditions, and
+  pause conditions close to the route decision or worker prompt so they are
+  not buried behind broad background material.
 
 ## Fixed Contract
 
@@ -245,6 +343,10 @@ principles:
 - lightweight route explanation: at workflow transitions, the active coding
   agent should briefly state why it is choosing orientation, intake, shape,
   goal, execute, competition, local, worktree, or ask.
+- Level 0 Fast Path (`harness-rule:level-0-fast-path`): tiny direct execution
+  is allowed only for small local, reversible, low-risk fixes with concrete
+  verification and no Harness artifact, adapter gate, Controller role, or
+  product/source-of-truth impact that requires normal flow.
 - role separation: control / gate work and implementation work should have an
   explicit execution role. A thread asked to act as main control, gate,
   reviewer, judge, or acceptance lane defaults to `gate-only` unless the user
@@ -374,6 +476,62 @@ boundary before editing.
 role into the prepared run packet. `run record --phase completed` must not
 accept completion without verification evidence; for `gate-only`, it must also
 cite gate evidence from implementer output and acceptance review.
+
+## Level 0 Fast Path Direct Execution
+
+`harness-rule:level-0-fast-path`: Level 0 is a direct-execution exception, not
+a replacement for Harness routing. It exists for small local fixes where full
+spec / goal / run ceremony and worker delegation would add more cost than
+safety.
+
+Level 0 may be used only when every condition is true:
+
+- The fix is small, local, obvious, reversible, and low risk.
+- Scope is limited to typo repair, formatting, broken-link repair, small docs
+  clarification, mechanical local cleanup, or a clear local bug fix.
+- The work does not change product or project semantics, source-of-truth
+  policy, public protocol contracts, default routing behavior, schemas,
+  storage, adapter contracts, public APIs, security/privacy behavior, reusable
+  abstractions, external systems, or cross-module behavior.
+- No credentials, paid APIs, production data, destructive operation, daemon,
+  watcher, network service, deploy, publish, release, review, integration, or
+  external authorization is involved.
+- No existing accepted Harness spec, Goal, Run, DAG node, checklist,
+  adapter-required gate, or state-sync obligation covers the work.
+- The current thread's execution role is `implementer`, or the user /
+  accepted artifact explicitly declares `mixed`.
+
+Level 0 may skip a durable spec, goal file, prepared run packet, and worker
+delegation only when no accepted Harness artifact or adapter gate requires
+state sync. If the user asks to use Harness, shape policy, act as Controller /
+gate / reviewer / judge / acceptance lane, or complete a larger Goal or
+Milestone, use normal Harness flow. If an accepted Goal or Run already exists,
+do not bypass its checklist, DAG, gate, or state-sync obligations.
+
+`gate-only` Controller threads cannot use Level 0 to edit implementation
+files. A control lane reviews candidate output and verification evidence; it
+does not downgrade its own role because the edit looks small. Direct execution
+requires `implementer` or explicitly accepted `mixed`.
+
+The invariant is explicit: direct execution requires `implementer` or explicitly accepted `mixed`.
+
+Level 0 closeout is lightweight but mandatory:
+
+- short route reason
+- scoped diff summary
+- concrete verification
+- Delivery State
+- `Need user`
+- `Remaining`
+
+If verification is not run or cannot prove the local fix, report
+`implemented-local` or the appropriate lower state instead of
+`validated-local`.
+
+Context focus changes, broader intent routing, control-theory research,
+storage/schema migration, downstream-specific policy, and source-of-truth
+contract changes are outside Level 0. Keep them as shaped specs, deferred
+references, or normal Harness Goals.
 
 ## Agent-Neutral Delegation Rules
 

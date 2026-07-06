@@ -39,6 +39,17 @@ Use `mixed` only when:
 Do not infer `mixed` from low-risk local work alone. If the user requested
 control-lane behavior, `mixed` is not allowed without a new explicit approval.
 
+## Level 0 Interaction
+
+`harness-rule:level-0-fast-path` does not change execution role authority. A
+small local fix may be executed directly only by an `implementer` thread or an
+explicitly accepted `mixed` thread. A `gate-only` Controller, gate, reviewer,
+judge, or acceptance lane must not use Level 0 to edit implementation files.
+
+If a Level 0-looking request already has an accepted spec, goal, run, DAG node,
+adapter gate, or state-sync obligation, follow that Harness artifact instead
+of skipping ceremony.
+
 ## Stop Conditions
 
 Pause before editing when role, conversation route, execution context lock,

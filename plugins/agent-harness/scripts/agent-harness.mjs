@@ -61,6 +61,11 @@ const validDeliveryStates = new Set(deliveryStateOrder);
 const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const recordableRunNodePhases = new Set(["completed", "blocked"]);
+const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
+const contextFocusWorkflowPresets = "`orient`, `intake`, `shape`, `goal`, and `execute`";
+const contextFocusRoutingGuidance = `\`harness-rule:context-focus-routing\`: Normalize user intent to ${contextFocusIntentTargets} before choosing context focus. Use the smallest useful workflow focus preset (${contextFocusWorkflowPresets}) and prefer current confirmed state, accepted specs/goals/runs, adapter/config/status, then broad docs or historical logs.`;
+const executeContextFocusGuidance = "For execution, use the `execute` focus preset: goal/spec/run packet, execution DAG, allowed and forbidden scope, implementation-relevant files, verification commands, delivery target, and state-sync requirements.";
+const cyberneticStabilityGuidance = "`harness-rule:cybernetic-stability`: control toward an explicit target using `harness-rule:intent-setpoint-selection`, `harness-rule:sensor-freshness`, `harness-rule:measurement-snapshot`, `harness-rule:remaining-gap`, `harness-rule:feedback-quality`, and `harness-rule:stability-saturation`. Before closeout, state the selected target, observed state, evidence, stale/conflict risks, Delivery State, user-decision state, gap closed, remaining gap, feedback quality, and whether the stable next action is continue, pause, ask, or close.";
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -3264,6 +3269,7 @@ Use \`implementer\`.
 - \`gate-only\`: the current thread reviews candidate output and verification evidence, but does not directly edit implementation files.
 - \`implementer\`: the current thread may edit files inside the accepted scope.
 - \`mixed\`: the current thread may both edit and gate only after recording why the tradeoff is acceptable.
+- \`harness-rule:level-0-fast-path\`: Level 0 Fast Path direct execution is only for tiny low-risk local reversible work. It can skip spec/goal/run/worker ceremony only when no existing Harness Goal/Run or adapter-required gate requires state sync. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. Verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
 
 ## Conversation Route
 
@@ -3311,6 +3317,14 @@ Create a new Codex thread only when the controller explicitly needs a visible,
 long-lived handoff lane. Fork is not the default worker surface; use it only
 when the controller explicitly approves inherited context.
 
+## Context Focus Routing
+
+${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
+
+## Cybernetic Stability
+
+${cyberneticStabilityGuidance}
+
 ${stageCompletionMapSection}
 ## Spec Acceptance Checklist
 
@@ -3353,6 +3367,7 @@ If no deterministic command exists, document the manual verification evidence be
 ## Pause Conditions
 
 - The referenced spec or accepted scope is missing, unconfirmed, or conflicts with code, production constraints, or newer user instructions.
+- The measurement snapshot cannot identify a reliable observed state, feedback quality is insufficient for completion, or the remaining gap is not shrinking.
 - The work requires credentials, paid APIs, production access, destructive commands, release, or a delivery step above the Delivery State policy.
 - Product direction, file ownership, or worktree policy is unclear.
 - User gives new instructions that conflict with this goal.
@@ -4704,6 +4719,11 @@ ${node.expectedOutput}
 
 ${node.stopConditions}
 
+## Context Focus
+
+- ${contextFocusRoutingGuidance}
+- ${executeContextFocusGuidance}
+
 ## Surface Policy
 
 - Default worker surface is \`${dag.defaultWorkerSurface}\`.
@@ -4902,20 +4922,23 @@ ${sourceTask}
 1. ${specCheckpoint}
 2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
 3. Confirm the execution role. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
-4. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
-5. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
-6. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-7. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-8. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
-9. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
-10. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
-11. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
-12. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
-13. Run the verification commands from the goal.
-14. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
-15. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
-16. Record any command output summaries or follow-ups under this run directory.
-17. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+4. \`harness-rule:level-0-fast-path\`: do not use Level 0 Fast Path to bypass this prepared run. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files.
+5. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
+6. ${cyberneticStabilityGuidance}
+7. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
+8. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
+9. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+10. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+11. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
+12. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
+13. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
+14. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
+15. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
+16. Run the verification commands from the goal.
+17. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
+18. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
+19. Record any command output summaries or follow-ups under this run directory.
+20. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -4927,6 +4950,8 @@ ${verification}
 - This prepared run packet does not start Codex, create a daemon, push, deploy, publish, open a review request, or integrate changes by itself.
 - Completion wording must not imply pushed, review-open, integrated, released, shipped, or deployed unless the delivery state records that evidence.
 - A completed run must reach its target delivery state. Use review / integration / release evidence fields when Git alone cannot prove the target.
+- Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync; verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- Cybernetic stability closeout must identify the target, observed state, gap closed, remaining gap, feedback quality, and any stability/saturation pause trigger.
 - Direct worker launch remains controller-gated; the packet provides prompts and DAG constraints, not a background scheduler. For gate-only control lanes, launch subagents by default instead of changing the control thread into an implementer.
 - Stop if the goal conflicts with repository instructions, production constraints, or newer user instructions.
 `;
@@ -4960,6 +4985,9 @@ Requirements:
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
 - Follow the goal's Execution Role: \`${executionRole}\`.
 - If Execution Role is \`gate-only\`, keep the current thread as controller and launch worker subagents by default. Do not ask the user to choose between worker launch and changing this thread to \`mixed\` unless subagent execution is unavailable or unsafe.
+- \`harness-rule:level-0-fast-path\`: Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. Verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
+- ${cyberneticStabilityGuidance}
 - Follow the goal's Conversation Route: \`${conversationRoute}\`.
 - Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
 - Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; review \`${deliveryState.review || deliveryState.pr}\`; integration \`${deliveryState.integration || deliveryState.merge}\`; release \`${deliveryState.release}\`.
@@ -4967,6 +4995,7 @@ Requirements:
 - Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
 - If actual delivery state is below target after gates pass, continue the authorized commit / push / review / integration / release pipeline before closeout.
 - Do not call local verification "integrated", "shipped", or "complete on the integration line" unless commit / push / review / integration / release evidence is recorded.
+- Do not close if feedback quality is weak, stale, delayed, or advisory; verify, re-orient, ask, or pause when the remaining gap is not shrinking or the loop is saturated.
 - Final user-facing closeout must include explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` for routine closeouts with no true pause trigger or follow-up instead of asking broad confirmation questions.
 - Do not release, deploy, publish, start a daemon, or automatically launch additional Codex sessions unless the Delivery State policy and controller explicitly authorize it.
 - If the checkout is dirty with unrelated work, use the worktree policy from the goal and project docs.
@@ -5069,6 +5098,8 @@ Goal: \`${relGoal}\`
 
 - Treat \`dag.json\` as the source of execution order. This file explains how to
   split work; it does not override DAG dependencies or controller gates.
+- \`harness-rule:level-0-fast-path\`: Level 0 Fast Path direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files.
+- ${cyberneticStabilityGuidance}
 - \`small\`: no subagent by default only when the current thread is \`implementer\` or accepted \`mixed\`; for \`gate-only\`, launch one worker subagent.
 - \`medium\`: split into \`explorer\` plus \`worker\`, or \`worker\` plus \`verification\`, when it reduces context load.
 - \`large\`: split into multiple workers only when file ownership is non-overlapping and merge responsibility is clear.

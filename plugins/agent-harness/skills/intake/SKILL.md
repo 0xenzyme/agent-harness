@@ -24,6 +24,22 @@ workflow may already be in progress.
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 ```
 
+Apply `harness-rule:context-focus-routing` before previewing or recording:
+normalize the request to `Milestone`, `Goal`, `Task`, `Run`, `Priority`, or
+`Spec`, then use the `intake` focus preset. Read the raw idea, entry/channel,
+modality when supplied, dialog context, related project/world artifacts, and
+the capability boundary for supported task-index writes. Avoid historical run
+logs and execution artifacts unless they prove duplication, dependency, or an
+already accepted scope.
+
+Apply `harness-rule:cybernetic-stability` during intake by separating raw user
+signal from target / setpoint selection (`harness-rule:intent-setpoint-selection`),
+checking whether related artifacts are fresh enough to trust
+(`harness-rule:sensor-freshness`), and reporting whether the remaining gap is a
+research note, spec, goal, ask, or no-op (`harness-rule:remaining-gap`). Weak or
+stale feedback should lead to preview / ask, not execution
+(`harness-rule:feedback-quality`, `harness-rule:stability-saturation`).
+
 3. Preview the intake candidate first:
 
 ```bash

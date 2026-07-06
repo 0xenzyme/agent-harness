@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 - 2026-07-06
+
+- Added `docs/cybernetic-stability.md` as the dedicated control-theory inspired
+  stability model for Agent Harness.
+- Documented Harness as a semantic control loop with intent/setpoint selection,
+  sensor freshness, measurement snapshots, remaining gap, feedback quality,
+  and stability/saturation pause triggers.
+- Added stable cybernetic stability protocol anchors for intent/setpoint
+  selection, sensor freshness, measurement snapshots, remaining gap, feedback
+  quality, and stability/saturation across task routing, workflow skills,
+  templates, generated guidance, and deterministic checks.
+- Updated README / README.zh-CN positioning and release notes for the `0.5.0`
+  cybernetic stability line.
+
 ## 0.4.0 - 2026-07-02
 
 - Added `docs/HARNESSES.md` as the project-neutral Agent Harness capability

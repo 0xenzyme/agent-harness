@@ -9,6 +9,11 @@ truth and there is intentionally no separate spec. Spec-less goals still require
 Scope, Non-Goals, Verification, Completion Conditions, Pause Conditions,
 Execution Role, and Delivery State.
 
+A true `harness-rule:level-0-fast-path` item normally does not need this
+template. Create a durable Goal when the user asks to use Harness, shape policy,
+act as Controller / gate / reviewer / acceptance lane, complete a larger Goal
+or Milestone, or when an accepted artifact or adapter gate requires state sync.
+
 ## Source Task
 
 -
@@ -51,6 +56,40 @@ done.
 - `.harness/config.json`
 - Spec, unless `Spec Policy: allow-no-spec` is declared
 
+## Context Focus
+
+`harness-rule:context-focus-routing`: normalize user intent to `Milestone`,
+`Goal`, `Task`, `Run`, `Priority`, or `Spec` before selecting the focus preset.
+For this Goal, record the `goal` focus preset: accepted spec or explicit
+accepted scope, source task acceptance, execution role, context lock, delivery
+policy, verification, completion conditions, pause conditions, and state-sync
+obligations. Use `context focus` and `focus preset` in user-facing text;
+`EnvContext` is internal design language only. Do not add a public focus
+parameter, config/schema field, storage migration, or activation behavior from
+this section.
+
+## Cybernetic Stability
+
+`harness-rule:cybernetic-stability`: execute toward an explicit target using
+fresh observations, a measurement snapshot, remaining-gap comparison,
+feedback-quality checks, and stability/saturation pause triggers.
+
+- `harness-rule:intent-setpoint-selection`: record what user intent selected as
+  the target / setpoint for this Goal.
+- `harness-rule:sensor-freshness`: prefer newer user-confirmed state and fresh
+  local observations over stale artifacts; report conflicts.
+- `harness-rule:measurement-snapshot`: before implementation and closeout,
+  summarize target, observed state, evidence, conflicts or stale artifacts,
+  Delivery State, user-decision state, and remaining gap.
+- `harness-rule:remaining-gap`: closeout must say what gap was closed and what
+  remains; if no gap shrank, re-orient or pause.
+- `harness-rule:feedback-quality`: do not treat weak, stale, delayed, or
+  advisory feedback as completion evidence.
+- `harness-rule:stability-saturation`: pause or re-route on route oscillation,
+  repeated ineffective actions, context saturation, missing authority,
+  credentials, paid APIs, production, destructive approval, cost/risk limits,
+  or external feedback delay.
+
 ## Work Mode Recommendation
 
 Use `ask` until scope, ownership, and checkout state are clear.
@@ -64,6 +103,9 @@ Use `implementer`.
 - `implementer`: the current thread may edit files inside the accepted scope.
 - `mixed`: the current thread may both edit and gate only after recording why
   the tradeoff is acceptable.
+
+Level 0 direct execution does not override `gate-only`: direct edits require
+`implementer` or explicitly accepted `mixed`.
 
 ## Conversation Route
 
@@ -139,6 +181,9 @@ context.
 - Why this is the right next mode:
 - Confirmation boundary:
 
+If this Goal exists, do not later skip its checklist, DAG, gate, or state-sync
+obligations by reclassifying the work as `harness-rule:level-0-fast-path`.
+
 ## Spec Acceptance Checklist
 
 Use this section when the referenced spec has concrete acceptance criteria,
@@ -198,5 +243,8 @@ Technical verification is necessary but does not replace gate evidence.
   instructions, production constraints, or newer user instructions.
 - Requirements are unclear in a way that affects cost, risk, compatibility, or
   product direction.
+- The measurement snapshot cannot identify a reliable observed state,
+  feedback quality is insufficient for completion, or the remaining gap is not
+  shrinking.
 - Credentials, paid APIs, production access, destructive operations, release,
   or a delivery step above the Delivery State policy is required.

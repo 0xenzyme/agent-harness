@@ -2,6 +2,67 @@
 
 ## Focus
 
+- Current focus: Control-theory-inspired Harness stability implementation is
+  complete and verified in the local checkout. Added
+  `docs/cybernetic-stability.md` as the dedicated model; updated README /
+  README.zh-CN, CHANGELOG, `docs/releases/v0.5.0.md`, package and plugin
+  version metadata, the capability matrix, project contract, social preview
+  source, task routing, `harness:orient`, `harness:intake`, `harness:execute`,
+  goal/spec/worker templates, CLI-generated goal/run/prompt/subagent guidance,
+  and deterministic checks for the `0.5.0` cybernetic stability line. The model
+  now has stable protocol anchors for `harness-rule:intent-setpoint-selection`,
+  `harness-rule:sensor-freshness`, `harness-rule:measurement-snapshot`,
+  `harness-rule:remaining-gap`, `harness-rule:feedback-quality`, and
+  `harness-rule:stability-saturation`. Spec:
+  `harness/specs/2026-07-06-cybernetic-stability-model-for-agent-harness.md`.
+  Verification passed: `node --check
+  plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+  scripts/test-suites.mjs`, `node --check tests/smoke.mjs`, `git diff --check`,
+  `npm run test:protocol`, `npm run test:presentation`, `npm run test:smoke`,
+  `npm run test:all`, and `npm run validate:plugin`. Delivery state is
+  `validated-local`; no commit, push, review, integration, publish, release,
+  deploy, production access, daemon, watcher, paid API, credential, or
+  destructive operation was performed.
+
+- Current focus: EnvContext focus and intent-routing model is implemented and
+  verified in the local checkout. `harness-rule:context-focus-routing` now
+  defines the routing order: normalize user intent to `Milestone`, `Goal`,
+  `Task`, `Run`, `Priority`, or `Spec` before selecting the smallest useful
+  context focus. Harness context layers are `entry/channel`, `modality`,
+  `dialog`, `project/world`, `capability`, and `self/control`; default focus
+  presets now cover `orient`, `intake`, `shape`, `goal`, and `execute`, with
+  token/noise and lost-in-the-middle controls. `EnvContext` remains internal
+  design language only; no public `--focus` CLI parameter, schema/config
+  field, storage migration, activation behavior, or external dependency was
+  added. Spec:
+  `harness/specs/2026-07-04-envcontext-focus-and-intent-routing-model.md`;
+  goal:
+  `harness/goals/2026-07-04-shape-envcontext-focus-and-intent-routing-model-for-harness.md`;
+  run:
+  `.harness/runs/20260704-190518-shape-envcontext-focus-and-intent-routing-model-for-harness/`.
+  Delivery state is `validated-local`; no commit, push, review, integration,
+  publish, release, deploy, production access, daemon, watcher, paid API,
+  credential, or destructive operation was performed.
+
+- Current focus: Level 0 Fast Path direct-execution policy is implemented and
+  verified in the local checkout. `harness-rule:level-0-fast-path` now defines
+  direct execution as a narrow exception for small local, reversible, low-risk
+  fixes by an `implementer` or explicitly accepted `mixed` thread. It cannot
+  bypass accepted Harness artifacts, adapter gates, Controller/gate/review/
+  acceptance roles, product/project semantics, public protocol or
+  source-of-truth changes, schemas, external systems, credentials, paid or
+  production access, destructive operations, or larger Goal/Milestone work.
+  Level 0 closeouts still require a route reason, scoped diff summary,
+  concrete verification, Delivery State, `Need user`, and `Remaining`. Spec:
+  `harness/specs/2026-07-04-level-0-fast-path-direct-execution-policy.md`;
+  goal:
+  `harness/goals/2026-07-04-shape-level-0-fast-path-direct-execution-policy.md`;
+  run:
+  `.harness/runs/20260704-181600-shape-level-0-fast-path-direct-execution-policy/`.
+  Delivery state is `validated-local`; no commit, push, review, integration,
+  publish, release, deploy, production access, daemon, watcher, paid API,
+  credential, or destructive operation was performed.
+
 - Current focus: The earlier bundled lower-friction workflow intake has been
   split into separate Goals in the Goal index. The lightweight
   human-verification checklist / Need-user digest Goal is implemented and
@@ -16,11 +77,11 @@
   `harness/goals/2026-07-04-shape-lightweight-human-verification-checklist-and-need-user-digest.md`;
   run:
   `.harness/runs/20260704-170345-shape-lightweight-human-verification-checklist-and-need-user-digest/`.
-  The remaining open split Goals now track Level 0 Fast Path direct-execution
-  policy, EnvContext focus / intent routing, and control-theory feedback-loop
-  research separately. Delivery state is `validated-local`; no commit, push,
-  review, integration, publish, release, deploy, production access, daemon,
-  watcher, paid API, credential, or destructive operation was performed.
+  The former remaining control-theory feedback-loop split Goal is now
+  completed by the `0.5.0` cybernetic stability implementation. Delivery state is
+  `validated-local`; no commit, push, review, integration, publish, release,
+  deploy, production access, daemon, watcher, paid API, credential, or
+  destructive operation was performed.
 
 - Current focus: Current project adapter and storage artifacts are aligned with
   the Goal-first terminology in the local checkout. `harness/README.md` now
@@ -135,6 +196,56 @@
 
 - Last checked: 2026-07-04
 - Last commands:
+  - Created accepted spec
+    `harness/specs/2026-07-04-envcontext-focus-and-intent-routing-model.md`.
+  - Created and validated gate-only goal
+    `harness/goals/2026-07-04-shape-envcontext-focus-and-intent-routing-model-for-harness.md`
+    with current-thread route, current checkout lock, and target delivery state
+    `validated-local`.
+  - Prepared run packet
+    `.harness/runs/20260704-190518-shape-envcontext-focus-and-intent-routing-model-for-harness/`;
+    recorded completed DAG nodes: `explorer`, `cli-contract-worker`,
+    `docs-skill-worker`, and `verification`.
+  - Added `harness-rule:context-focus-routing` to the capability matrix,
+    project contract docs, task-routing reference, `harness:orient`,
+    `harness:intake`, `harness:execute`, goal/spec/worker templates, generated
+    goal/run/prompt/worker text, protocol checks, and smoke checks.
+  - Defined Harness context layers: `entry/channel`, `modality`, `dialog`,
+    `project/world`, `capability`, and `self/control`; defined focus presets
+    for `orient`, `intake`, `shape`, `goal`, and `execute`; kept `EnvContext`
+    internal and did not add `--focus`, schema/config fields, storage
+    migration, activation changes, or external dependencies.
+  - Verification passed: `node --check
+    plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, `git diff --check`, `goal validate`, and
+    `run status --json`.
+  - Created accepted spec
+    `harness/specs/2026-07-04-level-0-fast-path-direct-execution-policy.md`.
+  - Created and validated gate-only goal
+    `harness/goals/2026-07-04-shape-level-0-fast-path-direct-execution-policy.md`
+    with current-thread route, current checkout lock, and target delivery state
+    `validated-local`.
+  - Prepared run packet
+    `.harness/runs/20260704-181600-shape-level-0-fast-path-direct-execution-policy/`;
+    recorded completed DAG nodes: `explorer`, `cli-contract-worker`,
+    `docs-skill-worker`, and `verification`.
+  - Added `harness-rule:level-0-fast-path` to the capability matrix, project
+    contract docs, task-routing reference, `harness:execute` guidance,
+    execution-role reference, goal and worker templates, generated goal/run/
+    prompt text, protocol checks, and smoke checks.
+  - Defined direct-execution thresholds: Level 0 is only for small local,
+    reversible, low-risk fixes by an `implementer` or explicitly accepted
+    `mixed` thread; `gate-only` Controllers cannot use Level 0 to edit
+    implementation files, and accepted Harness artifacts or adapter gates must
+    keep normal Harness flow.
+  - Verification passed: `node --check
+    plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, `git diff --check`, `goal validate`, and
+    `run status --json`.
   - Created accepted spec
     `harness/specs/2026-07-04-lightweight-human-verification-checklist-need-user-digest.md`.
   - Created and validated goal

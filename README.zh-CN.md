@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.4.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![Protocol](https://img.shields.io/badge/test-protocol_passed-2563eb)](scripts/test-suites.mjs)
 [![Smoke](https://img.shields.io/badge/smoke-passed-16a34a)](tests/smoke.mjs)
@@ -16,8 +16,9 @@ tasks、runs、worker execution、verification、gates 和 state sync。
 roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
 ```
 
-[Capability Matrix](docs/HARNESSES.md) · [GitHub Presentation](docs/github-presentation.md) ·
-[Changelog](CHANGELOG.md) · [v0.4.0 Release Notes](docs/releases/v0.4.0.md)
+[Capability Matrix](docs/HARNESSES.md) · [Cybernetic Stability](docs/cybernetic-stability.md) ·
+[GitHub Presentation](docs/github-presentation.md) · [Changelog](CHANGELOG.md) ·
+[v0.5.0 Release Notes](docs/releases/v0.5.0.md)
 
 ![Agent Harness social preview](docs/assets/github/social-preview.svg)
 
@@ -89,10 +90,15 @@ Agent Harness 保持控制平面小而可检查：
   口、provider policies 和生产流程属于 project adapters 与 artifacts。
 - Route explanations 保持 lightweight：Codex 应简短说明为什么正在
   orient、shape、execute、ask、使用 worktree 或留在 local checkout。
+- `harness-rule:cybernetic-stability`：控制闭环要保持稳定。target selection、sensor freshness、measurement
+  snapshots、remaining gap、feedback quality 和 saturation limits 应足够明确，
+  避免 stale state、false completion 和 route oscillation。
 
 runtime/control surfaces、默认 worker 行为、protocol anchors，以及不同
 surface 对应的验证套件，见
 [Agent Harness capability matrix](docs/HARNESSES.md)。
+控制论启发的稳定性模型见
+[Cybernetic Stability](docs/cybernetic-stability.md)。
 
 ## Influences
 
@@ -308,10 +314,15 @@ Codex 会读取 `.agents/plugins/marketplace.json` 并暴露 `harness` plugin。
 
 ## Current Design Bias
 
-当前版本是 `0.4.0`。它在 workflow-controller skill surface 之上新增了
-project-neutral [capability matrix](docs/HARNESSES.md)、稳定的
-`harness-rule:*` protocol anchors，以及 `test:protocol` / `test:all` suite
-routing。
+当前版本线是 `0.5.0`。它在 `0.4.0` 的 project-neutral
+[capability matrix](docs/HARNESSES.md)、稳定 `harness-rule:*` protocol
+anchors 和 suite routing 之上，增加了
+[cybernetic stability model](docs/cybernetic-stability.md)。
+
+这次升级是实用导向的：Harness 应围绕明确 target 进行控制，用 fresh
+observations、measurement snapshot、remaining-gap comparison、feedback-quality
+checks，以及 saturation / pause triggers 来减少 stale artifact mistakes、false
+completion claims、route oscillation 和无法恢复的 handoff。
 
 当前版本刻意保持边界清晰：
 

@@ -16,6 +16,9 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = join(repoRoot, "plugins/agent-harness/scripts/agent-harness.mjs");
+const publicFocusOption = ["--", "focus"].join("");
+const generatedContextFocusNeedle = "Normalize user intent to `Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec` before choosing context focus";
+const generatedExecuteFocusNeedle = "For execution, use the `execute` focus preset";
 
 function run(args) {
   return execFileSync(process.execPath, [cli, ...args], {
@@ -168,7 +171,16 @@ for (const needle of [
   "harness-rule:child-controller-boundary",
   "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
-  "harness-rule:state-sync-evidence"
+  "harness-rule:state-sync-evidence",
+  "harness-rule:level-0-fast-path",
+  "harness-rule:context-focus-routing",
+  "harness-rule:cybernetic-stability",
+  "harness-rule:intent-setpoint-selection",
+  "harness-rule:sensor-freshness",
+  "harness-rule:measurement-snapshot",
+  "harness-rule:remaining-gap",
+  "harness-rule:feedback-quality",
+  "harness-rule:stability-saturation"
 ]) {
   assertIncludes(testSuitesScript, needle, "suite routing script should map protocol, smoke, plugin, and rule-anchor checks");
 }
@@ -185,6 +197,15 @@ for (const needle of [
   "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
+  "harness-rule:level-0-fast-path",
+  "harness-rule:context-focus-routing",
+  "harness-rule:cybernetic-stability",
+  "harness-rule:intent-setpoint-selection",
+  "harness-rule:sensor-freshness",
+  "harness-rule:measurement-snapshot",
+  "harness-rule:remaining-gap",
+  "harness-rule:feedback-quality",
+  "harness-rule:stability-saturation",
   "npm run test:presentation",
   "npm run test:protocol",
   "npm run test:all"
@@ -197,13 +218,20 @@ for (const [file, needle] of [
   ["README.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
-  ["README.md", "docs/releases/v0.4.0.md"],
+  ["README.md", "docs/releases/v0.5.0.md"],
+  ["README.md", "docs/cybernetic-stability.md"],
   ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-model.png"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.png"],
   ["docs/github-presentation.md", "codex-plugin"],
-  ["CHANGELOG.md", "## 0.4.0 - 2026-07-02"],
-  ["docs/releases/v0.4.0.md", "Agent Harness v0.4.0"],
+  ["CHANGELOG.md", "## 0.5.0 - 2026-07-06"],
+  ["docs/releases/v0.5.0.md", "Agent Harness v0.5.0"],
+  ["docs/cybernetic-stability.md", "Cybernetic Stability Model"],
+  ["docs/cybernetic-stability.md", "sensor freshness"],
+  ["docs/cybernetic-stability.md", "measurement snapshot"],
+  ["docs/cybernetic-stability.md", "remaining gap"],
+  ["docs/cybernetic-stability.md", "feedback quality"],
+  ["docs/cybernetic-stability.md", "stability/saturation"],
   ["docs/assets/github/social-preview.svg", "Agent Harness"],
   ["LICENSE", "MIT License"]
 ]) {
@@ -310,6 +338,7 @@ const workflowSkillDescriptions = Object.fromEntries(
   Object.entries(workflowSkillDocs).map(([name, doc]) => [name, frontmatterDescription(doc)])
 );
 const taskRoutingReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/task-routing.md"), "utf8");
+const projectContractReference = readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8");
 const firstPrinciplesScopeReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/references/first-principles-scope.md"),
   "utf8"
@@ -322,6 +351,7 @@ const workerPromptTemplate = readFileSync(
   join(repoRoot, "plugins/agent-harness/templates/worker-prompt.md"),
   "utf8"
 );
+const goalTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/goal.md"), "utf8");
 const orientRouteDecisionReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/skills/orient/references/route-decision.md"),
   "utf8"
@@ -625,6 +655,97 @@ assertIncludes(
   "`Stage` was renamed to `Milestone`",
   "task-routing should keep Stage only as a migration alias"
 );
+for (const [value, needle, message] of [
+  [capabilityMatrix, "harness-rule:context-focus-routing", "capability matrix should expose the context-focus routing anchor"],
+  [capabilityMatrix, "context focus", "capability matrix should name context-focus routing"],
+  [
+    projectContractReference,
+    "remains an internal design reference only",
+    "project contract should keep EnvContext internal"
+  ],
+  [
+    projectContractReference,
+    "First normalize user intent to `Milestone`",
+    "project contract should order intent normalization before context focus"
+  ],
+  [
+    projectContractReference,
+    "then choose the smallest useful context focus",
+    "project contract should select context focus after intent normalization"
+  ],
+  [
+    taskRoutingReference,
+    "normalize intent before choosing context",
+    "task-routing should normalize intent before focus selection"
+  ],
+  [
+    taskRoutingReference,
+    "First map the request to `Milestone`, `Goal`, `Task`, `Run`,",
+    "task-routing should enumerate the stable intent targets"
+  ],
+  [taskRoutingReference, "`Priority`, or `Spec`; then select the focus preset", "task-routing should enumerate priority and spec intent targets"],
+  [workerPromptTemplate, "harness-rule:context-focus-routing", "worker prompt template should carry context-focus routing"]
+]) {
+  assertIncludes(value, needle, message);
+}
+for (const [value, needle, message] of [
+  [capabilityMatrix, "harness-rule:cybernetic-stability", "capability matrix should expose cybernetic stability"],
+  [capabilityMatrix, "harness-rule:intent-setpoint-selection", "capability matrix should expose intent/setpoint selection"],
+  [capabilityMatrix, "harness-rule:sensor-freshness", "capability matrix should expose sensor freshness"],
+  [capabilityMatrix, "harness-rule:measurement-snapshot", "capability matrix should expose measurement snapshots"],
+  [capabilityMatrix, "harness-rule:remaining-gap", "capability matrix should expose remaining gap"],
+  [capabilityMatrix, "harness-rule:feedback-quality", "capability matrix should expose feedback quality"],
+  [capabilityMatrix, "harness-rule:stability-saturation", "capability matrix should expose stability/saturation"],
+  [projectContractReference, "target, observed state, evidence, conflicts or stale artifacts", "project contract should define the measurement snapshot shape"],
+  [taskRoutingReference, "Cybernetic Stability Routing", "task-routing should include cybernetic stability routing"],
+  [taskRoutingReference, "If no gap shrank, route to verification", "task-routing should require re-route when no gap shrinks"],
+  [workflowSkillDocs.execute, "stale artifacts, remaining gap, feedback quality", "execute should reject completion with weak stability evidence"],
+  [goalTemplateDoc, "## Cybernetic Stability", "goal template should include cybernetic stability"],
+  [workerPromptTemplate, "gap closed, remaining gap", "worker prompt should return gap evidence"]
+]) {
+  assertIncludes(value, needle, message);
+}
+for (const [value, needle, message] of [
+  [capabilityMatrix, "harness-rule:level-0-fast-path", "capability matrix should expose the Level 0 Fast Path anchor"],
+  [capabilityMatrix, "Level 0 Fast Path", "capability matrix should name the Level 0 Fast Path policy"],
+  [taskRoutingReference, "harness-rule:level-0-fast-path", "task-routing should expose the Level 0 Fast Path anchor"],
+  [
+    taskRoutingReference,
+    "direct execution requires `implementer` or explicitly accepted `mixed`",
+    "task-routing should require implementer or explicit mixed for Level 0 direct execution"
+  ],
+  [
+    taskRoutingReference,
+    "skip spec/goal/run/worker",
+    "task-routing should define the Level 0 ceremony skip boundary"
+  ],
+  [
+    taskRoutingReference,
+    "existing Harness Goal/Run",
+    "task-routing should not let Level 0 bypass existing Harness state sync"
+  ],
+  [
+    taskRoutingReference,
+    "adapter-required gate",
+    "task-routing should not let Level 0 bypass adapter-required gates"
+  ],
+  [taskRoutingReference, "Delivery State", "task-routing should keep Delivery State required for Level 0"],
+  [taskRoutingReference, "Need user", "task-routing should keep Need user closeout required for Level 0"],
+  [taskRoutingReference, "Remaining", "task-routing should keep Remaining closeout required for Level 0"],
+  [workflowSkillDocs.execute, "harness-rule:level-0-fast-path", "execute should expose the Level 0 Fast Path anchor"],
+  [
+    workflowSkillDocs.execute,
+    "gate-only` cannot use Level 0",
+    "execute should forbid gate-only controllers from using Level 0 to edit"
+  ],
+  [
+    workflowSkillDocs.execute,
+    "current thread is `implementer` or",
+    "execute should require implementer or explicit mixed for Level 0 direct execution"
+  ]
+]) {
+  assertIncludes(value, needle, message);
+}
 assertIncludes(
   readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8"),
   "Run is not a Codex\n  thread, session, worker, or worktree identity",
@@ -688,6 +809,9 @@ const rootReadme = readFileSync(join(repoRoot, "README.md"), "utf8");
 const rootReadmeZh = readFileSync(join(repoRoot, "README.zh-CN.md"), "utf8");
 const cliDoc = readFileSync(join(repoRoot, "docs/cli.md"), "utf8");
 const cliDocZh = readFileSync(join(repoRoot, "docs/cli.zh-CN.md"), "utf8");
+assertExcludes(cliDoc, publicFocusOption, "CLI reference should not expose a public focus option");
+assertExcludes(cliDocZh, publicFocusOption, "zh-CN CLI reference should not expose a public focus option");
+assertExcludes(JSON.stringify(configSchema), publicFocusOption, "config schema should not expose a focus option or field");
 assertIncludes(rootReadme, "## Use With A Coding Agent", "README should present a coding-agent-first entry path");
 assertIncludes(rootReadme, "docs/cli.md", "README should link to the detailed CLI reference");
 assertIncludes(rootReadmeZh, "docs/cli.zh-CN.md", "zh-CN README should link to the detailed CLI reference");
@@ -719,14 +843,23 @@ const executeSkillDoc = readFileSync(join(repoRoot, "plugins/agent-harness/skill
 for (const needle of ["gate-only", "implementer", "mixed", "main control", "worker subagent by default", "Execution Context Lock", "Delivery State", "--gate-evidence", "run node record"]) {
   assertIncludes(executeSkillDoc, needle, "execute skill should route control/gate requests by execution role");
 }
-const goalTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/goal.md"), "utf8");
 assertIncludes(goalTemplateDoc, "## Execution Role", "goal template should include an execution role section");
 assertIncludes(goalTemplateDoc, "## Conversation Route", "goal template should include conversation route section");
 assertIncludes(goalTemplateDoc, "## Execution Context Lock", "goal template should include execution context lock section");
 assertIncludes(goalTemplateDoc, "## Delivery State", "goal template should include delivery state section");
+assertIncludes(goalTemplateDoc, "harness-rule:context-focus-routing", "goal template should include context-focus routing guidance");
 const cliSource = readFileSync(cli, "utf8");
 assertIncludes(cliSource, "## Execution Role", "goal generator should include an execution role section");
 assertIncludes(cliSource, "## Conversation Route", "goal generator should include conversation route section");
+assertIncludes(cliSource, "harness-rule:level-0-fast-path", "CLI generator should include the Level 0 Fast Path protocol anchor");
+assertIncludes(cliSource, "harness-rule:context-focus-routing", "CLI generator should include the Context Focus Routing protocol anchor");
+assertIncludes(
+  cliSource,
+  "direct execution requires \\`implementer\\` or explicitly accepted \\`mixed\\`",
+  "CLI generator should preserve the Level 0 role boundary"
+);
+assertExcludes(cliSource, publicFocusOption, "CLI source should not expose a public focus option");
+assertExcludes(run(["--help"]), publicFocusOption, "CLI help should not expose a public focus option");
 assertIncludes(cliSource, "deliveryState", "run status should expose delivery state");
 assertIncludes(cliSource, "deliveryPolicy", "run status should expose delivery target policy");
 assertIncludes(cliSource, "Delivery target gate failed", "run record should enforce delivery target");
@@ -752,6 +885,10 @@ try {
   write(join(fixed, "harness/specs/fixed.md"), "# Fixed Spec\n\nStatus: accepted\n");
   run(["goal", "create", "--cwd", fixed, "--task", "Define the next concrete task", "--spec", "harness/specs/fixed.md"]);
   const fixedGoal = latestFile(join(fixed, "harness/goals"));
+  const fixedGoalContent = readFileSync(fixedGoal, "utf8");
+  assertIncludes(fixedGoalContent, "harness-rule:context-focus-routing", "generated goal should preserve the context-focus routing anchor");
+  assertIncludes(fixedGoalContent, generatedContextFocusNeedle, "generated goal should normalize intent before context focus");
+  assertIncludes(fixedGoalContent, generatedExecuteFocusNeedle, "generated goal should include execute focus guidance");
   const fixedGoalValidation = JSON.parse(run(["goal", "validate", "--cwd", fixed, "--goal", fixedGoal, "--json"]));
   assert(fixedGoalValidation.ok === true, "fixed goal with confirmed spec should validate");
   run(["run", "prepare", "--cwd", fixed, "--goal", fixedGoal]);
@@ -763,8 +900,36 @@ try {
   const fixedPromptMarkdown = readFileSync(join(fixed, ".harness/runs", fixedRun, "prompt.md"), "utf8");
   assertIncludes(fixedRunMarkdown, "Need user: None", "run packet should tell agents how to close with no user need");
   assertIncludes(fixedRunMarkdown, "Remaining: None", "run packet should tell agents how to close with no remaining work");
+  assertIncludes(
+    fixedRunMarkdown,
+    "harness-rule:level-0-fast-path",
+    "generated run packet should preserve the Level 0 Fast Path boundary"
+  );
+  assertIncludes(
+    fixedRunMarkdown,
+    "direct execution requires `implementer` or explicitly accepted `mixed`",
+    "generated run packet should preserve the Level 0 role boundary"
+  );
+  assertIncludes(
+    fixedRunMarkdown,
+    "harness-rule:context-focus-routing",
+    "generated run packet should preserve the context-focus routing anchor"
+  );
+  assertIncludes(fixedRunMarkdown, generatedContextFocusNeedle, "generated run packet should normalize intent before context focus");
+  assertIncludes(fixedRunMarkdown, generatedExecuteFocusNeedle, "generated run packet should include execute focus guidance");
   assertIncludes(fixedPromptMarkdown, "Need user: None", "execution prompt should tell agents how to close with no user need");
   assertIncludes(fixedPromptMarkdown, "Remaining: None", "execution prompt should tell agents how to close with no remaining work");
+  assertIncludes(
+    fixedPromptMarkdown,
+    "gate-only` cannot use Level 0",
+    "execution prompt should prevent gate-only Level 0 implementation"
+  );
+  assertIncludes(
+    fixedPromptMarkdown,
+    "harness-rule:context-focus-routing",
+    "execution prompt should preserve the context-focus routing anchor"
+  );
+  assertIncludes(fixedPromptMarkdown, generatedContextFocusNeedle, "execution prompt should normalize intent before context focus");
   run([
     "run",
     "record",
@@ -1331,6 +1496,13 @@ Manual verification evidence only.
     "Do not update accepted task, status, goal, run, gate, integration, release, or ship state",
     "generated worker prompts should forbid accepted-state mutation"
   );
+  assertIncludes(
+    cliWorkerPrompt,
+    "harness-rule:context-focus-routing",
+    "generated worker prompts should preserve the context-focus routing anchor"
+  );
+  assertIncludes(cliWorkerPrompt, generatedContextFocusNeedle, "generated worker prompts should normalize intent before context focus");
+  assertIncludes(cliWorkerPrompt, generatedExecuteFocusNeedle, "generated worker prompts should include execute focus guidance");
   assertIncludes(cliWorkerPrompt, "Delivery state:", "worker result packet should report delivery state");
   assertIncludes(cliWorkerPrompt, "Working tree dirty:", "worker result packet should report dirty state");
   assertIncludes(cliWorkerPrompt, "Need user:", "worker result packet should report concrete user needs");

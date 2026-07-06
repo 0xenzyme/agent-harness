@@ -84,7 +84,198 @@ const ruleAnchors = [
       "plugins/agent-harness/skills/execute/references/completion-evidence.md",
       "plugins/agent-harness/templates/worker-prompt.md"
     ]
+  },
+  {
+    id: "harness-rule:level-0-fast-path",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/execute/SKILL.md"
+    ]
+  },
+  {
+    id: "harness-rule:context-focus-routing",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/templates/worker-prompt.md"
+    ]
+  },
+  {
+    id: "harness-rule:cybernetic-stability",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "docs/cybernetic-stability.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/templates/spec.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs",
+      "README.md",
+      "README.zh-CN.md"
+    ]
+  },
+  {
+    id: "harness-rule:intent-setpoint-selection",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "docs/cybernetic-stability.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/orient/SKILL.md",
+      "plugins/agent-harness/skills/intake/SKILL.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/templates/spec.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
+    id: "harness-rule:sensor-freshness",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "docs/cybernetic-stability.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/orient/SKILL.md",
+      "plugins/agent-harness/skills/intake/SKILL.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/templates/spec.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
+    id: "harness-rule:measurement-snapshot",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "docs/cybernetic-stability.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/orient/SKILL.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/templates/spec.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
+    id: "harness-rule:remaining-gap",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "docs/cybernetic-stability.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/orient/SKILL.md",
+      "plugins/agent-harness/skills/intake/SKILL.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/templates/spec.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
+    id: "harness-rule:feedback-quality",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "docs/cybernetic-stability.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/orient/SKILL.md",
+      "plugins/agent-harness/skills/intake/SKILL.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/templates/spec.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
+    id: "harness-rule:stability-saturation",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "docs/cybernetic-stability.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/orient/SKILL.md",
+      "plugins/agent-harness/skills/intake/SKILL.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/templates/spec.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
   }
+];
+
+const level0FastPathExpectations = [
+  ["docs/HARNESSES.md", "Level 0 Fast Path"],
+  [
+    "docs/project-contract.md",
+    "direct execution requires `implementer` or explicitly accepted `mixed`"
+  ],
+  [
+    "plugins/agent-harness/references/task-routing.md",
+    "direct execution requires `implementer` or explicitly accepted `mixed`"
+  ],
+  ["plugins/agent-harness/references/task-routing.md", "skip spec/goal/run/worker"],
+  ["plugins/agent-harness/references/task-routing.md", "existing Harness Goal/Run"],
+  ["plugins/agent-harness/references/task-routing.md", "adapter-required gate"],
+  ["plugins/agent-harness/references/task-routing.md", "Delivery State"],
+  ["plugins/agent-harness/references/task-routing.md", "Need user"],
+  ["plugins/agent-harness/references/task-routing.md", "Remaining"],
+  ["plugins/agent-harness/skills/execute/SKILL.md", "gate-only` cannot use Level 0"]
+];
+
+const contextFocusRoutingExpectations = [
+  ["docs/HARNESSES.md", "harness-rule:context-focus-routing"],
+  ["docs/project-contract.md", "remains an internal design reference only"],
+  ["docs/project-contract.md", "First normalize user intent to `Milestone`"],
+  ["docs/project-contract.md", "then choose the smallest useful context focus"],
+  [
+    "plugins/agent-harness/references/task-routing.md",
+    "normalize intent before choosing context"
+  ],
+  [
+    "plugins/agent-harness/references/task-routing.md",
+    "First map the request to `Milestone`, `Goal`, `Task`, `Run`,"
+  ],
+  [
+    "plugins/agent-harness/references/task-routing.md",
+    "`Priority`, or `Spec`; then select the focus preset"
+  ],
+  ["plugins/agent-harness/templates/goal.md", "harness-rule:context-focus-routing"],
+  ["plugins/agent-harness/templates/worker-prompt.md", "harness-rule:context-focus-routing"]
+];
+
+const cyberneticStabilityExpectations = [
+  ["docs/cybernetic-stability.md", "intent -> setpoint -> sensor -> measurement -> gap -> controller -> action -> feedback"],
+  ["docs/project-contract.md", "target, observed state, evidence, conflicts or stale artifacts"],
+  ["plugins/agent-harness/references/task-routing.md", "Cybernetic Stability Routing"],
+  ["plugins/agent-harness/references/task-routing.md", "If no gap shrank, route to verification"],
+  ["plugins/agent-harness/skills/execute/SKILL.md", "stale artifacts, remaining gap, feedback quality"],
+  ["plugins/agent-harness/templates/goal.md", "## Cybernetic Stability"],
+  ["plugins/agent-harness/templates/spec.md", "## Cybernetic Stability"],
+  ["plugins/agent-harness/templates/worker-prompt.md", "gap closed, remaining gap"],
+  ["plugins/agent-harness/scripts/agent-harness.mjs", "cyberneticStabilityGuidance"],
+  ["plugins/agent-harness/scripts/agent-harness.mjs", "observed state, evidence, stale/conflict risks"]
+];
+
+const publicFocusOption = ["--", "focus"].join("");
+const publicFocusOptionSurfaces = [
+  "plugins/agent-harness/scripts/agent-harness.mjs",
+  "docs/cli.md",
+  "docs/cli.zh-CN.md",
+  "plugins/agent-harness/schemas/config.schema.json"
 ];
 
 const matrixLinkExpectations = [
@@ -103,19 +294,27 @@ const presentationExpectations = [
   ["README.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
-  ["README.md", "docs/releases/v0.4.0.md"],
+  ["README.md", "docs/releases/v0.5.0.md"],
+  ["README.md", "docs/cybernetic-stability.md"],
   ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-model.png"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.zh-CN.md", "docs/github-presentation.md"],
   ["README.zh-CN.md", "CHANGELOG.md"],
-  ["README.zh-CN.md", "docs/releases/v0.4.0.md"],
+  ["README.zh-CN.md", "docs/releases/v0.5.0.md"],
+  ["README.zh-CN.md", "docs/cybernetic-stability.md"],
   ["docs/github-presentation.md", "Adapter-driven control plane for Codex and coding-agent work"],
   ["docs/github-presentation.md", "codex-plugin"],
   ["docs/github-presentation.md", "workflow-automation"],
   ["docs/github-presentation.md", "docs/assets/github/social-preview.svg"],
-  ["CHANGELOG.md", "## 0.4.0 - 2026-07-02"],
-  ["docs/releases/v0.4.0.md", "Agent Harness v0.4.0"],
+  ["CHANGELOG.md", "## 0.5.0 - 2026-07-06"],
+  ["docs/releases/v0.5.0.md", "Agent Harness v0.5.0"],
+  ["docs/cybernetic-stability.md", "Cybernetic Stability Model"],
+  ["docs/cybernetic-stability.md", "sensor freshness"],
+  ["docs/cybernetic-stability.md", "measurement snapshot"],
+  ["docs/cybernetic-stability.md", "remaining gap"],
+  ["docs/cybernetic-stability.md", "feedback quality"],
+  ["docs/cybernetic-stability.md", "stability/saturation"],
   ["docs/assets/github/social-preview.svg", "Tasks"],
   ["docs/assets/readme/adapter-model.svg", "Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run"],
   ["docs/assets/readme/adapter-model.svg", "milestones, goals, runs"],
@@ -164,6 +363,11 @@ function assertIncludesFile(path, needle, message) {
   assert(content.includes(needle), message || `${path} must include ${needle}`);
 }
 
+function assertExcludesFile(path, needle, message) {
+  const content = readRepoFile(path);
+  assert(!content.includes(needle), message || `${path} must not include ${needle}`);
+}
+
 function checkProtocol() {
   assertIncludesFile("package.json", "\"test:protocol\"", "package.json must expose test:protocol");
   assertIncludesFile("package.json", "\"test:presentation\"", "package.json must expose test:presentation");
@@ -174,6 +378,22 @@ function checkProtocol() {
     for (const file of rule.files) {
       assertIncludesFile(file, rule.id, `${file} must include stable protocol anchor ${rule.id}`);
     }
+  }
+
+  for (const [file, needle] of level0FastPathExpectations) {
+    assertIncludesFile(file, needle, `${file} must preserve Level 0 Fast Path invariant: ${needle}`);
+  }
+
+  for (const [file, needle] of contextFocusRoutingExpectations) {
+    assertIncludesFile(file, needle, `${file} must preserve context-focus routing guidance: ${needle}`);
+  }
+
+  for (const [file, needle] of cyberneticStabilityExpectations) {
+    assertIncludesFile(file, needle, `${file} must preserve cybernetic stability guidance: ${needle}`);
+  }
+
+  for (const file of publicFocusOptionSurfaces) {
+    assertExcludesFile(file, publicFocusOption, `${file} must not expose a first-version public ${publicFocusOption} surface`);
   }
 
   for (const [file, needle] of matrixLinkExpectations) {

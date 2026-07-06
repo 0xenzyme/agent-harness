@@ -44,7 +44,7 @@ Roadmap -> Milestone -> Goal -> Task -> Run
 Normalize natural-language user intent before routing:
 
 - "complete this task", "develop this task", or "用 harness 做这个任务" -> `Goal`
-- "what steps/subtasks/checklist are inside this task?" -> `Tasks`
+- "what steps/subtasks/checklist are inside this task?" -> `Task`
 - "complete M2", "完成 M2", or "推进 M5" -> `Milestone`
 - "run it again", "this execution", or "上次失败那次" -> `Run`
 - `P0` / `P1` / `P2` / `P3` -> `Priority`
@@ -53,6 +53,90 @@ Normalize natural-language user intent before routing:
 `Stage` was renamed to `Milestone`. New routing docs and generated artifacts
 should use `Milestone`; existing `Stage Completion Map` artifacts are legacy
 compatibility input.
+
+## Context Focus Routing
+
+`harness-rule:context-focus-routing`: normalize intent before choosing context
+focus. First map the request to `Milestone`, `Goal`, `Task`, `Run`,
+`Priority`, or `Spec`; then select the focus preset that reads the smallest
+useful set of artifacts for the workflow.
+
+Public language is `context focus` and `focus preset`. `EnvContext` is only an
+internal design reference; this routing model does not add a public parameter,
+config/schema field, storage migration, activation behavior, or external
+dependency.
+
+Context layers:
+
+- `entry/channel`: workflow entry, request source, thread role, conversation
+  route, and worker/controller lane.
+- `modality`: text, screenshot, file, URL, terminal output, or other supplied
+  input shape.
+- `dialog`: current conversation-confirmed decisions, stale artifacts,
+  superseded plans, `Need user`, and unresolved questions.
+- `project/world`: adapter/config, task/status/spec/goal/run state, git
+  posture, delivery posture, and external risk.
+- `capability`: available skills, tools, worker surfaces, deterministic
+  commands, and validation limits.
+- `self/control`: execution role, accepted-state owner, allowed writes,
+  delivery authorization, completion conditions, and pause conditions.
+
+Default focus presets:
+
+- `orient`: current state, route recommendation, blockers, stale artifacts,
+  and next safe action. Skip implementation detail unless it explains the
+  route.
+- `intake`: raw idea, duplicates or related work, proposed priority, likely
+  route, and whether a spec or accepted scope is needed. Skip execution
+  artifacts unless they prove duplication or dependency.
+- `shape`: decisions, alternatives, source of truth, non-goals, acceptance,
+  risks, verification, and pause triggers. Delay detailed implementation-file
+  reading until the shape is accepted.
+- `goal`: accepted spec or explicit accepted scope, source task acceptance,
+  role, context lock, delivery policy, verification, completion conditions,
+  and state-sync obligations.
+- `execute`: goal/spec/run packet, execution DAG, allowed and forbidden scope,
+  implementation-relevant files, verification commands, delivery target, and
+  state-sync requirements.
+
+Token, noise, and lost-in-the-middle controls:
+
+- Prefer current conversation-confirmed state, repo instructions,
+  adapter/config, current status/task records, and active spec/goal/run before
+  broad docs or historical logs.
+- Read historical run logs only when they are directly relevant; otherwise cite
+  their path and evidence summary.
+- Load modality-specific artifacts only when the request supplies that
+  modality or route safety depends on it.
+- Keep source of truth, non-goals, verification, completion conditions, and
+  pause conditions near the route decision or handoff prompt.
+
+## Cybernetic Stability Routing
+
+`harness-rule:cybernetic-stability`: route toward an explicit target using
+fresh observations, measurement snapshots, remaining-gap comparison,
+feedback-quality checks, and stability/saturation pause triggers.
+
+- `harness-rule:intent-setpoint-selection`: intent recognition selects the
+  target before route selection. A request for a `Milestone`, `Goal`, `Task`,
+  `Run`, `Priority`, `Spec`, question, research note, or ask boundary must not
+  be collapsed into the nearest locally executable artifact.
+- `harness-rule:sensor-freshness`: prefer newer explicit user instructions and
+  fresh local observations over stale task/status/spec/goal/run artifacts.
+  Report stale artifact conflicts as route evidence.
+- `harness-rule:measurement-snapshot`: before execution and closeout, record or
+  summarize target, observed state, evidence, conflicts or stale artifacts,
+  delivery state, user-decision state, and remaining gap.
+- `harness-rule:remaining-gap`: every non-trivial execution loop should state
+  what gap was closed and what remains. If no gap shrank, route to verification,
+  re-orientation, shaping, or pause.
+- `harness-rule:feedback-quality`: do not treat low-quality, stale, delayed, or
+  advisory feedback as completion evidence. Distinguish fresh tests, CI,
+  command output, review, user confirmation, agent narrative, and old status.
+- `harness-rule:stability-saturation`: pause or re-route when the loop
+  oscillates, repeats ineffective actions, conflicts with fresh state, hits
+  context limits, lacks authority, needs credentials / paid APIs / production /
+  destructive approval, exceeds risk or cost, or waits on external feedback.
 
 ## Task Kinds
 
@@ -100,8 +184,53 @@ tasks may be created automatically.
 
 ### Level 0: Fast Path
 
-Use for typos, small local fixes, and clear bugs that do not change product or
-project semantics. No spec is required by default.
+`harness-rule:level-0-fast-path`: Level 0 is a narrow direct-execution
+exception for small local, reversible, low-risk fixes. It may skip a durable
+spec, goal, prepared run, and worker delegation only when no accepted Harness
+artifact, adapter-required gate, or user-requested control role requires state
+sync.
+
+Use Level 0 only when all of these are true:
+
+- The requested change is obvious, local to the current checkout, and scoped to
+  a typo, formatting repair, broken link, small docs clarification, mechanical
+  local cleanup, or clear local bug fix.
+- The diff is small, easy to review, and reversible without schema, storage,
+  migration, source-of-truth, public protocol, adapter, or default routing
+  impact.
+- The change does not alter product or project semantics, security/privacy
+  behavior, public APIs, reusable abstractions, cross-module behavior, or
+  external systems.
+- Verification is concrete and quick, such as a targeted test, markdown check,
+  syntax check, `git diff --check`, or direct inspection of the changed file.
+- The current thread is `implementer`, or the user / accepted artifact
+  explicitly declares `mixed`.
+
+Level 0 is not allowed when any of these are true:
+
+- The user asks to use Harness, shape policy, act as Controller, gate, reviewer,
+  judge, acceptance lane, or complete a larger Goal or Milestone.
+- An accepted spec, goal, run, DAG node, checklist, adapter-required gate, or
+  state-sync obligation already exists for the work.
+- The change touches product/project semantics, source-of-truth policy,
+  schemas, public protocol contracts, default routing behavior, adapter
+  contracts, credential handling, paid APIs, production data, destructive
+  operations, daemons, watchers, network services, or external systems.
+- The work needs product direction, user authorization, credentials,
+  paid/production access, destructive-operation approval, or broad research.
+
+In Level 0, direct execution may skip ceremony but not discipline. The closeout
+still needs a short route reason, scoped diff summary, concrete verification,
+Delivery State, `Need user`, and `Remaining`. If verification is missing, the
+Delivery State cannot be `validated-local`.
+
+The invariant is explicit: direct execution requires `implementer` or explicitly accepted `mixed`.
+Level 0 may skip spec/goal/run/worker ceremony only when there is no existing Harness Goal/Run, accepted artifact, or adapter-required gate to satisfy.
+
+`gate-only` threads cannot use Level 0 to edit implementation files. If the
+active lane is Controller / gate / review / acceptance, route through normal
+Harness execution, worker evidence, or `ask` for a corrected role instead of
+downgrading the work to Level 0.
 
 ### Level 1: Light Adapter
 

@@ -2,7 +2,7 @@
 
 [中文](README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.4.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![Protocol](https://img.shields.io/badge/test-protocol_passed-2563eb)](scripts/test-suites.mjs)
 [![Smoke](https://img.shields.io/badge/smoke-passed-16a34a)](tests/smoke.mjs)
@@ -16,8 +16,9 @@ runs, worker execution, verification, gates, and state sync.
 roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
 ```
 
-[Capability Matrix](docs/HARNESSES.md) · [GitHub Presentation](docs/github-presentation.md) ·
-[Changelog](CHANGELOG.md) · [v0.4.0 Release Notes](docs/releases/v0.4.0.md)
+[Capability Matrix](docs/HARNESSES.md) · [Cybernetic Stability](docs/cybernetic-stability.md) ·
+[GitHub Presentation](docs/github-presentation.md) · [Changelog](CHANGELOG.md) ·
+[v0.5.0 Release Notes](docs/releases/v0.5.0.md)
 
 ![Agent Harness social preview](docs/assets/github/social-preview.svg)
 
@@ -100,10 +101,17 @@ Agent Harness keeps the control plane small and inspectable:
   project adapters and artifacts.
 - Route explanations stay lightweight: Codex should briefly say why it is
   orienting, shaping, executing, asking, using a worktree, or staying local.
+- `harness-rule:cybernetic-stability`: the control loop should stay stable:
+  target selection, sensor freshness,
+  measurement snapshots, remaining gap, feedback quality, and saturation
+  limits should be explicit enough to prevent stale state, false completion,
+  and route oscillation.
 
 The runtime/control surfaces, default worker behavior, protocol anchors, and
 surface-appropriate verification suites are summarized in the
 [Agent Harness capability matrix](docs/HARNESSES.md).
+The control-theory inspired stability model is documented in
+[Cybernetic Stability](docs/cybernetic-stability.md).
 
 ## Influences
 
@@ -334,10 +342,16 @@ plugin.
 
 ## Current Design Bias
 
-The current version is `0.4.0`. It adds the project-neutral
-[capability matrix](docs/HARNESSES.md), stable `harness-rule:*` protocol
-anchors, and `test:protocol` / `test:all` suite routing on top of the
-workflow-controller skill surface.
+The current version line is `0.5.0`. It builds on the `0.4.0`
+project-neutral [capability matrix](docs/HARNESSES.md), stable
+`harness-rule:*` protocol anchors, and suite routing with a
+[cybernetic stability model](docs/cybernetic-stability.md).
+
+The upgrade is practical: Harness should control toward an explicit target
+using fresh observations, a measurement snapshot, remaining-gap comparison,
+feedback-quality checks, and saturation / pause triggers. The goal is fewer
+stale artifact mistakes, false completion claims, route oscillations, and
+unrecoverable handoffs.
 
 This version is intentionally bounded:
 

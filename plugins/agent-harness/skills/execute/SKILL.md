@@ -45,6 +45,30 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
 
 3. Read `.harness/config.json`, the configured project adapter, task index,
    status file, and the relevant spec / goal / run packet.
+   Apply `harness-rule:context-focus-routing` before broad reading or route
+   changes: normalize user intent to `Milestone`, `Goal`, `Task`, `Run`,
+   `Priority`, or `Spec`, then use the workflow focus preset. For `shape`,
+   focus on decisions, alternatives, source of truth, non-goals, acceptance,
+   risks, verification, and pause triggers. For `goal`, focus on accepted spec
+   or scope, source task acceptance, role, context lock, delivery policy,
+   verification, completion conditions, and state sync. For `execute`, focus
+   on the goal/spec/run packet, DAG, allowed and forbidden scope,
+   implementation-relevant files, verification commands, delivery target, and
+   state-sync requirements. Keep historical logs, broad docs, and unrelated
+   artifacts summarized unless they directly affect the route, safety, or
+   verification.
+   Apply `harness-rule:cybernetic-stability`: before edits, identify the
+   selected target / setpoint (`harness-rule:intent-setpoint-selection`), prefer
+   fresh observations over stale artifacts (`harness-rule:sensor-freshness`),
+   and form a measurement snapshot with target, observed state, evidence,
+   conflicts, delivery state, user-decision state, and remaining gap
+   (`harness-rule:measurement-snapshot`). During execution and closeout, state
+   which gap closed and what remains (`harness-rule:remaining-gap`), reject
+   weak or delayed feedback as completion evidence
+   (`harness-rule:feedback-quality`), and pause or re-route on oscillation,
+   repeated ineffective actions, context saturation, missing authority,
+   credentials, paid APIs, production, destructive approval, cost/risk limits,
+   or external feedback delay (`harness-rule:stability-saturation`).
 4. Determine the execution role before editing files:
    - `gate-only`: the current thread is the control / acceptance lane. It
      may inspect candidate output, run verification, request fixes, and accept
@@ -91,6 +115,18 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
    create or require a `Milestone Completion Map`; source-spec acceptance alone
    must not mark the parent milestone done unless the user explicitly narrowed
    the work to that leaf item.
+   `harness-rule:level-0-fast-path`: direct execution without a durable spec,
+   goal, run, or worker delegation is allowed only for small local,
+   reversible, low-risk fixes when the current thread is `implementer` or
+   explicitly accepted `mixed`. Do not use Level 0 for product/project
+   semantics, public protocol or source-of-truth changes, schemas, external
+   systems, credentials, paid/production/destructive risk, adapter-required
+   gates, or existing accepted Harness Goal/Run obligations. Do not use Level
+   0 when the user asks to use Harness, shape policy, act as Controller / gate
+   / review / acceptance, or complete a larger Goal or Milestone. Even Level 0
+   closeout must include a short route reason, scoped diff summary, concrete
+   verification, Delivery State, `Need user`, and `Remaining`.
+   A `gate-only` cannot use Level 0 to edit implementation files.
 7. If the user asks what to do next before authorizing work, switch to orient:
 
 ```bash
@@ -171,7 +207,8 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
     gate as passed, read
     [Adversarial Acceptance](references/adversarial-acceptance.md) and try to
     reject completion against scope, accepted evidence, required gates, Delivery
-    State, stale artifacts, and closeout clarity.
+    State, stale artifacts, remaining gap, feedback quality, and closeout
+    clarity.
 16. Before accepting gate, integration, or adapter-required state, read
     [Gate Results](../../references/gate-results.md) and cite concrete evidence
     for the gate decision. Candidate evidence is not accepted state until the
@@ -205,6 +242,9 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
   that the user, confirmed goal, or run packet did not already provide.
 - Do not combine control-lane acceptance and implementation when the user has
   asked for gate-only, control-only, review-only, or acceptance-lane behavior.
+- Do not use `harness-rule:level-0-fast-path` to bypass accepted specs, goals,
+  runs, DAG nodes, adapter gates, state-sync obligations, or `gate-only`
+  Controller boundaries.
 - Do not present worker launch vs. `mixed` as a routine user choice. In
   `gate-only`, default to worker subagent unless subagent execution is
   unavailable, unsafe, or lacks enough context.

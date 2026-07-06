@@ -4,24 +4,102 @@
 
 ## Next
 
-- [ ] P2 Shape Level 0 Fast Path direct-execution policy.
-  - Source: Split from the 2026-07-04 intake idea: "一些简单的任务，应该直接执行，而不需要 harness（我理解这么做有风险，所以需要讨论）后者 sub worker".
-  - Acceptance: Define when a small Goal can be executed directly without full Harness Goal/Run ceremony or sub worker delegation; include risk thresholds, execution role boundaries, verification, and pause conditions.
-  - Notes: Classification=shape; Needs spec=yes; This changes default routing behavior and must preserve Controller / worker boundaries.
-
-- [ ] P2 Shape EnvContext focus and intent-routing model for Harness.
-  - Source: Split from the 2026-07-04 intake idea and screenshot: add intent recognition inspired by EnvContext layers and `focus` filtering.
-  - Acceptance: Define which context layers Harness should expose for `orient`, `intake`, `shape`, `goal`, and `execute`; include focus presets, token/noise controls, and how intent normalization routes user language to `Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`.
-  - Notes: Classification=shape; Needs spec=yes; Builds on the completed terminology and intent-normalization work.
-
-- [ ] P3 Research control-theory feedback loop model for Harness.
-  - Source: Split from the 2026-07-04 intake idea: "要不要学习控制论，利用控制论的思想来改造".
-  - Acceptance: Produce a bounded research note mapping control-theory concepts such as controller, plant, sensor, feedback, error, setpoint, stability, and saturation to Harness routing, gates, evidence, and pause conditions; recommend whether this should become a product spec.
-  - Notes: Classification=research; Needs spec=no for research note, yes before protocol changes.
-
 ## Later
 
 ## Done
+
+- [x] Complete the control-theory feedback loop model for Harness.
+  - Completed: Added `docs/cybernetic-stability.md` as the dedicated
+    control-theory-inspired stability model for Agent Harness.
+  - Completed: Framed Harness as a semantic control loop:
+    `intent -> setpoint -> sensor -> measurement -> gap -> controller -> action -> feedback`.
+  - Completed: Documented intent recognition as target / setpoint selection,
+    sensor freshness, measurement snapshots, remaining gap, feedback quality,
+    route stability, and saturation / pause triggers.
+  - Completed: Updated README / README.zh-CN, CHANGELOG, release notes,
+    version metadata, capability matrix, project contract, social preview
+    source, and deterministic checks for the `0.5.0` cybernetic stability line.
+  - Completed: Promoted the stability model into stable protocol anchors:
+    `harness-rule:intent-setpoint-selection`,
+    `harness-rule:sensor-freshness`,
+    `harness-rule:measurement-snapshot`,
+    `harness-rule:remaining-gap`, `harness-rule:feedback-quality`, and
+    `harness-rule:stability-saturation`.
+  - Completed: Updated task routing, `harness:orient`, `harness:intake`,
+    `harness:execute`, goal/spec/worker templates, and CLI-generated
+    goal/run/prompt/subagent guidance so future Harness execution carries
+    target, observed state, gap, feedback quality, and saturation checks.
+  - Source: Split from the 2026-07-04 intake idea: "要不要学习控制论，利用控制论的思想来改造".
+  - Spec:
+    `harness/specs/2026-07-06-cybernetic-stability-model-for-agent-harness.md`
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `node --check scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `git diff --check`, `npm run test:protocol`,
+    `npm run test:presentation`, `npm run test:smoke`, `npm run test:all`,
+    and `npm run validate:plugin`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
+
+- [x] Shape EnvContext focus and intent-routing model for Harness.
+  - Completed: Added `harness-rule:context-focus-routing` so Harness
+    normalizes user intent to `Milestone`, `Goal`, `Task`, `Run`, `Priority`,
+    or `Spec` before selecting the smallest useful context focus.
+  - Completed: Defined context layers for Harness routing: `entry/channel`,
+    `modality`, `dialog`, `project/world`, `capability`, and `self/control`.
+  - Completed: Defined focus presets for `orient`, `intake`, `shape`, `goal`,
+    and `execute`, including token/noise and lost-in-the-middle controls.
+  - Completed: Kept `EnvContext` as internal design language only; no public
+    `--focus` CLI parameter, schema/config field, storage migration, activation
+    behavior, or external dependency was added.
+  - Source: Split from the 2026-07-04 intake idea and screenshot about adding
+    intent recognition inspired by EnvContext layers and `focus` filtering.
+  - Spec:
+    `harness/specs/2026-07-04-envcontext-focus-and-intent-routing-model.md`
+  - Goal:
+    `harness/goals/2026-07-04-shape-envcontext-focus-and-intent-routing-model-for-harness.md`
+  - Run:
+    `.harness/runs/20260704-190518-shape-envcontext-focus-and-intent-routing-model-for-harness/`
+  - Verification: `node --check
+    plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, `git diff --check`, `goal validate`, and
+    `run status --json`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
+
+- [x] Shape Level 0 Fast Path direct-execution policy.
+  - Completed: Added `harness-rule:level-0-fast-path` so Level 0 direct
+    execution is a narrow exception for small local, reversible, low-risk fixes
+    by an `implementer` or explicitly accepted `mixed` thread.
+  - Completed: Defined that Level 0 cannot bypass accepted Harness specs,
+    Goals, Runs, DAG nodes, checklists, adapter-required gates, state-sync
+    obligations, Controller/gate/review/acceptance roles, product/project
+    semantic changes, public protocol/source-of-truth changes, schemas,
+    external systems, credentials, paid/production access, destructive
+    operations, or larger Goal/Milestone work.
+  - Completed: Preserved verification and closeout requirements for direct
+    execution: short route reason, scoped diff summary, concrete verification,
+    Delivery State, `Need user`, and `Remaining`.
+  - Source: Split from the 2026-07-04 intake idea about allowing simple work to
+    execute directly without full Harness ceremony or sub worker delegation.
+  - Spec:
+    `harness/specs/2026-07-04-level-0-fast-path-direct-execution-policy.md`
+  - Goal:
+    `harness/goals/2026-07-04-shape-level-0-fast-path-direct-execution-policy.md`
+  - Run:
+    `.harness/runs/20260704-181600-shape-level-0-fast-path-direct-execution-policy/`
+  - Verification: `node --check
+    plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, `git diff --check`, `goal validate`, and
+    `run status --json`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
 
 - [x] Shape lightweight human-verification checklist and Need-user digest.
   - Completed: Added `harness-rule:need-user-digest` so user-facing closeouts

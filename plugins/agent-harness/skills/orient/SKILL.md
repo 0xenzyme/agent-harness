@@ -30,6 +30,20 @@ node <plugin-root>/scripts/agent-harness.mjs config validate --cwd <project>
 3. Read `.harness/config.json` when it exists.
 4. In the adapter contract, read the configured project adapter, task index,
    status file, and relevant mental models.
+   Apply `harness-rule:context-focus-routing` before reading broadly:
+   normalize user intent to `Milestone`, `Goal`, `Task`, `Run`, `Priority`, or
+   `Spec`, then use the `orient` focus preset. Read entry/channel, dialog,
+   project/world, and self/control context first; add modality and capability
+   context only when the request input or route safety needs it. Keep old run
+   logs and implementation files summarized unless they explain current state,
+   stale artifacts, blockers, or the next safe action.
+   Apply `harness-rule:cybernetic-stability`: identify the target selected by
+   intent (`harness-rule:intent-setpoint-selection`), prefer fresh observations
+   over stale artifacts (`harness-rule:sensor-freshness`), form a lightweight
+   measurement snapshot (`harness-rule:measurement-snapshot`), state the
+   remaining gap (`harness-rule:remaining-gap`), and route to ask/shape/pause
+   when feedback is weak or the loop is saturated
+   (`harness-rule:feedback-quality`, `harness-rule:stability-saturation`).
 5. Run or mirror the read-only orientation command:
 
 ```bash
