@@ -1,0 +1,221 @@
+[
+  {
+    "id": "ah_behavior_orient_read_only",
+    "skill": "harness:orient",
+    "scenario": "Orient inspects configured adapter state before recommending a route and performs no writes.",
+    "user_request": "Use harness to inspect the current project state and recommend the next safe action.",
+    "trace": [
+      { "type": "read", "target": ".harness/config.json" },
+      { "type": "read", "target": "harness/README.md" },
+      { "type": "read", "target": "harness/tasks.md" },
+      { "type": "read", "target": "harness/status.md" },
+      {
+        "type": "closeout",
+        "target": "route recommendation",
+        "fields": {
+          "route": "orient",
+          "read_only": true,
+          "need_user": "None",
+          "remaining": "None"
+        }
+      }
+    ],
+    "assertions": {
+      "required_ordered_reads": [
+        ".harness/config.json",
+        "harness/README.md",
+        "harness/tasks.md",
+        "harness/status.md"
+      ],
+      "forbidden_writes": [
+        "harness/tasks.md",
+        "harness/status.md",
+        ".harness/runs/**"
+      ],
+      "forbidden_mutations": [
+        "accepted-state-write",
+        "goal-create",
+        "run-prepare",
+        "commit",
+        "push",
+        "deploy"
+      ]
+    }
+  },
+  {
+    "id": "ah_behavior_execute_gate_only_worker_candidate",
+    "skill": "harness:execute",
+    "scenario": "Gate-only execution launches a worker and treats the worker result as candidate evidence.",
+    "user_request": "Execute this accepted goal as the gate-only controller.",
+    "trace": [
+      { "type": "read", "target": "harness/goals/accepted-goal.md" },
+      { "type": "read", "target": "harness/specs/accepted-spec.md" },
+      { "type": "read", "target": ".harness/runs/20260708-000000-example/run.md" },
+      { "type": "read", "target": ".harness/runs/20260708-000000-example/dag.md" },
+      { "type": "read", "target": "plugins/agent-harness/references/worker-runner-contract.md" },
+      { "type": "read", "target": "plugins/agent-harness/references/controller-communication.md" },
+      {
+        "type": "tool_call",
+        "target": "worker launch packet",
+        "name": "codex-cli-subagent",
+        "fields": {
+          "thread_role": "execution-worker",
+          "accepted_state_owner": "controller",
+          "allowed_state_writes": "none"
+        }
+      },
+      {
+        "type": "worker_result",
+        "target": "worker result packet",
+        "fields": {
+          "candidate_evidence": true,
+          "implementer_output": "focused patch",
+          "validation": "npm run test:eval passed",
+          "delivery_state": "validated-local"
+        }
+      }
+    ],
+    "assertions": {
+      "required_ordered_reads": [
+        "harness/goals/accepted-goal.md",
+        "harness/specs/accepted-spec.md",
+        ".harness/runs/20260708-000000-example/run.md",
+        ".harness/runs/20260708-000000-example/dag.md",
+        "plugins/agent-harness/references/worker-runner-contract.md",
+        "plugins/agent-harness/references/controller-communication.md"
+      ],
+      "forbidden_writes": [
+        "harness/tasks.md",
+        "harness/status.md",
+        ".harness/runs/**"
+      ],
+      "forbidden_mutations": [
+        "accepted-state-write",
+        "run-record-completed",
+        "gate-acceptance"
+      ],
+      "required_worker_evidence": {
+        "candidate_evidence": true,
+        "implementer_output": true,
+        "validation": true
+      }
+    }
+  },
+  {
+    "id": "ah_behavior_execute_degraded_worker_fallback",
+    "skill": "harness:execute",
+    "scenario": "A controller-visible fallback to foreground execution reports degraded execution provenance.",
+    "user_request": "Execute this accepted goal, but worker delegation is unavailable.",
+    "trace": [
+      { "type": "read", "target": "harness/goals/accepted-goal.md" },
+      { "type": "read", "target": ".harness/runs/20260708-000001-example/run.md" },
+      { "type": "read", "target": ".harness/runs/20260708-000001-example/dag.md" },
+      { "type": "read", "target": "plugins/agent-harness/references/worker-runner-contract.md" },
+      {
+        "type": "closeout",
+        "target": "degraded execution report",
+        "markers": ["harness-rule:degraded-execution-provenance"],
+        "fields": {
+          "degraded": true,
+          "worker_surface": "manual-foreground",
+          "execution_method": "manual-foreground",
+          "fallback_reason": "codex-cli-subagent unavailable",
+          "candidate_evidence": true
+        }
+      }
+    ],
+    "assertions": {
+      "required_ordered_reads": [
+        "harness/goals/accepted-goal.md",
+        ".harness/runs/20260708-000001-example/run.md",
+        ".harness/runs/20260708-000001-example/dag.md",
+        "plugins/agent-harness/references/worker-runner-contract.md"
+      ],
+      "forbidden_writes": [
+        "harness/tasks.md",
+        "harness/status.md"
+      ],
+      "forbidden_mutations": [
+        "silent-worker-fallback",
+        "accepted-state-write"
+      ],
+      "required_degraded_provenance": {
+        "markers": ["harness-rule:degraded-execution-provenance"],
+        "fields": {
+          "degraded": true,
+          "worker_surface": "manual-foreground",
+          "execution_method": "manual-foreground",
+          "fallback_reason": "codex-cli-subagent unavailable"
+        }
+      }
+    }
+  },
+  {
+    "id": "ah_behavior_gate_only_acceptance_requires_evidence",
+    "skill": "harness:execute",
+    "scenario": "Gate-only accepted state moves forward only after implementer output, verification, and controller acceptance evidence exist.",
+    "user_request": "Review the worker result and accept it only if the gate evidence is complete.",
+    "trace": [
+      { "type": "read", "target": "plugins/agent-harness/references/gate-results.md" },
+      { "type": "read", "target": "plugins/agent-harness/references/controller-communication.md" },
+      {
+        "type": "worker_result",
+        "target": "worker result packet",
+        "fields": {
+          "candidate_evidence": true,
+          "implementer_output": "changed eval runner and docs",
+          "validation": "node --check evals/run-agent-harness-eval.mjs"
+        }
+      },
+      {
+        "type": "verification",
+        "target": "controller verification",
+        "fields": {
+          "commands": ["npm run test:eval", "npm run test:protocol"],
+          "passed": true
+        }
+      },
+      {
+        "type": "gate_record",
+        "target": "integration gate",
+        "fields": {
+          "implementer_output": "worker result packet",
+          "verification": "npm run test:eval; npm run test:protocol",
+          "controller_acceptance": "reviewed by gate-only controller",
+          "accepted_state_move": "after_controller_acceptance"
+        }
+      },
+      {
+        "type": "state_transition",
+        "target": "accepted state",
+        "fields": {
+          "from": "candidate",
+          "to": "accepted",
+          "after": "integration gate"
+        }
+      }
+    ],
+    "assertions": {
+      "required_ordered_reads": [
+        "plugins/agent-harness/references/gate-results.md",
+        "plugins/agent-harness/references/controller-communication.md"
+      ],
+      "forbidden_writes": [],
+      "forbidden_mutations": [
+        "accepted-state-before-gate",
+        "completion-without-verification"
+      ],
+      "required_worker_evidence": {
+        "candidate_evidence": true,
+        "implementer_output": true,
+        "validation": true
+      },
+      "required_gate_only_acceptance_evidence": {
+        "implementer_output": true,
+        "verification": true,
+        "controller_acceptance": true,
+        "state_transition_after_gate": true
+      }
+    }
+  }
+]

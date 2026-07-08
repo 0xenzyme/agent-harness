@@ -80,6 +80,10 @@ Forbidden scope:
 - Use the default worker surface contract (`harness-rule:worker-surface-default`)
   from the run packet. Worker output is candidate evidence regardless of
   surface.
+- If the default worker surface is unavailable, skipped, or replaced by
+  foreground execution, include `harness-rule:degraded-execution-provenance`
+  in the result packet with actual execution method, unavailable or skipped
+  surface, fallback reason, candidate-evidence boundary, and verification.
 - Do not reclassify this DAG node as `harness-rule:level-0-fast-path`. This
   prompt exists because the controller chose worker execution; return candidate
   evidence instead of skipping the run contract.
@@ -98,5 +102,5 @@ Forbidden scope:
 
 Return an `Execution Result Packet` with changed files, validation, known risks,
 dirty state, Delivery State, observed state, gap closed, remaining gap,
-feedback quality, `Need user`, `Remaining`, deferred items, and whether the
-controller was notified.
+feedback quality, degraded execution provenance when applicable, `Need user`,
+`Remaining`, deferred items, and whether the controller was notified.

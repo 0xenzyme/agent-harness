@@ -56,6 +56,19 @@ const ruleAnchors = [
     ]
   },
   {
+    id: "harness-rule:degraded-execution-provenance",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/worker-runner-contract.md",
+      "plugins/agent-harness/references/controller-communication.md",
+      "plugins/agent-harness/references/gate-results.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
     id: "harness-rule:need-user-digest",
     files: [
       "docs/HARNESSES.md",
@@ -270,6 +283,17 @@ const cyberneticStabilityExpectations = [
   ["plugins/agent-harness/scripts/agent-harness.mjs", "observed state, evidence, stale/conflict risks"]
 ];
 
+const degradedExecutionProvenanceExpectations = [
+  ["docs/HARNESSES.md", "actual execution method, unavailable surface, fallback reason"],
+  ["docs/project-contract.md", "skips `codex-cli-subagent`"],
+  ["plugins/agent-harness/references/worker-runner-contract.md", "candidate-evidence boundary, and verification evidence"],
+  ["plugins/agent-harness/references/controller-communication.md", "Silent fallback is not accepted completion evidence"],
+  ["plugins/agent-harness/references/gate-results.md", "compensating verification before accepting"],
+  ["plugins/agent-harness/skills/execute/SKILL.md", "Silent fallback is\n   not accepted completion evidence"],
+  ["plugins/agent-harness/templates/worker-prompt.md", "degraded execution provenance when applicable"],
+  ["plugins/agent-harness/scripts/agent-harness.mjs", "degradedExecutionProvenanceGuidance"]
+];
+
 const publicFocusOption = ["--", "focus"].join("");
 const publicFocusOptionSurfaces = [
   "plugins/agent-harness/scripts/agent-harness.mjs",
@@ -390,6 +414,10 @@ function checkProtocol() {
 
   for (const [file, needle] of cyberneticStabilityExpectations) {
     assertIncludesFile(file, needle, `${file} must preserve cybernetic stability guidance: ${needle}`);
+  }
+
+  for (const [file, needle] of degradedExecutionProvenanceExpectations) {
+    assertIncludesFile(file, needle, `${file} must preserve degraded execution provenance guidance: ${needle}`);
   }
 
   for (const file of publicFocusOptionSurfaces) {

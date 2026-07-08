@@ -20,6 +20,12 @@ returns candidate evidence to the controller; it is not the acceptance lane.
 bounded worker surface when available. Codex App threads are explicit
 long-lived handoff lanes, and fork is not a default worker surface.
 
+`harness-rule:degraded-execution-provenance`: if the default worker surface is
+unavailable, skipped, or replaced by `manual-foreground`, record visible
+provenance instead of presenting the result as normal delegated execution.
+Name the actual execution method, unavailable or skipped surface, fallback
+reason, candidate-evidence boundary, and verification evidence.
+
 Use capability and safety to choose the surface. Do not treat worker
 availability as permission to broaden scope, skip verification, or change the
 controller's execution role.
@@ -53,7 +59,7 @@ sync, do not launch the worker. Shape the goal/run or ask for confirmation.
 - Do not update accepted task, status, goal, run, gate, or release state.
 - Do not mark work complete or promote candidate evidence to accepted evidence.
 - Return concrete changed files, validation, known risks, dirty state, delivery
-  state, and deferred items.
+  state, degraded provenance when applicable, and deferred items.
 
 ## Controller Rules
 
@@ -69,3 +75,7 @@ sync, do not launch the worker. Shape the goal/run or ask for confirmation.
 If the worker cannot prove scope, verification, or state sync, record
 `request-fix`, `blocked`, or `delivery pending`; do not convert the result into
 completed state.
+
+If worker delegation degrades to foreground execution, the result may still be
+useful candidate evidence, but the controller must see the degraded provenance
+before accepting or rejecting it.

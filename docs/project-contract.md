@@ -43,6 +43,27 @@ as required user-facing jargon.
   production / destructive approval are needed, or external feedback is
   delayed.
 
+## Degraded Execution Provenance
+
+`harness-rule:degraded-execution-provenance`: when a run packet, controller, or
+worker prompt expects a bounded worker surface but execution falls back to
+`manual-foreground`, skips `codex-cli-subagent`, cannot launch the planned
+surface, or otherwise degrades from the intended delegation path, the
+degradation must be explicit in run, gate, or closeout evidence.
+
+The evidence should name:
+
+- actual execution method;
+- unavailable or skipped worker surface;
+- fallback reason;
+- whether output is candidate evidence;
+- verification used to compensate for the degraded path.
+
+Degraded provenance does not grant broader scope, accepted-state authority, or
+delivery authority. In `gate-only` work, fallback output remains candidate
+evidence until the controller validates implementer output, verification, and
+gate evidence.
+
 Agent Harness supports two project contracts:
 
 - `fixed` (`contract: "fixed"`): fixed-path project contract.

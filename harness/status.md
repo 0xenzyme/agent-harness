@@ -2,6 +2,26 @@
 
 ## Focus
 
+- Current focus: Behavior eval and degraded execution provenance for Harness
+  is implemented and verified in the local checkout. Added deterministic
+  trace-shaped behavior fixtures at
+  `evals/skills/agent-harness/behavior_trace_cases.yaml` and extended
+  `evals/run-agent-harness-eval.mjs` so `npm run test:eval` validates ordered
+  reads, forbidden writes/mutations, worker candidate evidence, degraded
+  provenance, and gate-only acceptance evidence. Added
+  `harness-rule:degraded-execution-provenance` across the capability matrix,
+  project contract docs, worker-runner / controller / gate-result references,
+  `harness:execute`, worker prompt template, generated run/DAG/worker prompts,
+  protocol checks, and smoke checks. Spec:
+  `harness/specs/2026-07-08-behavior-eval-and-degraded-execution-provenance.md`;
+  goal:
+  `harness/goals/2026-07-08-implement-behavior-eval-and-degraded-execution-provenance-for-harness.md`;
+  run:
+  `.harness/runs/20260708-114327-implement-behavior-eval-and-degraded-execution-provenance-for-harness/`.
+  Delivery state is `validated-local`; no commit, push, review, integration,
+  publish, release, deploy, production access, daemon, watcher, paid API,
+  credential, or destructive operation was performed.
+
 - Current focus: Control-theory-inspired Harness stability implementation is
   complete and verified in the local checkout. Added
   `docs/cybernetic-stability.md` as the dedicated model; updated README /
@@ -194,8 +214,28 @@
 
 ## Verification
 
-- Last checked: 2026-07-04
+- Last checked: 2026-07-08
 - Last commands:
+  - Completed accepted spec
+    `harness/specs/2026-07-08-behavior-eval-and-degraded-execution-provenance.md`.
+  - Completed and validated gate-only goal
+    `harness/goals/2026-07-08-implement-behavior-eval-and-degraded-execution-provenance-for-harness.md`
+    with current-thread controller ownership, current checkout lock, and target
+    delivery state `validated-local`.
+  - Prepared run packet
+    `.harness/runs/20260708-114327-implement-behavior-eval-and-degraded-execution-provenance-for-harness/`;
+    recorded completed DAG nodes: `explorer`, `worker`, and `verification`,
+    then accepted the run through controller gate evidence.
+  - Added trace-shaped behavior eval coverage for `harness:orient`
+    read-only behavior, `harness:execute` gate-only worker candidate evidence,
+    degraded execution provenance, and gate-only accepted-state requirements.
+  - Added `harness-rule:degraded-execution-provenance` to protocol docs,
+    workflow references, generated prompts, protocol checks, and smoke checks.
+  - Verification passed: `node --check evals/run-agent-harness-eval.mjs`,
+    `node --check scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `node --check plugins/agent-harness/scripts/agent-harness.mjs`, `npm run
+    test:eval`, `npm run test:protocol`, `npm run test:smoke`, `npm run
+    validate:plugin`, and `git diff --check`.
   - Created accepted spec
     `harness/specs/2026-07-04-envcontext-focus-and-intent-routing-model.md`.
   - Created and validated gate-only goal

@@ -167,6 +167,12 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
    is candidate evidence only until the controller validates and accepts it.
    This is `harness-rule:gate-only-controller`: the control lane stays the
    acceptance lane and does not directly edit implementation files.
+   If the planned worker surface is unavailable or the controller uses
+   foreground execution as a fallback, apply
+   `harness-rule:degraded-execution-provenance`: visibly report the actual
+   execution method, unavailable or skipped surface, fallback reason,
+   candidate-evidence boundary, and verification evidence. Silent fallback is
+   not accepted completion evidence.
 11. If the run packet has `dag.json`, use it as the execution order:
    - Launch only `readyNodes` from `run status --json`.
    - Nodes in the same ready set may run in parallel.
@@ -212,7 +218,8 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 16. Before accepting gate, integration, or adapter-required state, read
     [Gate Results](../../references/gate-results.md) and cite concrete evidence
     for the gate decision. Candidate evidence is not accepted state until the
-    control lane validates it.
+    control lane validates it. Include degraded execution provenance when the
+    candidate evidence came from a fallback surface.
 17. Report Delivery State explicitly. If the state is `implemented-local` or
     `validated-local`, say that local implementation / verification is complete
     but it is not committed, pushed, reviewed, integrated, or released unless
@@ -248,6 +255,10 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 - Do not present worker launch vs. `mixed` as a routine user choice. In
   `gate-only`, default to worker subagent unless subagent execution is
   unavailable, unsafe, or lacks enough context.
+- Do not silently convert unavailable worker delegation into normal execution.
+  `harness-rule:degraded-execution-provenance` requires fallback method,
+  skipped surface, reason, candidate-evidence boundary, and verification to be
+  visible in result, gate, or closeout evidence.
 - Do not describe dirty or uncommitted dev-worktree output as complete on the
   integration line, integrated, shipped, or released.
 - Do not mark a run completed below its Target Delivery State.

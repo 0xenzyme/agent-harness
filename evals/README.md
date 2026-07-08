@@ -63,11 +63,33 @@ Skill-level cases live under `skills/agent-harness/`:
   `harness:execute`.
 - `task_cases.yaml`: deterministic task cases based on the fixture shapes in
   this directory.
+- `behavior_trace_cases.yaml`: deterministic tool-call trace cases for
+  read-order, forbidden mutation, worker evidence, degraded provenance, and
+  gate-only acceptance behavior.
 - `transcript_rubric.md`: 0-2 human/model scoring rubric for agent
   transcripts after deterministic checks pass.
 
 The case files use YAML-compatible JSON so the runner can stay dependency-free
 until the project needs a full YAML parser.
+
+### Behavior Trace Schema
+
+`behavior_trace_cases.yaml` is a JSON array. Each case has:
+
+- `id`, `skill`, `scenario`, and `user_request`.
+- `trace`: ordered events with `type`, `target`, optional `name`, `action`,
+  `markers`, and `fields`.
+- `assertions.required_ordered_reads`: read targets that must appear in order.
+- `assertions.forbidden_writes`: file targets that must not receive `write`
+  events; suffix `/**` matches descendants.
+- `assertions.forbidden_mutations`: mutation/tool/state-transition names that
+  must not occur.
+- `assertions.required_worker_evidence`: fields required on a `worker_result`
+  event; worker output must remain `candidate_evidence: true`.
+- `assertions.required_degraded_provenance`: required
+  `harness-rule:degraded-execution-provenance` marker and fallback fields.
+- `assertions.required_gate_only_acceptance_evidence`: gate-only evidence that
+  must exist before an accepted-state transition.
 
 Run the deterministic eval harness with:
 

@@ -25,6 +25,17 @@ const allowedSkills = new Set([
   "harness:execute"
 ]);
 const allowedKinds = new Set(["positive", "negative", "boundary"]);
+const allowedTraceEventTypes = new Set([
+  "read",
+  "write",
+  "mutation",
+  "tool_call",
+  "worker_result",
+  "verification",
+  "gate_record",
+  "state_transition",
+  "closeout"
+]);
 
 function assert(condition, message) {
   if (!condition) {
@@ -90,6 +101,124 @@ function assertJsonNotIncludes(json, checks, caseId) {
     assert(
       !valueIncludes(actual, expected),
       `${caseId}: expected ${path} not to include ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+    );
+  }
+}
+
+function targetMatches(actual, expected) {
+  if (expected.endsWith("/**")) {
+    return actual === expected.slice(0, -3) || actual.startsWith(expected.slice(0, -2));
+  }
+  return actual === expected || actual.includes(expected);
+}
+
+function traceEventField(event, field) {
+  return event.fields?.[field];
+}
+
+function assertRequiredOrderedReads(trace, requiredReads, caseId) {
+  let cursor = 0;
+  for (const expectedRead of requiredReads || []) {
+    const index = trace.findIndex(
+      (event, eventIndex) => eventIndex >= cursor && event.type === "read" && targetMatches(event.target, expectedRead)
+    );
+    assert(index !== -1, `${caseId}: missing required ordered read ${expectedRead}`);
+    cursor = index + 1;
+  }
+}
+
+function assertForbiddenWrites(trace, forbiddenWrites, caseId) {
+  for (const event of trace) {
+    if (event.type !== "write") {
+      continue;
+    }
+    for (const forbiddenWrite of forbiddenWrites || []) {
+      assert(
+        !targetMatches(event.target, forbiddenWrite),
+        `${caseId}: forbidden write to ${event.target} matched ${forbiddenWrite}`
+      );
+    }
+  }
+}
+
+function assertForbiddenMutations(trace, forbiddenMutations, caseId) {
+  for (const event of trace) {
+    const mutationName = event.action || event.name || event.target;
+    if (event.type !== "mutation" && event.type !== "tool_call" && event.type !== "state_transition") {
+      continue;
+    }
+    for (const forbiddenMutation of forbiddenMutations || []) {
+      assert(
+        !targetMatches(mutationName, forbiddenMutation),
+        `${caseId}: forbidden mutation ${mutationName} matched ${forbiddenMutation}`
+      );
+    }
+  }
+}
+
+function assertWorkerEvidence(trace, expectedEvidence, caseId) {
+  if (!expectedEvidence) {
+    return;
+  }
+  const workerResult = trace.find((event) => event.type === "worker_result");
+  assert(workerResult, `${caseId}: missing worker_result event`);
+  for (const [field, expected] of Object.entries(expectedEvidence)) {
+    if (expected === true) {
+      assert(Boolean(traceEventField(workerResult, field)), `${caseId}: missing worker evidence field ${field}`);
+    } else {
+      assert(
+        JSON.stringify(traceEventField(workerResult, field)) === JSON.stringify(expected),
+        `${caseId}: expected worker evidence ${field}=${JSON.stringify(expected)}`
+      );
+    }
+  }
+  assert(
+    traceEventField(workerResult, "candidate_evidence") === true,
+    `${caseId}: worker evidence must remain candidate evidence`
+  );
+}
+
+function assertDegradedProvenance(trace, expectedProvenance, caseId) {
+  if (!expectedProvenance) {
+    return;
+  }
+  const provenanceEvent = trace.find((event) => {
+    const markers = event.markers || [];
+    return markers.includes("harness-rule:degraded-execution-provenance") || event.fields?.degraded === true;
+  });
+  assert(provenanceEvent, `${caseId}: missing degraded execution provenance event`);
+  for (const marker of expectedProvenance.markers || []) {
+    assert(
+      (provenanceEvent.markers || []).includes(marker),
+      `${caseId}: missing degraded execution provenance marker ${marker}`
+    );
+  }
+  for (const [field, expected] of Object.entries(expectedProvenance.fields || {})) {
+    assert(
+      JSON.stringify(traceEventField(provenanceEvent, field)) === JSON.stringify(expected),
+      `${caseId}: expected degraded provenance ${field}=${JSON.stringify(expected)}, got ${JSON.stringify(traceEventField(provenanceEvent, field))}`
+    );
+  }
+}
+
+function assertGateOnlyAcceptanceEvidence(trace, expectedEvidence, caseId) {
+  if (!expectedEvidence) {
+    return;
+  }
+  const gateIndex = trace.findIndex((event) => event.type === "gate_record");
+  assert(gateIndex !== -1, `${caseId}: missing gate_record event`);
+  const gateRecord = trace[gateIndex];
+  for (const field of ["implementer_output", "verification", "controller_acceptance"]) {
+    if (expectedEvidence[field]) {
+      assert(Boolean(traceEventField(gateRecord, field)), `${caseId}: missing gate-only acceptance field ${field}`);
+    }
+  }
+  if (expectedEvidence.state_transition_after_gate) {
+    const stateTransitionIndex = trace.findIndex((event) => event.type === "state_transition");
+    assert(stateTransitionIndex !== -1, `${caseId}: missing accepted-state transition event`);
+    assert(
+      stateTransitionIndex > gateIndex,
+      `${caseId}: accepted-state transition must occur after gate evidence`
     );
   }
 }
@@ -250,6 +379,43 @@ function validateTaskCaseShape(testCase) {
   assert(Array.isArray(testCase.soft_rubric) && testCase.soft_rubric.length > 0, `${testCase.id}: missing soft rubric`);
 }
 
+function validateBehaviorTraceCaseShape(testCase) {
+  assert(typeof testCase.id === "string" && testCase.id, "behavior trace case must have id");
+  assert(allowedSkills.has(testCase.skill), `${testCase.id}: unknown skill ${testCase.skill}`);
+  assert(typeof testCase.scenario === "string" && testCase.scenario, `${testCase.id}: missing scenario`);
+  assert(typeof testCase.user_request === "string" && testCase.user_request, `${testCase.id}: missing request`);
+  assert(Array.isArray(testCase.trace) && testCase.trace.length > 0, `${testCase.id}: trace must be a non-empty array`);
+  assert(testCase.assertions && typeof testCase.assertions === "object", `${testCase.id}: missing assertions`);
+
+  for (const event of testCase.trace) {
+    assert(allowedTraceEventTypes.has(event.type), `${testCase.id}: invalid trace event type ${event.type}`);
+    assert(typeof event.target === "string" && event.target, `${testCase.id}: trace event missing target`);
+    if (event.fields !== undefined) {
+      assert(typeof event.fields === "object" && !Array.isArray(event.fields), `${testCase.id}: event fields must be an object`);
+    }
+    if (event.markers !== undefined) {
+      assert(Array.isArray(event.markers), `${testCase.id}: event markers must be an array`);
+    }
+  }
+
+  const assertions = testCase.assertions;
+  assert(Array.isArray(assertions.required_ordered_reads), `${testCase.id}: required_ordered_reads must be an array`);
+  assert(Array.isArray(assertions.forbidden_writes), `${testCase.id}: forbidden_writes must be an array`);
+  assert(Array.isArray(assertions.forbidden_mutations), `${testCase.id}: forbidden_mutations must be an array`);
+}
+
+function runBehaviorTraceCase(testCase) {
+  validateBehaviorTraceCaseShape(testCase);
+  const { trace, assertions } = testCase;
+
+  assertRequiredOrderedReads(trace, assertions.required_ordered_reads, testCase.id);
+  assertForbiddenWrites(trace, assertions.forbidden_writes, testCase.id);
+  assertForbiddenMutations(trace, assertions.forbidden_mutations, testCase.id);
+  assertWorkerEvidence(trace, assertions.required_worker_evidence, testCase.id);
+  assertDegradedProvenance(trace, assertions.required_degraded_provenance, testCase.id);
+  assertGateOnlyAcceptanceEvidence(trace, assertions.required_gate_only_acceptance_evidence, testCase.id);
+}
+
 function runTaskCase(testCase) {
   validateTaskCaseShape(testCase);
 
@@ -300,14 +466,20 @@ function runTaskCase(testCase) {
 function main() {
   const triggerCases = readJsonYaml(join(skillEvalRoot, "trigger_cases.yaml"));
   const taskCases = readJsonYaml(join(skillEvalRoot, "task_cases.yaml"));
+  const behaviorTraceCases = readJsonYaml(join(skillEvalRoot, "behavior_trace_cases.yaml"));
 
   const triggerCounts = validateTriggerCases(triggerCases);
   assert(Array.isArray(taskCases), "task cases must be an array");
   assert(taskCases.length >= 4, `expected at least 4 task cases, got ${taskCases.length}`);
+  assert(Array.isArray(behaviorTraceCases), "behavior trace cases must be an array");
+  assert(behaviorTraceCases.length >= 4, `expected at least 4 behavior trace cases, got ${behaviorTraceCases.length}`);
 
   let hardCommandCount = 0;
   for (const testCase of taskCases) {
     hardCommandCount += runTaskCase(testCase);
+  }
+  for (const testCase of behaviorTraceCases) {
+    runBehaviorTraceCase(testCase);
   }
 
   const totalTriggerCases = Object.values(triggerCounts).reduce((sum, count) => sum + count, 0);
@@ -316,6 +488,7 @@ function main() {
     `Trigger cases: ${totalTriggerCases} (${triggerCounts.positive} positive, ${triggerCounts.negative} negative, ${triggerCounts.boundary} boundary).`
   );
   console.log(`Task cases: ${taskCases.length}; hard CLI checks: ${hardCommandCount}.`);
+  console.log(`Behavior trace cases: ${behaviorTraceCases.length}.`);
 }
 
 main();

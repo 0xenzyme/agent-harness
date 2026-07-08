@@ -19,6 +19,7 @@ const cli = join(repoRoot, "plugins/agent-harness/scripts/agent-harness.mjs");
 const publicFocusOption = ["--", "focus"].join("");
 const generatedContextFocusNeedle = "Normalize user intent to `Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec` before choosing context focus";
 const generatedExecuteFocusNeedle = "For execution, use the `execute` focus preset";
+const generatedDegradedProvenanceNeedle = "When worker delegation falls back or the planned worker surface is unavailable or skipped";
 
 function run(args) {
   return execFileSync(process.execPath, [cli, ...args], {
@@ -169,6 +170,7 @@ for (const needle of [
   "harness-rule:local-delivery-ceiling",
   "harness-rule:worker-surface-default",
   "harness-rule:child-controller-boundary",
+  "harness-rule:degraded-execution-provenance",
   "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
@@ -194,6 +196,7 @@ for (const needle of [
   "harness-rule:local-delivery-ceiling",
   "harness-rule:worker-surface-default",
   "harness-rule:child-controller-boundary",
+  "harness-rule:degraded-execution-provenance",
   "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
@@ -689,6 +692,16 @@ for (const [value, needle, message] of [
   assertIncludes(value, needle, message);
 }
 for (const [value, needle, message] of [
+  [capabilityMatrix, "harness-rule:degraded-execution-provenance", "capability matrix should expose degraded execution provenance"],
+  [projectContractReference, "skips `codex-cli-subagent`", "project contract should describe worker-surface degradation"],
+  [workerRunnerContractReference, "candidate-evidence boundary, and verification evidence", "worker runner contract should require degraded provenance fields"],
+  [controllerCommunicationReference, "Silent fallback is not accepted completion evidence", "controller communication should reject silent fallback"],
+  [workflowSkillDocs.execute, "harness-rule:degraded-execution-provenance", "execute should expose degraded execution provenance"],
+  [workerPromptTemplate, "degraded execution provenance when applicable", "worker prompt should return degraded provenance when applicable"]
+]) {
+  assertIncludes(value, needle, message);
+}
+for (const [value, needle, message] of [
   [capabilityMatrix, "harness-rule:cybernetic-stability", "capability matrix should expose cybernetic stability"],
   [capabilityMatrix, "harness-rule:intent-setpoint-selection", "capability matrix should expose intent/setpoint selection"],
   [capabilityMatrix, "harness-rule:sensor-freshness", "capability matrix should expose sensor freshness"],
@@ -917,6 +930,8 @@ try {
   );
   assertIncludes(fixedRunMarkdown, generatedContextFocusNeedle, "generated run packet should normalize intent before context focus");
   assertIncludes(fixedRunMarkdown, generatedExecuteFocusNeedle, "generated run packet should include execute focus guidance");
+  assertIncludes(fixedRunMarkdown, "harness-rule:degraded-execution-provenance", "generated run packet should preserve degraded provenance guidance");
+  assertIncludes(fixedRunMarkdown, generatedDegradedProvenanceNeedle, "generated run packet should describe worker fallback provenance");
   assertIncludes(fixedPromptMarkdown, "Need user: None", "execution prompt should tell agents how to close with no user need");
   assertIncludes(fixedPromptMarkdown, "Remaining: None", "execution prompt should tell agents how to close with no remaining work");
   assertIncludes(
@@ -930,6 +945,7 @@ try {
     "execution prompt should preserve the context-focus routing anchor"
   );
   assertIncludes(fixedPromptMarkdown, generatedContextFocusNeedle, "execution prompt should normalize intent before context focus");
+  assertIncludes(fixedPromptMarkdown, generatedDegradedProvenanceNeedle, "execution prompt should describe worker fallback provenance");
   run([
     "run",
     "record",
@@ -1503,10 +1519,12 @@ Manual verification evidence only.
   );
   assertIncludes(cliWorkerPrompt, generatedContextFocusNeedle, "generated worker prompts should normalize intent before context focus");
   assertIncludes(cliWorkerPrompt, generatedExecuteFocusNeedle, "generated worker prompts should include execute focus guidance");
+  assertIncludes(cliWorkerPrompt, generatedDegradedProvenanceNeedle, "generated worker prompts should include degraded provenance guidance");
   assertIncludes(cliWorkerPrompt, "Delivery state:", "worker result packet should report delivery state");
   assertIncludes(cliWorkerPrompt, "Working tree dirty:", "worker result packet should report dirty state");
   assertIncludes(cliWorkerPrompt, "Need user:", "worker result packet should report concrete user needs");
   assertIncludes(cliWorkerPrompt, "Remaining:", "worker result packet should report remaining follow-up separately");
+  assertIncludes(cliWorkerPrompt, "Degraded provenance:", "worker result packet should report degraded provenance");
   const largeDagStatusJson = JSON.parse(run(["run", "status", "--cwd", custom, "--run", largeDagRunRel, "--json"]));
   assert(
     JSON.stringify(largeDagStatusJson.executionDag.readyNodes) === JSON.stringify(["explorer"]),

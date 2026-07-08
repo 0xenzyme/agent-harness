@@ -150,6 +150,7 @@ Head commit:
 Commit status:
 Actual model:
 Actual reasoning effort:
+Degraded provenance:
 Gate self-check:
 Deferred items:
 ```
@@ -172,6 +173,12 @@ Worker prompts should follow `templates/worker-prompt.md`: the worker identity,
 controller, execution context lock, allowed scope, forbidden scope, validation,
 stop conditions, and return contract must be explicit. A worker must not update
 accepted task, status, goal, run, gate, or release state.
+
+`harness-rule:degraded-execution-provenance`: if the planned worker surface is
+unavailable or execution falls back to `manual-foreground`, the result packet,
+gate report, or user closeout must name the actual execution method,
+unavailable or skipped surface, fallback reason, candidate-evidence boundary,
+and verification evidence. Silent fallback is not accepted completion evidence.
 
 For worktree execution, the launch packet must include the conversation route
 and execution context lock. If a worker is remote-controlling a worktree, the
@@ -214,6 +221,7 @@ Forbidden scope check:
 State sync:
 Secrets / provider / paid calls:
 Invariants:
+Degraded provenance:
 Deferred items:
 Follow-up tasks:
 Need user:

@@ -30,6 +30,11 @@ Next executable:
   lane must cite implementer output and verification evidence before accepting
   state. It should request corrections instead of directly rewriting
   implementation files.
+- `harness-rule:degraded-execution-provenance`: when execution falls back from
+  the intended worker/controller surface, gate evidence must name the actual
+  execution method, unavailable or skipped surface, fallback reason,
+  candidate-evidence boundary, and compensating verification before accepting
+  state.
 - Completed run records must include verification evidence. Completed
   `gate-only` records must also include explicit gate evidence that points to
   implementer output and acceptance review.

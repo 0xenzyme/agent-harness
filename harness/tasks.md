@@ -8,6 +8,35 @@
 
 ## Done
 
+- [x] Implement behavior eval and degraded execution provenance for Harness.
+  - Completed: Added deterministic trace-shaped behavior eval fixtures under
+    `evals/skills/agent-harness/behavior_trace_cases.yaml`.
+  - Completed: Extended `evals/run-agent-harness-eval.mjs` so `npm run
+    test:eval` validates ordered reads, forbidden writes/mutations, worker
+    candidate evidence, degraded execution provenance, and gate-only acceptance
+    evidence. The eval now reports `Behavior trace cases: 4`.
+  - Completed: Added `harness-rule:degraded-execution-provenance` across the
+    capability matrix, project contract docs, worker-runner / controller /
+    gate-result references, `harness:execute`, worker prompt template, generated
+    run/DAG/worker prompts, protocol checks, and smoke checks.
+  - Source: Current controller thread reviewed Impeccable's `critique`
+    workflow and accepted the useful pattern: trace-shaped behavior eval plus
+    visible degraded execution provenance.
+  - Spec:
+    `harness/specs/2026-07-08-behavior-eval-and-degraded-execution-provenance.md`
+  - Goal:
+    `harness/goals/2026-07-08-implement-behavior-eval-and-degraded-execution-provenance-for-harness.md`
+  - Run:
+    `.harness/runs/20260708-114327-implement-behavior-eval-and-degraded-execution-provenance-for-harness/`
+  - Verification: `node --check evals/run-agent-harness-eval.mjs`, `node
+    --check scripts/test-suites.mjs`, `node --check tests/smoke.mjs`, `node
+    --check plugins/agent-harness/scripts/agent-harness.mjs`, `npm run
+    test:eval`, `npm run test:protocol`, `npm run test:smoke`, `npm run
+    validate:plugin`, and `git diff --check`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
+
 - [x] Complete the control-theory feedback loop model for Harness.
   - Completed: Added `docs/cybernetic-stability.md` as the dedicated
     control-theory-inspired stability model for Agent Harness.

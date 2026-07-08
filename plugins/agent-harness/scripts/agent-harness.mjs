@@ -66,6 +66,7 @@ const contextFocusWorkflowPresets = "`orient`, `intake`, `shape`, `goal`, and `e
 const contextFocusRoutingGuidance = `\`harness-rule:context-focus-routing\`: Normalize user intent to ${contextFocusIntentTargets} before choosing context focus. Use the smallest useful workflow focus preset (${contextFocusWorkflowPresets}) and prefer current confirmed state, accepted specs/goals/runs, adapter/config/status, then broad docs or historical logs.`;
 const executeContextFocusGuidance = "For execution, use the `execute` focus preset: goal/spec/run packet, execution DAG, allowed and forbidden scope, implementation-relevant files, verification commands, delivery target, and state-sync requirements.";
 const cyberneticStabilityGuidance = "`harness-rule:cybernetic-stability`: control toward an explicit target using `harness-rule:intent-setpoint-selection`, `harness-rule:sensor-freshness`, `harness-rule:measurement-snapshot`, `harness-rule:remaining-gap`, `harness-rule:feedback-quality`, and `harness-rule:stability-saturation`. Before closeout, state the selected target, observed state, evidence, stale/conflict risks, Delivery State, user-decision state, gap closed, remaining gap, feedback quality, and whether the stable next action is continue, pause, ask, or close.";
+const degradedExecutionProvenanceGuidance = "`harness-rule:degraded-execution-provenance`: When worker delegation falls back or the planned worker surface is unavailable or skipped, visibly report the actual execution method, unavailable or skipped surface, fallback reason, candidate-evidence boundary, and verification evidence.";
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -4656,6 +4657,7 @@ Enforcement: \`${dag.enforcement}\`
 - Fallback: \`${dag.fallbackSurfaces.join("`, `")}\`
 - Thread policy: ${dag.threadPolicy}
 - Fork policy: ${dag.forkPolicy}
+- Degraded provenance: ${degradedExecutionProvenanceGuidance}
 
 ## Nodes
 
@@ -4677,6 +4679,7 @@ ${layers || "No valid layers; inspect `dag.json` before execution."}
 - Read \`plugins/agent-harness/references/worker-runner-contract.md\` before launching or accepting worker output.
 - Treat worker output as candidate evidence until the controller validates scope, verification, state sync, and required gates.
 - Do not use fork as the default execution surface.
+- Do not silently treat fallback execution as normal worker execution; record degraded provenance in worker result, gate, or closeout evidence.
 `;
 }
 
@@ -4730,6 +4733,7 @@ ${node.stopConditions}
 - Prefer Codex CLI subagents for bounded worker execution.
 - Create a new Codex thread only when the controller explicitly needs a visible, long-lived handoff lane.
 - Do not use fork unless the controller explicitly approves it and restates your execution role.
+- ${degradedExecutionProvenanceGuidance}
 - Do not launch dependent nodes yourself.
 - Do not update accepted task, status, goal, run, gate, integration, release, or ship state.
 - Do not mark work complete; return candidate evidence for controller acceptance.
@@ -4769,6 +4773,7 @@ Head commit:
 Commit status:
 Actual model:
 Actual reasoning effort:
+Degraded provenance:
 Gate self-check:
 Deferred items:
 \`\`\`
@@ -4925,20 +4930,21 @@ ${sourceTask}
 4. \`harness-rule:level-0-fast-path\`: do not use Level 0 Fast Path to bypass this prepared run. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files.
 5. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 6. ${cyberneticStabilityGuidance}
-7. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
-8. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
-9. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-10. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-11. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
-12. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
-13. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
-14. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
-15. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
-16. Run the verification commands from the goal.
-17. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
-18. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
-19. Record any command output summaries or follow-ups under this run directory.
-20. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+7. ${degradedExecutionProvenanceGuidance}
+8. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
+9. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
+10. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+11. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+12. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
+13. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
+14. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
+15. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
+16. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
+17. Run the verification commands from the goal.
+18. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
+19. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
+20. Record any command output summaries or follow-ups under this run directory.
+21. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -4953,6 +4959,7 @@ ${verification}
 - Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync; verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
 - Cybernetic stability closeout must identify the target, observed state, gap closed, remaining gap, feedback quality, and any stability/saturation pause trigger.
 - Direct worker launch remains controller-gated; the packet provides prompts and DAG constraints, not a background scheduler. For gate-only control lanes, launch subagents by default instead of changing the control thread into an implementer.
+- Degraded execution provenance must be visible when worker delegation falls back or a planned worker surface is unavailable or skipped.
 - Stop if the goal conflicts with repository instructions, production constraints, or newer user instructions.
 `;
 }
@@ -4988,6 +4995,7 @@ Requirements:
 - \`harness-rule:level-0-fast-path\`: Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. Verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
 - ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 - ${cyberneticStabilityGuidance}
+- ${degradedExecutionProvenanceGuidance}
 - Follow the goal's Conversation Route: \`${conversationRoute}\`.
 - Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
 - Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; review \`${deliveryState.review || deliveryState.pr}\`; integration \`${deliveryState.integration || deliveryState.merge}\`; release \`${deliveryState.release}\`.
