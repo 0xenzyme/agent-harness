@@ -18,7 +18,8 @@ roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
 
 [Capability Matrix](docs/HARNESSES.md) · [Cybernetic Stability](docs/cybernetic-stability.md) ·
 [GitHub Presentation](docs/github-presentation.md) · [Changelog](CHANGELOG.md) ·
-[v0.5.0 Release Notes](docs/releases/v0.5.0.md)
+[v0.5.0 Release Notes](docs/releases/v0.5.0.md) ·
+[使用说明](docs/usage.zh-CN.md)
 
 ![Agent Harness social preview](docs/assets/github/social-preview.svg)
 
@@ -185,34 +186,41 @@ bilingual fallback；运行时回复仍按用户语言输出。
 | 捕获或 triage 新想法、新需求、bug 或 capture-thread note。 | `harness:intake` |
 | 完成已确认的 goal、spec、task breakdown 或 run packet，然后验证并同步状态。 | `harness:execute` |
 
-## Use With A Coding Agent
+## 在项目中怎么用
 
-大多数用户不需要先手动运行 CLI。安装 `harness` 后，主路径是让 Codex，或
-其他能访问该 plugin 的 coding agent，在目标项目里调用 Harness workflow
-skills。agent 应先读取项目 instructions，检查 Harness adapter，选择 route，
-并在修改状态前说明它使用了哪些 evidence。
+大多数用户不需要先手动运行 CLI，也不需要在 prompt 里写具体 skill 名。安装
+或接入 `harness` 后，直接让 Codex “用 harness” 推进即可。更完整的 prompt 示例见
+[`docs/usage.zh-CN.md`](docs/usage.zh-CN.md)。
 
-典型 prompt 可以这样写：
-
-```text
-Use harness:init in /path/to/project to adopt Agent Harness. Preview activation and do not edit AGENTS.md without my approval.
-Use harness:orient in the current repo and tell me the next safe route.
-Use harness:intake to triage this idea without implementing it: Add a new import flow.
-Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-title.md. Verify and sync task/status evidence.
-```
-
-常规用户级流程是：
+最常用的是这几类：
 
 ```text
-harness:init -> harness:orient or harness:intake -> confirmed spec/accepted scope/goal -> harness:execute -> verification -> state sync
+用 harness 看当前项目下一步。
 ```
 
-如果你希望当前 thread 作为 main control、gate、reviewer、judge 或 acceptance
-lane，请直接说明；Harness 默认把这种请求视为 `gate-only`。在 `gate-only`
-中，control thread 只审查 candidate worker output 和 verification evidence，
-然后 accept、block 或要求 corrections，不直接修改 implementation files。run
-packet 中的 worker node 默认使用 `codex-cli-subagent`（当该 surface 可用时）。
-只有当你希望同一个 thread 也改文件时，才使用 `implementer` 或 `mixed`。
+```text
+用 harness 记录这个想法，先别做：<idea>
+```
+
+```text
+用 harness 执行 <goal path>，验证并同步状态。
+```
+
+```text
+当前 thread 做 gate-only 主控，只审 evidence。
+```
+
+如果要让当前对话控场推进某个 spec，也可以直接写：
+
+```text
+用 harness 作为主控，推进 spec1 直到完成。
+```
+
+常规用户路径是：
+
+```text
+用 harness 接入项目 -> 看状态或记录想法 -> 确认 scope/goal -> 执行 -> 验证 -> 同步状态
+```
 
 CLI 仍然保留，作为 agents、operators 和 maintainers 的确定性工具，但不是
 多数用户的 primary first-use path。中文接入说明见
@@ -262,7 +270,7 @@ npm run validate:plugin
 推荐的用户级 adapter workflow：
 
 ```text
-harness:init/import -> harness:orient or harness:intake -> confirmed spec/accepted scope/goal -> harness:execute -> verify -> state sync
+用 harness 接入项目 -> 看状态或记录想法 -> 确认 scope/goal -> 执行 -> 验证 -> 同步状态
 ```
 
 在底层，Harness 通过确定性的本地工具记录 route decisions、run packets、

@@ -38,16 +38,17 @@ surfaces, worker defaults, rule anchors, boundaries, and verification suites.
 ## Downstream Project Setup
 
 Once installed, ask Codex or another coding agent with access to the plugin to
-use the workflow skill that matches the route. The primary
-workflow-controller entry path is `harness:init`, `harness:orient`,
-`harness:intake`, and `harness:execute`:
+use harness in the target project. Users do not need to name the underlying
+workflow skill in the prompt; Harness should route to `harness:init`,
+`harness:orient`, `harness:intake`, or `harness:execute` as needed:
 
 ```text
-Use harness:init in /path/to/project to adopt Agent Harness. Preview activation and do not edit AGENTS.md without my approval.
-Use harness:orient in /path/to/project and tell me the next safe route.
-Use harness:intake to triage this idea without implementing it: Add a new import flow.
-Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-title.md. Verify and sync state evidence.
+Use harness to check the next step in /path/to/project.
+Use harness to record this idea, but do not implement it yet: Add a new import flow.
+Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
 ```
+
+See [Usage](usage.md) for more prompt examples.
 
 Use the CLI directly only as operator verification, deterministic diagnostics,
 scripted adoption, or maintainer tooling from a checked-out copy:

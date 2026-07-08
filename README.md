@@ -18,7 +18,7 @@ roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
 
 [Capability Matrix](docs/HARNESSES.md) · [Cybernetic Stability](docs/cybernetic-stability.md) ·
 [GitHub Presentation](docs/github-presentation.md) · [Changelog](CHANGELOG.md) ·
-[v0.5.0 Release Notes](docs/releases/v0.5.0.md)
+[v0.5.0 Release Notes](docs/releases/v0.5.0.md) · [Usage](docs/usage.md)
 
 ![Agent Harness social preview](docs/assets/github/social-preview.svg)
 
@@ -207,25 +207,25 @@ fields, while runtime responses still follow the user's language.
 
 ## Use With A Coding Agent
 
-Most users should start by asking Codex, or another coding agent with access
-to the installed plugin, to use the Harness workflow skills in the target
-project. The agent should read project instructions, inspect the Harness
-adapter, choose a route, and report the evidence it used before changing
-state.
+Most users do not need to name the underlying skill in the prompt. After
+`harness` is installed or adopted in a project, ask Codex, or another coding
+agent with access to the plugin, to "use harness" in the target project. The
+agent should read project instructions, inspect the Harness adapter, choose a
+route, and report the evidence it used before changing state.
 
 Typical prompts look like:
 
 ```text
-Use harness:init in /path/to/project to adopt Agent Harness. Preview activation and do not edit AGENTS.md without my approval.
-Use harness:orient in the current repo and tell me the next safe route.
-Use harness:intake to triage this idea without implementing it: Add a new import flow.
-Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-title.md. Verify and sync task/status evidence.
+Use harness to check the next step in this project.
+Use harness to record this idea, but do not implement it yet: Add a new import flow.
+Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
+Use harness as the controller and carry spec1 through to completion.
 ```
 
 The normal user-level flow is:
 
 ```text
-harness:init -> harness:orient or harness:intake -> confirmed spec/accepted scope/goal -> harness:execute -> verification -> state sync
+use harness to adopt the project -> check state or record ideas -> confirm scope/goal -> execute -> verify -> sync state
 ```
 
 When you want the current thread to act as main control, gate, reviewer, judge,
@@ -287,7 +287,7 @@ approval, credentials, production access, or unblocking decisions are needed.
 The intended user-level adapter workflow is:
 
 ```text
-harness:init/import -> harness:orient or harness:intake -> confirmed spec/accepted scope/goal -> harness:execute -> verify -> state sync
+use harness to adopt/import -> check state or record ideas -> confirmed scope/goal -> execute -> verify -> state sync
 ```
 
 Under the hood, Harness records route decisions, run packets, acceptance

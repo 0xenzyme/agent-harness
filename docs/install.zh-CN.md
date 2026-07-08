@@ -40,15 +40,18 @@ control surfaces、worker defaults、rule anchors、边界和验证套件。
 
 ## 推荐入口
 
-大多数用户不需要先手动运行 CLI。安装 `harness` 后，推荐让 Codex 或另一个能
-访问该 plugin 的 coding agent 在目标项目里使用 workflow skills：
+大多数用户不需要先手动运行 CLI，也不需要在 prompt 里写具体 skill 名。安装
+`harness` 后，推荐让 Codex 或另一个能访问该 plugin 的 coding agent 在目标
+项目里直接“用 harness”：
 
 ```text
-Use harness:init in /path/to/project to adopt Agent Harness. Preview activation and do not edit AGENTS.md without my approval.
-Use harness:orient in /path/to/project and tell me the next safe route.
-Use harness:intake to triage this idea without implementing it: Add a new import flow.
-Use harness:execute for the confirmed goal in harness/goals/YYYY-MM-DD-task-title.md. Verify and sync state evidence.
+用 harness 看 /path/to/project 下一步。
+用 harness 记录这个想法，先别做：增加新的导入流程。
+用 harness 执行 harness/goals/YYYY-MM-DD-task-title.md，验证并同步状态。
 ```
+
+更多“想做某件事时该输入什么”的中文 prompt 示例见
+[`usage.zh-CN.md`](usage.zh-CN.md)。
 
 四个 workflow skills 的分工：
 

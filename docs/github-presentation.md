@@ -37,7 +37,7 @@ The README first screen should communicate:
 
 - project identity: `Agent Harness`;
 - category: adapter-driven control plane for coding-agent work;
-- concrete flow: `roadmap -> milestone -> goal -> tasks -> run -> gate -> state sync`;
+- concrete flow: `roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync`;
 - trust signals: version, Codex plugin, protocol checks, smoke checks, license;
 - routes to the capability matrix, changelog, release notes, and social preview.
 
@@ -61,11 +61,11 @@ the Settings -> General -> Social preview control.
 
 ## Release Surface
 
-The public release surface for `0.4.0` is:
+The public release surface for `0.5.0` is:
 
 - `CHANGELOG.md`
-- `docs/releases/v0.4.0.md`
-- Git tag `v0.4.0`
-- GitHub Release `v0.4.0`
+- `docs/releases/v0.5.0.md`
+- Git tag `v0.5.0`
+- GitHub Release `v0.5.0`
 
-Do not claim a GitHub Release exists unless `gh release view v0.4.0` succeeds.
+Do not claim a GitHub Release exists unless `gh release view v0.5.0` succeeds.
