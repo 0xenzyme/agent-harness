@@ -229,6 +229,10 @@ local verification。只有当 target delivery state 不高于 `validated-local`
 它们才足以支撑 completed run；否则应继续已授权的 delivery pipeline，或记录缺
 少的 evidence 为 `delivery pending`。
 
+completed enforced-DAG run 还要求所有 worker node 已收口。active `running`
+node 会阻止 completion；cancellation 或 supersession 是 cooperative
+controller signal，不是 worker runtime 已停止的证明。
+
 对 completed run，`run record` 会强制检查 goal 的 Target delivery state。
 如果目标是 `review-open`、`integrated` 或 `released/shipped`，在完成已授权的
 交付步骤后，用 `--review-url`、`--integration-ref` 或 `--release-ref` 传入

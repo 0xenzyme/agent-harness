@@ -2,6 +2,32 @@
 
 ## Focus
 
+- Current focus: Controller-gated cancellation boundary for worker fallback is
+  implemented and verified in the local checkout. Added
+  `harness-rule:controller-cancellation-boundary` so cancellation,
+  supersession, drain, and pause-after-current are cooperative control-plane
+  signals rather than runtime kill guarantees. Harness now documents that
+  controllers may stop new dependent launches, quarantine late worker output,
+  reject stale candidate evidence, or switch to manual-foreground fallback with
+  degraded provenance, but must not present cancellation as proof that a Codex
+  subagent stopped. Updated the capability matrix, project contract, worker
+  runner / controller communication / gate result / task routing references,
+  `harness:execute`, worker prompt template, generated run/DAG/worker prompts,
+  CLI docs, CLI completion gate, protocol checks, smoke tests, and behavior
+  eval. `run record --phase completed` now rejects enforced-DAG completion
+  while active `running` worker nodes remain unresolved. Goal:
+  `harness/goals/2026-07-09-add-controller-gated-cancellation-boundary-for-worker-fallback.md`;
+  run:
+  `.harness/runs/20260709-042813-add-controller-gated-cancellation-boundary-for-worker-fallback/`.
+  Verification passed: `node --check
+  plugins/agent-harness/scripts/agent-harness.mjs`, `node --check
+  scripts/test-suites.mjs`, `node --check tests/smoke.mjs`, `node --check
+  evals/run-agent-harness-eval.mjs`, `npm run test:protocol`, `npm run
+  test:eval`, `npm run test:smoke`, `npm run validate:plugin`, and `git diff
+  --check`. Delivery state is `validated-local`; no commit, push, review,
+  integration, publish, release, deploy, production access, daemon, watcher,
+  paid API, credential, or destructive operation was performed.
+
 - Current focus: Behavior eval and degraded execution provenance for Harness
   is implemented and verified in the local checkout. Added deterministic
   trace-shaped behavior fixtures at

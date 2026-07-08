@@ -32,6 +32,8 @@ const allowedTraceEventTypes = new Set([
   "tool_call",
   "worker_result",
   "verification",
+  "status_snapshot",
+  "control_notice",
   "gate_record",
   "state_transition",
   "closeout"
@@ -219,6 +221,26 @@ function assertGateOnlyAcceptanceEvidence(trace, expectedEvidence, caseId) {
     assert(
       stateTransitionIndex > gateIndex,
       `${caseId}: accepted-state transition must occur after gate evidence`
+    );
+  }
+}
+
+function assertCancellationBoundary(trace, expectedBoundary, caseId) {
+  if (!expectedBoundary) {
+    return;
+  }
+  const boundaryEvent = trace.find((event) => {
+    const markers = event.markers || [];
+    return markers.includes("harness-rule:controller-cancellation-boundary");
+  });
+  assert(boundaryEvent, `${caseId}: missing controller cancellation boundary event`);
+  for (const marker of expectedBoundary.markers || []) {
+    assert((boundaryEvent.markers || []).includes(marker), `${caseId}: missing cancellation boundary marker ${marker}`);
+  }
+  for (const [field, expected] of Object.entries(expectedBoundary.fields || {})) {
+    assert(
+      JSON.stringify(traceEventField(boundaryEvent, field)) === JSON.stringify(expected),
+      `${caseId}: expected cancellation boundary ${field}=${JSON.stringify(expected)}, got ${JSON.stringify(traceEventField(boundaryEvent, field))}`
     );
   }
 }
@@ -414,6 +436,7 @@ function runBehaviorTraceCase(testCase) {
   assertWorkerEvidence(trace, assertions.required_worker_evidence, testCase.id);
   assertDegradedProvenance(trace, assertions.required_degraded_provenance, testCase.id);
   assertGateOnlyAcceptanceEvidence(trace, assertions.required_gate_only_acceptance_evidence, testCase.id);
+  assertCancellationBoundary(trace, assertions.required_cancellation_boundary, testCase.id);
 }
 
 function runTaskCase(testCase) {
@@ -472,7 +495,7 @@ function main() {
   assert(Array.isArray(taskCases), "task cases must be an array");
   assert(taskCases.length >= 4, `expected at least 4 task cases, got ${taskCases.length}`);
   assert(Array.isArray(behaviorTraceCases), "behavior trace cases must be an array");
-  assert(behaviorTraceCases.length >= 4, `expected at least 4 behavior trace cases, got ${behaviorTraceCases.length}`);
+  assert(behaviorTraceCases.length >= 5, `expected at least 5 behavior trace cases, got ${behaviorTraceCases.length}`);
 
   let hardCommandCount = 0;
   for (const testCase of taskCases) {

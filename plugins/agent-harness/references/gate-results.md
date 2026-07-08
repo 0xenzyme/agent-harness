@@ -35,6 +35,11 @@ Next executable:
   execution method, unavailable or skipped surface, fallback reason,
   candidate-evidence boundary, and compensating verification before accepting
   state.
+- `harness-rule:controller-cancellation-boundary`: cancellation,
+  supersession, drain, or pause-after-current is not completion evidence and is
+  not proof that a worker runtime stopped. Gate evidence must resolve active
+  workers and late output by rejecting, quarantining, or revalidating candidate
+  evidence before same-scope accepted state moves.
 - Completed run records must include verification evidence. Completed
   `gate-only` records must also include explicit gate evidence that points to
   implementer output and acceptance review.

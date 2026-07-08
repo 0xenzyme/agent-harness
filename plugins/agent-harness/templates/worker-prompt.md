@@ -84,6 +84,11 @@ Forbidden scope:
   foreground execution, include `harness-rule:degraded-execution-provenance`
   in the result packet with actual execution method, unavailable or skipped
   surface, fallback reason, candidate-evidence boundary, and verification.
+- Follow `harness-rule:controller-cancellation-boundary`: controller
+  cancellation, supersession, drain, or pause-after-current is cooperative. If
+  you receive it, stop expanding scope when possible and return a partial result
+  or stop report. Any later output is late candidate evidence, not accepted
+  state.
 - Do not reclassify this DAG node as `harness-rule:level-0-fast-path`. This
   prompt exists because the controller chose worker execution; return candidate
   evidence instead of skipping the run contract.
@@ -103,4 +108,5 @@ Forbidden scope:
 Return an `Execution Result Packet` with changed files, validation, known risks,
 dirty state, Delivery State, observed state, gap closed, remaining gap,
 feedback quality, degraded execution provenance when applicable, `Need user`,
-`Remaining`, deferred items, and whether the controller was notified.
+`Remaining`, cancellation or supersession handling when applicable, deferred
+items, and whether the controller was notified.

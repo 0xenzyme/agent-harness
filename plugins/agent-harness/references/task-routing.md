@@ -401,6 +401,13 @@ Parallel worker execution must follow the run packet's execution DAG. Ready
 nodes with no unmet dependencies may be launched together; dependent nodes must
 wait until their prerequisites are recorded with `run node record`.
 
+`harness-rule:controller-cancellation-boundary`: route cancellation,
+supersession, drain, and pause-after-current as cooperative control-plane
+signals. They may stop new dependent launches and quarantine late worker output,
+but they do not prove that a subagent runtime stopped. If the controller
+switches to same-scope manual foreground work, record degraded provenance and
+revalidate or reject any late worker output before accepted state moves.
+
 If those capabilities are missing, stay in foreground execution or route to
 `ask`. Do not treat unavailable worker features as accepted state.
 

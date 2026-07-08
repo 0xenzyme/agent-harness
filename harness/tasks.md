@@ -8,6 +8,36 @@
 
 ## Done
 
+- [x] Add controller-gated cancellation boundary for worker fallback.
+  - Completed: Added `harness-rule:controller-cancellation-boundary` as the
+    lightweight control-plane boundary for cancellation, supersession, drain,
+    pause-after-current, late worker output quarantine, and same-scope
+    manual-foreground fallback.
+  - Completed: Clarified that Harness does not provide runtime kill guarantees
+    for Codex subagents; cancellation only stops new dependent launches and
+    blocks accepted state until active worker state or late output is resolved.
+  - Completed: Updated capability matrix, project contract, worker-runner /
+    controller / gate-result / task-routing references, `harness:execute`,
+    worker prompt template, generated run/DAG/worker prompts, CLI docs, CLI
+    completion gate, protocol checks, smoke tests, and behavior eval.
+  - Completed: `run record --phase completed` now rejects enforced-DAG
+    completion while active `running` worker nodes remain unresolved.
+  - Source: User-confirmed design after b3ehive comparison and three-worker
+    debate; selected `controller-gated cancellation + evidence quarantine`
+    instead of full `WorkerLease` / daemon / runtime preemption.
+  - Goal:
+    `harness/goals/2026-07-09-add-controller-gated-cancellation-boundary-for-worker-fallback.md`
+  - Run:
+    `.harness/runs/20260709-042813-add-controller-gated-cancellation-boundary-for-worker-fallback/`
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `node --check scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `node --check evals/run-agent-harness-eval.mjs`, `npm run
+    test:protocol`, `npm run test:eval`, `npm run test:smoke`, `npm run
+    validate:plugin`, and `git diff --check`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
+
 - [x] Implement behavior eval and degraded execution provenance for Harness.
   - Completed: Added deterministic trace-shaped behavior eval fixtures under
     `evals/skills/agent-harness/behavior_trace_cases.yaml`.

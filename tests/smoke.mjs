@@ -171,6 +171,7 @@ for (const needle of [
   "harness-rule:worker-surface-default",
   "harness-rule:child-controller-boundary",
   "harness-rule:degraded-execution-provenance",
+  "harness-rule:controller-cancellation-boundary",
   "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
@@ -197,6 +198,7 @@ for (const needle of [
   "harness-rule:worker-surface-default",
   "harness-rule:child-controller-boundary",
   "harness-rule:degraded-execution-provenance",
+  "harness-rule:controller-cancellation-boundary",
   "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
@@ -361,6 +363,10 @@ const orientRouteDecisionReference = readFileSync(
 );
 const controllerCommunicationReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/references/controller-communication.md"),
+  "utf8"
+);
+const gateResultsReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/references/gate-results.md"),
   "utf8"
 );
 const executionRolesReference = readFileSync(
@@ -702,6 +708,18 @@ for (const [value, needle, message] of [
   assertIncludes(value, needle, message);
 }
 for (const [value, needle, message] of [
+  [capabilityMatrix, "harness-rule:controller-cancellation-boundary", "capability matrix should expose controller cancellation boundary"],
+  [projectContractReference, "cooperative control-plane", "project contract should reject runtime kill guarantees"],
+  [workerRunnerContractReference, "runtime kill guarantees", "worker runner contract should define cooperative cancellation"],
+  [controllerCommunicationReference, "Cancellation / Supersession Notice", "controller communication should include cancellation notice packet"],
+  [gateResultsReference, "late output", "gate results should require late output handling"],
+  [taskRoutingReference, "quarantine late worker output", "task routing should describe cancellation quarantine"],
+  [workflowSkillDocs.execute, "harness-rule:controller-cancellation-boundary", "execute should expose controller cancellation boundary"],
+  [workerPromptTemplate, "late candidate evidence", "worker prompt should classify late output as candidate evidence"]
+]) {
+  assertIncludes(value, needle, message);
+}
+for (const [value, needle, message] of [
   [capabilityMatrix, "harness-rule:cybernetic-stability", "capability matrix should expose cybernetic stability"],
   [capabilityMatrix, "harness-rule:intent-setpoint-selection", "capability matrix should expose intent/setpoint selection"],
   [capabilityMatrix, "harness-rule:sensor-freshness", "capability matrix should expose sensor freshness"],
@@ -911,6 +929,7 @@ try {
   assert(fixedRunStatus.executionRole === "implementer", "run prepare should record generated goal execution role");
   const fixedRunMarkdown = readFileSync(join(fixed, ".harness/runs", fixedRun, "run.md"), "utf8");
   const fixedPromptMarkdown = readFileSync(join(fixed, ".harness/runs", fixedRun, "prompt.md"), "utf8");
+  const fixedDagMarkdown = readFileSync(join(fixed, ".harness/runs", fixedRun, "dag.md"), "utf8");
   assertIncludes(fixedRunMarkdown, "Need user: None", "run packet should tell agents how to close with no user need");
   assertIncludes(fixedRunMarkdown, "Remaining: None", "run packet should tell agents how to close with no remaining work");
   assertIncludes(
@@ -932,6 +951,16 @@ try {
   assertIncludes(fixedRunMarkdown, generatedExecuteFocusNeedle, "generated run packet should include execute focus guidance");
   assertIncludes(fixedRunMarkdown, "harness-rule:degraded-execution-provenance", "generated run packet should preserve degraded provenance guidance");
   assertIncludes(fixedRunMarkdown, generatedDegradedProvenanceNeedle, "generated run packet should describe worker fallback provenance");
+  assertIncludes(
+    fixedRunMarkdown,
+    "harness-rule:controller-cancellation-boundary",
+    "generated run packet should preserve controller cancellation boundary"
+  );
+  assertIncludes(
+    fixedDagMarkdown,
+    "late outputs remain candidate evidence",
+    "generated DAG should describe late worker output quarantine"
+  );
   assertIncludes(fixedPromptMarkdown, "Need user: None", "execution prompt should tell agents how to close with no user need");
   assertIncludes(fixedPromptMarkdown, "Remaining: None", "execution prompt should tell agents how to close with no remaining work");
   assertIncludes(
@@ -1242,6 +1271,45 @@ try {
   const customRunStatusJson = JSON.parse(run(["run", "status", "--cwd", custom, "--run", join("custom/runs", customRuns[0]), "--json"]));
   assert(customRunStatusJson.deliveryState.state === customRunStatus.deliveryState.state, "run status json should expose delivery state");
   assert(customRunStatusJson.deliveryPolicy.target === "integrated", "run status json should expose delivery target");
+  run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
+  const runningWorkerRun = readdirSync(join(custom, "custom/runs")).sort().at(-1);
+  const runningWorkerRunRel = join("custom/runs", runningWorkerRun);
+  const runningWorkerStatus = JSON.parse(run(["run", "status", "--cwd", custom, "--run", runningWorkerRunRel, "--json"]));
+  const runningWorkerNode = runningWorkerStatus.executionDag.readyNodes[0];
+  write(
+    join(custom, runningWorkerRunRel, "agents", runningWorkerNode, "status.json"),
+    `${JSON.stringify(
+      {
+        node: runningWorkerNode,
+        phase: "running",
+        thread: "worker-thread",
+        surface: "codex-cli-subagent",
+        summary: "active worker still running"
+      },
+      null,
+      2
+    )}\n`
+  );
+  assertIncludes(
+    runFails([
+      "run",
+      "record",
+      "--cwd",
+      custom,
+      "--run",
+      runningWorkerRunRel,
+      "--phase",
+      "completed",
+      "--summary",
+      "should not complete with active worker",
+      "--verification",
+      "verification passed",
+      "--integration-ref",
+      "smoke-mainline"
+    ]),
+    "active worker nodes to be resolved before acceptance",
+    "completed run record should reject unresolved running worker nodes"
+  );
   assertIncludes(
     runFails([
       "run",

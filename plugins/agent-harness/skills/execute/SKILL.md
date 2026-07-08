@@ -173,6 +173,11 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
    execution method, unavailable or skipped surface, fallback reason,
    candidate-evidence boundary, and verification evidence. Silent fallback is
    not accepted completion evidence.
+   Apply `harness-rule:controller-cancellation-boundary` when a worker lane is
+   cancelled, superseded, drained, or paused. Treat the signal as cooperative
+   control-plane state, not proof that the subagent runtime stopped. Snapshot
+   active workers, stop new dependent launches, quarantine late output as
+   candidate evidence, and revalidate or reject it before accepted state moves.
 11. If the run packet has `dag.json`, use it as the execution order:
    - Launch only `readyNodes` from `run status --json`.
    - Nodes in the same ready set may run in parallel.
@@ -259,6 +264,10 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
   `harness-rule:degraded-execution-provenance` requires fallback method,
   skipped surface, reason, candidate-evidence boundary, and verification to be
   visible in result, gate, or closeout evidence.
+- Do not describe cancellation or supersession as a runtime kill guarantee.
+  `harness-rule:controller-cancellation-boundary` allows cooperative
+  controller signals and evidence quarantine only; late worker output remains
+  candidate evidence until the controller rejects or revalidates it.
 - Do not describe dirty or uncommitted dev-worktree output as complete on the
   integration line, integrated, shipped, or released.
 - Do not mark a run completed below its Target Delivery State.

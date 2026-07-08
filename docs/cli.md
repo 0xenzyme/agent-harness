@@ -235,6 +235,10 @@ the target delivery state is no higher than `validated-local`; otherwise,
 continue the authorized delivery pipeline or record `delivery pending` with the
 missing evidence.
 
+Completed enforced-DAG runs also require every worker node to be resolved.
+Active `running` nodes block completion; cancellation or supersession is a
+cooperative controller signal, not proof that a worker runtime stopped.
+
 For completed runs, `run record` enforces the goal's Target delivery state. If
 the target is `review-open`, `integrated`, or `released/shipped`, pass external
 evidence with `--review-url`, `--integration-ref`, or `--release-ref` after

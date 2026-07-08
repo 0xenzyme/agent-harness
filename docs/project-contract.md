@@ -582,6 +582,15 @@ decision requests, and final result packets for portfolio or milestone sync,
 not duplicate same-scope acceptance. An execution worker remains candidate
 evidence only.
 
+`harness-rule:controller-cancellation-boundary`: controller cancellation,
+supersession, drain, or pause-after-current is a cooperative control-plane
+signal, not a runtime kill guarantee. A controller may stop new dependent
+launches, quarantine late worker output, reject stale candidate evidence, or
+switch to manual foreground fallback with degraded provenance, but it must not
+present the signal itself as proof that a Codex subagent stopped. Same-scope
+accepted state must wait until active worker state is resolved, superseded with
+stale-output handling, or revalidated by the controller.
+
 If the current thread is `gate-only`, the harness should launch worker
 subagents by default when scope, verification, context lock, delivery target,
 and safety boundaries are clear. It should not routinely ask the user to choose
@@ -705,7 +714,8 @@ task name, milestone number, or roadmap phase identifier.
   `logs/`; it does not update source files, task indexes, review requests,
   deployments, or releases. Completed records require verification evidence;
   completed `gate-only` records also require gate evidence. Runs with enforced
-  DAGs cannot be completed until every DAG node is completed.
+  DAGs cannot be completed until every DAG node is completed, and active
+  `running` worker nodes must be resolved before completed run acceptance.
 
 ## Conversation Route And Execution Context Lock
 

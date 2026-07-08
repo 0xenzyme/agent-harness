@@ -69,6 +69,20 @@ const ruleAnchors = [
     ]
   },
   {
+    id: "harness-rule:controller-cancellation-boundary",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/worker-runner-contract.md",
+      "plugins/agent-harness/references/controller-communication.md",
+      "plugins/agent-harness/references/gate-results.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
     id: "harness-rule:need-user-digest",
     files: [
       "docs/HARNESSES.md",

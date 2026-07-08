@@ -26,6 +26,13 @@ provenance instead of presenting the result as normal delegated execution.
 Name the actual execution method, unavailable or skipped surface, fallback
 reason, candidate-evidence boundary, and verification evidence.
 
+`harness-rule:controller-cancellation-boundary`: cancellation, supersession,
+drain, and pause-after-current are cooperative control-plane signals, not
+runtime kill guarantees. A controller may stop new dependent launches,
+quarantine late output, reject stale candidate evidence, or switch to
+manual-foreground fallback with degraded provenance, but it must not treat the
+signal itself as proof that a worker runtime stopped.
+
 Use capability and safety to choose the surface. Do not treat worker
 availability as permission to broaden scope, skip verification, or change the
 controller's execution role.
@@ -60,6 +67,9 @@ sync, do not launch the worker. Shape the goal/run or ask for confirmation.
 - Do not mark work complete or promote candidate evidence to accepted evidence.
 - Return concrete changed files, validation, known risks, dirty state, delivery
   state, degraded provenance when applicable, and deferred items.
+- If the controller sends a cancellation or supersession notice, stop expanding
+  scope when possible and return a partial result or stop report. If you return
+  later, mark the output as late candidate evidence for controller review.
 
 ## Controller Rules
 
@@ -69,6 +79,10 @@ sync, do not launch the worker. Shape the goal/run or ask for confirmation.
 - Use adversarial acceptance before marking a task, goal, run, node, or gate
   complete.
 - Record accepted state only from the controller lane.
+- Snapshot active workers before changing same-scope execution. Do not launch
+  dependents or record completed state while active worker state is unresolved.
+- Quarantine late output after cancellation or supersession until the
+  controller rejects it or revalidates it as candidate evidence.
 
 ## Failure Rule
 

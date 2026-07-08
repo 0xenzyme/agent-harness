@@ -67,6 +67,7 @@ const contextFocusRoutingGuidance = `\`harness-rule:context-focus-routing\`: Nor
 const executeContextFocusGuidance = "For execution, use the `execute` focus preset: goal/spec/run packet, execution DAG, allowed and forbidden scope, implementation-relevant files, verification commands, delivery target, and state-sync requirements.";
 const cyberneticStabilityGuidance = "`harness-rule:cybernetic-stability`: control toward an explicit target using `harness-rule:intent-setpoint-selection`, `harness-rule:sensor-freshness`, `harness-rule:measurement-snapshot`, `harness-rule:remaining-gap`, `harness-rule:feedback-quality`, and `harness-rule:stability-saturation`. Before closeout, state the selected target, observed state, evidence, stale/conflict risks, Delivery State, user-decision state, gap closed, remaining gap, feedback quality, and whether the stable next action is continue, pause, ask, or close.";
 const degradedExecutionProvenanceGuidance = "`harness-rule:degraded-execution-provenance`: When worker delegation falls back or the planned worker surface is unavailable or skipped, visibly report the actual execution method, unavailable or skipped surface, fallback reason, candidate-evidence boundary, and verification evidence.";
+const controllerCancellationBoundaryGuidance = "`harness-rule:controller-cancellation-boundary`: Controller cancellation and supersession are cooperative control-plane signals, not runtime kill guarantees. Before changing same-scope execution, snapshot active workers, stop new dependent launches, quarantine late worker output as candidate evidence, and record degraded provenance for any manual-foreground fallback.";
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -4658,6 +4659,7 @@ Enforcement: \`${dag.enforcement}\`
 - Thread policy: ${dag.threadPolicy}
 - Fork policy: ${dag.forkPolicy}
 - Degraded provenance: ${degradedExecutionProvenanceGuidance}
+- Cancellation boundary: ${controllerCancellationBoundaryGuidance}
 
 ## Nodes
 
@@ -4680,6 +4682,7 @@ ${layers || "No valid layers; inspect `dag.json` before execution."}
 - Treat worker output as candidate evidence until the controller validates scope, verification, state sync, and required gates.
 - Do not use fork as the default execution surface.
 - Do not silently treat fallback execution as normal worker execution; record degraded provenance in worker result, gate, or closeout evidence.
+- Do not present cancellation or supersession as proof that a worker runtime stopped; unresolved active workers or late outputs remain candidate evidence until the controller quarantines, rejects, or revalidates them.
 `;
 }
 
@@ -4734,6 +4737,7 @@ ${node.stopConditions}
 - Create a new Codex thread only when the controller explicitly needs a visible, long-lived handoff lane.
 - Do not use fork unless the controller explicitly approves it and restates your execution role.
 - ${degradedExecutionProvenanceGuidance}
+- ${controllerCancellationBoundaryGuidance}
 - Do not launch dependent nodes yourself.
 - Do not update accepted task, status, goal, run, gate, integration, release, or ship state.
 - Do not mark work complete; return candidate evidence for controller acceptance.
@@ -4931,14 +4935,15 @@ ${sourceTask}
 5. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 6. ${cyberneticStabilityGuidance}
 7. ${degradedExecutionProvenanceGuidance}
-8. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
-9. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
-10. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-11. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-12. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
-13. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
-14. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
-15. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
+8. ${controllerCancellationBoundaryGuidance}
+9. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
+10. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
+11. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+12. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+13. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
+14. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
+15. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
+16. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
 16. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
 17. Run the verification commands from the goal.
 18. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
@@ -4996,6 +5001,7 @@ Requirements:
 - ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 - ${cyberneticStabilityGuidance}
 - ${degradedExecutionProvenanceGuidance}
+- ${controllerCancellationBoundaryGuidance}
 - Follow the goal's Conversation Route: \`${conversationRoute}\`.
 - Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
 - Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; review \`${deliveryState.review || deliveryState.pr}\`; integration \`${deliveryState.integration || deliveryState.merge}\`; release \`${deliveryState.release}\`.
@@ -5381,6 +5387,9 @@ function runRecord(args) {
   }
   const dag = readExecutionDag(runDir);
   const dagState = dag ? executionDagSnapshot(dag, runDir) : null;
+  if (args.phase === "completed" && dagState?.runningNodes?.length) {
+    throw new Error(`Completed DAG runs require active worker nodes to be resolved before acceptance; running: ${dagState.runningNodes.join(", ")}.`);
+  }
   if (args.phase === "completed" && dagState?.enforced && !dagState.allNodesCompleted) {
     throw new Error(`Completed DAG runs require every execution DAG node to be completed; ready: ${dagState.readyNodes.join(", ") || "none"}, waiting: ${dagState.waitingNodes.join(", ") || "none"}.`);
   }

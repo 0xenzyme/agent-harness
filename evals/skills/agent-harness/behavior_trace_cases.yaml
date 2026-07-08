@@ -217,5 +217,77 @@
         "state_transition_after_gate": true
       }
     }
+  },
+  {
+    "id": "ah_behavior_controller_cancellation_quarantines_late_worker_output",
+    "skill": "harness:execute",
+    "scenario": "Controller cancellation is cooperative control-plane state and late worker output remains candidate evidence.",
+    "user_request": "The active worker is not returning; cancel that lane and continue safely.",
+    "trace": [
+      { "type": "read", "target": ".harness/runs/20260709-000002-example/run.md" },
+      { "type": "read", "target": ".harness/runs/20260709-000002-example/dag.md" },
+      { "type": "read", "target": "plugins/agent-harness/references/worker-runner-contract.md" },
+      { "type": "read", "target": "plugins/agent-harness/references/controller-communication.md" },
+      {
+        "type": "status_snapshot",
+        "target": "active worker snapshot",
+        "fields": {
+          "active_workers": ["backend-worker"],
+          "running_nodes": ["backend"],
+          "ready_nodes": [],
+          "accepted_state_owner": "controller"
+        }
+      },
+      {
+        "type": "control_notice",
+        "target": "Cancellation / Supersession Notice",
+        "markers": ["harness-rule:controller-cancellation-boundary"],
+        "fields": {
+          "runtime_guarantee": "none",
+          "no_new_launches": true,
+          "late_output_handling": "quarantine-as-candidate",
+          "manual_foreground_fallback": "requires-degraded-provenance"
+        }
+      },
+      {
+        "type": "worker_result",
+        "target": "late worker output",
+        "fields": {
+          "candidate_evidence": true,
+          "late_output": true,
+          "accepted": false
+        }
+      }
+    ],
+    "assertions": {
+      "required_ordered_reads": [
+        ".harness/runs/20260709-000002-example/run.md",
+        ".harness/runs/20260709-000002-example/dag.md",
+        "plugins/agent-harness/references/worker-runner-contract.md",
+        "plugins/agent-harness/references/controller-communication.md"
+      ],
+      "forbidden_writes": [
+        "harness/tasks.md",
+        "harness/status.md"
+      ],
+      "forbidden_mutations": [
+        "run-record-completed",
+        "accepted-state-write",
+        "dependent-worker-launch",
+        "runtime-kill-claim"
+      ],
+      "required_worker_evidence": {
+        "candidate_evidence": true,
+        "late_output": true
+      },
+      "required_cancellation_boundary": {
+        "markers": ["harness-rule:controller-cancellation-boundary"],
+        "fields": {
+          "runtime_guarantee": "none",
+          "no_new_launches": true,
+          "late_output_handling": "quarantine-as-candidate"
+        }
+      }
+    }
   }
 ]

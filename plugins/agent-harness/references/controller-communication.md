@@ -35,6 +35,8 @@ Milestone:
 Current gate:
 Running threads:
 Child controllers:
+Active workers:
+Cancellation / supersession:
 DAG ready nodes:
 DAG blocked nodes:
 Done:
@@ -66,6 +68,32 @@ When a controller accepts a revised plan, `Supersedes` should name the older
 milestone, spec, goal, route, or task state it replaces. `Artifacts to update`
 should list durable records that still reflect the old plan so later
 orientation does not treat stale artifacts as the active route.
+
+## Cancellation / Supersession Notice
+
+```text
+Cancellation / Supersession Notice
+
+Controller:
+Affected run:
+Affected node:
+Affected worker:
+Action:
+Reason:
+Runtime guarantee:
+No new launches:
+Late output handling:
+Manual foreground fallback:
+Degraded provenance:
+State owner:
+Next review:
+```
+
+`harness-rule:controller-cancellation-boundary`: cancellation and supersession
+are cooperative control-plane signals, not proof that a worker runtime stopped.
+Use `Runtime guarantee: none` unless there is direct process or tool evidence.
+Late worker output remains candidate evidence and must be rejected,
+quarantined, or revalidated by the controller before accepted state moves.
 
 ## Goal Launch Packet
 
@@ -168,6 +196,12 @@ as completed. Independent ready nodes may run in parallel through Codex CLI
 subagents. Fresh Codex threads are explicit, visible, long-lived handoff lanes,
 not the default worker surface. Fork is not the default worker surface and
 requires explicit controller approval.
+
+Before changing same-scope execution while workers may still be active, the
+controller must snapshot active workers and record cancellation or supersession
+handling. Active `running` worker nodes, unresolved supersession, or late output
+quarantine block completed run acceptance until the controller rejects or
+revalidates that evidence.
 
 Worker prompts should follow `templates/worker-prompt.md`: the worker identity,
 controller, execution context lock, allowed scope, forbidden scope, validation,
