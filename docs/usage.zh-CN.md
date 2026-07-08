@@ -23,7 +23,7 @@
 ```
 
 ```text
-用 harness 作为主控，推进 spec1 直到完成。
+把当前 thread 作为主控，推进 spec 直到完成。
 ```
 
 ```text
@@ -109,7 +109,7 @@
 当你希望当前对话负责控场、拆解、调度和验收，但不直接改代码：
 
 ```text
-用 harness 作为主控，推进 spec1 直到完成。
+把当前 thread 作为主控，推进 spec 直到完成。
 ```
 
 也可以说得更自然：
@@ -121,7 +121,7 @@
 如果你要强调主控只验收 evidence，不直接实现：
 
 ```text
-当前 thread 作为 gate-only 主控，用 harness 推进 spec1，只审 evidence，不直接改实现。
+当前 thread 作为 gate-only 主控，用 harness 推进 spec，只审 evidence，不直接改实现。
 ```
 
 如果你希望另开一个可见的主控对话：
@@ -169,4 +169,3 @@
 ```text
 用 harness 验证 <goal path> 已完成的工作，并同步 task/status/run evidence。
 ```
-

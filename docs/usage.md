@@ -23,7 +23,7 @@ Use harness to execute <goal path>, verify it, and sync state.
 ```
 
 ```text
-Use harness as the controller and carry spec1 through to completion.
+Use the current thread as controller and carry the spec through to completion.
 ```
 
 ```text
@@ -109,7 +109,7 @@ Use harness to check what remains for <milestone id>, then move the next confirm
 When you want the current thread to coordinate, break down, dispatch, and accept work without directly editing implementation files:
 
 ```text
-Use harness as the controller and carry spec1 through to completion.
+Use the current thread as controller and carry the spec through to completion.
 ```
 
 A more natural variant:
@@ -169,4 +169,3 @@ If implementation is done but state is not synced:
 ```text
 Use harness to verify the completed work for <goal path> and sync task/status/run evidence.
 ```
-

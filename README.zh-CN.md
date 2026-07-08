@@ -213,7 +213,7 @@ bilingual fallback；运行时回复仍按用户语言输出。
 如果要让当前对话控场推进某个 spec，也可以直接写：
 
 ```text
-用 harness 作为主控，推进 spec1 直到完成。
+把当前 thread 作为主控，推进 spec 直到完成。
 ```
 
 常规用户路径是：

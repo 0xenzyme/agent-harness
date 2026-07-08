@@ -219,7 +219,7 @@ Typical prompts look like:
 Use harness to check the next step in this project.
 Use harness to record this idea, but do not implement it yet: Add a new import flow.
 Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
-Use harness as the controller and carry spec1 through to completion.
+Use the current thread as controller and carry the spec through to completion.
 ```
 
 The normal user-level flow is:
