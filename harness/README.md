@@ -78,7 +78,10 @@ Intent normalization for this repository:
 ## State Sync Requirements
 
 - Update `harness/tasks.md` after meaningful Goal or Task state changes.
-- Update `harness/status.md` after execution or verification.
+- Update `harness/status.md` after execution or verification as a bounded
+  current-state snapshot. Replace current sections instead of appending
+  historical focus logs; keep detailed history in `harness/tasks.md`, Goal
+  files, run logs, and gate records.
 - Keep docs, skills, templates, CLI help, and tests aligned when changing the
   public command surface.
 

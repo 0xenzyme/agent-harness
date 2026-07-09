@@ -126,8 +126,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --json
 ```
 
-Record a conservative maintenance snapshot in the configured status file, and
-only apply exact completed-run task updates when they can be written safely:
+Record a conservative maintenance snapshot in the configured status file by
+replacing the existing snapshot section, and only apply exact completed-run
+task updates when they can be written safely:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record

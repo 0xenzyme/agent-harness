@@ -66,7 +66,11 @@ sync, do not launch the worker. Shape the goal/run or ask for confirmation.
 - Do not update accepted task, status, goal, run, gate, or release state.
 - Do not mark work complete or promote candidate evidence to accepted evidence.
 - Return concrete changed files, validation, known risks, dirty state, delivery
-  state, degraded provenance when applicable, and deferred items.
+  state, State Sync Notes, degraded provenance when applicable, and deferred
+  items.
+- Treat State Sync Notes as part of task Done: name the task/status/goal/run
+  records that should change, the suggested state, and the evidence. These
+  notes remain candidate evidence until the accepted-state owner records them.
 - If the controller sends a cancellation or supersession notice, stop expanding
   scope when possible and return a partial result or stop report. If you return
   later, mark the output as late candidate evidence for controller review.
@@ -76,6 +80,8 @@ sync, do not launch the worker. Shape the goal/run or ask for confirmation.
 - Treat worker output as candidate evidence only.
 - Record worker output before launching dependent nodes.
 - Run or inspect verification before accepting state.
+- Verify State Sync Notes before marking a task, goal, run, node, or gate
+  complete.
 - Use adversarial acceptance before marking a task, goal, run, node, or gate
   complete.
 - Record accepted state only from the controller lane.

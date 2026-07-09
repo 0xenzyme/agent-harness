@@ -1,5 +1,10 @@
 # Project Status
 
+`harness-rule:bounded-status-snapshot`: this file is a bounded current-state
+snapshot, not an append-only history log. Replace current sections when syncing
+state; keep historical details in task entries, Goal files, run logs, and gate
+records.
+
 ## Focus
 
 - Current focus:

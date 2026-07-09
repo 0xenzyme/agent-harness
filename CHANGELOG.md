@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 - 2026-07-09
+
+- Made task completion explicitly include state-sync evidence or
+  `State Sync Notes`, while preserving the accepted-state owner boundary for
+  accepted state writes.
+- Added `harness-rule:bounded-status-snapshot` so configured status files are
+  current-state snapshots rather than append-only history logs.
+- Updated workflow guidance, templates, generated prompts, protocol docs, CLI
+  docs, README files, and deterministic checks for state-sync completion and
+  bounded status semantics.
+- Updated package/plugin version metadata and release docs for the `0.6.0`
+  state-discipline line.
+
 ## 0.5.0 - 2026-07-06
 
 - Added `docs/cybernetic-stability.md` as the dedicated control-theory inspired

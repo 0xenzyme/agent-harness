@@ -68,6 +68,7 @@ const executeContextFocusGuidance = "For execution, use the `execute` focus pres
 const cyberneticStabilityGuidance = "`harness-rule:cybernetic-stability`: control toward an explicit target using `harness-rule:intent-setpoint-selection`, `harness-rule:sensor-freshness`, `harness-rule:measurement-snapshot`, `harness-rule:remaining-gap`, `harness-rule:feedback-quality`, and `harness-rule:stability-saturation`. Before closeout, state the selected target, observed state, evidence, stale/conflict risks, Delivery State, user-decision state, gap closed, remaining gap, feedback quality, and whether the stable next action is continue, pause, ask, or close.";
 const degradedExecutionProvenanceGuidance = "`harness-rule:degraded-execution-provenance`: When worker delegation falls back or the planned worker surface is unavailable or skipped, visibly report the actual execution method, unavailable or skipped surface, fallback reason, candidate-evidence boundary, and verification evidence.";
 const controllerCancellationBoundaryGuidance = "`harness-rule:controller-cancellation-boundary`: Controller cancellation and supersession are cooperative control-plane signals, not runtime kill guarantees. Before changing same-scope execution, snapshot active workers, stop new dependent launches, quarantine late worker output as candidate evidence, and record degraded provenance for any manual-foreground fallback.";
+const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -3364,6 +3365,9 @@ If no deterministic command exists, document the manual verification evidence be
 
 - The source task acceptance is satisfied.
 - Verification commands pass or any failure is documented with next steps.
+- State-sync evidence or State Sync Notes are produced as part of task Done.
+- Status-file updates use a bounded current-state snapshot; replace status
+  sections instead of appending historical focus logs.
 - Update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync.
 
 ## Pause Conditions
@@ -4679,7 +4683,7 @@ ${layers || "No valid layers; inspect `dag.json` before execution."}
 - Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
 - Use \`agent-harness run node record\` for each worker result before launching dependent nodes.
 - Read \`plugins/agent-harness/references/worker-runner-contract.md\` before launching or accepting worker output.
-- Treat worker output as candidate evidence until the controller validates scope, verification, state sync, and required gates.
+- Treat worker output as candidate evidence until the controller validates scope, verification, State Sync Notes, and required gates.
 - Do not use fork as the default execution surface.
 - Do not silently treat fallback execution as normal worker execution; record degraded provenance in worker result, gate, or closeout evidence.
 - Do not present cancellation or supersession as proof that a worker runtime stopped; unresolved active workers or late outputs remain candidate evidence until the controller quarantines, rejects, or revalidates them.
@@ -4738,9 +4742,11 @@ ${node.stopConditions}
 - Do not use fork unless the controller explicitly approves it and restates your execution role.
 - ${degradedExecutionProvenanceGuidance}
 - ${controllerCancellationBoundaryGuidance}
+- ${boundedStatusSnapshotGuidance}
 - Do not launch dependent nodes yourself.
 - Do not update accepted task, status, goal, run, gate, integration, release, or ship state.
 - Do not mark work complete; return candidate evidence for controller acceptance.
+- Return State Sync Notes as part of task Done: name the task/status/goal/run records that should change, the suggested state, and the evidence. These notes remain candidate evidence until the accepted-state owner records them.
 - Do not release, deploy, publish, start a daemon, use credentials, use paid APIs, touch production, perform destructive operations, or execute delivery steps above the Delivery State policy unless the goal and controller explicitly authorize it.
 
 ## Return Contract
@@ -4759,6 +4765,7 @@ Changed files:
 Summary:
 Validation:
 Known risks:
+State Sync Notes:
 Need user:
 Remaining:
 Needs review:
@@ -4946,10 +4953,12 @@ ${sourceTask}
 16. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
 16. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
 17. Run the verification commands from the goal.
-18. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
-19. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
-20. Record any command output summaries or follow-ups under this run directory.
-21. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+18. Treat State Sync Notes as part of task Done. Every executor must name the task/status/goal/run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
+19. ${boundedStatusSnapshotGuidance}
+20. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
+21. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
+22. Record any command output summaries or follow-ups under this run directory.
+23. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -5007,13 +5016,15 @@ Requirements:
 - Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; review \`${deliveryState.review || deliveryState.pr}\`; integration \`${deliveryState.integration || deliveryState.merge}\`; release \`${deliveryState.release}\`.
 - Target Delivery State: \`${deliveryPolicy.target}\`; delivery intent \`${deliveryPolicy.deliveryIntent}\`; commit authorized \`${deliveryPolicy.commitAuthorized}\`; push authorized \`${deliveryPolicy.pushAuthorized}\`; review authorized \`${deliveryPolicy.reviewAuthorized}\`; integration authorized \`${deliveryPolicy.integrationAuthorized}\`; release authorized \`${deliveryPolicy.releaseAuthorized}\`.
 - Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
+- Treat State Sync Notes as part of task Done. Executors must provide them; the accepted-state owner verifies them before recording accepted task/status/goal/run/gate state.
+- ${boundedStatusSnapshotGuidance}
 - If actual delivery state is below target after gates pass, continue the authorized commit / push / review / integration / release pipeline before closeout.
 - Do not call local verification "integrated", "shipped", or "complete on the integration line" unless commit / push / review / integration / release evidence is recorded.
 - Do not close if feedback quality is weak, stale, delayed, or advisory; verify, re-orient, ask, or pause when the remaining gap is not shrinking or the loop is saturated.
 - Final user-facing closeout must include explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` for routine closeouts with no true pause trigger or follow-up instead of asking broad confirmation questions.
 - Do not release, deploy, publish, start a daemon, or automatically launch additional Codex sessions unless the Delivery State policy and controller explicitly authorize it.
 - If the checkout is dirty with unrelated work, use the worktree policy from the goal and project docs.
-- After implementation, run the goal's verification commands and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync.
+- After implementation, run the goal's verification commands, produce State Sync Notes, and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync. Status-file updates must replace bounded snapshot sections instead of appending historical focus logs.
 
 ## Goal Content
 

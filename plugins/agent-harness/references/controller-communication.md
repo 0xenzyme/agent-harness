@@ -159,6 +159,7 @@ Changed files:
 Summary:
 Validation:
 Known risks:
+State Sync Notes:
 Need user:
 Remaining:
 Needs review:
@@ -189,6 +190,10 @@ or `Remaining` instead of leaving fields blank.
 
 State changes should point to inspectable evidence: changed files, command
 summaries, run records, gate reports, or human review notes.
+State Sync Notes are part of task Done for executors and workers. They should
+name the task/status/goal/run records to update, the suggested state, and the
+evidence. For execution workers they remain candidate evidence until the
+accepted-state owner verifies and records the accepted state.
 
 For DAG execution, the controller launches only ready nodes. A worker must not
 start or claim completion for a node whose dependencies have not been recorded
@@ -206,7 +211,8 @@ revalidates that evidence.
 Worker prompts should follow `templates/worker-prompt.md`: the worker identity,
 controller, execution context lock, allowed scope, forbidden scope, validation,
 stop conditions, and return contract must be explicit. A worker must not update
-accepted task, status, goal, run, gate, or release state.
+accepted task, status, goal, run, gate, or release state, but it must return
+State Sync Notes as completion evidence for controller review.
 
 `harness-rule:degraded-execution-provenance`: if the planned worker surface is
 unavailable or execution falls back to `manual-foreground`, the result packet,

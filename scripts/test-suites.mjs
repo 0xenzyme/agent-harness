@@ -94,6 +94,16 @@ const ruleAnchors = [
     ]
   },
   {
+    id: "harness-rule:bounded-status-snapshot",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/status.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
     id: "harness-rule:project-neutral-core",
     files: [
       "docs/HARNESSES.md",
@@ -332,27 +342,29 @@ const presentationExpectations = [
   ["README.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
-  ["README.md", "docs/releases/v0.5.0.md"],
+  ["README.md", "docs/releases/v0.6.0.md"],
   ["README.md", "docs/cybernetic-stability.md"],
   ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-model.png"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.zh-CN.md", "docs/github-presentation.md"],
   ["README.zh-CN.md", "CHANGELOG.md"],
-  ["README.zh-CN.md", "docs/releases/v0.5.0.md"],
+  ["README.zh-CN.md", "docs/releases/v0.6.0.md"],
   ["README.zh-CN.md", "docs/cybernetic-stability.md"],
   ["docs/github-presentation.md", "Adapter-driven control plane for Codex and coding-agent work"],
   ["docs/github-presentation.md", "codex-plugin"],
   ["docs/github-presentation.md", "workflow-automation"],
   ["docs/github-presentation.md", "docs/assets/github/social-preview.svg"],
-  ["CHANGELOG.md", "## 0.5.0 - 2026-07-06"],
-  ["docs/releases/v0.5.0.md", "Agent Harness v0.5.0"],
+  ["CHANGELOG.md", "## 0.6.0 - 2026-07-09"],
+  ["docs/releases/v0.6.0.md", "Agent Harness v0.6.0"],
   ["docs/cybernetic-stability.md", "Cybernetic Stability Model"],
   ["docs/cybernetic-stability.md", "sensor freshness"],
   ["docs/cybernetic-stability.md", "measurement snapshot"],
   ["docs/cybernetic-stability.md", "remaining gap"],
   ["docs/cybernetic-stability.md", "feedback quality"],
   ["docs/cybernetic-stability.md", "stability/saturation"],
+  ["docs/assets/github/social-preview.svg", "v0.6.0"],
+  ["docs/assets/github/social-preview.svg", "bounded status"],
   ["docs/assets/github/social-preview.svg", "Tasks"],
   ["docs/assets/readme/adapter-model.svg", "Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run"],
   ["docs/assets/readme/adapter-model.svg", "milestones, goals, runs"],
@@ -394,6 +406,10 @@ function readRepoFile(path) {
   const absolutePath = join(repoRoot, path);
   assert(existsSync(absolutePath), `Missing required file: ${path}`);
   return readFileSync(absolutePath, "utf8");
+}
+
+function readRepoJson(path) {
+  return JSON.parse(readRepoFile(path));
 }
 
 function assertIncludesFile(path, needle, message) {
@@ -449,6 +465,14 @@ function checkPresentation() {
   for (const [file, needle] of presentationExpectations) {
     assertIncludesFile(file, needle, `${file} must include presentation marker ${needle}`);
   }
+  const packageJson = readRepoJson("package.json");
+  const pluginJson = readRepoJson("plugins/agent-harness/.codex-plugin/plugin.json");
+  assert(packageJson.version === "0.6.0", "package.json must expose the current 0.6.0 version");
+  assert(pluginJson.version === "0.6.0", "plugin manifest must expose the current 0.6.0 version");
+  assert(
+    packageJson.version === pluginJson.version,
+    "package.json and plugin manifest versions must stay aligned"
+  );
   const adapterModelDiagram = readRepoFile("docs/assets/readme/adapter-model.svg");
   assert(
     !adapterModelDiagram.includes("tasks, specs, goals, runs"),

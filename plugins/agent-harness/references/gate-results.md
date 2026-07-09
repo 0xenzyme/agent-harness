@@ -20,6 +20,9 @@ Next executable:
 
 - Evidence must be concrete (`harness-rule:state-sync-evidence`): command
   result, run id, commit id, user review, or other inspectable artifact.
+- Task completion includes state-sync evidence or State Sync Notes from the
+  executing lane. A gate may accept completion only after the authorized
+  accepted-state owner verifies those notes and records or cites accepted state.
 - Candidate evidence from subagents, automation, inbox notes, or proposal
   competition is not accepted state until the control lane validates it and
   records the gate result.

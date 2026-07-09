@@ -231,11 +231,14 @@ Technical verification is necessary but does not replace gate evidence.
 
 - Candidate evidence:
 - Accepted evidence:
+- State Sync Notes:
 - State records to update:
 
 ## Completion Conditions
 
--
+- Implementation evidence is verified.
+- State-sync evidence or State Sync Notes are reviewed by the accepted-state
+  owner before any task, status, goal, run, or gate state is marked complete.
 
 ## Pause Conditions
 

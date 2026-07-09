@@ -172,6 +172,7 @@ for (const needle of [
   "harness-rule:child-controller-boundary",
   "harness-rule:degraded-execution-provenance",
   "harness-rule:controller-cancellation-boundary",
+  "harness-rule:bounded-status-snapshot",
   "harness-rule:need-user-digest",
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
@@ -223,14 +224,14 @@ for (const [file, needle] of [
   ["README.md", "docs/assets/readme/adapter-execution-model.png"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
-  ["README.md", "docs/releases/v0.5.0.md"],
+  ["README.md", "docs/releases/v0.6.0.md"],
   ["README.md", "docs/cybernetic-stability.md"],
   ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-model.png"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.png"],
   ["docs/github-presentation.md", "codex-plugin"],
-  ["CHANGELOG.md", "## 0.5.0 - 2026-07-06"],
-  ["docs/releases/v0.5.0.md", "Agent Harness v0.5.0"],
+  ["CHANGELOG.md", "## 0.6.0 - 2026-07-09"],
+  ["docs/releases/v0.6.0.md", "Agent Harness v0.6.0"],
   ["docs/cybernetic-stability.md", "Cybernetic Stability Model"],
   ["docs/cybernetic-stability.md", "sensor freshness"],
   ["docs/cybernetic-stability.md", "measurement snapshot"],
@@ -550,6 +551,11 @@ assertIncludes(
   "worker runner contract should forbid workers from mutating accepted state"
 );
 assertIncludes(
+  workerRunnerContractReference,
+  "Treat State Sync Notes as part of task Done",
+  "worker runner contract should make state-sync notes part of task completion"
+);
+assertIncludes(
   workerPromptTemplate,
   "You are an execution worker for one DAG node",
   "worker prompt template should constrain worker identity"
@@ -561,8 +567,18 @@ assertIncludes(
 );
 assertIncludes(
   workerPromptTemplate,
+  "Include `State Sync Notes` as part of task Done",
+  "worker prompt template should require state-sync notes without granting accepted-state authority"
+);
+assertIncludes(
+  workerPromptTemplate,
   "Need user: None",
   "worker prompt template should tell workers how to report no user need"
+);
+assertIncludes(
+  readFileSync(join(repoRoot, "plugins/agent-harness/templates/status.md"), "utf8"),
+  "bounded current-state\nsnapshot, not an append-only history log",
+  "status template should define status as a bounded snapshot"
 );
 assertIncludes(
   adversarialAcceptanceReference,
@@ -1014,7 +1030,13 @@ try {
   assertIncludes(
     readFileSync(join(fixed, "harness/status.md"), "utf8"),
     "## Maintenance Snapshot",
-    "maintain record should append status maintenance snapshot"
+    "maintain record should write status maintenance snapshot"
+  );
+  run(["maintain", "tasks", "--cwd", fixed, "--record", "--json"]);
+  const fixedStatusAfterSecondMaintain = readFileSync(join(fixed, "harness/status.md"), "utf8");
+  assert(
+    (fixedStatusAfterSecondMaintain.match(/^## Maintenance Snapshot$/gm) || []).length === 1,
+    "maintain record should replace the bounded status snapshot instead of appending duplicates"
   );
   const fixedRecordIntake = JSON.parse(run([
     "intake",
@@ -1582,13 +1604,20 @@ Manual verification evidence only.
   );
   assertIncludes(
     cliWorkerPrompt,
+    "Return State Sync Notes as part of task Done",
+    "generated worker prompts should require state-sync notes"
+  );
+  assertIncludes(
+    cliWorkerPrompt,
     "harness-rule:context-focus-routing",
     "generated worker prompts should preserve the context-focus routing anchor"
   );
   assertIncludes(cliWorkerPrompt, generatedContextFocusNeedle, "generated worker prompts should normalize intent before context focus");
   assertIncludes(cliWorkerPrompt, generatedExecuteFocusNeedle, "generated worker prompts should include execute focus guidance");
   assertIncludes(cliWorkerPrompt, generatedDegradedProvenanceNeedle, "generated worker prompts should include degraded provenance guidance");
+  assertIncludes(cliWorkerPrompt, "harness-rule:bounded-status-snapshot", "generated worker prompts should include bounded status guidance");
   assertIncludes(cliWorkerPrompt, "Delivery state:", "worker result packet should report delivery state");
+  assertIncludes(cliWorkerPrompt, "State Sync Notes:", "worker result packet should report state-sync notes");
   assertIncludes(cliWorkerPrompt, "Working tree dirty:", "worker result packet should report dirty state");
   assertIncludes(cliWorkerPrompt, "Need user:", "worker result packet should report concrete user needs");
   assertIncludes(cliWorkerPrompt, "Remaining:", "worker result packet should report remaining follow-up separately");

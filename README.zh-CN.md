@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.5.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![Protocol](https://img.shields.io/badge/test-protocol_passed-2563eb)](scripts/test-suites.mjs)
 [![Smoke](https://img.shields.io/badge/smoke-passed-16a34a)](tests/smoke.mjs)
@@ -18,7 +18,7 @@ roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
 
 [Capability Matrix](docs/HARNESSES.md) · [Cybernetic Stability](docs/cybernetic-stability.md) ·
 [GitHub Presentation](docs/github-presentation.md) · [Changelog](CHANGELOG.md) ·
-[v0.5.0 Release Notes](docs/releases/v0.5.0.md) ·
+[v0.6.0 Release Notes](docs/releases/v0.6.0.md) ·
 [使用说明](docs/usage.zh-CN.md)
 
 ![Agent Harness social preview](docs/assets/github/social-preview.svg)
@@ -44,7 +44,10 @@ adapter 边界内负责剩余执行机制：
   milestone items；
 - 当当前 thread 是 main control 时，调度 worker execution；
 - 在接受状态前验证 concrete evidence；
-- 保持 `tasks`、`status`、goals、runs 和 gate records 对齐；
+- 要求执行者在 task completion 中返回 `State Sync Notes`，由
+  accepted-state owner 验证并写入 accepted state；
+- 保持 `tasks`、bounded `status` snapshots、goals、runs 和 gate records
+  对齐；
 - 只在真实 human gate 时暂停，例如产品方向不清、约束冲突、需要凭证、付费
   API、生产访问、破坏性操作，或 delivery 超出 policy。
 
@@ -87,6 +90,8 @@ Agent Harness 保持控制平面小而可检查：
 - Packaging 保持 disciplined：docs、skills、templates、marketplace
   metadata、validation commands 和 version metadata 应描述同一套真实暴露的
   行为。
+- Status files 是 bounded current-state snapshots，不是 append-only history
+  logs；详细历史属于 tasks、goals、runs 和 gate records。
 - Plugin docs 和 templates 保持 project-neutral。本地产品规则、凭证、端
   口、provider policies 和生产流程属于 project adapters 与 artifacts。
 - Route explanations 保持 lightweight：Codex 应简短说明为什么正在
@@ -167,7 +172,8 @@ Codex 会把这个 plugin 暴露为 `harness`。主要 workflow-controller entry
 - `harness:intake`：捕获和 triage 新想法、新需求、bug 或 Idea Inbox
   Thread notes；只有明确确认后才 record。
 - `harness:execute`：执行已确认的 goal、spec、task breakdown 或 run
-  packet，然后验证并同步 task/status/run evidence。
+  packet，然后验证、review `State Sync Notes`，并同步 task/status/run
+  evidence。
 
 旧的 artifact-oriented wrapper skills 不再发布。按 route 选择 workflow
 skill：setup/adoption 用 `init`，只读状态用 `orient`，新想法用 `intake`，
@@ -184,7 +190,7 @@ bilingual fallback；运行时回复仍按用户语言输出。
 | 给项目接入 Agent Harness、迁移已有 task index、运行 doctor/import，或预览 activation。 | `harness:init` |
 | 只读查看项目状态、todo、blockers 或下一步 route，不编辑文件。 | `harness:orient` |
 | 捕获或 triage 新想法、新需求、bug 或 capture-thread note。 | `harness:intake` |
-| 完成已确认的 goal、spec、task breakdown 或 run packet，然后验证并同步状态。 | `harness:execute` |
+| 完成已确认的 goal、spec、task breakdown 或 run packet，然后验证、review `State Sync Notes`，并同步状态。 | `harness:execute` |
 
 ## 在项目中怎么用
 
@@ -322,15 +328,16 @@ Codex 会读取 `.agents/plugins/marketplace.json` 并暴露 `harness` plugin。
 
 ## Current Design Bias
 
-当前版本线是 `0.5.0`。它在 `0.4.0` 的 project-neutral
-[capability matrix](docs/HARNESSES.md)、稳定 `harness-rule:*` protocol
-anchors 和 suite routing 之上，增加了
-[cybernetic stability model](docs/cybernetic-stability.md)。
+当前版本线是 `0.6.0`。它在 `0.5.0` 的
+[cybernetic stability model](docs/cybernetic-stability.md) 之上，收紧 state
+discipline：task completion 必须产出 state-sync evidence 或
+`State Sync Notes`，configured status files 是 bounded current-state
+snapshots，而不是 append-only history logs。
 
-这次升级是实用导向的：Harness 应围绕明确 target 进行控制，用 fresh
-observations、measurement snapshot、remaining-gap comparison、feedback-quality
-checks，以及 saturation / pause triggers 来减少 stale artifact mistakes、false
-completion claims、route oscillation 和无法恢复的 handoff。
+这次升级是实用导向的：Harness 完成任务时不仅要有可验证 completion
+evidence，还要返回 accepted-state owner 需要的 state-sync notes。目标是减少
+stale status files、隐藏的 handoff gaps、false completion claims 和无限增长的
+status 文件。
 
 当前版本刻意保持边界清晰：
 

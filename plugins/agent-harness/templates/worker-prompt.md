@@ -100,13 +100,17 @@ Forbidden scope:
 - Include state-sync evidence (`harness-rule:state-sync-evidence`) such as
   changed files, verification, known risks, dirty state, Delivery State, and
   deferred items.
+- Include `State Sync Notes` as part of task Done: name the
+  task/status/goal/run records that should change, the suggested state, and the
+  evidence. These notes remain candidate evidence until the controller or
+  accepted-state owner records them.
 - Include concrete `Need user` and `Remaining` values. Use `Need user: None`
   and `Remaining: None` when no true pause trigger or follow-up remains.
 
 ## Return Contract
 
 Return an `Execution Result Packet` with changed files, validation, known risks,
-dirty state, Delivery State, observed state, gap closed, remaining gap,
+dirty state, Delivery State, State Sync Notes, observed state, gap closed, remaining gap,
 feedback quality, degraded execution provenance when applicable, `Need user`,
 `Remaining`, cancellation or supersession handling when applicable, deferred
 items, and whether the controller was notified.

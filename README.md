@@ -2,7 +2,7 @@
 
 [中文](README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.5.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![Protocol](https://img.shields.io/badge/test-protocol_passed-2563eb)](scripts/test-suites.mjs)
 [![Smoke](https://img.shields.io/badge/smoke-passed-16a34a)](tests/smoke.mjs)
@@ -18,7 +18,7 @@ roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
 
 [Capability Matrix](docs/HARNESSES.md) · [Cybernetic Stability](docs/cybernetic-stability.md) ·
 [GitHub Presentation](docs/github-presentation.md) · [Changelog](CHANGELOG.md) ·
-[v0.5.0 Release Notes](docs/releases/v0.5.0.md) · [Usage](docs/usage.md)
+[v0.6.0 Release Notes](docs/releases/v0.6.0.md) · [Usage](docs/usage.md)
 
 ![Agent Harness social preview](docs/assets/github/social-preview.svg)
 
@@ -44,7 +44,10 @@ should own the remaining execution mechanics inside the project adapter:
 - turn milestone requests such as `complete M5` into explicit milestone items;
 - dispatch worker execution when the current thread is acting as main control;
 - verify concrete evidence before accepting state;
-- keep `tasks`, `status`, goals, runs, and gate records aligned;
+- require executors to return `State Sync Notes` as part of task completion,
+  while the accepted-state owner verifies and writes accepted state;
+- keep `tasks`, bounded `status` snapshots, goals, runs, and gate records
+  aligned;
 - pause only for real human gates such as unclear product direction,
   conflicting constraints, credentials, paid APIs, production access,
   destructive actions, or delivery above policy.
@@ -90,6 +93,8 @@ Agent Harness keeps the control plane small and inspectable:
   routes and risks, but it does not execute the selected route.
 - Accepted state should leave an evidence trail through task entries, specs,
   goals, runs, gate records, command summaries, or review notes.
+- Status files are bounded current-state snapshots, not append-only history
+  logs; detailed history belongs in tasks, goals, runs, and gate records.
 - Orientation reconciles durable artifacts with newer conversation-confirmed
   state from the active control thread, and reports stale artifacts before
   recommending execution.
@@ -185,7 +190,8 @@ path is four workflow skills:
 - `harness:intake`: capture and triage a new idea, requirement, bug, or Idea
   Inbox Thread note; record only after explicit approval.
 - `harness:execute`: implement a confirmed goal, spec, task breakdown, or run
-  packet, then verify and sync task/status/run evidence.
+  packet, then verify, review `State Sync Notes`, and sync task/status/run
+  evidence.
 
 Older artifact-oriented wrapper skills are no longer shipped. Use the workflow
 skill that matches the route: `init` for setup/adoption, `orient` for read-only
@@ -342,16 +348,16 @@ plugin.
 
 ## Current Design Bias
 
-The current version line is `0.5.0`. It builds on the `0.4.0`
-project-neutral [capability matrix](docs/HARNESSES.md), stable
-`harness-rule:*` protocol anchors, and suite routing with a
-[cybernetic stability model](docs/cybernetic-stability.md).
+The current version line is `0.6.0`. It builds on the `0.5.0`
+[cybernetic stability model](docs/cybernetic-stability.md) with stricter
+state discipline: task completion must produce state-sync evidence or
+`State Sync Notes`, and configured status files are bounded current-state
+snapshots rather than append-only history logs.
 
-The upgrade is practical: Harness should control toward an explicit target
-using fresh observations, a measurement snapshot, remaining-gap comparison,
-feedback-quality checks, and saturation / pause triggers. The goal is fewer
-stale artifact mistakes, false completion claims, route oscillations, and
-unrecoverable handoffs.
+The upgrade is practical: Harness should finish work by returning verifiable
+completion evidence and the state-sync notes needed by the accepted-state
+owner. The goal is fewer stale status files, hidden handoff gaps, false
+completion claims, and unbounded status growth.
 
 This version is intentionally bounded:
 

@@ -8,6 +8,84 @@
 
 ## Done
 
+- [x] Upgrade Agent Harness to 0.6.0 and update release docs.
+  - Completed: Bumped `package.json` and
+    `plugins/agent-harness/.codex-plugin/plugin.json` to `0.6.0`.
+  - Completed: Updated README / README.zh-CN current-version entry points,
+    `CHANGELOG.md`, `docs/releases/v0.6.0.md`,
+    `docs/github-presentation.md`, social preview text, versioning examples,
+    and deterministic presentation/smoke checks.
+  - Completed: Added presentation-suite assertions that package and plugin
+    manifest versions both equal `0.6.0` and stay aligned.
+  - Completed: Deployed the local Codex plugin cache at
+    `/Users/liuyj/.codex/plugins/cache/personal/harness/0.6.0` with
+    `npm run deploy:local-plugin`.
+  - Source: Current conversation on 2026-07-09; user approved upgrading the
+    version line to `0.6`.
+  - Goal:
+    `harness/goals/2026-07-09-upgrade-agent-harness-to-060-and-update-release-docs.md`
+  - Run:
+    `.harness/runs/20260709-192744-upgrade-agent-harness-to-060-and-update-release-docs/`
+  - Verification: `node --check scripts/test-suites.mjs`, `node --check
+    tests/smoke.mjs`, `node --check
+    plugins/agent-harness/scripts/agent-harness.mjs`, `npm run
+    test:presentation`, `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, `npm run deploy:local-plugin`, and `git diff
+    --check`.
+  - Delivery: local deployment completed; commit and push are authorized by the
+    2026-07-09 follow-up request. No review, integration, publish, GitHub
+    Release, production access, daemon, watcher, paid API, credential, or
+    destructive operation was performed.
+
+- [x] Make status file a bounded snapshot.
+  - Completed: Added `harness-rule:bounded-status-snapshot` so configured
+    status files are bounded current-state snapshots, not append-only history
+    logs.
+  - Completed: Updated status template, adapter template, capability matrix,
+    project contract, `harness:execute`, generated goal/run/worker prompts,
+    CLI docs, README / README.zh-CN, project adapter docs, mental model, and
+    deterministic tests.
+  - Completed: Compacted this repository's `harness/status.md` to current
+    state and durable evidence links.
+  - Source: Current conversation on 2026-07-09; user observed that
+    `harness/status.md` can grow without bound.
+  - Goal:
+    `harness/goals/2026-07-09-make-status-file-a-bounded-snapshot.md`
+  - Run:
+    `.harness/runs/20260709-192149-make-status-file-a-bounded-snapshot/`
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `node --check scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, and `git diff --check`.
+  - Delivery: `validated-local`; no commit, push, review, integration,
+    publish, release, deploy, production access, daemon, watcher, paid API,
+    credential, or destructive operation was performed.
+
+- [x] Make state sync a task completion obligation.
+  - Completed: Clarified `harness-rule:state-sync-evidence` so task
+    completion includes state-sync evidence or `State Sync Notes` from the
+    executing lane.
+  - Completed: Preserved the accepted-state owner boundary: execution workers
+    return candidate state-sync notes, while the authorized accepted-state
+    owner verifies and writes accepted task/status/goal/run/gate state.
+  - Completed: Updated README / README.zh-CN, capability matrix, project
+    contract, `harness:execute`, completion / gate / controller / worker
+    references, goal and worker templates, generated prompt text, and smoke
+    assertions.
+  - Source: Current conversation on 2026-07-09; user asked to optimize the
+    abstraction so task status updates are treated as part of task completion.
+  - Goal:
+    `harness/goals/2026-07-09-make-state-sync-a-task-completion-obligation.md`
+  - Run:
+    `.harness/runs/20260709-184137-make-state-sync-a-task-completion-obligation/`
+  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
+    `node --check scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:protocol`, `npm run test:smoke`,
+    `npm run validate:plugin`, and `git diff --check`.
+  - Delivery: `validated-local`; no commit, push, review, integration,
+    publish, release, deploy, production access, daemon, watcher, paid API,
+    credential, or destructive operation was performed.
+
 - [x] Add controller-gated cancellation boundary for worker fallback.
   - Completed: Added `harness-rule:controller-cancellation-boundary` as the
     lightweight control-plane boundary for cancellation, supersession, drain,

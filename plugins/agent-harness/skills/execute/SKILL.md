@@ -199,8 +199,13 @@ node <plugin-root>/scripts/agent-harness.mjs run node record --cwd <project> --r
    authorized scope when the current thread owns the relevant DAG node or the
    run is foreground-only.
 13. Run verification, then update configured task/status/run evidence and record
-   deferred work. When deterministic maintenance is useful, preview or record
-   it explicitly:
+   deferred work. Task Done includes state-sync evidence or State Sync Notes
+   from the executing lane; accepted-state writes still belong only to the
+   authorized accepted-state owner.
+   `harness-rule:bounded-status-snapshot`: the configured status file is a
+   bounded current-state snapshot, not an append-only history log; replace
+   current status sections instead of appending historical focus logs. When
+   deterministic maintenance is useful, preview or record it explicitly:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs maintain tasks --cwd <project>
@@ -275,7 +280,8 @@ node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <r
 - Do not release, deploy, use credentials, use paid APIs, touch production,
   perform destructive operations, start daemons, or execute delivery steps above
   the Delivery State policy without explicit approval.
-- Do not mark work complete without verification and state sync.
+- Do not mark work complete without verification and state-sync evidence or
+  State Sync Notes accepted by the authorized accepted-state owner.
 - Do not mark an enforced-DAG run complete before every DAG node is recorded as
   completed with verification evidence.
 - Do not treat candidate evidence, worker self-tests, page existence, build

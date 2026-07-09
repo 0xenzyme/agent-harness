@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Reusable Codex harness for workflow-oriented project task control and adapter-driven execution. / 可复用 Codex 项目任务控制与 adapter 执行工作流。",
   "author": {
     "name": "Agent Harness Maintainers"

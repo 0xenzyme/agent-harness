@@ -60,7 +60,9 @@ the Agent Harness plugin references.
 
 ## State Sync Requirements
 
--
+- Treat the configured status file as a bounded current-state snapshot. Replace
+  current sections when syncing state; keep historical details in task entries,
+  Goal files, run logs, and gate records.
 
 ## Commit / PR / Ship Policy
 

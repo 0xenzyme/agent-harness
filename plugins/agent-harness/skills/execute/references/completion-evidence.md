@@ -8,16 +8,23 @@ Completed state requires:
 
 - accepted scope and non-goals
 - verification evidence
-- state sync evidence (`harness-rule:state-sync-evidence`)
+- state sync evidence or state-sync notes from the executing lane
+  (`harness-rule:state-sync-evidence`)
 - deferred-work notes when applicable
 - concrete references to files, commands, run records, gate records, or human
   review notes
+
+Task Done includes the state-sync obligation. An implementer or worker must
+return concrete State Sync Notes even when that lane is not allowed to write
+accepted state. The accepted-state owner verifies those notes and records the
+accepted task, status, goal, run, or gate state.
 
 ## Not Enough By Itself
 
 These may support review but are not accepted completion by themselves:
 
 - candidate evidence
+- state-sync notes that have not been accepted by the control lane
 - worker self-tests
 - page existence
 - build success

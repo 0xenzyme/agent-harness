@@ -217,6 +217,12 @@ Human-readable project status:
 - last verification
 - known blockers
 
+`harness-rule:bounded-status-snapshot`: the configured status file is a
+bounded current-state snapshot, not an append-only history log. State sync
+should replace current status sections instead of appending historical focus
+entries. Detailed history belongs in task entries, Goal files, run logs, and
+gate records.
+
 ### `harness/goals/`
 
 Generated goal handoff files.
@@ -358,9 +364,11 @@ principles:
   examples, and templates must avoid
   private repository names, local absolute paths, customer names, provider-only
   rules, ports, credentials, and downstream production procedures.
-- state sync evidence (`harness-rule:state-sync-evidence`): accepted task,
-  status, goal, run, and gate state must cite concrete state-sync evidence,
-  not only candidate output or narrative summaries.
+- state sync evidence (`harness-rule:state-sync-evidence`): task completion
+  includes state-sync evidence or state-sync notes from the executing lane.
+  Accepted task, status, goal, run, and gate state must cite concrete
+  state-sync evidence, and accepted-state writes remain limited to the
+  authorized accepted-state owner.
 - lightweight route explanation: at workflow transitions, the active coding
   agent should briefly state why it is choosing orientation, intake, shape,
   goal, execute, competition, local, worktree, or ask.
@@ -480,7 +488,7 @@ Execution role is independent from work mode:
   candidate implementation output, run verification, request corrections, and
   accept or block state. It must not directly edit implementation files.
 - `implementer`: current thread may edit files within the accepted scope and
-  provide verification evidence for review.
+  provide verification evidence and state-sync notes for review.
 - `mixed`: current thread may both edit and gate only when the user explicitly
   accepts that tradeoff, or when the confirmed goal/run declares `mixed`. Do
   not infer `mixed` from low-risk local work alone.
@@ -497,6 +505,10 @@ boundary before editing.
 role into the prepared run packet. `run record --phase completed` must not
 accept completion without verification evidence; for `gate-only`, it must also
 cite gate evidence from implementer output and acceptance review.
+Every executable task's Done contract includes state-sync evidence or
+state-sync notes, even when a worker is not authorized to write accepted state.
+The accepted-state owner verifies those notes before marking task, goal, run,
+or gate state complete.
 
 ## Level 0 Fast Path Direct Execution
 

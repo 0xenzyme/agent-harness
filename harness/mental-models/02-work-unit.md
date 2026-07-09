@@ -40,7 +40,8 @@ Roadmap -> Milestone -> Goal -> Task -> Run
 ## Artifact Mapping
 
 - Goal index records what work exists and its current user-facing state
-- status file records the current operating picture for the repository
+- status file records the bounded current operating picture for the repository,
+  not an append-only history log
 - specs record decisions and boundaries before execution
 - goals record runnable handoffs for a bounded Goal
 - milestones and deferred registers record roadmap-level ordering and later

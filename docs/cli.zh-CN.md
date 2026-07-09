@@ -124,8 +124,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --json
 ```
 
-把保守的 maintenance snapshot 写入配置的 status 文件；只有当 completed run
-提供精确证据且 task index 可安全写入时，才应用 task 更新：
+把保守的 maintenance snapshot 写入配置的 status 文件，并替换已有 snapshot
+section；只有当 completed run 提供精确证据且 task index 可安全写入时，才应用
+task 更新：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
