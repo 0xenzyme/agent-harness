@@ -104,12 +104,41 @@ node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path
 node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
 ```
 
-中文命令输出可以使用 `--lang zh-CN` 或环境变量：
+## 语言策略
+
+语言属于 project adapter policy。通过项目 `.harness/config.json` 声明
+machine-readable default：
+
+```json
+{
+  "language": {
+    "default": "zh-CN"
+  }
+}
+```
+
+支持值为 `auto`、`en` 和 `zh-CN`。CLI 的选择优先级是：
+
+```text
+--lang -> AGENT_HARNESS_LANG -> language.default -> LC_ALL -> LC_MESSAGES -> LANG -> en
+```
+
+单次命令需要覆盖时，可以使用 `--lang zh-CN` 或环境变量：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
 AGENT_HARNESS_LANG=zh-CN node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 ```
+
+`auto` 表示 deterministic CLI 继续读取后面的 locale candidates；CLI 无法
+看到用户当前的 conversation language。当前 localization 只覆盖已经支持的
+human-facing CLI messages。`init`、`goal create` 和 `run prepare` 生成的
+artifacts，以及 base templates，目前仍是英文；`--lang` 不会翻译这些文件。
+
+Agent-led response 应跟随用户语言，同时保持 code、command、path、package
+和 skill name、API 和 model name、abbreviation、Git commit message 的原始
+形式。Human-readable project adapter 可以重复说明这一 policy，但
+`.harness/config.json` 是 machine-readable source of truth。
 
 ## Main Control 与 Worker
 

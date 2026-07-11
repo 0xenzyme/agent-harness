@@ -336,6 +336,19 @@ const matrixLinkExpectations = [
   ["docs/project-contract.md", "HARNESSES.md"]
 ];
 
+const languagePolicyExpectations = [
+  ["README.md", "Current boundary: this setting localizes supported human-facing CLI messages"],
+  ["README.zh-CN.md", "当前边界：该设置只会本地化已经支持的 human-facing CLI messages"],
+  ["docs/install.md", "--lang -> AGENT_HARNESS_LANG -> language.default -> LC_ALL -> LC_MESSAGES -> LANG -> en"],
+  ["docs/install.zh-CN.md", "`--lang` 不会翻译这些文件"],
+  ["docs/cli.md", "generated artifact bodies currently use English templates/renderers"],
+  ["docs/cli.zh-CN.md", "Deterministic CLI 的 `auto` 读取 process locale"],
+  ["docs/project-contract.md", "## Adapter Language Policy"],
+  ["plugins/agent-harness/references/adapter-harness.md", "supported human-facing CLI messages only"],
+  ["plugins/agent-harness/templates/adapter.md", "## Language Policy"],
+  ["plugins/agent-harness/schemas/config.schema.json", "not generated artifact bodies"]
+];
+
 const presentationExpectations = [
   ["README.md", "docs/assets/readme/adapter-model.svg"],
   ["README.md", "docs/assets/readme/adapter-artifact-map.svg"],
@@ -462,6 +475,10 @@ function checkProtocol() {
 
   for (const [file, needle] of matrixLinkExpectations) {
     assertIncludesFile(file, needle, `${file} must link the capability matrix`);
+  }
+
+  for (const [file, needle] of languagePolicyExpectations) {
+    assertIncludesFile(file, needle, `${file} must preserve the adapter language policy boundary`);
   }
 
   console.log("Protocol checks passed.");

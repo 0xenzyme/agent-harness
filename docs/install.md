@@ -86,13 +86,45 @@ node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path
 node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
 ```
 
-For Chinese human-facing command output, pass `--lang zh-CN` or set
+## Language Policy
+
+Language is project adapter policy. Set the machine-readable default in the
+project's `.harness/config.json`:
+
+```json
+{
+  "language": {
+    "default": "zh-CN"
+  }
+}
+```
+
+Supported values are `auto`, `en`, and `zh-CN`. CLI selection precedence is:
+
+```text
+--lang -> AGENT_HARNESS_LANG -> language.default -> LC_ALL -> LC_MESSAGES -> LANG -> en
+```
+
+For a one-command override, pass `--lang zh-CN` or set
 `AGENT_HARNESS_LANG=zh-CN`:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
 AGENT_HARNESS_LANG=zh-CN node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 ```
+
+`auto` means the deterministic CLI consults the remaining locale candidates;
+it cannot see the user's conversation language. Current localization covers
+supported human-facing CLI messages. Generated artifacts from `init`, `goal
+create`, and `run prepare`, along with the base templates, remain English until
+localized artifact renderers are implemented. `--lang` does not translate
+those files.
+
+Agent-led responses should follow the user's language while preserving code,
+commands, paths, package and skill names, API and model names, abbreviations,
+and Git commit messages in their original form. The human-readable project
+adapter may repeat this policy, but `.harness/config.json` is the
+machine-readable source of truth.
 
 The CLI can also create and prepare controlled handoffs when an agent/operator
 needs durable packets:

@@ -150,11 +150,30 @@ node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /p
 
 ## Language
 
-使用中文命令输出：
+在 `.harness/config.json` 中设置 project adapter default：
+
+```json
+{
+  "language": {
+    "default": "zh-CN"
+  }
+}
+```
+
+支持值为 `auto`、`en` 和 `zh-CN`。选择优先级是 `--lang`、
+`AGENT_HARNESS_LANG`、`language.default`、`LC_ALL`、`LC_MESSAGES`、`LANG`，
+最终 fallback 为英文。
+
+覆盖单次命令：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
 ```
+
+该设置只影响已经支持的 CLI messages。Goal、Spec、status、run packet 和其他
+generated artifact body 当前仍使用英文 templates/renderers；`--lang` 不会翻译
+这些文件。Deterministic CLI 的 `auto` 读取 process locale，不读取 Codex
+conversation language。
 
 ## Goals And Runs
 

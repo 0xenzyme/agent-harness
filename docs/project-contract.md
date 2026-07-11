@@ -346,6 +346,43 @@ Adapters may also declare completion gates in machine config:
 run. The plugin core checks the evidence shape and status; the adapter docs and
 gate artifacts define the domain-specific meaning of each gate.
 
+## Adapter Language Policy
+
+Language preference is project adapter policy stored at the top level of
+`.harness/config.json`:
+
+```json
+{
+  "language": {
+    "default": "auto"
+  }
+}
+```
+
+Supported policy values are `auto`, `en`, and `zh-CN`. Do not add a duplicate
+language field inside the `adapter` object. Human-readable adapter docs may
+explain the project choice, while `.harness/config.json` remains the
+machine-readable source of truth.
+
+The deterministic CLI resolves language in this order:
+
+```text
+--lang -> AGENT_HARNESS_LANG -> language.default -> LC_ALL -> LC_MESSAGES -> LANG -> en
+```
+
+`auto` skips to the next available locale signal. A CLI process cannot infer
+the language of a Codex conversation. Agent-led responses follow the user's
+language under the active skill instructions, while code, commands, paths,
+class and function names, package and skill names, APIs, model names,
+abbreviations, and Git commit messages preserve their original spelling.
+
+Current implementation boundary: resolved language is used by the supported
+human-facing CLI message catalog. `init` copies English base templates, and the
+Goal/Run artifact renderers currently emit English document bodies. Neither
+`language.default` nor `--lang` translates generated artifacts yet. Docs and
+adapters must state this limitation until localized artifact renderers and
+matching validation fixtures are shipped.
+
 ## Design Principles
 
 Agent Harness contracts, adapters, templates, and skills should preserve these

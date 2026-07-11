@@ -845,6 +845,8 @@ for (const file of neutralFiles) {
 }
 const rootReadme = readFileSync(join(repoRoot, "README.md"), "utf8");
 const rootReadmeZh = readFileSync(join(repoRoot, "README.zh-CN.md"), "utf8");
+const adapterLanguageReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/adapter-harness.md"), "utf8");
+const adapterTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/adapter.md"), "utf8");
 assertExcludes(rootReadme, "docs/assets/github/social-preview.svg", "README should reserve the social preview for GitHub metadata");
 assertExcludes(rootReadmeZh, "docs/assets/github/social-preview.svg", "zh-CN README should reserve the social preview for GitHub metadata");
 const cliDoc = readFileSync(join(repoRoot, "docs/cli.md"), "utf8");
@@ -856,6 +858,16 @@ assertExcludes(cliDoc, publicFocusOption, "CLI reference should not expose a pub
 assertExcludes(cliDocZh, publicFocusOption, "zh-CN CLI reference should not expose a public focus option");
 assertExcludes(JSON.stringify(configSchema), publicFocusOption, "config schema should not expose a focus option or field");
 assertIncludes(rootReadme, "## Use With A Coding Agent", "README should present a coding-agent-first entry path");
+assertIncludes(rootReadme, "language.default", "README should explain adapter-owned language configuration");
+assertIncludes(rootReadme, "Deterministic artifacts", "README should disclose the generated-artifact language boundary");
+assertIncludes(rootReadmeZh, "当前边界", "zh-CN README should disclose the generated-artifact language boundary");
+assertIncludes(adapterLanguageReference, "supported human-facing CLI messages only", "adapter reference should not overstate artifact localization");
+assertIncludes(adapterTemplateDoc, "## Language Policy", "adapter template should capture project language policy");
+assertIncludes(
+  configSchema.properties.language.description,
+  "not generated artifact bodies",
+  "config schema should document the current language boundary"
+);
 assertIncludes(rootReadme, "docs/cli.md", "README should link to the detailed CLI reference");
 assertIncludes(rootReadmeZh, "docs/cli.zh-CN.md", "zh-CN README should link to the detailed CLI reference");
 assertExcludes(rootReadme, "## First Commands", "README should not lead with terminal-first commands");

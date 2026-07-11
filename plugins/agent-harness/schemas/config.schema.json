@@ -117,10 +117,12 @@
       }
     },
     "language": {
+      "description": "Project adapter language policy. Runtime selection supports auto, en, and zh-CN; current localization covers supported CLI messages, not generated artifact bodies.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "default": {
+          "description": "Default language preference used after --lang and AGENT_HARNESS_LANG. Use auto, en, or zh-CN.",
           "type": "string",
           "minLength": 1
         }

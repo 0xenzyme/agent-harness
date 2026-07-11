@@ -78,6 +78,32 @@ Use the highest-priority applicable instruction:
 Pause when these conflict in a way that affects cost, risk, product direction,
 production safety, or compatibility.
 
+## Language Policy
+
+The project adapter owns language preference through the top-level
+`.harness/config.json` field:
+
+```json
+{
+  "language": {
+    "default": "auto"
+  }
+}
+```
+
+Use `auto`, `en`, or `zh-CN`. Selection precedence is `--lang`,
+`AGENT_HARNESS_LANG`, `language.default`, `LC_ALL`, `LC_MESSAGES`, then `LANG`,
+with English as the final fallback. Do not duplicate language configuration
+inside the `adapter` object.
+
+This policy currently controls supported human-facing CLI messages only. Base
+templates and deterministic Goal/Run artifact bodies remain English. Agent-led
+responses follow the user's language while preserving code, commands, paths,
+APIs, package and skill names, model names, abbreviations, and Git commit
+messages in their original form. Adapter docs should state the desired project
+language and this implementation boundary without claiming artifact
+localization that the renderer does not provide.
+
 ## Fixed Compatibility
 
 `contract: "fixed"` and projects without config use the fixed contract:

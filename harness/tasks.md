@@ -2,6 +2,14 @@
 
 ## Now
 
+- [ ] Document adapter language configuration and artifact-language boundaries.
+  - Type: docs
+  - Status: doing
+  - Priority: P1
+  - Source: Current conversation on 2026-07-12; user requested language docs,
+    commit, push, and local plugin deployment.
+  - Acceptance: Document language precedence, adapter configuration, `auto` behavior, current CLI-versus-artifact limitation, technical-term preservation, and local deployment verification.
+
 ## Next
 
 ## Later

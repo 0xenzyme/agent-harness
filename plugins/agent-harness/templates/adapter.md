@@ -36,6 +36,20 @@ the Agent Harness plugin references.
 - Command: `agent-harness config validate --cwd .`
 - Result:
 
+## Language Policy
+
+- Machine-readable source: `.harness/config.json` `language.default`
+- Allowed project values: `auto`, `en`, `zh-CN`
+- Project preference: `auto`
+- CLI precedence: `--lang` -> `AGENT_HARNESS_LANG` -> `language.default` ->
+  `LC_ALL` -> `LC_MESSAGES` -> `LANG` -> `en`
+- Current artifact boundary: supported CLI messages can be localized; generated
+  Goal/Spec/Run/status bodies and base templates remain English until localized
+  renderers are implemented.
+- Runtime response policy: follow the user's language while preserving code,
+  commands, paths, APIs, package/skill/model names, abbreviations, and Git
+  commit messages in their original form.
+
 ## Idea Inbox Policy
 
 - Capture thread:

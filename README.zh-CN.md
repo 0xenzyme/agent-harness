@@ -125,6 +125,29 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 Adapter project 通过 `.harness/config.json` 解析这些路径；plugin core 不会
 内置下游项目的产品名、端口、凭证、数据库规则或生产 policy。
 
+### Adapter 语言策略
+
+Project adapter 通过 machine-readable config 声明语言偏好：
+
+```json
+{
+  "language": {
+    "default": "zh-CN"
+  }
+}
+```
+
+支持值为 `auto`、`en` 和 `zh-CN`。CLI 按以下优先级选择语言：`--lang`、
+`AGENT_HARNESS_LANG`、`language.default`、`LC_ALL`、`LC_MESSAGES`、`LANG`；
+无法解析的 `auto` 最终 fallback 到英文。
+
+当前边界：该设置只会本地化已经支持的 human-facing CLI messages。
+`init`、`goal create` 和 `run prepare` 创建的 deterministic artifacts 仍使用
+英文 base templates 与 renderers。Agent 回复应跟随用户语言，同时保持 code、
+command、path、API name、skill name、model name 和 Git commit message 的
+原始形式。详见[安装文档](docs/install.zh-CN.md#语言策略)与
+[Project Contract](docs/project-contract.md#adapter-language-policy)。
+
 ## 安全与验收
 
 Harness 把 worker、automation、inbox 和 proposal output 视为 candidate

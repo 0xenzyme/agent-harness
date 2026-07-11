@@ -132,6 +132,30 @@ Adapter projects resolve these paths through `.harness/config.json`; plugin core
 does not embed downstream product names, ports, credentials, database rules, or
 production policy.
 
+### Adapter language policy
+
+The project adapter owns the machine-readable language preference:
+
+```json
+{
+  "language": {
+    "default": "zh-CN"
+  }
+}
+```
+
+Supported values are `auto`, `en`, and `zh-CN`. CLI language selection uses
+this precedence: `--lang`, `AGENT_HARNESS_LANG`, `language.default`, `LC_ALL`,
+`LC_MESSAGES`, then `LANG`; unresolved `auto` falls back to English.
+
+Current boundary: this setting localizes supported human-facing CLI messages.
+Deterministic artifacts created by `init`, `goal create`, and `run prepare`
+still use the English base templates and renderers. Agent responses should
+follow the user's language while preserving code, commands, paths, API names,
+skill names, model names, and Git commit messages in their original form. See
+[Install In Codex](docs/install.md#language-policy) and the
+[Project Contract](docs/project-contract.md#adapter-language-policy).
+
 ## Safety And Acceptance
 
 Harness treats worker, automation, inbox, and proposal output as candidate
