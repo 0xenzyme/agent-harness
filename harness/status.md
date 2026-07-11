@@ -6,10 +6,10 @@ Historical evidence lives in `harness/tasks.md`, `harness/goals/`, and
 
 ## Focus
 
-- Current Goal: Document adapter language configuration and artifact-language
-  boundaries.
-- Current work: Clarify adapter-owned language policy, selection precedence,
-  and the current CLI-versus-generated-artifact localization boundary.
+- Current Goal: None active.
+- Recently completed: Documented adapter language configuration, CLI selection
+  precedence, `auto` behavior, technical-term preservation, and the current
+  English-only generated-artifact boundary.
 - Goal:
   `harness/goals/2026-07-12-document-adapter-language-configuration-and-artifact-language-boundaries.md`
 - Run: Foreground execution in the current thread; no separate run packet.
@@ -33,24 +33,29 @@ remain unauthorized.
 
 ## Verification
 
-- State: running.
+- State: passed.
 - Required checks:
-  - native-dimension visual inspection of all three README SVG diagrams
-  - `xmllint --noout docs/assets/readme/*.svg docs/assets/github/social-preview.svg`
-  - README relative-link validation
   - `npm run validate:plugin`
+  - `npm run test:protocol`
+  - `npm run test:smoke`
   - `npm run test:all`
+  - Goal validation
   - `git diff --check`
+  - `npm run deploy:local-plugin`
+- Deployment evidence: Documentation commit `3f40b19` pushed to `origin/main`;
+  local plugin cache refreshed at
+  `/Users/liuyj/.codex/plugins/cache/personal/harness/0.6.0` with validate,
+  smoke, reinstall, and cache sentinel checks passing.
 
 ## Route
 
-- Public entry: `harness:execute` for the accepted documentation Goal.
-- Internal route: `execute`
-- Execution role: `implementer`
-- Accepted-state owner: current project control lane after verification.
+- Public entry: `harness:orient` for the next read-only project decision.
+- Internal route: `orient`
+- Execution role: None active.
+- Accepted-state owner: None active.
 - Need user: None
-- Remaining: Update language docs, validate, commit, push, and deploy the local
-  plugin cache.
+- Remaining: None. Start a new Codex thread or restart Codex App to load the
+  refreshed plugin cache.
 
 ## Blockers
 

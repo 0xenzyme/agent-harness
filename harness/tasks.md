@@ -2,19 +2,30 @@
 
 ## Now
 
-- [ ] Document adapter language configuration and artifact-language boundaries.
-  - Type: docs
-  - Status: doing
-  - Priority: P1
-  - Source: Current conversation on 2026-07-12; user requested language docs,
-    commit, push, and local plugin deployment.
-  - Acceptance: Document language precedence, adapter configuration, `auto` behavior, current CLI-versus-artifact limitation, technical-term preservation, and local deployment verification.
-
 ## Next
 
 ## Later
 
 ## Done
+
+- [x] Document adapter language configuration and artifact-language boundaries.
+  - Completed: Documented top-level `.harness/config.json`
+    `language.default`, supported values, exact CLI precedence, `auto`
+    behavior, technical-term preservation, and the current English-only
+    artifact renderer boundary.
+  - Completed: Updated English/zh-CN README, install and CLI docs, project
+    contract, adapter reference/template, config schema descriptions, and
+    deterministic tests.
+  - Goal:
+    `harness/goals/2026-07-12-document-adapter-language-configuration-and-artifact-language-boundaries.md`
+  - Verification: `npm run validate:plugin`, `npm run test:protocol`,
+    `npm run test:smoke`, `npm run test:all`, Goal validation, and
+    `git diff --check` passed.
+  - Delivery: Documentation commit `3f40b19` pushed to `origin/main`; local
+    plugin cache refreshed at
+    `/Users/liuyj/.codex/plugins/cache/personal/harness/0.6.0` through
+    `npm run deploy:local-plugin` with validate, smoke, reinstall, and cache
+    sentinel checks passing.
 
 - [x] Improve README presentation and first-use clarity.
   - Completed: Moved install, first-use prompts, and the four public skills

@@ -2,7 +2,7 @@
 
 Spec: TBD
 Spec Policy: allow-no-spec
-Status: Ready for execution from accepted scope without a separate spec.
+Status: Completed; delivery state `pushed`; local plugin cache deployed.
 
 ## Source Task
 
@@ -159,6 +159,28 @@ cache sentinels plus the refreshed plugin source.
 - Status-file updates use a bounded current-state snapshot; replace status
   sections instead of appending historical focus logs.
 - Update configured state records (`harness/tasks.md`, `harness/status.md`) when the project adapter requires state sync.
+
+## Result
+
+- Documented adapter-owned `language.default` configuration in English/zh-CN
+  README, install, CLI, and project contract docs.
+- Documented `auto`, `en`, `zh-CN`, exact CLI selection precedence, and
+  technical-term preservation.
+- Explicitly stated that current localization covers supported CLI messages,
+  while deterministic generated artifact bodies and base templates remain
+  English.
+- Added Language Policy guidance to the adapter reference/template and schema
+  descriptions; added deterministic protocol/smoke assertions.
+- Verification passed: `npm run validate:plugin`, `npm run test:protocol`,
+  `npm run test:smoke`, `npm run test:all`, Goal validation, and
+  `git diff --check`.
+- Documentation commit `3f40b19` was pushed to `origin/main`.
+- `npm run deploy:local-plugin` refreshed
+  `/Users/liuyj/.codex/plugins/cache/personal/harness/0.6.0`; validate, smoke,
+  reinstall, and cache sentinel checks passed.
+- Delivery: `pushed` plus local plugin cache deployment. No review,
+  integration, release, production access, paid API, daemon, destructive
+  operation, or remote deployment was performed.
 
 ## Pause Conditions
 
