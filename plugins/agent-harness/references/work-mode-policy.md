@@ -24,6 +24,9 @@ Use worktree mode when the checkout is dirty with unrelated work, the task is
 broad, work is parallel or unattended, or the result should become a separate
 PR.
 
+A single worktree does not make multiple writers safe. Parallel writers need
+one separately locked worktree/cwd per worker; otherwise execute sequentially.
+
 ## Ask
 
 Ask when the task may be destructive, touches production or paid services,

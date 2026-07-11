@@ -35,6 +35,15 @@ release notes，运行 `npm run test:presentation`。如果修改了 eval
 documentation 或 eval fixtures，运行 `npm run test:eval`。如果需要同时跑
 presentation、protocol 和 smoke coverage，运行 `npm run test:all`。
 
+`npm run test:eval` 是 deterministic eval，不测真实模型 activation。需要
+显式批准模型/成本后才能运行 live check：
+
+```bash
+AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-5.6 --reasoning-effort high --output evals/results/live-gpt-5.6.json
+```
+
+如果 Codex 没有报告 runtime model，live runner 会拒绝声称 GPT-5.6 evidence。
+
 ## 初始化或导入项目
 
 初始化 adapter-contract 下游项目：
@@ -209,10 +218,13 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
 ```
 
-在启动依赖节点前，先记录一个 execution DAG node 的结果：
+启动前先记录 node `running`，再记录结果。第二个并发 writer 必须提供
+`--isolation-evidence`：
 
 ```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase running --summary "Launching read-only explorer"
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase completed --summary "Mapped implementation ownership" --verification "Read-only review completed"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker-b --phase running --summary "Launching isolated writer" --isolation-evidence "separate locked worktree /tmp/worker-b"
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
 ```
 

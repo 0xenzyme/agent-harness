@@ -37,6 +37,7 @@ Running threads:
 Child controllers:
 Active workers:
 Cancellation / supersession:
+Parallel isolation:
 DAG ready nodes:
 DAG blocked nodes:
 Done:
@@ -107,6 +108,7 @@ Parent controller thread:
 Controller thread:
 Accepted-state owner:
 Worker surface:
+Parallel isolation:
 Conversation route:
 Conversation lane:
 Execution cwd:
@@ -197,10 +199,11 @@ accepted-state owner verifies and records the accepted state.
 
 For DAG execution, the controller launches only ready nodes. A worker must not
 start or claim completion for a node whose dependencies have not been recorded
-as completed. Independent ready nodes may run in parallel through Codex CLI
-subagents. Fresh Codex threads are explicit, visible, long-lived handoff lanes,
-not the default worker surface. Fork is not the default worker surface and
-requires explicit controller approval.
+as completed. Ready nodes run sequentially unless each concurrent writer has a
+separate locked worktree/cwd, or the launch packets prove read-only or
+non-overlapping file ownership. Fresh Codex threads are explicit, visible,
+long-lived handoff lanes, not the default worker surface. Fork is not the
+default worker surface and requires explicit controller approval.
 
 Before changing same-scope execution while workers may still be active, the
 controller must snapshot active workers and record cancellation or supersession

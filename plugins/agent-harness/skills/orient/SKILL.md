@@ -1,6 +1,6 @@
 ---
 name: orient
-description: Read-only Agent Harness orientation for current state, tasks, blockers, and next route without mutation. Use for inspection, route recommendation, and confirmation boundaries. Do not use for harness adoption/init/import, idea recording, or confirmed implementation. / 只读定位当前项目状态、任务、阻塞与下一步路线；用于检查、路线建议和确认边界；不要用于接入/初始化/导入、记录想法或已确认执行。
+description: Inspect Agent Harness state and recommend the next public entry without mutation. Use for status, blockers, stale artifacts, or route questions; not setup, intake recording, or authorized execution. / 只读检查状态与下一入口，不用于 setup、记录或执行。
 ---
 
 # Harness Orient
@@ -16,6 +16,8 @@ without starting implementation.
   mixes orientation with mutation or execution language.
 - Use [User-Facing Summary](references/user-facing-summary.md) before the final
   response to translate route evidence into a concise user decision prompt.
+- Use [Route To Public Entry Mapping](../../references/route-entry-mapping.md)
+  before naming `shape`, `goal`, `competition`, or `ask`.
 
 ## Workflow
 
@@ -64,8 +66,8 @@ node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project>
 node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea "<idea text>"
 ```
 
-8. Recommend one next mode: `orient`, `intake`, `shape`, `goal`, `execute`,
-   `competition`, or `ask`.
+8. Recommend one internal route and always map it to a published skill or exact
+   user action with [Route To Public Entry Mapping](../../references/route-entry-mapping.md).
 9. Explain the route choice briefly and state what confirmation is needed
    before any mutation or implementation. The explanation should name the
    observable reason, such as task state, missing spec, ambiguity, risk,

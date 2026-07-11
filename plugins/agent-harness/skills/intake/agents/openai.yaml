@@ -1,0 +1,6 @@
+interface:
+  display_name: "Harness Intake"
+  short_description: "Capture and triage unaccepted Harness work"
+  default_prompt: "Use $intake to preview or record this idea without implementing it."
+policy:
+  allow_implicit_invocation: true

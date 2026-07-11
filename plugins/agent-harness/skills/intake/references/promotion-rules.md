@@ -30,6 +30,8 @@ Route to `execute` only after these are clear:
 - completion conditions
 - pause conditions
 
-If any item is missing, route to `shape`, `goal`, or `ask` instead of executing.
-Continue only when the missing item is clearly not applicable or already
-supplied by a confirmed spec, goal, or run.
+If an item is missing, use the mapping in
+[Route To Public Entry Mapping](../../../references/route-entry-mapping.md):
+shape read-only in `harness:orient`, ask the blocking question, then use
+`harness:execute` for authorized Goal preparation/execution. Continue only when
+the missing item is not applicable or is supplied by accepted scope/spec/Goal.

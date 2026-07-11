@@ -1,0 +1,6 @@
+interface:
+  display_name: "Harness Init"
+  short_description: "Adopt, audit, import, or repair Harness setup"
+  default_prompt: "Use $init to inspect or set up Agent Harness in this project."
+policy:
+  allow_implicit_invocation: true

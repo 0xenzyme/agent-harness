@@ -2,6 +2,11 @@
 
 Task routing chooses the lightest harness flow that is still safe.
 
+`orient`, `intake`, `init`, and `execute` are public skill entries. `shape`,
+`goal`, `competition`, and `ask` are internal routes governed by
+[Route To Public Entry Mapping](route-entry-mapping.md); never present them as
+unshipped skills.
+
 Use [First-Principles Scope](first-principles-scope.md) when objective, source
 of truth, scope, non-goals, verification, or pause triggers are ambiguous.
 
@@ -397,9 +402,12 @@ a worker subagent by default. Do not ask the user to choose between launching a
 worker and changing the controller to `mixed` unless subagent execution is
 unavailable, unsafe, or under-specified.
 
-Parallel worker execution must follow the run packet's execution DAG. Ready
-nodes with no unmet dependencies may be launched together; dependent nodes must
-wait until their prerequisites are recorded with `run node record`.
+Parallel worker execution must follow the run packet's execution DAG and
+`harness-rule:parallel-worker-isolation`. Ready nodes default to sequential
+launch. Launch them together only with separate locked worktrees/cwds for
+writers, or recorded proof that all concurrent work is read-only or has
+non-overlapping file ownership. Dependent nodes wait until prerequisites are
+recorded with `run node record`.
 
 `harness-rule:controller-cancellation-boundary`: route cancellation,
 supersession, drain, and pause-after-current as cooperative control-plane

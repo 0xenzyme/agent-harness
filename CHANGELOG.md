@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Mapped internal `shape`, `goal`, `competition`, and `ask` routes back to the
+  four published workflow skills.
+- Shortened skill discovery descriptions and moved detailed `execute` rules to
+  path-specific references.
+- Changed generated Goal delivery defaults to `validated-local` with no
+  invented commit, push, review, integration, or release authority.
+- Added sequential-by-default DAG launch with explicit parallel isolation
+  evidence, plus an opt-in live Codex activation evaluator that cannot be
+  confused with deterministic fixture validation.
+
 ## 0.6.0 - 2026-07-09
 
 - Made task completion explicitly include state-sync evidence or

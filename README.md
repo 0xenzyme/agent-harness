@@ -193,6 +193,12 @@ path is four workflow skills:
   packet, then verify, review `State Sync Notes`, and sync task/status/run
   evidence.
 
+`shape`, `goal`, `competition`, and `ask` are internal route states, not
+additional skills. Shape and optional competition stay read-only in
+`harness:orient`; after scope is accepted, `harness:execute` prepares the
+repository Goal and executes it. Ask means answer the blocking question, then
+resume the mapped public skill.
+
 Older artifact-oriented wrapper skills are no longer shipped. Use the workflow
 skill that matches the route: `init` for setup/adoption, `orient` for read-only
 state, `intake` for new ideas, and `execute` for confirmed work.
@@ -209,7 +215,7 @@ fields, while runtime responses still follow the user's language.
 | Adopt Agent Harness in a project, migrate an existing task index, run doctor/import, or preview activation. | `harness:init` |
 | Check project status, todo, blockers, or next route without editing files. | `harness:orient` |
 | Capture or triage a new idea, requirement, bug, or capture-thread note. | `harness:intake` |
-| Complete a confirmed goal, spec, task breakdown, or run packet and then verify and sync state. | `harness:execute` |
+| Prepare a Goal from accepted scope, or execute a confirmed goal/spec/run and then verify and sync state. | `harness:execute` |
 
 ## Use With A Coding Agent
 
@@ -323,11 +329,11 @@ Project-neutral adoption examples live in
 They cover new adapter projects, existing adapter imports, fixed compatibility
 projects, non-harness projects, and messy realistic projects.
 
-The evaluation blueprint lives under [`evals/`](evals/). It defines fixture
-shapes, scenario prompts, expected outcomes, and a semi-automatic scoring plan
-for agent behavior across project shapes. These fixtures evaluate route
-choice, evidence quality, boundary preservation, and state discipline; they do
-not require live downstream repositories.
+The evaluation suite lives under [`evals/`](evals/). `npm run test:eval`
+validates deterministic fixtures and trace contracts; it does not run a model
+or prove GPT-5.6 activation. The separately authorized
+`npm run test:eval:live` lane uses ephemeral read-only Codex execution and
+requires runtime-reported model evidence.
 
 ## Install In Codex
 

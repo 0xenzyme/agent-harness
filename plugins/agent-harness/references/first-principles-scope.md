@@ -25,3 +25,8 @@ move forward, needs shaping, or must pause.
 If objective, source of truth, scope, non-goals, verification, or pause triggers
 cannot be stated concretely, route to `intake`, `shape`, `goal`, state sync, or
 `ask` before execution.
+
+These are internal routes. Apply
+[Route To Public Entry Mapping](route-entry-mapping.md) before presenting the
+next action: `shape` stays in `harness:orient`, and authorized `goal`
+preparation uses `harness:execute`.

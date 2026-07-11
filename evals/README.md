@@ -1,12 +1,11 @@
 # Agent Harness Evaluation Fixtures
 
-This directory defines a project-neutral fixture suite for evaluating whether
-Agent Harness behavior works across common downstream project shapes.
+This directory defines deterministic fixtures plus an optional live Codex
+activation runner for evaluating Agent Harness across downstream shapes.
 
-The suite evaluates agent behavior, not only CLI exit codes. A passing run
-should show that the agent reads the right project artifacts, chooses the
-right harness route, preserves project boundaries, and records evidence before
-marking work complete.
+Deterministic fixtures describe expected agent behavior, but they do not run a
+model. A passing `npm run test:eval` proves fixture, CLI, and trace-contract
+consistency only; it is not GPT-5.6 activation evidence.
 
 ## Fixtures
 
@@ -101,6 +100,17 @@ This command validates trigger case coverage, materializes temporary fixture
 projects, runs CLI hard checks, and confirms read-only or dry-run scenarios do
 not write forbidden harness files.
 
+Run an explicitly authorized live activation check with:
+
+```bash
+AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-5.6 --reasoning-effort high --output evals/results/live-gpt-5.6.json
+```
+
+The live runner uses ephemeral, read-only `codex exec`, records expected versus
+selected skills, and refuses to claim GPT-5.6 evidence unless Codex JSONL
+reports the actual runtime model. It may use paid model capacity and is never
+part of the default test suite.
+
 ## Initial Automated Checks
 
 The first implementation can use a simple runner that:
@@ -111,5 +121,5 @@ The first implementation can use a simple runner that:
 3. compares JSON output to expected contract/path fields,
 4. prompts a human or model reviewer to score route and evidence quality.
 
-Full automation should wait until the project has a stable agent transcript
-format for scoring behavior beyond CLI output.
+Broader live automation should wait until Codex exposes a stable transcript
+field for runtime model and skill activation provenance.

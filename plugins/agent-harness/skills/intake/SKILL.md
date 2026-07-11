@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Capture and triage ideas, requirements, bugs, or Idea Inbox notes without implementing them. Use for rough or not-yet-accepted work items. Do not use for read-only orientation, harness setup, or confirmed implementation. / 收集并分流想法、需求、bug 或 Idea Inbox notes，但不直接实现；用于粗略或尚未接受的工作项；不要用于只读定位、harness setup 或已确认执行。
+description: Preview or record rough Agent Harness ideas, requirements, bugs, and inbox notes without implementation. Use before scope is accepted; not for read-only status, setup, or authorized execution. / 收集未确认事项，不执行。
 ---
 
 # Harness Intake

@@ -13,6 +13,7 @@ coding-agent handoff. Replace placeholders with the current goal/run values.
 - Execution cwd: `{execution_cwd}`
 - Execution branch: `{execution_branch}`
 - Execution slot: `{execution_slot}`
+- Parallel isolation: `{parallel_isolation}`
 
 You are an execution worker for one DAG node. You are not the controller or
 acceptance lane.
@@ -93,6 +94,8 @@ Forbidden scope:
   prompt exists because the controller chose worker execution; return candidate
   evidence instead of skipping the run contract.
 - Work only inside the locked execution cwd and allowed scope.
+- Do not run concurrently with another writer unless the launch packet records
+  a separate locked worktree/cwd or proven non-overlapping file ownership.
 - Do not update accepted task, status, goal, run, gate, or release state.
 - Do not mark work complete.
 - Do not start dependent DAG nodes.

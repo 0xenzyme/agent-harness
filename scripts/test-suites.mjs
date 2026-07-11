@@ -299,7 +299,7 @@ const cyberneticStabilityExpectations = [
   ["docs/project-contract.md", "target, observed state, evidence, conflicts or stale artifacts"],
   ["plugins/agent-harness/references/task-routing.md", "Cybernetic Stability Routing"],
   ["plugins/agent-harness/references/task-routing.md", "If no gap shrank, route to verification"],
-  ["plugins/agent-harness/skills/execute/SKILL.md", "stale artifacts, remaining gap, feedback quality"],
+  ["plugins/agent-harness/references/task-routing.md", "advisory feedback as completion evidence"],
   ["plugins/agent-harness/templates/goal.md", "## Cybernetic Stability"],
   ["plugins/agent-harness/templates/spec.md", "## Cybernetic Stability"],
   ["plugins/agent-harness/templates/worker-prompt.md", "gap closed, remaining gap"],
@@ -313,7 +313,7 @@ const degradedExecutionProvenanceExpectations = [
   ["plugins/agent-harness/references/worker-runner-contract.md", "candidate-evidence boundary, and verification evidence"],
   ["plugins/agent-harness/references/controller-communication.md", "Silent fallback is not accepted completion evidence"],
   ["plugins/agent-harness/references/gate-results.md", "compensating verification before accepting"],
-  ["plugins/agent-harness/skills/execute/SKILL.md", "Silent fallback is\n   not accepted completion evidence"],
+  ["plugins/agent-harness/references/worker-runner-contract.md", "record visible\nprovenance instead of presenting the result as normal delegated execution"],
   ["plugins/agent-harness/templates/worker-prompt.md", "degraded execution provenance when applicable"],
   ["plugins/agent-harness/scripts/agent-harness.mjs", "degradedExecutionProvenanceGuidance"]
 ];

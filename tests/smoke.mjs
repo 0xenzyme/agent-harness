@@ -122,6 +122,10 @@ function frontmatterDescription(doc) {
 const pluginManifest = readJson(join(repoRoot, "plugins/agent-harness/.codex-plugin/plugin.json"));
 const packageManifest = readJson(join(repoRoot, "package.json"));
 assert(
+  pluginManifest.interface.defaultPrompt.length <= 128,
+  "plugin defaultPrompt should stay within the 128-character ingestion limit"
+);
+assert(
   packageManifest.scripts["deploy:local-plugin"] === "node tools/deploy-local-plugin.mjs",
   "package.json should expose the local plugin cache deploy script"
 );
@@ -344,6 +348,7 @@ const workflowSkillDescriptions = Object.fromEntries(
   Object.entries(workflowSkillDocs).map(([name, doc]) => [name, frontmatterDescription(doc)])
 );
 const taskRoutingReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/task-routing.md"), "utf8");
+const routeEntryMappingReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/route-entry-mapping.md"), "utf8");
 const projectContractReference = readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8");
 const firstPrinciplesScopeReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/references/first-principles-scope.md"),
@@ -390,38 +395,26 @@ const intakePromotionReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/skills/intake/references/promotion-rules.md"),
   "utf8"
 );
+for (const [route, entry] of [
+  ["`shape`", "`harness:orient`"],
+  ["`goal`", "`harness:execute`"],
+  ["`competition`", "`harness:orient`"],
+  ["`ask`", "Ask the smallest blocking question"]
+]) {
+  assertIncludes(routeEntryMappingReference, route, `route mapping should include ${route}`);
+  assertIncludes(routeEntryMappingReference, entry, `route mapping should map ${route} to ${entry}`);
+}
+for (const [skillName, description] of Object.entries(workflowSkillDescriptions)) {
+  assert(description.length > 0, `${skillName} description should not be empty`);
+  assert(description.length <= 300, `${skillName} description should stay within the 300-character discovery budget`);
+}
+assertIncludes(workflowSkillDescriptions.execute, "authorized Agent Harness work", "execute should require authorization");
+assertIncludes(workflowSkillDescriptions.execute, "ambiguous direction", "execute should exclude ambiguous direction");
+assertIncludes(workflowSkillDescriptions.init, "not status routing", "init should not steal orientation");
+assertIncludes(workflowSkillDescriptions.orient, "without mutation", "orient should remain read-only");
+assertIncludes(workflowSkillDescriptions.intake, "without implementation", "intake should not execute work");
 assertIncludes(
-  workflowSkillDescriptions.execute,
-  "Use only when scope, role, verification, completion conditions, and pause conditions are accepted",
-  "execute description should require accepted execution boundaries before routing"
-);
-assertIncludes(
-  workflowSkillDescriptions.execute,
-  "Do not use for read-only orientation",
-  "execute description should exclude read-only orientation"
-);
-assertIncludes(
-  workflowSkillDescriptions.execute,
-  "unconfirmed specs/goals",
-  "execute description should exclude unconfirmed specs/goals"
-);
-assertIncludes(
-  workflowSkillDescriptions.init,
-  "Do not use for read-only orientation",
-  "init description should not steal read-only orientation"
-);
-assertIncludes(
-  workflowSkillDescriptions.orient,
-  "Do not use for harness adoption/init/import",
-  "orient description should not steal setup/adoption work"
-);
-assertIncludes(
-  workflowSkillDescriptions.intake,
-  "Do not use for read-only orientation",
-  "intake description should not steal orientation"
-);
-assertIncludes(
-  workflowSkillDocs.execute,
+  workflowSkillDocs.execute.replace(/\s+/g, " "),
   "do not infer `mixed` from low-risk local work alone",
   "execute should not self-authorize mixed execution from low risk alone"
 );
@@ -435,11 +428,7 @@ assertExcludes(
   "low-risk and local enough",
   "task-routing should not allow low-risk local work to grant mixed execution"
 );
-assertIncludes(
-  workflowSkillDocs.execute,
-  "If any of these are missing, route to",
-  "execute should route or pause when execution boundaries are missing"
-);
+assertIncludes(workflowSkillDocs.execute, "Confirm scope, non-goals, verification", "execute should confirm boundaries before editing");
 assertExcludes(
   workflowSkillDocs.execute,
   "affects risk, cost, or product direction, pause and ask",
@@ -455,11 +444,7 @@ assertExcludes(
   "and the choice affects risk, cost, product",
   "execution role reference should not make missing boundaries conditional on risk judgment"
 );
-assertIncludes(
-  intakePromotionReference,
-  "If any item is missing, route to",
-  "intake promotion should not route to execution with missing boundaries"
-);
+assertIncludes(intakePromotionReference, "If an item is missing", "intake promotion should not execute with missing boundaries");
 assertExcludes(
   intakePromotionReference,
   "If any item affects risk",
@@ -497,7 +482,7 @@ assertIncludes(
 );
 assertIncludes(
   workflowSkillDocs.execute,
-  "User-Facing Closeout",
+  "references/user-facing-closeout.md",
   "execute should compress execution evidence into a user-facing closeout"
 );
 assertIncludes(
@@ -746,7 +731,7 @@ for (const [value, needle, message] of [
   [projectContractReference, "target, observed state, evidence, conflicts or stale artifacts", "project contract should define the measurement snapshot shape"],
   [taskRoutingReference, "Cybernetic Stability Routing", "task-routing should include cybernetic stability routing"],
   [taskRoutingReference, "If no gap shrank, route to verification", "task-routing should require re-route when no gap shrinks"],
-  [workflowSkillDocs.execute, "stale artifacts, remaining gap, feedback quality", "execute should reject completion with weak stability evidence"],
+  [taskRoutingReference, "advisory feedback as completion evidence", "task-routing should reject completion with weak stability evidence"],
   [goalTemplateDoc, "## Cybernetic Stability", "goal template should include cybernetic stability"],
   [workerPromptTemplate, "gap closed, remaining gap", "worker prompt should return gap evidence"]
 ]) {
@@ -786,8 +771,8 @@ for (const [value, needle, message] of [
     "execute should forbid gate-only controllers from using Level 0 to edit"
   ],
   [
-    workflowSkillDocs.execute,
-    "current thread is `implementer` or",
+    taskRoutingReference,
+    "direct execution requires `implementer` or explicitly accepted `mixed`",
     "execute should require implementer or explicit mixed for Level 0 direct execution"
   ]
 ]) {
@@ -856,6 +841,9 @@ const rootReadme = readFileSync(join(repoRoot, "README.md"), "utf8");
 const rootReadmeZh = readFileSync(join(repoRoot, "README.zh-CN.md"), "utf8");
 const cliDoc = readFileSync(join(repoRoot, "docs/cli.md"), "utf8");
 const cliDocZh = readFileSync(join(repoRoot, "docs/cli.zh-CN.md"), "utf8");
+const packageDoc = readFileSync(join(repoRoot, "package.json"), "utf8");
+const deterministicEvalRunner = readFileSync(join(repoRoot, "evals/run-agent-harness-eval.mjs"), "utf8");
+const liveEvalRunner = readFileSync(join(repoRoot, "evals/run-live-skill-activation.mjs"), "utf8");
 assertExcludes(cliDoc, publicFocusOption, "CLI reference should not expose a public focus option");
 assertExcludes(cliDocZh, publicFocusOption, "zh-CN CLI reference should not expose a public focus option");
 assertExcludes(JSON.stringify(configSchema), publicFocusOption, "config schema should not expose a focus option or field");
@@ -876,6 +864,12 @@ assertExcludes(
   "zh-CN README should not carry the detailed CLI command catalog"
 );
 assertIncludes(rootReadme, "They are not installed as", "README should explain source adapter artifacts are not installed plugin content");
+assertIncludes(rootReadme, "does not run a model", "README should distinguish deterministic eval from live activation");
+assertIncludes(packageDoc, '"test:eval:live"', "package should expose the opt-in live activation evaluator");
+assertIncludes(deterministicEvalRunner, "Model activation measured: no", "deterministic eval should disclaim model activation");
+assertIncludes(liveEvalRunner, "AGENT_HARNESS_LIVE_EVAL", "live eval should require explicit opt-in");
+assertIncludes(liveEvalRunner, "runtimeReportedModels", "live eval should record runtime model evidence");
+assertIncludes(liveEvalRunner, "refusing to claim GPT-5.6", "live eval should reject missing runtime model evidence");
 assertIncludes(cliDoc, "--gate-evidence", "CLI reference should document gate-only run evidence");
 assertIncludes(cliDocZh, "--gate-evidence", "zh-CN CLI reference should document gate-only run evidence");
 assertIncludes(cliDoc, "--allow-no-spec", "CLI reference should document explicit spec-less goals");
@@ -894,6 +888,13 @@ assertIncludes(goalTemplateDoc, "## Execution Role", "goal template should inclu
 assertIncludes(goalTemplateDoc, "## Conversation Route", "goal template should include conversation route section");
 assertIncludes(goalTemplateDoc, "## Execution Context Lock", "goal template should include execution context lock section");
 assertIncludes(goalTemplateDoc, "## Delivery State", "goal template should include delivery state section");
+assertIncludes(goalTemplateDoc, "Target delivery state: `validated-local`", "goal template should default to local validation");
+assertIncludes(goalTemplateDoc, "grants no commit,", "goal template should deny delivery authority by default");
+assertExcludes(
+  goalTemplateDoc,
+  "gate-passing implementation work is committed and integrated",
+  "goal template should not contradict its local-only delivery default"
+);
 assertIncludes(goalTemplateDoc, "harness-rule:context-focus-routing", "goal template should include context-focus routing guidance");
 const cliSource = readFileSync(cli, "utf8");
 assertIncludes(cliSource, "## Execution Role", "goal generator should include an execution role section");
@@ -1167,6 +1168,18 @@ try {
   assert(goalReadyOrient.recommendation.route === "goal-ready", "goal-ready should route to existing goal handling");
   assertIncludes(goalReadyOrient.recommendation.goalCommand, "goal validate", "goal-ready recommendation should validate existing goal");
   assertIncludes(goalReadyOrient.recommendation.goalCommand, "run prepare", "goal-ready recommendation should prepare a run after validation");
+  write(join(adapter, "harness/tasks.md"), `# Project Tasks
+
+| Task | Type | Status | Priority | Doc |
+| --- | --- | --- | --- | --- |
+| Finished work | development | done | P1 |  |
+`);
+  const completedOrient = JSON.parse(run(["orient", "next", "--cwd", adapter, "--json"]));
+  assert(completedOrient.tasks.total === 1, "orient should still report parsed completed tasks");
+  assert(
+    completedOrient.recommendation.reason === "all parsed tasks are completed or closed",
+    "orient should distinguish an all-completed task index from a parse failure"
+  );
 
   const custom = join(suiteDir, "adapter-custom");
   mkdirSync(custom, { recursive: true });
@@ -1277,9 +1290,11 @@ try {
   assert(customGoalValidate.goal.executionRole === "implementer", "goal validate should expose execution role");
   assert(customGoalValidate.goal.conversationRoute === "current-thread", "goal validate should expose conversation route");
   assert(customGoalValidate.goal.executionContextLock.executionCwd === custom, "goal validate should expose execution cwd lock");
-  assert(customGoalValidate.goal.deliveryPolicy.target === "integrated", "goal validate should expose delivery target");
-  assert(customGoalValidate.goal.deliveryPolicy.deliveryIntent === "integrate-after-gates", "goal validate should expose delivery intent");
-  assert(customGoalValidate.goal.deliveryPolicy.integrationAuthorized === "yes", "goal validate should expose integration authorization");
+  assert(customGoalValidate.goal.deliveryPolicy.target === "validated-local", "goal validate should default to local validation");
+  assert(customGoalValidate.goal.deliveryPolicy.deliveryIntent === "local-validation", "goal validate should default to local delivery intent");
+  assert(customGoalValidate.goal.deliveryPolicy.commitAuthorized === "no", "goal generation must not invent commit authorization");
+  assert(customGoalValidate.goal.deliveryPolicy.pushAuthorized === "no", "goal generation must not invent push authorization");
+  assert(customGoalValidate.goal.deliveryPolicy.integrationAuthorized === "no", "goal generation must not invent integration authorization");
   run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
   const customRuns = readdirSync(join(custom, "custom/runs")).sort();
   assert(customRuns.length > 0, "adapter run packet should use custom runs dir");
@@ -1289,10 +1304,10 @@ try {
   assert(customRunStatus.conversationRoute === "current-thread", "run status should record conversation route");
   assert(customRunStatus.executionContextLock.executionCwd === custom, "run status should record execution cwd lock");
   assert(customRunStatus.deliveryState.state, "run status should record delivery state");
-  assert(customRunStatus.deliveryPolicy.target === "integrated", "run status should record delivery target");
+  assert(customRunStatus.deliveryPolicy.target === "validated-local", "run status should record local delivery target");
   const customRunStatusJson = JSON.parse(run(["run", "status", "--cwd", custom, "--run", join("custom/runs", customRuns[0]), "--json"]));
   assert(customRunStatusJson.deliveryState.state === customRunStatus.deliveryState.state, "run status json should expose delivery state");
-  assert(customRunStatusJson.deliveryPolicy.target === "integrated", "run status json should expose delivery target");
+  assert(customRunStatusJson.deliveryPolicy.target === "validated-local", "run status json should expose local delivery target");
   run(["run", "prepare", "--cwd", custom, "--goal", customGoal]);
   const runningWorkerRun = readdirSync(join(custom, "custom/runs")).sort().at(-1);
   const runningWorkerRunRel = join("custom/runs", runningWorkerRun);
@@ -1349,7 +1364,8 @@ try {
     "completed run record should require verification evidence"
   );
   const committedTargetGoal = readFileSync(customGoal, "utf8")
-    .replace("Target delivery state: `integrated`", "Target delivery state: `committed`");
+    .replace("Target delivery state: `validated-local`", "Target delivery state: `committed`")
+    .replace("Commit authorized: `no`", "Commit authorized: `yes`");
   write(join(custom, "custom/goals/committed-target.md"), committedTargetGoal);
   const committedTargetValidate = JSON.parse(run(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/committed-target.md", "--json"]));
   assert(committedTargetValidate.ok === true, "committed delivery target with commit authorization should validate");
@@ -1690,9 +1706,36 @@ Manual verification evidence only.
     "--json"
   ]));
   assert(
-    JSON.stringify(explorerNode.readyNodes) === JSON.stringify(["cli-contract-worker", "docs-skill-worker"]),
-    "DAG should release independent workers in parallel after explorer"
+    JSON.stringify(explorerNode.readyNodes) === JSON.stringify(["cli-contract-worker"]),
+    "DAG should default to one launchable worker after explorer"
   );
+  const postExplorerStatus = JSON.parse(run(["run", "status", "--cwd", custom, "--run", largeDagRunRel, "--json"]));
+  assert(
+    JSON.stringify(postExplorerStatus.executionDag.parallelCandidates) === JSON.stringify(["cli-contract-worker", "docs-skill-worker"]),
+    "DAG should expose parallel candidates without authorizing concurrent launch"
+  );
+  run([
+    "run", "node", "record", "--cwd", custom, "--run", largeDagRunRel,
+    "--node", "cli-contract-worker", "--phase", "running",
+    "--summary", "CLI worker launched sequentially"
+  ]);
+  assertIncludes(
+    runFails([
+      "run", "node", "record", "--cwd", custom, "--run", largeDagRunRel,
+      "--node", "docs-skill-worker", "--phase", "running",
+      "--summary", "unsafe concurrent writer"
+    ]),
+    "requires --isolation-evidence",
+    "DAG should reject a second running writer without isolation evidence"
+  );
+  run([
+    "run", "node", "record", "--cwd", custom, "--run", largeDagRunRel,
+    "--node", "docs-skill-worker", "--phase", "running",
+    "--summary", "Docs worker launched in isolated worktree",
+    "--thread", "docs-worker-thread",
+    "--surface", "codex-cli-subagent",
+    "--isolation-evidence", "separate locked worktree /tmp/docs-worker"
+  ]);
   run([
     "run",
     "node",
@@ -1729,8 +1772,20 @@ Manual verification evidence only.
   ]);
   const workerDagStatus = JSON.parse(run(["run", "status", "--cwd", custom, "--run", largeDagRunRel, "--json"]));
   assert(
+    workerDagStatus.executionDag.nodeStatus["docs-skill-worker"].thread === "docs-worker-thread",
+    "completed DAG node should preserve its launch thread provenance"
+  );
+  assert(
+    workerDagStatus.executionDag.nodeStatus["docs-skill-worker"].surface === "codex-cli-subagent",
+    "completed DAG node should preserve its worker surface provenance"
+  );
+  assert(
+    workerDagStatus.executionDag.nodeStatus["docs-skill-worker"].isolationEvidence === "separate locked worktree /tmp/docs-worker",
+    "completed DAG node should preserve its parallel isolation evidence"
+  );
+  assert(
     JSON.stringify(workerDagStatus.executionDag.readyNodes) === JSON.stringify(["verification"]),
-    "DAG should release verification after both parallel workers complete"
+    "DAG should release verification after both isolated workers complete"
   );
   run([
     "run",
@@ -1821,7 +1876,7 @@ Manual verification evidence only.
   );
   write(
     join(invalidGoalDir, "delivery-target-missing-auth.md"),
-    readFileSync(customGoal, "utf8").replace("Target delivery state: `integrated`", "Target delivery state: `PR-open`")
+    readFileSync(customGoal, "utf8").replace("Target delivery state: `validated-local`", "Target delivery state: `PR-open`")
   );
   assertIncludes(
     runFails(["goal", "validate", "--cwd", custom, "--goal", "custom/goals/delivery-target-missing-auth.md", "--json"]),

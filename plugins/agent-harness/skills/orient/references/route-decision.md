@@ -38,6 +38,10 @@ Confirmation needed:
 
 ## Mode Hints
 
+These are internal route names. Before responding, map them through
+[Route To Public Entry Mapping](../../../references/route-entry-mapping.md) so
+the user receives a published skill or exact action.
+
 - `orient`: user asks for state, blockers, or next safe action.
 - `intake`: user brings a rough idea, requirement, bug, or inbox note.
 - `init`: user asks to adopt, initialize, import, or repair harness setup.

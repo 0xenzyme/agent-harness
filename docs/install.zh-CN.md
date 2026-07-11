@@ -60,7 +60,11 @@ control surfaces、worker defaults、rule anchors、边界和验证套件。
 | 接入新项目、迁移已有 task index、运行 doctor/import，或预览 activation。 | `harness:init` |
 | 只读查看状态、todo、blocker 和下一步 route，不改文件。 | `harness:orient` |
 | 收集或 triage 新想法、需求、bug、capture-thread note。 | `harness:intake` |
-| 执行已确认的 goal、spec、task breakdown、run，并完成验证和状态同步。 | `harness:execute` |
+| 从已确认 scope 准备 Goal，或执行已确认的 goal/spec/run，并完成验证和状态同步。 | `harness:execute` |
+
+`shape`、`goal`、`competition`、`ask` 是内部 route，不是额外 skill：
+shape/competition 由 `harness:orient` 只读处理；已授权 Goal 准备进入
+`harness:execute`；ask 等待最小阻塞问题的答案。
 
 旧的 artifact-oriented `harness-*` wrapper skills 不再发布。新用法应按 route
 选择上面的四个 workflow skills。

@@ -8,6 +8,36 @@
 
 ## Done
 
+- [x] Make Agent Harness skills GPT-5.6-ready.
+  - Follow-up correction: Preserved DAG worker `thread`, `surface`, and
+    `isolationEvidence` across `running` to `completed`; aligned the Goal
+    template with local-only delivery defaults; distinguished all-completed
+    orientation from task parse failure; and added regression coverage.
+  - Completed: Mapped internal routes to published skills or exact user actions;
+    no unshipped `shape`, `goal`, `competition`, or `ask` skill is implied.
+  - Completed: Shortened all skill descriptions to 207-254 characters, added
+    `agents/openai.yaml`, and reduced `harness:execute` from 319 to 131 lines
+    with path-specific progressive disclosure.
+  - Completed: Generated Goals default to `validated-local` with every delivery
+    authorization `no`; parallel workers default to sequential launch and need
+    recorded isolation evidence for concurrency.
+  - Completed: Deterministic eval explicitly disclaims model activation; the
+    opt-in live runner refuses GPT-5.6 claims without runtime-reported model
+    evidence.
+  - Spec:
+    `harness/specs/2026-07-11-gpt-5-6-skill-compatibility-repair.md`
+  - Goal:
+    `harness/goals/2026-07-11-make-agent-harness-skills-gpt-56-ready.md`
+  - Run:
+    `.harness/runs/20260711-235825-make-agent-harness-skills-gpt-56-ready/`
+  - Verification: `node --check`, `npm run test:protocol`, `npm run test:all`,
+    `npm run test:eval`, `npm run validate:plugin`, `git diff --check`, four
+    skill `quick_validate.py` checks, and Goal dry-run passed.
+  - Delivery: `committed` under the user's 2026-07-12 follow-up authorization;
+    live GPT-5.6 activation, push, review, integration, publish, release,
+    deploy, paid API, production, daemon, and destructive operations were not
+    performed.
+
 - [x] Upgrade Agent Harness to 0.6.0 and update release docs.
   - Completed: Bumped `package.json` and
     `plugins/agent-harness/.codex-plugin/plugin.json` to `0.6.0`.

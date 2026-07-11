@@ -1,6 +1,6 @@
 ---
 name: init
-description: Adopt, initialize, import, or audit Agent Harness setup in a new or existing project. Use when the user wants harness adoption, config import, activation preview, or setup repair. Do not use for read-only orientation, next-step recommendations, idea intake, or confirmed implementation. / 用于 Agent Harness 接入、初始化、配置导入、activation preview 或 setup repair；不要用于只读定位、下一步建议、想法收集或已确认执行。
+description: Adopt, audit, initialize, import, or repair Agent Harness setup. Use for doctor, config migration, and activation preview; not status routing, idea intake, or authorized product implementation. / 用于接入与修复，不用于任务执行。
 ---
 
 # Harness Init

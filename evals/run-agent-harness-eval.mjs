@@ -506,7 +506,8 @@ function main() {
   }
 
   const totalTriggerCases = Object.values(triggerCounts).reduce((sum, count) => sum + count, 0);
-  console.log("Agent Harness eval passed.");
+  console.log("Agent Harness deterministic fixture eval passed.");
+  console.log("Model activation measured: no (use npm run test:eval:live with explicit opt-in).");
   console.log(
     `Trigger cases: ${totalTriggerCases} (${triggerCounts.positive} positive, ${triggerCounts.negative} negative, ${triggerCounts.boundary} boundary).`
   );

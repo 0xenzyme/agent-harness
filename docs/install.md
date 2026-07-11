@@ -138,6 +138,10 @@ Agent Harness intentionally ships four workflow skills:
 - `harness:intake` for ideas, requirements, bugs, and capture-thread notes.
 - `harness:execute` for confirmed implementation, verification, and state sync.
 
+`shape`, `goal`, `competition`, and `ask` are internal route names. Shape and
+competition stay in `harness:orient`, authorized Goal preparation uses
+`harness:execute`, and ask waits for the smallest blocking user answer.
+
 Plugin and skill descriptions use a zh-CN/en bilingual fallback in the existing
 description fields. Do not add new localized manifest keys until the Codex
 plugin contract documents and validates them.
@@ -150,7 +154,7 @@ usage to one of the four workflow skills instead.
 | Setup, migration, config import, doctor, or activation preview. | `harness:init` |
 | Read-only status, todo, blocker, and next-route inspection. | `harness:orient` |
 | New idea, requirement, bug, or capture-thread note triage. | `harness:intake` |
-| Confirmed goal, spec, task breakdown, run, verification, and state sync. | `harness:execute` |
+| Authorized Goal preparation, confirmed execution, verification, and state sync. | `harness:execute` |
 
 ## Packaging Discipline
 

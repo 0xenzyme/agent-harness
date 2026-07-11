@@ -160,6 +160,14 @@
     "rationale": "Verification and state sync for accepted work are execute work."
   },
   {
+    "id": "ah_trigger_positive_execute_006",
+    "kind": "positive",
+    "user_request": "Use harness to create and validate a repository Goal from this accepted spec, but do not commit or push.",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "The internal goal route maps to execute after scope is accepted and authorized."
+  },
+  {
     "id": "ah_trigger_negative_001",
     "kind": "negative",
     "user_request": "What is Agent Harness? Answer in three sentences.",
@@ -277,7 +285,7 @@
     "user_request": "Complete this task, but I do not have a spec or verification command.",
     "expected_skills": ["harness:execute"],
     "should_trigger": true,
-    "rationale": "Execute may trigger for route narrowing, but must pause or route to shape/goal."
+    "rationale": "Execute may inspect accepted context, but must use orient for read-only shaping and ask for verification before implementation."
   },
   {
     "id": "ah_trigger_boundary_006",

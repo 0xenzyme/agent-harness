@@ -175,6 +175,11 @@ Codex 会把这个 plugin 暴露为 `harness`。主要 workflow-controller entry
   packet，然后验证、review `State Sync Notes`，并同步 task/status/run
   evidence。
 
+`shape`、`goal`、`competition`、`ask` 是内部 route state，不是额外 skill。
+shape 和可选 competition 留在只读 `harness:orient`；scope 确认后由
+`harness:execute` 创建 repository Goal 并执行。ask 表示回答最小阻塞问题，
+之后恢复映射到的公开 skill。
+
 旧的 artifact-oriented wrapper skills 不再发布。按 route 选择 workflow
 skill：setup/adoption 用 `init`，只读状态用 `orient`，新想法用 `intake`，
 已确认执行用 `execute`。
@@ -190,7 +195,7 @@ bilingual fallback；运行时回复仍按用户语言输出。
 | 给项目接入 Agent Harness、迁移已有 task index、运行 doctor/import，或预览 activation。 | `harness:init` |
 | 只读查看项目状态、todo、blockers 或下一步 route，不编辑文件。 | `harness:orient` |
 | 捕获或 triage 新想法、新需求、bug 或 capture-thread note。 | `harness:intake` |
-| 完成已确认的 goal、spec、task breakdown 或 run packet，然后验证、review `State Sync Notes`，并同步状态。 | `harness:execute` |
+| 从已确认 scope 准备 Goal，或执行已确认的 goal/spec/run，然后验证并同步状态。 | `harness:execute` |
 
 ## 在项目中怎么用
 
@@ -303,10 +308,10 @@ Project-neutral adoption examples 位于
 它覆盖 new adapter projects、existing adapter imports、fixed compatibility
 projects、non-harness projects 和 messy realistic projects。
 
-Evaluation blueprint 位于 [`evals/`](evals/)。它定义 fixture shapes、scenario
-prompts、expected outcomes 和 semi-automatic scoring plan，用来评价不同项目
-形态下的 agent behavior。这些 fixtures 评价 route choice、evidence quality、
-boundary preservation 和 state discipline，不依赖真实下游仓库。
+Evaluation suite 位于 [`evals/`](evals/)。`npm run test:eval` 只验证
+deterministic fixtures 与 trace contract，不运行模型，也不能证明 GPT-5.6
+activation。单独授权的 `npm run test:eval:live` 使用 ephemeral、read-only
+Codex execution，并要求 runtime-reported model evidence。
 
 ## Install In Codex
 

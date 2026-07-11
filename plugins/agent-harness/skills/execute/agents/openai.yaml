@@ -1,0 +1,6 @@
+interface:
+  display_name: "Harness Execute"
+  short_description: "Prepare and execute authorized Harness work"
+  default_prompt: "Use $execute to prepare or execute this authorized Harness scope with verification and state sync."
+policy:
+  allow_implicit_invocation: true

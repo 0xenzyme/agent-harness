@@ -60,7 +60,7 @@ const deliveryStateOrder = ["implemented-local", "validated-local", "committed",
 const validDeliveryStates = new Set(deliveryStateOrder);
 const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
-const recordableRunNodePhases = new Set(["completed", "blocked"]);
+const recordableRunNodePhases = new Set(["running", "completed", "blocked"]);
 const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
 const contextFocusWorkflowPresets = "`orient`, `intake`, `shape`, `goal`, and `execute`";
 const contextFocusRoutingGuidance = `\`harness-rule:context-focus-routing\`: Normalize user intent to ${contextFocusIntentTargets} before choosing context focus. Use the smallest useful workflow focus preset (${contextFocusWorkflowPresets}) and prefer current confirmed state, accepted specs/goals/runs, adapter/config/status, then broad docs or historical logs.`;
@@ -82,6 +82,8 @@ function parseArgs(argv) {
     "idea",
     "integrationRef",
     "integration-ref",
+    "isolationEvidence",
+    "isolation-evidence",
     "lang",
     "contract",
     "mode",
@@ -224,7 +226,7 @@ const messages = {
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
-  agent-harness run node record --run <run-dir> --node <node-id> --phase completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--cwd PATH] [--json]
+  agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]
   agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--review-url <url>] [--integration-ref <ref>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
     initDone: "Agent Harness initialized in {cwd}",
@@ -266,7 +268,7 @@ const messages = {
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
-  agent-harness run node record --run <run-dir> --node <node-id> --phase completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--cwd PATH] [--json]
+  agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]
   agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--review-url <url>] [--integration-ref <ref>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
     initDone: "Agent Harness 已初始化: {cwd}",
@@ -1802,7 +1804,11 @@ function orientationPayload(args) {
       priority: "",
       spec: "",
       goal: "",
-      reason: "no parsed tasks found in the configured task index",
+      reason: tasks.length === 0
+        ? "no parsed tasks found in the configured task index"
+        : done.length === tasks.length
+          ? "all parsed tasks are completed or closed"
+          : "no actionable tasks found in the configured task index",
       route: "",
       startPrompt: "",
       goalCommand: ""
@@ -2455,12 +2461,12 @@ function deliveryPolicyFromSection(section) {
       fields[match[1].trim().toLowerCase()] = cleanMapValue(match[2]);
     }
   }
-  const target = normalizeDeliveryState(fields["target delivery state"] || "integrated") || "integrated";
+  const target = normalizeDeliveryState(fields["target delivery state"] || "validated-local") || "validated-local";
   const reviewAuthorized = fields["review authorized"] || fields["pr authorized"] || "no";
   const integrationAuthorized = fields["integration authorized"] || fields["merge authorized"] || "no";
   return {
     section,
-    deliveryIntent: fields["delivery intent"] || "integrate-after-gates",
+    deliveryIntent: fields["delivery intent"] || "local-validation",
     target,
     commitAuthorized: fields["commit authorized"] || "no",
     pushAuthorized: fields["push authorized"] || "no",
@@ -3293,20 +3299,17 @@ Use \`current-thread\`.
 
 ## Delivery State
 
-- Delivery intent: \`integrate-after-gates\`
-- Target delivery state: \`integrated\`
-- Commit authorized: \`yes\`
-- Push authorized: \`yes\`
+- Delivery intent: \`local-validation\`
+- Target delivery state: \`validated-local\`
+- Commit authorized: \`no\`
+- Push authorized: \`no\`
 - Review authorized: \`no\`
-- Integration authorized: \`yes\`
+- Integration authorized: \`no\`
 - Release authorized: \`no\`
 
-Completed development runs must reach Target delivery state. By default,
-gate-passing implementation work is committed and integrated into the
-target integration line declared by the project adapter, confirmed goal, or
-explicit user instruction; release / ship remains out of scope unless the
-delivery policy explicitly authorizes it. Lower the target to \`validated-local\`
-only for local-only spikes, audits, or explicitly uncommitted work.
+Generated Goals are local-only by default. Commit, push, review, integration,
+release, and ship targets require fresh explicit authorization in the current
+conversation or accepted source spec; never infer them from stale status text.
 
 The locked Execution branch records where implementation happens. It is not
 automatically the integration target, and Harness core does not assume a branch
@@ -4541,6 +4544,11 @@ function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole })
     fallbackSurfaces: ["codex-app-create-thread", "manual-foreground"],
     threadPolicy: "new Codex threads are explicit long-lived handoff lanes, not the default worker surface",
     forkPolicy: "fork is not a default execution surface; use only with explicit controller approval and a corrected role packet",
+    parallelSafety: {
+      launchMode: "sequential-until-isolation-proved",
+      maxParallelWithoutIsolation: 1,
+      requirement: "parallel writers require separate locked worktrees/cwds; otherwise concurrent nodes must be read-only or have proven non-overlapping file ownership"
+    },
     nodes,
     edges: dagEdges(nodes),
     parallelLayers: dagParallelLayers(nodes)
@@ -4576,7 +4584,8 @@ function executionDagSnapshot(dag, runDir) {
     nodeStatuses[node.id] = {
       phase,
       thread: status.thread || "",
-      surface: status.surface || ""
+      surface: status.surface || "",
+      isolationEvidence: status.isolationEvidence || ""
     };
     if (phase === "completed") {
       completed.push(node.id);
@@ -4604,6 +4613,11 @@ function executionDagSnapshot(dag, runDir) {
     }
   }
 
+  const parallelCandidates = [...ready];
+  const safeReady = dag.parallelSafety?.launchMode === "sequential-until-isolation-proved"
+    ? ready.slice(0, 1)
+    : ready;
+
   return {
     version: dag.version,
     dag: "dag.json",
@@ -4616,9 +4630,15 @@ function executionDagSnapshot(dag, runDir) {
     fallbackSurfaces: dag.fallbackSurfaces,
     threadPolicy: dag.threadPolicy,
     forkPolicy: dag.forkPolicy,
+    parallelSafety: dag.parallelSafety || {
+      launchMode: "sequential-until-isolation-proved",
+      maxParallelWithoutIsolation: 1,
+      requirement: "record explicit isolation evidence before parallel launch"
+    },
     nodeCount: dag.nodes.length,
     parallelLayers: dag.parallelLayers,
-    readyNodes: ready,
+    readyNodes: safeReady,
+    parallelCandidates,
     runningNodes: running,
     waitingNodes: waiting,
     completedNodes: completed,
@@ -4662,6 +4682,7 @@ Enforcement: \`${dag.enforcement}\`
 - Fallback: \`${dag.fallbackSurfaces.join("`, `")}\`
 - Thread policy: ${dag.threadPolicy}
 - Fork policy: ${dag.forkPolicy}
+- Parallel safety: ${dag.parallelSafety.requirement}
 - Degraded provenance: ${degradedExecutionProvenanceGuidance}
 - Cancellation boundary: ${controllerCancellationBoundaryGuidance}
 
@@ -4678,7 +4699,9 @@ ${layers || "No valid layers; inspect `dag.json` before execution."}
 ## Controller Rules
 
 - Launch only nodes listed as ready by \`run status --json\`.
-- Independent nodes in the same ready set may run in parallel.
+- Launch sequentially by default. Parallel launch requires recorded isolation
+  evidence: separate locked worktrees/cwds for writers, or proof that concurrent
+  work is read-only or has non-overlapping file ownership.
 - Use \`${dag.defaultWorkerSurface}\` by default for ready worker nodes.
 - Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
 - Use \`agent-harness run node record\` for each worker result before launching dependent nodes.
@@ -4737,6 +4760,8 @@ ${node.stopConditions}
 ## Surface Policy
 
 - Default worker surface is \`${dag.defaultWorkerSurface}\`.
+- Parallel isolation defaults to sequential. A concurrent writer requires a
+  separate locked worktree/cwd or recorded proof of non-overlapping ownership.
 - Prefer Codex CLI subagents for bounded worker execution.
 - Create a new Codex thread only when the controller explicitly needs a visible, long-lived handoff lane.
 - Do not use fork unless the controller explicitly approves it and restates your execution role.
@@ -4949,16 +4974,16 @@ ${sourceTask}
 12. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
 13. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
 14. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
-15. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; nodes in the same ready set may run in parallel.
+15. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes and default to sequential execution; parallel workers require recorded isolation evidence.
 16. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
-16. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
-17. Run the verification commands from the goal.
-18. Treat State Sync Notes as part of task Done. Every executor must name the task/status/goal/run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
-19. ${boundedStatusSnapshotGuidance}
-20. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
-21. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
-22. Record any command output summaries or follow-ups under this run directory.
-23. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+17. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
+18. Run the verification commands from the goal.
+19. Treat State Sync Notes as part of task Done. Every executor must name the task/status/goal/run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
+20. ${boundedStatusSnapshotGuidance}
+21. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
+22. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
+23. Record any command output summaries or follow-ups under this run directory.
+24. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -5259,7 +5284,7 @@ const recordableRunPhases = new Set(["completed", "blocked"]);
 function runNodeRecord(args) {
   const cwd = targetCwd(args);
   if (!args.run || !args.node) {
-    throw new Error("Usage: agent-harness run node record --run <run-dir> --node <node-id> --phase completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--cwd PATH] [--json]");
+    throw new Error("Usage: agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]");
   }
   if (!recordableRunNodePhases.has(args.phase)) {
     throw new Error(`Invalid --phase: ${args.phase || "(missing)"}`);
@@ -5288,21 +5313,29 @@ function runNodeRecord(args) {
   const before = executionDagSnapshot(dag, runDir);
   const dependencies = node.dependencies || [];
   const incompleteDependencies = dependencies.filter((dependency) => !before.completedNodes.includes(dependency));
-  if (args.phase === "completed" && incompleteDependencies.length) {
-    throw new Error(`Execution DAG node '${node.id}' cannot complete before dependencies: ${incompleteDependencies.join(", ")}`);
+  if ((args.phase === "running" || args.phase === "completed") && incompleteDependencies.length) {
+    throw new Error(`Execution DAG node '${node.id}' cannot ${args.phase === "running" ? "start" : "complete"} before dependencies: ${incompleteDependencies.join(", ")}`);
+  }
+  if (args.phase === "running" && !before.readyNodes.includes(node.id)) {
+    throw new Error(`Execution DAG node '${node.id}' is not ready to start.`);
+  }
+  if (args.phase === "running" && before.runningNodes.length && !args.isolationEvidence) {
+    throw new Error(`Starting DAG node '${node.id}' while ${before.runningNodes.join(", ")} is running requires --isolation-evidence <separate-worktree-or-non-overlap-proof>.`);
   }
 
   const now = new Date().toISOString();
+  const previousNodeStatus = readNodeStatus(runDir, node);
   const nodeStatus = {
-    ...readNodeStatus(runDir, node),
+    ...previousNodeStatus,
     node: node.id,
     label: node.label,
     phase: args.phase,
     updatedAt: now,
     summary: args.summary,
     verificationSummary: args.verification || "",
-    thread: args.thread || "",
-    surface: args.surface || "",
+    thread: args.thread || previousNodeStatus.thread || "",
+    surface: args.surface || previousNodeStatus.surface || "",
+    isolationEvidence: args.isolationEvidence || previousNodeStatus.isolationEvidence || "sequential",
     result: node.result
   };
   const resultPath = join(runDir, node.result);
@@ -5311,8 +5344,9 @@ function runNodeRecord(args) {
 Updated: ${now}
 Run: \`${displayPath(cwd, runDir)}\`
 Node: \`${node.id}\`
-Thread: \`${args.thread || "Not recorded."}\`
-Surface: \`${args.surface || "Not recorded."}\`
+Thread: \`${nodeStatus.thread || "Not recorded."}\`
+Surface: \`${nodeStatus.surface || "Not recorded."}\`
+Parallel isolation: \`${nodeStatus.isolationEvidence}\`
 
 ## Summary
 

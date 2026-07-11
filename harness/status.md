@@ -1,75 +1,63 @@
 # Project Status
 
-`harness-rule:bounded-status-snapshot`: this file is a bounded current-state
-snapshot, not an append-only history log. Historical details live in
-`harness/tasks.md`, `harness/goals/`, `.harness/runs/`, and gate records.
+`harness-rule:bounded-status-snapshot`: this file records current state only.
+Historical evidence lives in `harness/tasks.md`, `harness/goals/`, and
+`.harness/runs/`.
 
 ## Focus
 
-- Current focus: Agent Harness is locally updated to version `0.6.0`.
-  Package and plugin manifest versions match, current README entry points link
-  to `docs/releases/v0.6.0.md`, and presentation/smoke checks cover the new
-  release surface. The local Codex plugin cache has been refreshed at
-  `/Users/liuyj/.codex/plugins/cache/personal/harness/0.6.0`.
-- Recently completed: State sync is now explicitly part of task completion,
-  and `harness/status.md` is now a bounded current-state snapshot.
+- Current Goal: None active.
+- Recently completed: Repaired the GPT-5.6 compatibility pass review findings
+  by preserving DAG worker provenance, aligning Goal delivery defaults,
+  correcting all-completed orientation output, adding regression coverage,
+  and including the new route/skill metadata files in Git tracking.
+- Goal:
+  `harness/goals/2026-07-11-make-agent-harness-skills-gpt-56-ready.md`
+- Run:
+  `.harness/runs/20260711-235825-make-agent-harness-skills-gpt-56-ready/`
 
-## Git
+## Git And Delivery
 
-- Preferred work mode: local for the `0.6.0` version/docs update.
 - Current branch: `main`
-- Worktree notes: local checkout has uncommitted protocol, documentation,
-  test, goal, task, and status updates from the current session; commit and
-  push are authorized by the latest user instruction.
+- Work mode: `local`
+- Delivery intent: `local-commit`
+- Target delivery state: `committed`
+- Commit authorized: `yes` (fresh user authorization on 2026-07-12)
+- Push authorized: `no`
+- Review authorized: `no`
+- Integration authorized: `no`
+- Release authorized: `no`
+- Plugin-cache deployment authorized: `no`
+
+Commit authorization comes only from the user's 2026-07-12 `commit`
+instruction. Push, review, integration, release, and plugin-cache deployment
+remain unauthorized.
 
 ## Verification
 
-- Last checked: 2026-07-09
-- Last commands:
-  - `node --check plugins/agent-harness/scripts/agent-harness.mjs`
-  - `node --check scripts/test-suites.mjs`
-  - `node --check tests/smoke.mjs`
-  - `npm run test:presentation`
-  - `npm run test:protocol`
-  - `npm run test:smoke`
+- State: passed.
+- Required checks:
+  - `node --check evals/run-live-skill-activation.mjs`
   - `npm run validate:plugin`
-  - `npm run deploy:local-plugin`
+  - `npm run test:protocol`
+  - `npm run test:eval`
+  - `npm run test:smoke`
+  - `npm run test:all`
   - `git diff --check`
-- Result: passed.
+- Live GPT-5.6 activation: not run; it requires separate explicit model/cost
+  authorization and runtime-reported model evidence.
 
-## Evidence
+## Route
 
-- Accepted evidence:
-  - Goal:
-    `harness/goals/2026-07-09-upgrade-agent-harness-to-060-and-update-release-docs.md`
-  - Run:
-    `.harness/runs/20260709-192744-upgrade-agent-harness-to-060-and-update-release-docs/`
-  - Release notes:
-    `docs/releases/v0.6.0.md`
-  - Prior completed Goal:
-    `harness/goals/2026-07-09-make-status-file-a-bounded-snapshot.md`
-  - Prior completed run:
-    `.harness/runs/20260709-192149-make-status-file-a-bounded-snapshot/`
-  - Prior completed Goal:
-    `harness/goals/2026-07-09-make-state-sync-a-task-completion-obligation.md`
-  - Prior completed run:
-    `.harness/runs/20260709-184137-make-state-sync-a-task-completion-obligation/`
-- Candidate evidence:
-  - None currently pending.
-- Deferred evidence:
-  - None currently recorded.
-
-## Route Notes
-
-- Current route: `execute`
-- Execution role: `implementer`
-- Delivery target: `validated-local`
-- Why: user approved upgrading the current version line to `0.6` and updating
-  docs.
-- Confirmation needed: None for local validation.
-- Idea Inbox candidates: None.
-- Optional competition status: Not used.
+- Public entry: `harness:orient` for the next read-only project decision.
+- Internal route: `orient`
+- Execution role: None active.
+- Accepted-state owner: None active.
+- Need user: None
+- Remaining: None for the accepted local repair. Optional live GPT-5.6
+  activation remains a separately authorized evaluation lane, not unfinished
+  implementation.
 
 ## Blockers
 
-- None recorded.
+- None currently recorded.

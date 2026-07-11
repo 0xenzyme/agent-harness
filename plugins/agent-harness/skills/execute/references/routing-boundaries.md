@@ -21,11 +21,15 @@ selection.
 
 ## Fallback Routes
 
+Route names below are internal states. Use
+[Route To Public Entry Mapping](../../../references/route-entry-mapping.md) and
+always return a published skill or exact user action.
+
 - Use `orient` for read-only state, blockers, and next-route questions.
 - Use `intake` for rough ideas, requirements, bugs, and inbox notes.
 - Use `init` for setup, adoption, config import, and activation preview.
-- Use `shape` or `goal` when scope, non-goals, verification, completion, or
-  pause conditions need to be made durable.
+- Keep `shape` in `harness:orient`. After accepted authorization, use
+  `harness:execute` for the internal `goal` route and durable Goal creation.
 - Use `ask` when product direction, destructive impact, credentials, paid APIs,
   production access, or user intent is unclear.
 
@@ -40,5 +44,6 @@ already provide.
 - "What should we do next?" -> `orient`.
 - "Add this idea to the backlog" -> `intake`.
 - "Set up harness in this repo" -> `init`.
-- "Create a goal from this accepted spec" -> `goal`.
+- "Create a goal from this accepted spec" -> internal `goal` route through
+  `harness:execute`.
 - "Review worker output as the control lane" -> `execute` with `gate-only`.

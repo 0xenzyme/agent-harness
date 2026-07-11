@@ -136,20 +136,22 @@ evidence only.
 
 ## Delivery State
 
-- Delivery intent: `integrate-after-gates`
-- Target delivery state: `integrated`
-- Commit authorized: `yes`
-- Push authorized: `yes`
+- Delivery intent: `local-validation`
+- Target delivery state: `validated-local`
+- Commit authorized: `no`
+- Push authorized: `no`
 - Review authorized: `no`
-- Integration authorized: `yes`
+- Integration authorized: `no`
 - Release authorized: `no`
 
-Completed development runs must reach Target delivery state. By default,
-gate-passing implementation work is committed and integrated into the
-target integration line declared by the project adapter, confirmed goal, or
-explicit user instruction; release / ship remains out of scope unless the
-delivery policy explicitly authorizes it. Lower the target to `validated-local`
-only for local-only spikes, audits, or explicitly uncommitted work.
+Generated Goals are local-only by default. Raise the delivery target and its
+required authorizations only from fresh explicit user/spec authority; never
+inherit delivery permission from status history.
+
+Completed development runs must reach Target delivery state. The default
+`validated-local` target requires local verification but grants no commit,
+push, review, integration, release, or ship authority. Continue beyond that
+target only when the delivery policy records fresh explicit authorization.
 
 `harness-rule:local-delivery-ceiling`: `validated-local` is local verification
 evidence only; it is not commit, push, review, integration, release, or ship

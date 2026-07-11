@@ -32,6 +32,15 @@ preview, changelog, or release-note surfaces change. Run `npm run test:eval`
 when eval documentation or eval fixtures change. Run `npm run test:all` when
 presentation, protocol, and smoke coverage should all run.
 
+`npm run test:eval` is deterministic and does not measure model activation.
+An opt-in live check requires explicit model/cost authorization:
+
+```bash
+AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-5.6 --reasoning-effort high --output evals/results/live-gpt-5.6.json
+```
+
+The live runner refuses a GPT-5.6 claim unless Codex reports the runtime model.
+
 ## Initialize Or Import Projects
 
 Initialize an adapter-contract downstream project:
@@ -213,10 +222,13 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
 ```
 
-Record one execution DAG node result before launching dependent nodes:
+Record a node start before launch, then record its result. A second concurrent
+writer requires `--isolation-evidence`:
 
 ```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase running --summary "Launching read-only explorer"
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase completed --summary "Mapped implementation ownership" --verification "Read-only review completed"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker-b --phase running --summary "Launching isolated writer" --isolation-evidence "separate locked worktree /tmp/worker-b"
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
 ```
 

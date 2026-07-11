@@ -37,6 +37,12 @@ Use capability and safety to choose the surface. Do not treat worker
 availability as permission to broaden scope, skip verification, or change the
 controller's execution role.
 
+`harness-rule:parallel-worker-isolation`: launch workers sequentially by
+default. Parallel writers require separate locked worktrees/cwds. Parallel
+read-only workers or writers with proven non-overlapping file ownership may run
+together only when every launch packet records the evidence. Without isolation
+evidence, launch at most one ready node.
+
 ## Launch Requirements
 
 Every worker launch must name:
@@ -46,6 +52,7 @@ Every worker launch must name:
 - worker surface
 - execution cwd, branch, and slot
 - prompt artifact or launch packet
+- parallel isolation evidence or `sequential`
 - allowed scope and forbidden scope
 - required docs and source of truth
 - validation command or evidence requirement
@@ -87,6 +94,7 @@ sync, do not launch the worker. Shape the goal/run or ask for confirmation.
 - Record accepted state only from the controller lane.
 - Snapshot active workers before changing same-scope execution. Do not launch
   dependents or record completed state while active worker state is unresolved.
+- Do not launch multiple ready writers without recorded isolation evidence.
 - Quarantine late output after cancellation or supersession until the
   controller rejects it or revalidates it as candidate evidence.
 

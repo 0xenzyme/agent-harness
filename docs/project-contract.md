@@ -614,10 +614,13 @@ automatic acceptance is supported. Support for another coding agent requires
 fixtures and validation for its result packet before it can become accepted
 state.
 
-Parallel execution must be represented as an execution DAG. The controller may
-launch all ready nodes in the same ready set in parallel, but it must not launch
-or accept dependent nodes until their dependencies have completed with concrete
-result packets.
+Parallel execution must be represented as an execution DAG and obey
+`harness-rule:parallel-worker-isolation`. Ready nodes default to sequential
+launch. Multiple writers may run together only with separate locked
+worktrees/cwds; read-only or non-overlapping workers require recorded ownership
+evidence. `run node record --phase running` must reject a second concurrent
+worker without `--isolation-evidence`. Dependent nodes wait for concrete result
+packets from prerequisites.
 
 ## Intake Rules
 
@@ -719,9 +722,9 @@ task name, milestone number, or roadmap phase identifier.
 - `run prepare` must not start daemons, spawn coding-agent sessions, push,
   deploy, or open review requests. It may prepare per-node prompts for
   controller-launched workers.
-- `run node record` records a single DAG node result. It must reject a completed
-  node whose dependencies are not completed, and completed nodes require
-  verification evidence.
+- `run node record` records a DAG node start or result. It rejects starts and
+  completions whose dependencies are incomplete, rejects a second running node
+  without isolation evidence, and requires verification for completed nodes.
 - `run record` updates only the target run directory's `status.json` and
   `logs/`; it does not update source files, task indexes, review requests,
   deployments, or releases. Completed records require verification evidence;
@@ -820,11 +823,11 @@ dirty worktree back to the user as the normal endpoint. If authorization or
 external evidence is missing, record delivery pending and make the missing
 authorization/evidence the next action.
 
-For development goals, the default delivery intent is `integrate-after-gates`:
-commit the accepted work and integrate it into the target integration line once
-the required gates pass. Release / ship remains separate and must be explicitly
-authorized. Local-only goals should lower the target to `validated-local`
-instead of putting commit, review, or integration into `Non-Goals`.
+Generated development Goals default to `local-validation` with target
+`validated-local` and every delivery authorization set to `no`. Commit, push,
+review, integration, release, and ship targets require fresh explicit authority
+from the current conversation or accepted source spec. Status history must
+never supply or extend that authority.
 
 ## User-Facing Closeout And Need User Digest
 
