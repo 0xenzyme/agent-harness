@@ -1,396 +1,223 @@
 # Agent Harness
 
-[中文](README.zh-CN.md)
+[简体中文](README.zh-CN.md)
 
 [![Version](https://img.shields.io/badge/version-0.6.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
-[![Protocol](https://img.shields.io/badge/test-protocol_passed-2563eb)](scripts/test-suites.mjs)
-[![Smoke](https://img.shields.io/badge/smoke-passed-16a34a)](tests/smoke.mjs)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
 Agent Harness is an adapter-driven control plane for Codex and coding-agent
-work. It turns accepted direction into milestones, goals, goal-internal tasks,
-runs, worker execution, verification, gates, and state sync.
+work. It turns accepted direction into scoped execution, verifiable evidence,
+and synchronized project state—without making the human route every task.
 
 ```text
-roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync
+Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 ```
 
-[Capability Matrix](docs/HARNESSES.md) · [Cybernetic Stability](docs/cybernetic-stability.md) ·
-[GitHub Presentation](docs/github-presentation.md) · [Changelog](CHANGELOG.md) ·
-[v0.6.0 Release Notes](docs/releases/v0.6.0.md) · [Usage](docs/usage.md)
-
-![Agent Harness social preview](docs/assets/github/social-preview.svg)
-
-## Value Proposition
-
-Agent Harness is for the moment after the human has set direction.
-
-In a normal project, a user may define a roadmap such as `M1` through `M5`,
-discuss the product direction for `M5`, and decide that no more product
-judgment, credentials, production access, or destructive operation is needed.
-At that point, "complete M5" should not mean "write or accept the next small
-spec and stop." It should mean:
-
-```text
-accepted direction -> milestone completion map -> executable goals / run DAG
--> worker execution -> control-lane verification -> state sync
-```
-
-The human should still own direction, authorization, and true gates. Harness
-should own the remaining execution mechanics inside the project adapter:
-
-- discover the current roadmap, milestone, spec, goal, task, and run state;
-- turn milestone requests such as `complete M5` into explicit milestone items;
-- dispatch worker execution when the current thread is acting as main control;
-- verify concrete evidence before accepting state;
-- require executors to return `State Sync Notes` as part of task completion,
-  while the accepted-state owner verifies and writes accepted state;
-- keep `tasks`, bounded `status` snapshots, goals, runs, and gate records
-  aligned;
-- pause only for real human gates such as unclear product direction,
-  conflicting constraints, credentials, paid APIs, production access,
-  destructive actions, or delivery above policy.
-
-The core promise is not "agents write files." The promise is that a coding
-agent can stop losing the plot between roadmap, spec, implementation,
-verification, and handoff. Parent milestones stay open until their mapped
-subitems are complete; source-spec acceptance such as `M5-S0` cannot silently
-become parent milestone completion for `M5`.
-
-## Problem
-
-When one person maintains many software projects, too much time is spent on
-coordination work around development: tracking tasks, deciding the next safe
-step, preparing goal prompts, checking evidence, and remembering project
-boundaries. Agent Harness pushes that work into a stable harness layer so
-coding agents can automate more of the development loop and the human spends
-less time acting as the task router.
-
-## Adapter Model
-
-Agent Harness is an adapter-driven workflow. The plugin provides the stable
-protocol, each project keeps a thin adapter, and project artifacts record the
-actual task, spec, goal, run, and gate facts.
-
-The adapter contract is a project execution model, not a single file. It
-connects task intake, roadmap direction, milestone planning, specs, goals,
-runs, gates, and evidence.
-
-The core principle is:
-
-```text
-Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
-```
-
-![Agent Harness Adapter Model](docs/assets/readme/adapter-model.png)
-
-## Design Principles
-
-Agent Harness keeps the control plane small and inspectable:
-
-- Proposal competition is optional and belongs to Shape work. It can compare
-  routes and risks, but it does not execute the selected route.
-- Accepted state should leave an evidence trail through task entries, specs,
-  goals, runs, gate records, command summaries, or review notes.
-- Status files are bounded current-state snapshots, not append-only history
-  logs; detailed history belongs in tasks, goals, runs, and gate records.
-- Orientation reconciles durable artifacts with newer conversation-confirmed
-  state from the active control thread, and reports stale artifacts before
-  recommending execution.
-- Packaging stays disciplined: docs, skills, templates, marketplace metadata,
-  validation commands, and version metadata should describe the same exposed
-  behavior.
-- Plugin docs and templates stay project-neutral. Local product rules,
-  credentials, ports, provider policies, and production procedures belong in
-  project adapters and artifacts.
-- Route explanations stay lightweight: Codex should briefly say why it is
-  orienting, shaping, executing, asking, using a worktree, or staying local.
-- `harness-rule:cybernetic-stability`: the control loop should stay stable:
-  target selection, sensor freshness,
-  measurement snapshots, remaining gap, feedback quality, and saturation
-  limits should be explicit enough to prevent stale state, false completion,
-  and route oscillation.
-
-The runtime/control surfaces, default worker behavior, protocol anchors, and
-surface-appropriate verification suites are summarized in the
-[Agent Harness capability matrix](docs/HARNESSES.md).
-The control-theory inspired stability model is documented in
-[Cybernetic Stability](docs/cybernetic-stability.md).
-
-## Influences
-
-Agent Harness is inspired in part by b3ehive's approach to controller-led
-agent work: small workflow entry points, explicit route selection, proposal
-competition as optional Shape work, inspectable evidence before accepted state,
-and disciplined packaging. Agent Harness translates those ideas into its own
-fixed/adapter contracts rather than importing b3ehive project structure or
-local project policy.
-
-## Artifact Map
-
-Adapter projects use `.harness/config.json` plus a project adapter to
-resolve artifact paths. The plugin does not need to know project-specific
-product names, database boundaries, production rules, ports, credentials, or
-release policy.
-
-Typical adapter artifacts include:
-
-- `Task Index`: the active task/backlog source of truth.
-- `Roadmap`: longer-range product or engineering direction.
-- `Milestones`: phase-level roadmap outcomes, gates, and deferred registers.
-- `Specs`: accepted scope, non-goals, decisions, and validation.
-- `Goals`: executable work units with scope, acceptance, and internal tasks.
-- `Tasks`: goal-internal checklist or execution breakdown items.
-- `Runs / Logs`: one execution attempt, status, prompt, execution DAG,
-  subagent guidance, worker node prompts, and evidence.
-- `Gate Records`: review, integration, acceptance, and state-sync decisions.
-
-The user-facing terminology line is:
-
-```text
-Roadmap -> Milestone -> Goal -> Task -> Run
-```
-
-`Goal` is the main Harness work unit. `Task` means a concrete breakdown inside
-a Goal. `Run` is an execution attempt and evidence record, not a thread or
-session. `P0` / `P1` / `P2` / `P3` are priorities only; `M1` / `M2` / `M5`
-refer to roadmap milestones.
-
-![Adapter Artifact Map](docs/assets/readme/adapter-artifact-map.png)
-
-## Package Shape
-
-This repo is both a source project and a Codex local marketplace:
-
-- `.agents/plugins/marketplace.json` exposes the local plugin.
-- `plugins/agent-harness/` contains the installable Codex plugin.
-- `plugins/agent-harness/skills/` contains reusable Codex skills.
-- `plugins/agent-harness/references/` contains canonical harness protocols.
-- `plugins/agent-harness/schemas/` contains machine-readable contract schemas.
-- `plugins/agent-harness/templates/` contains starter templates.
-- `plugins/agent-harness/scripts/agent-harness.mjs` provides a small CLI.
-- `evals/` contains project-neutral evaluation fixture blueprints.
-
-The current repository's `harness/` and `.harness/` directories are project
-adapter state for developing Agent Harness itself. They are not installed as
-plugin content. Installed plugin content comes from `plugins/agent-harness/`;
-downstream projects get their own adapter artifacts only when `harness:init`
-or the CLI initializes/imports that project.
-
-## Plugin Skills
-
-Codex exposes the plugin as `harness`. The primary workflow-controller entry
-path is four workflow skills:
-
-- `harness:orient`: read-only project state, current todo, blockers, and next
-  route recommendation.
-- `harness:init`: initialize a new project, migrate an existing project, run
-  doctor/import, and preview activation instructions.
-- `harness:intake`: capture and triage a new idea, requirement, bug, or Idea
-  Inbox Thread note; record only after explicit approval.
-- `harness:execute`: implement a confirmed goal, spec, task breakdown, or run
-  packet, then verify, review `State Sync Notes`, and sync task/status/run
-  evidence.
-
-`shape`, `goal`, `competition`, and `ask` are internal route states, not
-additional skills. Shape and optional competition stay read-only in
-`harness:orient`; after scope is accepted, `harness:execute` prepares the
-repository Goal and executes it. Ask means answer the blocking question, then
-resume the mapped public skill.
-
-Older artifact-oriented wrapper skills are no longer shipped. Use the workflow
-skill that matches the route: `init` for setup/adoption, `orient` for read-only
-state, `intake` for new ideas, and `execute` for confirmed work.
-
-Codex plugin metadata does not currently expose a project-confirmed localized
-description schema for this package. User-visible plugin and skill descriptions
-therefore use a compact zh-CN/en bilingual fallback in the existing description
-fields, while runtime responses still follow the user's language.
-
-### Which Skill Should I Use?
-
-| Situation | Skill |
-| --- | --- |
-| Adopt Agent Harness in a project, migrate an existing task index, run doctor/import, or preview activation. | `harness:init` |
-| Check project status, todo, blockers, or next route without editing files. | `harness:orient` |
-| Capture or triage a new idea, requirement, bug, or capture-thread note. | `harness:intake` |
-| Prepare a Goal from accepted scope, or execute a confirmed goal/spec/run and then verify and sync state. | `harness:execute` |
+[Quick Start](#use-with-a-coding-agent) · [How It Works](#how-it-works) ·
+[Architecture](#architecture) · [Safety](#safety-and-acceptance) ·
+[Documentation](#documentation)
 
 ## Use With A Coding Agent
 
-Most users do not need to name the underlying skill in the prompt. After
-`harness` is installed or adopted in a project, ask Codex, or another coding
-agent with access to the plugin, to "use harness" in the target project. The
-agent should read project instructions, inspect the Harness adapter, choose a
-route, and report the evidence it used before changing state.
+### 1. Install the plugin
 
-Typical prompts look like:
-
-```text
-Use harness to check the next step in this project.
-Use harness to record this idea, but do not implement it yet: Add a new import flow.
-Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
-Use the current thread as controller and carry the spec through to completion.
-```
-
-The normal user-level flow is:
-
-```text
-use harness to adopt the project -> check state or record ideas -> confirm scope/goal -> execute -> verify -> sync state
-```
-
-When you want the current thread to act as main control, gate, reviewer, judge,
-or acceptance lane, say so explicitly; Harness treats that as `gate-only` by
-default. In `gate-only`, the control thread reviews candidate worker output and
-verification evidence, then accepts, blocks, or requests corrections without
-directly editing implementation files. Run packets default worker nodes to
-`codex-cli-subagent` when that surface is available. Use `implementer` or
-`mixed` only when you want the same thread to edit files too.
-
-The CLI remains available as deterministic tooling for agents, operators, and
-maintainers, but it is not the primary first-use path for most people. See
-the detailed [CLI reference](docs/cli.md) for command examples.
-
-## Acceptance And Validation
-
-Worker output, automation output, inbox notes, and proposal competition results
-are candidate evidence until the control lane validates them. Accepted
-completion needs concrete evidence such as files changed, command summaries,
-run records, gate records, or human review notes. Goals with a
-`Spec Acceptance Checklist` must satisfy every checklist item; adapter-required
-completion gates must appear under `Required Gate Evidence` with concrete
-evidence and `Status: satisfied`.
-
-For documentation or plugin-surface changes in this repository, use:
-
-```bash
-git diff --check
-npm run test:protocol
-npm run test:smoke
-npm run validate:plugin
-```
-
-Use the [capability matrix](docs/HARNESSES.md) to choose a narrower suite when
-only protocol anchors, smoke behavior, eval fixtures, or packaging changed.
-
-For legacy automation that has not adopted suite routing, the minimum local
-checks remain:
-
-```bash
-git diff --check
-npm run test:smoke
-npm run validate:plugin
-```
-
-Also run goal validation for the active goal; the install docs show the exact
-CLI form.
-
-Run `npm run test:eval` only when eval docs or eval fixtures change.
-
-## Workflow
-
-Human steering sets direction. Harness owns the execution engine inside the
-adapter boundaries, and it escalates back to a human gate when review,
-approval, credentials, production access, or unblocking decisions are needed.
-
-![Adapter Execution Model](docs/assets/readme/adapter-execution-model.png)
-
-The intended user-level adapter workflow is:
-
-```text
-use harness to adopt/import -> check state or record ideas -> confirmed scope/goal -> execute -> verify -> state sync
-```
-
-Under the hood, Harness records route decisions, run packets, acceptance
-evidence, delivery state, and status snapshots through deterministic local
-tooling. The tooling stays bounded: it does not start Codex, create a daemon,
-deploy, or perform delivery steps by itself. Delivery proceeds through the
-active goal's Delivery State policy.
-
-Conditional plugin bootstrap remains deferred. The validated plugin manifest
-does not declare a session hook, so installed Agent Harness skills do not
-inject harness instructions into unrelated projects.
-
-Idea Inbox Threads are capture lanes, not execution lanes. Use
-`harness:intake` or `intake idea` to preview and optionally record raw notes;
-promote them to specs, goals, or execution only after the control thread
-accepts the route.
-
-Proposal competition remains a documented Shape protocol. It may compare
-routes, risks, and coverage for ambiguous work, but it does not execute the
-selected route and is not an installed `harness:compete` skill in this
-package.
-
-## Evaluation And Examples
-
-Project-neutral adoption examples live in
-[`docs/examples/downstream-project-shapes.md`](docs/examples/downstream-project-shapes.md).
-They cover new adapter projects, existing adapter imports, fixed compatibility
-projects, non-harness projects, and messy realistic projects.
-
-The evaluation suite lives under [`evals/`](evals/). `npm run test:eval`
-validates deterministic fixtures and trace contracts; it does not run a model
-or prove GPT-5.6 activation. The separately authorized
-`npm run test:eval:live` lane uses ephemeral read-only Codex execution and
-requires runtime-reported model evidence.
-
-## Install In Codex
-
-During local development, add this repo as a marketplace root:
+From a local checkout:
 
 ```bash
 codex plugin marketplace add <path-to-agent-harness-repo>
 ```
 
-After publishing this repo to GitHub, install it on another machine with:
+From GitHub:
 
 ```bash
 codex plugin marketplace add <owner>/<repo>
 ```
 
-Codex will read `.agents/plugins/marketplace.json` and expose the `harness`
-plugin.
+Codex reads `.agents/plugins/marketplace.json` and exposes the plugin as
+`harness`. See [Install In Codex](docs/install.md) for updates, activation, and
+project-adoption details.
 
-## Current Design Bias
+### 2. Ask Codex to use Harness
 
-The current version line is `0.6.0`. It builds on the `0.5.0`
-[cybernetic stability model](docs/cybernetic-stability.md) with stricter
-state discipline: task completion must produce state-sync evidence or
-`State Sync Notes`, and configured status files are bounded current-state
-snapshots rather than append-only history logs.
+Most users do not need to name a skill or run the CLI directly:
 
-The upgrade is practical: Harness should finish work by returning verifiable
-completion evidence and the state-sync notes needed by the accepted-state
-owner. The goal is fewer stale status files, hidden handoff gaps, false
-completion claims, and unbounded status growth.
+```text
+Use harness to check the next step in this project.
+Use harness to record this idea, but do not implement it yet: Add an import flow.
+Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
+Use the current thread as controller and carry the accepted spec through to completion.
+```
 
-This version is intentionally bounded:
+### 3. Choose an explicit entry when needed
 
-- It creates stable files and directories.
-- It gives Codex a consistent way to find project task, spec, goal, and run
-  artifacts.
-- It recommends worktree behavior, but does not force branch creation.
-- It starts with report-only loops before unattended fix loops.
-- It makes escalation points explicit before credentials, paid APIs,
-  production access, destructive operations, delivery above the active goal
-  policy, deploy, or release.
+| Situation | Public skill |
+| --- | --- |
+| Adopt Harness, import an existing task index, run doctor, or preview activation. | `harness:init` |
+| Inspect status, blockers, stale artifacts, or the next route without mutation. | `harness:orient` |
+| Capture or triage an idea, requirement, bug, or inbox note. | `harness:intake` |
+| Prepare a Goal from accepted scope, execute confirmed work, verify, and sync state. | `harness:execute` |
 
-The goal is to increase development automation while keeping the control
-points, evidence, and escalation boundaries explicit.
+`shape`, `goal`, `competition`, and `ask` are internal route states, not
+additional installed skills. Harness maps them back to one of the public skills
+or to an exact user decision.
+
+## Why Agent Harness
+
+Agent Harness is for the moment after the human has set direction. The human
+still owns product judgment, authorization, and true pause conditions. Harness
+owns the repeatable execution mechanics inside the project adapter:
+
+- discover roadmap, milestone, spec, Goal, Task, and Run state;
+- turn a request such as `complete M5` into explicit completion items;
+- prepare Goals and execution DAGs instead of stopping at the next small spec;
+- coordinate workers without confusing candidate output with accepted state;
+- verify concrete evidence before advancing delivery state;
+- require `State Sync Notes` as part of Task completion;
+- keep task indexes, bounded status snapshots, Goals, Runs, and gates aligned;
+- pause for real human gates such as unclear direction, credentials, paid APIs,
+  production access, destructive actions, or delivery above policy.
+
+The promise is not merely that agents write files. The promise is that coding
+agents stop losing the plot between roadmap, specification, implementation,
+verification, delivery, and handoff.
+
+## How It Works
+
+![Agent Harness execution model](docs/assets/readme/adapter-execution-model.svg)
+
+The user-facing hierarchy is:
+
+```text
+Roadmap -> Milestone -> Goal -> Task -> Run
+```
+
+- A **Roadmap** carries longer-range direction.
+- A **Milestone** is a phase-level outcome and may require several Goals.
+- A **Goal** is the primary Harness work unit with scope and acceptance.
+- A **Task** is a concrete checklist or execution item inside a Goal.
+- A **Run** is one execution attempt and evidence record, not a thread.
+- A **Spec** constrains the Goal before execution; it is not a post-Run artifact.
+
+Parent milestones stay open until their mapped items are satisfied. Accepting a
+source-spec item such as `M5-S0` cannot silently close the parent `M5` while
+implementation work remains.
+
+`harness-rule:cybernetic-stability` keeps the loop explicit: intent selects the
+target, fresh observations form a measurement snapshot, the controller acts on
+the remaining gap, and verification determines whether the loop should
+continue, pause, ask, or close. See
+[Cybernetic Stability](docs/cybernetic-stability.md).
+
+## Architecture
+
+![Agent Harness adapter model](docs/assets/readme/adapter-model.svg)
+
+Agent Harness separates stable protocol from local project facts:
+
+```text
+Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
+```
+
+- The **plugin** ships workflow skills, protocol references, schemas,
+  templates, and deterministic CLI gates.
+- The **project adapter** declares artifact paths, boundaries, verification,
+  state-sync rules, work mode, and delivery policy.
+- The **project artifacts** record the roadmap, milestones, specs, Goals,
+  Tasks, Runs, gate results, and evidence.
+
+![Agent Harness artifact map](docs/assets/readme/adapter-artifact-map.svg)
+
+Adapter projects resolve these paths through `.harness/config.json`; plugin core
+does not embed downstream product names, ports, credentials, database rules, or
+production policy.
+
+## Safety And Acceptance
+
+Harness treats worker, automation, inbox, and proposal output as candidate
+evidence until the control lane validates it. Completion requires concrete,
+inspectable evidence such as changed files, command summaries, Run records,
+gate records, or human review notes.
+
+Key boundaries:
+
+- `gate-only` controllers review and accept evidence without editing candidate
+  implementation directly.
+- Parallel writers require separate locked worktrees/cwds or recorded proof of
+  non-overlapping ownership; execution is sequential by default.
+- Local verification does not imply commit, push, review, integration, release,
+  or deployment.
+- Status files are bounded current-state snapshots, not append-only history.
+- Newer conversation-confirmed direction is reconciled with stale artifacts
+  before execution continues.
+- Conditional plugin bootstrap is not enabled, so installed Harness skills do
+  not inject instructions into unrelated projects.
+
+The complete runtime surfaces, protocol anchors, and verification suites are in
+the [Capability Matrix](docs/HARNESSES.md).
+
+## Repository And Validation
+
+This repository is both the Agent Harness source project and a Codex local
+marketplace:
+
+- `.agents/plugins/marketplace.json` exposes the local plugin.
+- `plugins/agent-harness/` contains the installable plugin.
+- `plugins/agent-harness/skills/` contains the four public workflow skills.
+- `plugins/agent-harness/references/` contains canonical protocols.
+- `plugins/agent-harness/schemas/` and `templates/` define project contracts.
+- `plugins/agent-harness/scripts/agent-harness.mjs` provides deterministic CLI
+  operations for agents and maintainers.
+- `evals/` contains project-neutral evaluation fixtures.
+
+The repository's own `harness/` and `.harness/` directories are development
+state for this project. They are not installed as plugin content. Downstream
+projects receive their own adapter artifacts only through adoption or import.
+
+For README, documentation, or plugin-surface changes, run:
+
+```bash
+git diff --check
+npm run test:presentation
+npm run test:protocol
+npm run test:smoke
+npm run validate:plugin
+```
+
+The CLI remains deterministic tooling rather than the primary first-use path.
+See the [CLI reference](docs/cli.md) for its command surface.
+
+## Evaluation
+
+The deterministic suite under [`evals/`](evals/) validates fixtures and trace
+contracts; it does not run a model or prove GPT-5.6 activation. The separately
+authorized `npm run test:eval:live` lane uses ephemeral read-only Codex
+execution and requires runtime-reported model evidence.
+
+Project-neutral adoption examples cover new projects, existing adapter imports,
+fixed-contract compatibility, non-Harness projects, and messy realistic states:
+[Downstream Project Shapes](docs/examples/downstream-project-shapes.md).
+
+## Documentation
+
+- [Usage](docs/usage.md)
+- [Install In Codex](docs/install.md)
+- [CLI Reference](docs/cli.md)
+- [Capability Matrix](docs/HARNESSES.md)
+- [Project Contract](docs/project-contract.md)
+- [Cybernetic Stability](docs/cybernetic-stability.md)
+- [GitHub Presentation](docs/github-presentation.md)
+- [v0.6.0 Release Notes](docs/releases/v0.6.0.md)
+- [Changelog](CHANGELOG.md)
+
+Agent Harness is inspired in part by b3ehive's controller-led approach, while
+keeping its own fixed/adapter contracts and project-neutral core.
 
 ## Roadmap
 
-Future Agent Harness work should make the control contracts usable by other
-coding agents, not only Codex. The intended direction is an agent-neutral
-adapter layer for task/spec/goal/run packets, capability declarations,
-verification results, and state-sync evidence. Support for other coding agents
-should be added only after each agent surface has explicit safety boundaries,
-result-packet expectations, and validation fixtures.
-
-Delegation should stay capability-driven: detect whether a coding-agent
-surface can create isolated work, return an execution result packet, report
-changed files and verification, and respect no-daemon / no-push boundaries. If
-those capabilities are missing, Agent Harness should fall back to foreground
-manual execution instead of pretending parallel or isolated implementation is
-available.
+The next direction is an agent-neutral adapter layer that other coding agents
+can implement without weakening Harness contracts. New execution surfaces
+should be added only when they can declare isolation, return inspectable result
+packets, report verification and state-sync evidence, and respect delivery
+boundaries. When those capabilities are missing, Harness should fall back to
+bounded foreground execution rather than pretend parallelism or isolation.

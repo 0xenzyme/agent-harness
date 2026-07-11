@@ -46,7 +46,7 @@
 
   <rect x="840" y="212" width="285" height="102" rx="16" fill="#f0fbf7" stroke="#88d6be"/>
   <text x="982" y="253" class="card-title" text-anchor="middle">Workflow Skills</text>
-  <text x="982" y="282" class="card-note" text-anchor="middle">orient, intake, execute, init</text>
+  <text x="982" y="282" class="card-note" text-anchor="middle">init, orient, intake, execute</text>
 
   <rect x="1160" y="212" width="285" height="102" rx="16" fill="#fff7e5" stroke="#e9bb55"/>
   <text x="1302" y="253" class="card-title" text-anchor="middle">CLI + Templates</text>

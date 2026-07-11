@@ -29,28 +29,31 @@
   <text x="128" y="174" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="70" font-weight="760" letter-spacing="0">Agent Harness</text>
   <text x="132" y="226" fill="#cbd5e1" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="28" font-weight="500" letter-spacing="0">Adapter-driven control plane for Codex and coding-agent work</text>
 
-  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="24" font-weight="700">
-    <rect x="130" y="304" width="156" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="162" y="349" fill="#e2e8f0">Tasks</text>
-    <rect x="326" y="304" width="156" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="360" y="349" fill="#e2e8f0">Goals</text>
-    <rect x="522" y="304" width="156" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="564" y="349" fill="#e2e8f0">Runs</text>
-    <rect x="718" y="304" width="156" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="754" y="349" fill="#e2e8f0">Gates</text>
-    <rect x="914" y="304" width="214" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="952" y="349" fill="#e2e8f0">State Sync</text>
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">
+    <rect x="130" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="156" y="349" fill="#e2e8f0">Roadmap</text>
+    <rect x="305" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="326" y="349" fill="#e2e8f0">Milestone</text>
+    <rect x="480" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="529" y="349" fill="#e2e8f0">Goal</text>
+    <rect x="655" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="705" y="349" fill="#e2e8f0">Task</text>
+    <rect x="830" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="875" y="349" fill="#e2e8f0">Run</text>
+    <rect x="1005" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="1036" y="349" fill="#e2e8f0">Evidence</text>
   </g>
 
   <g stroke="url(#line)" stroke-width="5" stroke-linecap="round" fill="none">
-    <path d="M288 340H322"/>
-    <path d="M484 340H518"/>
-    <path d="M680 340H714"/>
-    <path d="M876 340H910"/>
+    <path d="M279 340H301"/>
+    <path d="M454 340H476"/>
+    <path d="M629 340H651"/>
+    <path d="M804 340H826"/>
+    <path d="M979 340H1001"/>
   </g>
 
   <g fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="22" font-weight="520">
-    <text x="132" y="452">roadmap -> milestone -> goal -> run DAG -> verification evidence</text>
+    <text x="132" y="452">accepted direction -> scoped execution -> verification -> state sync</text>
     <text x="132" y="490">v0.6.0 / state sync / bounded status / protocol checks</text>
   </g>
 </svg>

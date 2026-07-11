@@ -337,16 +337,18 @@ const matrixLinkExpectations = [
 ];
 
 const presentationExpectations = [
-  ["README.md", "docs/assets/github/social-preview.svg"],
-  ["README.md", "docs/assets/readme/adapter-model.png"],
-  ["README.md", "docs/assets/readme/adapter-execution-model.png"],
+  ["README.md", "docs/assets/readme/adapter-model.svg"],
+  ["README.md", "docs/assets/readme/adapter-artifact-map.svg"],
+  ["README.md", "docs/assets/readme/adapter-execution-model.svg"],
+  ["README.md", "## Use With A Coding Agent"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
   ["README.md", "docs/releases/v0.6.0.md"],
   ["README.md", "docs/cybernetic-stability.md"],
-  ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-model.png"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.png"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-model.svg"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-artifact-map.svg"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.svg"],
+  ["README.zh-CN.md", "## 在项目中怎么用"],
   ["README.zh-CN.md", "docs/github-presentation.md"],
   ["README.zh-CN.md", "CHANGELOG.md"],
   ["README.zh-CN.md", "docs/releases/v0.6.0.md"],
@@ -365,11 +367,15 @@ const presentationExpectations = [
   ["docs/cybernetic-stability.md", "stability/saturation"],
   ["docs/assets/github/social-preview.svg", "v0.6.0"],
   ["docs/assets/github/social-preview.svg", "bounded status"],
-  ["docs/assets/github/social-preview.svg", "Tasks"],
+  ["docs/assets/github/social-preview.svg", "Roadmap"],
+  ["docs/assets/github/social-preview.svg", "Task"],
   ["docs/assets/readme/adapter-model.svg", "Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run"],
   ["docs/assets/readme/adapter-model.svg", "milestones, goals, runs"],
   ["docs/assets/readme/adapter-execution-model.svg", "Milestone"],
   ["docs/assets/readme/adapter-execution-model.svg", "Goals are the primary execution unit"],
+  ["docs/assets/readme/adapter-execution-model.svg", "Specs constrain Goals before execution"],
+  ["docs/assets/readme/adapter-artifact-map.svg", ".harness/config.json"],
+  ["docs/assets/readme/adapter-artifact-map.svg", "Agent Harness Artifact Map"],
   ["LICENSE", "MIT License"]
 ];
 
@@ -474,6 +480,12 @@ function checkPresentation() {
     "package.json and plugin manifest versions must stay aligned"
   );
   const adapterModelDiagram = readRepoFile("docs/assets/readme/adapter-model.svg");
+  const readme = readRepoFile("README.md");
+  const readmeZh = readRepoFile("README.zh-CN.md");
+  assert(!readme.includes("docs/assets/github/social-preview.svg"), "README.md must not embed the social preview asset");
+  assert(!readmeZh.includes("docs/assets/github/social-preview.svg"), "README.zh-CN.md must not embed the social preview asset");
+  assert(!readme.includes("docs/assets/readme/adapter-model.png"), "README.md must prefer lightweight SVG diagrams");
+  assert(!readmeZh.includes("docs/assets/readme/adapter-model.png"), "README.zh-CN.md must prefer lightweight SVG diagrams");
   assert(
     !adapterModelDiagram.includes("tasks, specs, goals, runs"),
     "adapter-model.svg must not preserve the old task-first diagram phrase"

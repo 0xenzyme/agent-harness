@@ -8,6 +8,27 @@
 
 ## Done
 
+- [x] Improve README presentation and first-use clarity.
+  - Completed: Moved install, first-use prompts, and the four public skills
+    directly below the hero in both English and zh-CN READMEs.
+  - Completed: Reduced README.md from 396 to 223 lines and README.zh-CN.md from
+    370 to 211 lines while preserving architecture, safety, evaluation, and
+    documentation entry points.
+  - Completed: Removed the embedded social preview, removed static passed-test
+    badges, and switched README diagrams from PNG to SVG.
+  - Completed: Added a consistent Artifact Map using `.harness/config.json`,
+    moved Spec constraints before Goal execution, and aligned the social
+    preview with the canonical Roadmap -> Milestone -> Goal -> Task -> Run
+    hierarchy.
+  - Goal:
+    `harness/goals/2026-07-12-improve-readme-presentation-and-first-use-clarity.md`
+  - Verification: Native-dimension SVG visual inspection, `xmllint`, README
+    relative-link checks, `npm run validate:plugin`, `npm run test:all`, and
+    `git diff --check` passed.
+  - Delivery: `pushed` to `origin/main` under fresh user authorization; no
+    review, integration, publish, release, deploy, credentials, paid API,
+    production, daemon, or destructive operation was performed.
+
 - [x] Make Agent Harness skills GPT-5.6-ready.
   - Follow-up correction: Preserved DAG worker `thread`, `surface`, and
     `isolationEvidence` across `running` to `completed`; aligned the Goal

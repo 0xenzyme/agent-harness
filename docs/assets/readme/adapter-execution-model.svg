@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941" role="img" aria-labelledby="title desc">
   <title id="title">Agent Harness Execution Model</title>
-  <desc id="desc">Accepted direction becomes milestones, goals, tasks, runs, verification, gate evidence, and state sync.</desc>
+  <desc id="desc">Human direction and a specification constrain a Goal before execution; Runs then produce verification, gate evidence, and synchronized state.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#f7fbff"/>
@@ -22,22 +22,20 @@
       .step-title { font-size: 26px; font-weight: 700; fill: #162235; }
       .step-note { font-size: 17px; font-weight: 500; fill: #536272; }
       .small-title { font-size: 21px; font-weight: 700; fill: #1f2937; }
-      .small-note { font-size: 16px; font-weight: 500; fill: #536272; }
       .footer { font-size: 23px; font-weight: 600; fill: #263243; }
     </style>
   </defs>
 
   <rect width="1672" height="941" fill="url(#bg)"/>
   <circle cx="1430" cy="142" r="124" fill="#f4c666" opacity="0.2"/>
-  <circle cx="242" cy="778" r="142" fill="#62c2b4" opacity="0.16"/>
+  <circle cx="242" cy="792" r="142" fill="#62c2b4" opacity="0.16"/>
 
   <text x="92" y="92" class="title">Agent Harness Execution Model</text>
   <text x="94" y="137" class="subtitle">Accepted direction becomes scoped Goal work, verifiable Runs, and synchronized evidence.</text>
 
   <rect x="92" y="176" width="1488" height="112" rx="24" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
   <text x="132" y="221" class="section">Human Steering</text>
-  <text x="132" y="253" class="section-note">Direction, constraints, acceptance, and pauses.</text>
-
+  <text x="132" y="253" class="section-note">Direction, constraints, acceptance, and true pause conditions.</text>
   <rect x="564" y="201" width="220" height="58" rx="14" fill="#eef6ff" stroke="#9ac4f8"/>
   <text x="674" y="238" class="small-title" text-anchor="middle">Intent</text>
   <rect x="812" y="201" width="220" height="58" rx="14" fill="#f0fbf7" stroke="#88d6be"/>
@@ -47,60 +45,54 @@
   <rect x="1308" y="201" width="220" height="58" rx="14" fill="#fff0ed" stroke="#f2a691"/>
   <text x="1418" y="238" class="small-title" text-anchor="middle">Pause Conditions</text>
 
-  <line x1="836" y1="291" x2="836" y2="332" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="836" y1="291" x2="836" y2="326" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <rect x="92" y="337" width="1488" height="372" rx="26" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <text x="132" y="386" class="section">Harness Work Loop</text>
-  <text x="132" y="418" class="section-note">Milestones are larger outcomes; Goals are the primary execution unit.</text>
+  <rect x="92" y="332" width="1488" height="410" rx="26" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
+  <text x="132" y="381" class="section">Harness Work Loop</text>
+  <text x="132" y="413" class="section-note">Goals are the primary execution unit; Specs constrain Goals before execution.</text>
 
-  <rect x="132" y="462" width="212" height="106" rx="18" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="238" y="504" class="step-title" text-anchor="middle">Roadmap</text>
-  <text x="238" y="534" class="step-note" text-anchor="middle">direction</text>
+  <rect x="632" y="430" width="212" height="70" rx="16" fill="#fff0ed" stroke="#f2a691"/>
+  <text x="738" y="459" class="step-title" text-anchor="middle">Spec</text>
+  <text x="738" y="484" class="step-note" text-anchor="middle">constraints</text>
+  <line x1="738" y1="502" x2="738" y2="527" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <rect x="382" y="462" width="212" height="106" rx="18" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="488" y="504" class="step-title" text-anchor="middle">Milestone</text>
-  <text x="488" y="534" class="step-note" text-anchor="middle">phase outcome</text>
+  <rect x="132" y="532" width="212" height="96" rx="18" fill="#eef6ff" stroke="#9ac4f8"/>
+  <text x="238" y="571" class="step-title" text-anchor="middle">Roadmap</text>
+  <text x="238" y="600" class="step-note" text-anchor="middle">direction</text>
+  <rect x="382" y="532" width="212" height="96" rx="18" fill="#f0fbf7" stroke="#88d6be"/>
+  <text x="488" y="571" class="step-title" text-anchor="middle">Milestone</text>
+  <text x="488" y="600" class="step-note" text-anchor="middle">phase outcome</text>
+  <rect x="632" y="532" width="212" height="96" rx="18" fill="#fff7e5" stroke="#e9bb55"/>
+  <text x="738" y="571" class="step-title" text-anchor="middle">Goal</text>
+  <text x="738" y="600" class="step-note" text-anchor="middle">main work unit</text>
+  <rect x="882" y="532" width="212" height="96" rx="18" fill="#f2efff" stroke="#b9a6f6"/>
+  <text x="988" y="571" class="step-title" text-anchor="middle">Tasks</text>
+  <text x="988" y="600" class="step-note" text-anchor="middle">checklist breakdown</text>
+  <rect x="1132" y="532" width="212" height="96" rx="18" fill="#eefbf9" stroke="#7ccdc3"/>
+  <text x="1238" y="571" class="step-title" text-anchor="middle">Run</text>
+  <text x="1238" y="600" class="step-note" text-anchor="middle">attempt + evidence</text>
 
-  <rect x="632" y="462" width="212" height="106" rx="18" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="738" y="504" class="step-title" text-anchor="middle">Goal</text>
-  <text x="738" y="534" class="step-note" text-anchor="middle">main work unit</text>
+  <line x1="344" y1="580" x2="382" y2="580" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="594" y1="580" x2="632" y2="580" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="844" y1="580" x2="882" y2="580" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1094" y1="580" x2="1132" y2="580" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <rect x="882" y="462" width="212" height="106" rx="18" fill="#f2efff" stroke="#b9a6f6"/>
-  <text x="988" y="504" class="step-title" text-anchor="middle">Tasks</text>
-  <text x="988" y="534" class="step-note" text-anchor="middle">checklist breakdown</text>
+  <rect x="520" y="656" width="166" height="58" rx="15" fill="#eef6ff" stroke="#9ac4f8"/>
+  <text x="603" y="693" class="small-title" text-anchor="middle">Execute</text>
+  <rect x="724" y="656" width="166" height="58" rx="15" fill="#f0fbf7" stroke="#88d6be"/>
+  <text x="807" y="693" class="small-title" text-anchor="middle">Verify</text>
+  <rect x="928" y="656" width="166" height="58" rx="15" fill="#fff7e5" stroke="#e9bb55"/>
+  <text x="1011" y="693" class="small-title" text-anchor="middle">Gate</text>
+  <rect x="1132" y="656" width="166" height="58" rx="15" fill="#eefbf9" stroke="#7ccdc3"/>
+  <text x="1215" y="693" class="small-title" text-anchor="middle">Sync</text>
+  <path d="M1238 630 C1238 643 603 640 603 652" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="686" y1="685" x2="724" y2="685" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="890" y1="685" x2="928" y2="685" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1094" y1="685" x2="1132" y2="685" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <rect x="1132" y="462" width="212" height="106" rx="18" fill="#eefbf9" stroke="#7ccdc3"/>
-  <text x="1238" y="504" class="step-title" text-anchor="middle">Run</text>
-  <text x="1238" y="534" class="step-note" text-anchor="middle">attempt + evidence</text>
-
-  <rect x="1382" y="462" width="144" height="106" rx="18" fill="#fff0ed" stroke="#f2a691"/>
-  <text x="1454" y="504" class="step-title" text-anchor="middle">Spec</text>
-  <text x="1454" y="534" class="step-note" text-anchor="middle">constraints</text>
-
-  <line x1="344" y1="515" x2="382" y2="515" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="594" y1="515" x2="632" y2="515" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="844" y1="515" x2="882" y2="515" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="1094" y1="515" x2="1132" y2="515" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <path d="M1454 568 C1454 606 1278 602 1260 581" fill="none" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-
-  <line x1="1238" y1="570" x2="1238" y2="611" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-
-  <rect x="520" y="614" width="166" height="64" rx="15" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="603" y="654" class="small-title" text-anchor="middle">Execute</text>
-  <rect x="724" y="614" width="166" height="64" rx="15" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="807" y="654" class="small-title" text-anchor="middle">Verify</text>
-  <rect x="928" y="614" width="166" height="64" rx="15" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="1011" y="654" class="small-title" text-anchor="middle">Gate</text>
-  <rect x="1132" y="614" width="166" height="64" rx="15" fill="#eefbf9" stroke="#7ccdc3"/>
-  <text x="1215" y="654" class="small-title" text-anchor="middle">Sync</text>
-
-  <line x1="686" y1="646" x2="724" y2="646" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="890" y1="646" x2="928" y2="646" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="1094" y1="646" x2="1132" y2="646" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-
-  <rect x="92" y="755" width="1488" height="94" rx="24" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <text x="132" y="803" class="section">Controller Gate</text>
-  <text x="132" y="833" class="section-note">A Run is complete only when verification, gate evidence, and state sync match the Goal.</text>
-  <rect x="930" y="779" width="560" height="44" rx="22" fill="#f8fafc" stroke="#d9e2ec"/>
-  <text x="1210" y="809" class="footer" text-anchor="middle">Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run</text>
+  <rect x="92" y="782" width="1488" height="94" rx="24" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
+  <text x="132" y="830" class="section">Controller Gate</text>
+  <text x="132" y="860" class="section-note">A Run is complete only when verification, gate evidence, and state sync match the Goal.</text>
+  <rect x="930" y="806" width="560" height="44" rx="22" fill="#f8fafc" stroke="#d9e2ec"/>
+  <text x="1210" y="836" class="footer" text-anchor="middle">Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run</text>
 </svg>

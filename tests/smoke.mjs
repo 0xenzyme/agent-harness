@@ -223,16 +223,18 @@ for (const needle of [
   assertIncludes(capabilityMatrix, needle, "capability matrix should cover rule anchors, surfaces, and suite routing");
 }
 for (const [file, needle] of [
-  ["README.md", "docs/assets/github/social-preview.svg"],
-  ["README.md", "docs/assets/readme/adapter-model.png"],
-  ["README.md", "docs/assets/readme/adapter-execution-model.png"],
+  ["README.md", "docs/assets/readme/adapter-model.svg"],
+  ["README.md", "docs/assets/readme/adapter-artifact-map.svg"],
+  ["README.md", "docs/assets/readme/adapter-execution-model.svg"],
+  ["README.md", "## Use With A Coding Agent"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
   ["README.md", "docs/releases/v0.6.0.md"],
   ["README.md", "docs/cybernetic-stability.md"],
-  ["README.zh-CN.md", "docs/assets/github/social-preview.svg"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-model.png"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.png"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-model.svg"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-artifact-map.svg"],
+  ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.svg"],
+  ["README.zh-CN.md", "## 在项目中怎么用"],
   ["docs/github-presentation.md", "codex-plugin"],
   ["CHANGELOG.md", "## 0.6.0 - 2026-07-09"],
   ["docs/releases/v0.6.0.md", "Agent Harness v0.6.0"],
@@ -249,6 +251,7 @@ for (const [file, needle] of [
 }
 const adapterModelDiagram = readFileSync(join(repoRoot, "docs/assets/readme/adapter-model.svg"), "utf8");
 const adapterExecutionDiagram = readFileSync(join(repoRoot, "docs/assets/readme/adapter-execution-model.svg"), "utf8");
+const adapterArtifactMapDiagram = readFileSync(join(repoRoot, "docs/assets/readme/adapter-artifact-map.svg"), "utf8");
 for (const needle of ["Roadmap", "Milestone", "Goal", "Tasks", "Run", "Evidence"]) {
   assertIncludes(adapterModelDiagram, needle, "adapter model diagram should expose the current terminology hierarchy");
 }
@@ -265,6 +268,9 @@ assertExcludes(
 for (const needle of ["Roadmap", "Milestone", "Goal", "Tasks", "Run", "Verify", "Gate", "Sync"]) {
   assertIncludes(adapterExecutionDiagram, needle, "adapter execution diagram should expose the current execution terminology");
 }
+assertIncludes(adapterExecutionDiagram, "Specs constrain Goals before execution", "execution diagram should place Spec constraints before execution");
+assertIncludes(adapterArtifactMapDiagram, ".harness/config.json", "artifact map should use the configured Harness path");
+assertExcludes(adapterArtifactMapDiagram, ".agent-harness/config.json", "artifact map should not use the obsolete config path");
 for (const [file, needle] of [
   ["README.md", "docs/HARNESSES.md"],
   ["README.zh-CN.md", "docs/HARNESSES.md"],
@@ -839,6 +845,8 @@ for (const file of neutralFiles) {
 }
 const rootReadme = readFileSync(join(repoRoot, "README.md"), "utf8");
 const rootReadmeZh = readFileSync(join(repoRoot, "README.zh-CN.md"), "utf8");
+assertExcludes(rootReadme, "docs/assets/github/social-preview.svg", "README should reserve the social preview for GitHub metadata");
+assertExcludes(rootReadmeZh, "docs/assets/github/social-preview.svg", "zh-CN README should reserve the social preview for GitHub metadata");
 const cliDoc = readFileSync(join(repoRoot, "docs/cli.md"), "utf8");
 const cliDocZh = readFileSync(join(repoRoot, "docs/cli.zh-CN.md"), "utf8");
 const packageDoc = readFileSync(join(repoRoot, "package.json"), "utf8");
