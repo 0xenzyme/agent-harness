@@ -61,6 +61,7 @@ const validDeliveryStates = new Set(deliveryStateOrder);
 const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const recordableRunNodePhases = new Set(["running", "completed", "blocked"]);
+const validCommentaryPolicies = new Set(["minimal", "balanced", "audit"]);
 const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
 const contextFocusWorkflowPresets = "`orient`, `intake`, `shape`, `goal`, and `execute`";
 const contextFocusRoutingGuidance = `\`harness-rule:context-focus-routing\`: Normalize user intent to ${contextFocusIntentTargets} before choosing context focus. Use the smallest useful workflow focus preset (${contextFocusWorkflowPresets}) and prefer current confirmed state, accepted specs/goals/runs, adapter/config/status, then broad docs or historical logs.`;
@@ -70,6 +71,34 @@ const degradedExecutionProvenanceGuidance = "`harness-rule:degraded-execution-pr
 const controllerCancellationBoundaryGuidance = "`harness-rule:controller-cancellation-boundary`: Controller cancellation and supersession are cooperative control-plane signals, not runtime kill guarantees. Before changing same-scope execution, snapshot active workers, stop new dependent launches, quarantine late worker output as candidate evidence, and record degraded provenance for any manual-foreground fallback.";
 const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
 const boundedDirectExecutionGuidance = "`harness-rule:bounded-direct-execution`: Accepted finite single-thread work may execute without creating a Goal/Run/DAG when it needs no durable recovery or handoff, worker/DAG, multi-stage or broad implementation, important runtime/schema behavior change, acceptance or Milestone map, or adapter-required gate. Docs-only clarification of an existing contract is eligible. Sync only relevant pre-existing Harness artifacts; delivery authorization alone does not select durable orchestration.";
+
+function commentaryPolicyDetails(config = {}) {
+  const configured = config.communication?.commentary;
+  const policy = validCommentaryPolicies.has(configured) ? configured : "minimal";
+  const definitions = {
+    minimal: {
+      reportCadence: "material-transition-or-host-heartbeat",
+      notifyOn: "blocker, risk, scope-or-authorization-change, user-decision, failed-verification, delivery-transition",
+      guidance: "Use one short kickoff that combines skill, reason, scope, boundaries, and next action. Do not narrate routine UI-visible tool activity or repeat unchanged boundaries. Later commentary must add a new material fact unless it is a one-sentence host-required heartbeat."
+    },
+    balanced: {
+      reportCadence: "meaningful-phase-transition",
+      notifyOn: "minimal-signals, exploration-complete, implementation-complete, verification-complete",
+      guidance: "Apply signal-only rules and additionally report meaningful execution phase transitions. Do not narrate individual commands or files."
+    },
+    audit: {
+      reportCadence: "gate-and-decision-transition",
+      notifyOn: "balanced-signals, gate-input, gate-decision, state-sync, delivery-transition",
+      guidance: "Apply signal-only rules and permit compact transcript-quality gate, decision, state-sync, and delivery evidence summaries. Prefer paths and summaries over raw packet dumps."
+    }
+  };
+
+  return {
+    commentary: policy,
+    source: configured ? "configured" : "default",
+    ...definitions[policy]
+  };
+}
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -770,6 +799,7 @@ function resolveHarnessContext(cwd) {
   }
 
   const contract = normalizeHarnessContract(config);
+  const communication = commentaryPolicyDetails(config);
   const paths = config.paths || {};
 
   if (contract === "adapter") {
@@ -816,6 +846,7 @@ function resolveHarnessContext(cwd) {
       config,
       configSource,
       warnings,
+      communication,
       paths: resolvedPaths,
       requiredPaths,
       optionalPaths
@@ -838,6 +869,7 @@ function resolveHarnessContext(cwd) {
     config,
     configSource,
     warnings,
+    communication,
     paths: resolvedPaths,
     requiredPaths: uniqueList([
       resolvedPaths.tasks,
@@ -867,7 +899,7 @@ function configExists(cwd) {
 
 function renderAdapterTemplate(paths) {
   return readTemplate("adapter.md")
-    .replace("- Task index: `harness/tasks.md`", `- Task index: \`${paths.taskIndex}\``)
+    .replace("- Goal index: `harness/tasks.md`", `- Goal index: \`${paths.taskIndex}\``)
     .replace("- Status file: `harness/status.md`", `- Status file: \`${paths.status}\``)
     .replace("- Specs: `harness/specs/`", `- Specs: \`${paths.specs}/\``)
     .replace("- Goals: `harness/goals/`", `- Goals: \`${paths.goals}/\``)
@@ -1432,6 +1464,7 @@ function configInspect(args) {
     configSource: context.configSource,
     configPath: context.paths.config,
     configValidation,
+    communication: context.communication,
     paths: context.paths,
     requiredPaths: context.requiredPaths,
     optionalPaths: context.optionalPaths,
@@ -1451,6 +1484,9 @@ function configInspect(args) {
   for (const error of configValidation.errors) {
     console.log(`Config schema error: ${error}`);
   }
+  console.log(`Commentary policy: ${payload.communication.commentary} (${payload.communication.source})`);
+  console.log(`Report cadence: ${payload.communication.reportCadence}`);
+  console.log(`Notify on: ${payload.communication.notifyOn}`);
   console.log("Paths:");
   for (const [key, value] of Object.entries(payload.paths)) {
     console.log(`- ${key}: ${value}`);
@@ -2070,7 +2106,7 @@ function intakeAcceptance(classification) {
     return "Draft or confirm a spec that defines scope, non-goals, validation, and pause conditions.";
   }
   if (classification === "goal-ready") {
-    return "Create a goal from the accepted task, implement the bounded change, verify it, and sync harness state.";
+    return "Create a goal from the accepted Goal entry, implement the bounded change, verify it, and sync harness state.";
   }
   if (classification === "ask") {
     return "Clarify product direction, priority, scope, and acceptance before recording or executing.";
@@ -2179,7 +2215,7 @@ function intakePayload(args) {
 }
 
 function isTableTaskIndex(content) {
-  return /^\|\s*Task\s*\|/im.test(content);
+  return /^\|\s*(?:Task|Goal)\s*\|/im.test(content);
 }
 
 function intakeTaskEntry(payload) {
@@ -2975,7 +3011,7 @@ function parseTasks(content) {
         .split("|")
         .map((cell) => cell.trim());
       const isSeparator = cells.every((cell) => /^:?-+:?$/.test(cell));
-      const isHeader = cells[0]?.toLowerCase() === "task";
+      const isHeader = ["task", "goal"].includes(cells[0]?.toLowerCase());
       if (cells.length >= 4 && !isSeparator && !isHeader) {
         const [title, type, status, priority, doc] = cells;
         if (title) {
@@ -3368,9 +3404,9 @@ If no deterministic command exists, document the manual verification evidence be
 
 ## Completion Conditions
 
-- The source task acceptance is satisfied.
+- The source Goal/work item acceptance is satisfied.
 - Verification commands pass or any failure is documented with next steps.
-- State-sync evidence or State Sync Notes are produced as part of task Done.
+- State-sync evidence or State Sync Notes are produced as part of Goal/Task Done.
 - Status-file updates use a bounded current-state snapshot; replace status
   sections instead of appending historical focus logs.
 - Update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync.
@@ -4531,7 +4567,7 @@ function dagParallelLayers(nodes) {
   return layers;
 }
 
-function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole }) {
+function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole, communication }) {
   const nodes = defaultDagNodes(taskSize, executionRole);
   return {
     version: 1,
@@ -4539,6 +4575,7 @@ function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole })
     taskSize,
     workMode,
     executionRole,
+    communication,
     enforcement: taskSize === "medium" || taskSize === "large" ? "required-before-run-completion" : "advisory",
     launchPolicy: "controller-gated-manual",
     defaultWorkerSurface: "codex-cli-subagent",
@@ -4626,6 +4663,7 @@ function executionDagSnapshot(dag, runDir) {
     agentsDir: "agents",
     enforcement: dag.enforcement,
     enforced: dag.enforcement === "required-before-run-completion",
+    communication: dag.communication || commentaryPolicyDetails(),
     launchPolicy: dag.launchPolicy,
     defaultWorkerSurface: dag.defaultWorkerSurface,
     preferredSurfaces: dag.preferredSurfaces,
@@ -4679,6 +4717,9 @@ Enforcement: \`${dag.enforcement}\`
 
 ## Worker Surfaces
 
+- Commentary policy: \`${dag.communication.commentary}\`
+- Report cadence: \`${dag.communication.reportCadence}\`
+- Notify on: ${dag.communication.notifyOn}
 - Default worker surface: \`${dag.defaultWorkerSurface}\`
 - Preferred: \`${dag.preferredSurfaces.join("`, `")}\`
 - Fallback: \`${dag.fallbackSurfaces.join("`, `")}\`
@@ -4727,10 +4768,11 @@ Goal: \`${relGoal}\`
 DAG node: \`${node.id}\`
 Depends on: \`${dependencies}\`
 Mode: \`${node.mode}\`
+Commentary policy: \`${dag.communication.commentary}\`
 
 You are an execution worker for one DAG node, not the controller thread.
 Your output is candidate evidence only. The controller is the only lane that
-may accept state, update accepted task/status/run/gate records, or mark work
+may accept state, update accepted Goal, Task, status, run, or gate records, or mark work
 complete.
 
 ## Read First
@@ -4761,6 +4803,9 @@ ${node.stopConditions}
 
 ## Surface Policy
 
+- Commentary: ${dag.communication.guidance}
+- Report cadence: \`${dag.communication.reportCadence}\`
+- Notify on: ${dag.communication.notifyOn}
 - Default worker surface is \`${dag.defaultWorkerSurface}\`.
 - Parallel isolation defaults to sequential. A concurrent writer requires a
   separate locked worktree/cwd or recorded proof of non-overlapping ownership.
@@ -4771,9 +4816,9 @@ ${node.stopConditions}
 - ${controllerCancellationBoundaryGuidance}
 - ${boundedStatusSnapshotGuidance}
 - Do not launch dependent nodes yourself.
-- Do not update accepted task, status, goal, run, gate, integration, release, or ship state.
+- Do not update accepted Goal, Task, status, run, gate, integration, release, or ship state.
 - Do not mark work complete; return candidate evidence for controller acceptance.
-- Return State Sync Notes as part of task Done: name the task/status/goal/run records that should change, the suggested state, and the evidence. These notes remain candidate evidence until the accepted-state owner records them.
+- Return State Sync Notes as part of Goal/Task Done: name the Goal, Task, status, or run records that should change, the suggested state, and the evidence. These notes remain candidate evidence until the accepted-state owner records them.
 - Do not release, deploy, publish, start a daemon, use credentials, use paid APIs, touch production, perform destructive operations, or execute delivery steps above the Delivery State policy unless the goal and controller explicitly authorize it.
 
 ## Return Contract
@@ -4923,6 +4968,9 @@ Goal: \`${relGoal}\`
 Spec: \`${specDisplay}\`
 Run directory: \`${relRunDir}\`
 Harness contract: \`${context.contract}\`
+Commentary policy: \`${context.communication.commentary}\` (\`${context.communication.source}\`)
+Report cadence: \`${context.communication.reportCadence}\`
+Notify on: ${context.communication.notifyOn}
 Work mode: \`${workMode}\`
 Execution role: \`${executionRole}\`
 Conversation route: \`${conversationRoute || "not-recorded"}\`
@@ -4967,25 +5015,26 @@ ${sourceTask}
 3. Confirm the execution role. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
 4. \`harness-rule:level-0-fast-path\`: do not use Level 0 Fast Path to bypass this prepared run. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. ${boundedDirectExecutionGuidance} This prepared durable Run must not be downgraded to that tier.
 5. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
-6. ${cyberneticStabilityGuidance}
-7. ${degradedExecutionProvenanceGuidance}
-8. ${controllerCancellationBoundaryGuidance}
-9. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
-10. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
-11. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-12. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-13. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
-14. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
-15. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes and default to sequential execution; parallel workers require recorded isolation evidence.
-16. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
-17. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
-18. Run the verification commands from the goal.
-19. Treat State Sync Notes as part of task Done. Every executor must name the task/status/goal/run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
-20. ${boundedStatusSnapshotGuidance}
-21. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
-22. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
-23. Record any command output summaries or follow-ups under this run directory.
-24. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+6. Apply \`harness-rule:signal-only-commentary\`: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
+7. ${cyberneticStabilityGuidance}
+8. ${degradedExecutionProvenanceGuidance}
+9. ${controllerCancellationBoundaryGuidance}
+10. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
+11. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
+12. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+13. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+14. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
+15. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
+16. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes and default to sequential execution; parallel workers require recorded isolation evidence.
+17. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
+18. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
+19. Run the verification commands from the goal.
+20. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
+21. ${boundedStatusSnapshotGuidance}
+22. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
+23. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
+24. Record any command output summaries or follow-ups under this run directory.
+25. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -5030,6 +5079,7 @@ In \`${cwd}\`, execute this goal:
 Requirements:
 
 - ${readGoalInstruction}
+- Apply \`harness-rule:signal-only-commentary\` with effective policy \`${context.communication.commentary}\`: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
 - ${context.mode === "adapter" && adapterPath ? `Read \`${adapterPath}\` and apply its project-specific hard boundaries, preflight requirements, and state-sync rules.` : "Follow the repository instructions and configured harness paths."}
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
 - Follow the goal's Execution Role: \`${executionRole}\`.
@@ -5045,7 +5095,7 @@ Requirements:
 - Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; review \`${deliveryState.review || deliveryState.pr}\`; integration \`${deliveryState.integration || deliveryState.merge}\`; release \`${deliveryState.release}\`.
 - Target Delivery State: \`${deliveryPolicy.target}\`; delivery intent \`${deliveryPolicy.deliveryIntent}\`; commit authorized \`${deliveryPolicy.commitAuthorized}\`; push authorized \`${deliveryPolicy.pushAuthorized}\`; review authorized \`${deliveryPolicy.reviewAuthorized}\`; integration authorized \`${deliveryPolicy.integrationAuthorized}\`; release authorized \`${deliveryPolicy.releaseAuthorized}\`.
 - Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
-- Treat State Sync Notes as part of task Done. Executors must provide them; the accepted-state owner verifies them before recording accepted task/status/goal/run/gate state.
+- Treat State Sync Notes as part of Goal/Task Done. Executors must provide them; the accepted-state owner verifies them before recording accepted Goal, Task, status, run, or gate state.
 - ${boundedStatusSnapshotGuidance}
 - If actual delivery state is below target after gates pass, continue the authorized commit / push / review / integration / release pipeline before closeout.
 - Do not call local verification "integrated", "shipped", or "complete on the integration line" unless commit / push / review / integration / release evidence is recorded.
@@ -5200,7 +5250,14 @@ function runPrepare(args) {
   const gateEvidence = gateEvidenceDetails(goalContent, specContent);
   const requiredGates = adapterRequiredCompletionGates(context);
   const taskSize = classifyTask(goalContent, workMode);
-  const executionDag = buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole });
+  const executionDag = buildExecutionDag({
+    cwd,
+    goalPath,
+    taskSize,
+    workMode,
+    executionRole,
+    communication: context.communication
+  });
   const runSlug = runSlugFromGoal(goalPath);
   const runDir = nextAvailableRunDir(join(cwd, paths.runs, `${runTimestamp()}-${runSlug}`));
   const files = ["run.md", "prompt.md", "subagents.md", "dag.md", "dag.json", "agents", "status.json"];
@@ -5218,6 +5275,7 @@ function runPrepare(args) {
     taskSize,
     workMode,
     executionRole,
+    communication: context.communication,
     conversationRoute,
     executionContextLock,
     deliveryState,
@@ -5241,6 +5299,7 @@ function runPrepare(args) {
     runDir: displayPath(cwd, runDir),
     workMode,
     executionRole,
+    communication: context.communication,
     conversationRoute,
     executionContextLock: {
       conversationLane: executionContextLock.conversationLane,

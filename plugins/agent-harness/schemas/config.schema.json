@@ -128,6 +128,22 @@
         }
       }
     },
+    "communication": {
+      "description": "User-facing in-turn communication policy. This shapes Harness prompts and artifacts; it does not suppress host-required commentary or filter Codex transport events.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commentary": {
+          "description": "Commentary detail level. minimal is signal-only and is the effective default when omitted; balanced reports meaningful phase transitions; audit permits transcript-quality gate and decision updates.",
+          "type": "string",
+          "enum": [
+            "minimal",
+            "balanced",
+            "audit"
+          ]
+        }
+      }
+    },
     "worktree": {
       "type": "object",
       "additionalProperties": false,
