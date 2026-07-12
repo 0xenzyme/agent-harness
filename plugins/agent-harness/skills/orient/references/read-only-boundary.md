@@ -6,7 +6,7 @@ language.
 ## Allowed
 
 - Read repo instructions and harness config.
-- Inspect task/status/spec/goal/run artifacts.
+- Inspect Goal/status/spec/goal/run artifacts.
 - Run read-only commands such as `doctor`, `config inspect`, `config validate`,
   and `orient next`.
 - Summarize blockers, ready work, stale state, and missing evidence.
@@ -17,7 +17,7 @@ language.
 - Edit source files.
 - Create branches or worktrees.
 - Prepare goals or runs.
-- Record task/status/run state.
+- Record Goal/status/run state.
 - Start daemons, background sessions, deployments, releases, pushes, or PRs.
 - Turn a recommendation into execution without explicit user intent.
 

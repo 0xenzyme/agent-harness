@@ -10,6 +10,9 @@
   "language": {
     "default": "auto"
   },
+  "communication": {
+    "commentary": "minimal"
+  },
   "worktree": {
     "defaultPolicy": "ask",
     "autoRules": [

@@ -9,6 +9,8 @@ Use this skill for low-frequency setup, adoption, migration, and repair checks.
 
 ## Reference Map
 
+- Use [User-Facing Communication](../../references/user-facing-communication.md)
+  for the effective commentary policy before reporting setup progress.
 - Use [Adoption Boundary](references/adoption-boundary.md) before setup,
   import, activation, or repair work.
 - Use [Migration Safety](references/migration-safety.md) before importing or
@@ -40,9 +42,9 @@ node <plugin-root>/scripts/agent-harness.mjs config validate --cwd <project>
 node <plugin-root>/scripts/agent-harness.mjs init --cwd <project> --contract adapter
 ```
 
-6. For an existing project with a task index such as `todolist.md`, import the
+6. For an existing project with a Goal index such as `todolist.md`, import the
    adapter config only after explicit import / repair intent and without
-   creating a second task index:
+   creating a second Goal index:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs config import --cwd <project> --task-index todolist.md --dry-run

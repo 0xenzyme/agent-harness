@@ -19,7 +19,7 @@ Treat these as possible source of truth:
 1. Run `doctor`.
 2. Run `config inspect`.
 3. Run `config validate` when config exists.
-4. For existing task indexes, run `config import --dry-run`.
+4. For existing Goal indexes, run `config import --dry-run`.
 5. Use import path overrides for existing artifact locations such as custom
    status, specs, goals, milestones, runs, gate records, deferred register, and
    mental-model paths. Prefer `--dry-run --json` when checking these paths.
@@ -28,7 +28,7 @@ Treat these as possible source of truth:
 
 ## Never
 
-- Create a second task index when one already exists.
+- Create a second Goal index when one already exists.
 - Change `AGENTS.md` without explicit approval.
 - Add hooks, daemons, background sessions, pushes, PRs, deployments, or releases.
 - Convert project-specific facts into plugin-core defaults.

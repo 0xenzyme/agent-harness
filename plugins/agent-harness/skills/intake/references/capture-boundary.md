@@ -21,7 +21,7 @@ Use this reference when deciding whether a user message belongs in intake.
 
 ## Preserve Raw Intent
 
-Keep the raw note available. Summarize only what is needed for the task index.
+Keep the raw note available. Summarize only what is needed for the Goal index.
 Do not turn rough language into accepted scope without user or control-lane
 confirmation.
 

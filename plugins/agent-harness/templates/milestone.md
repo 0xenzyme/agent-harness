@@ -28,9 +28,9 @@ Out:
 
 -
 
-## Task List
+## Goal List
 
-| Task | Status | Priority | Doc | Depends on | Gate |
+| Goal | Status | Priority | Doc | Depends on | Gate |
 | --- | --- | --- | --- | --- | --- |
 
 ## DAG

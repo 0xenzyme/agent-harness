@@ -14,7 +14,7 @@ Both paths require the same adoption sequence:
 initialize or import adapter
 -> activate harness through an explicit entry point
 -> verify with doctor
--> use tasks, specs, goals, runs, and state sync in normal work
+-> use Goals, Tasks, specs, runs, and state sync in normal work
 ```
 
 ## New Project
@@ -22,7 +22,7 @@ initialize or import adapter
 - When to use this path:
 - First initialization command:
 - Artifacts that should be created:
-- First task loop:
+- First Goal loop:
 - Why the harness is valuable here:
 
 ## Existing Project
@@ -72,11 +72,11 @@ Harness owns durable coordination state.
 - Identifying missing specs, goals, validation, blockers, or pause conditions:
 - Executing authorized bounded work:
 - Running verification:
-- Updating task, status, run evidence, blockers, or deferred work:
+- Updating Goal, Task, status, run evidence, blockers, or deferred work:
 
 ### Harness Owns
 
-- Task state:
+- Goal state:
 - Adapter rules:
 - Specs, goals, runs, gates, and milestones:
 - Mental models and project invariants:
@@ -92,7 +92,7 @@ Codex executes the loop and updates evidence.
 
 ### User Responsibilities
 
-- State task or ask for orientation:
+- State the Goal or ask for orientation:
 - Decide priority and product direction:
 - Confirm specs, goals, or next actions:
 - Approve high-risk operations:
@@ -102,7 +102,7 @@ Codex executes the loop and updates evidence.
 
 - Read project instructions:
 - Inspect harness config:
-- Read adapter, task index, status, and relevant specs/goals:
+- Read adapter, Goal index, status, and relevant specs/goals:
 - Recommend or choose work mode:
 - Execute authorized scope:
 - Verify:
@@ -138,7 +138,7 @@ automation for these modes are separate implementation work.
 ## Orientation / Next-Action Scenario
 
 - Read current status:
-- Read task index:
+- Read Goal index:
 - Summarize ready / blocked / in-progress / done work:
 - Recommend next action:
 - Explain why:
@@ -146,16 +146,16 @@ automation for these modes are separate implementation work.
 
 ## Idea / Requirement Intake Scenario
 
-- Read current task/status/adapter context:
+- Read current Goal/status/adapter context:
 - Preview with `intake idea --idea "<idea text>"`:
 - Record with `intake idea --idea "<idea text>" --record` only after user
   confirmation:
-- Compare new idea with existing tasks/specs/goals/deferred work:
-- Classify as note, task candidate, spec needed, goal ready, defer, reject, or
+- Compare new idea with existing Goals/Tasks/specs/deferred work:
+- Classify as note, Goal candidate, spec needed, goal ready, defer, reject, or
   ask:
-- Draft candidate task entry:
+- Draft candidate Goal entry:
 - Suggest priority, acceptance, risks, dependencies, and validation questions:
-- Ask before modifying task state when product direction or scope is unclear:
+- Ask before modifying Goal state when product direction or scope is unclear:
 - Do not start implementation unless the user asks:
 
 ## Idea Inbox Thread Scenario
@@ -163,7 +163,7 @@ automation for these modes are separate implementation work.
 - Master / Control Thread responsibilities:
 - Idea Inbox / Capture Thread responsibilities:
 - Intake step:
-- Promotion into task index, spec, or goal:
+- Promotion into Goal index, spec, or Goal:
 - What the inbox thread must not execute by default:
 
 ## Evaluation Project Scenario

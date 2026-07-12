@@ -12,13 +12,17 @@ goal as a substitute for the repository Goal artifact.
 
 ## Load Only The Active Path
 
+- Before user-visible progress updates: read
+  [User-Facing Communication](../../references/user-facing-communication.md)
+  and apply `harness-rule:signal-only-commentary` with the effective policy
+  from Harness config.
 - Route unclear: read [Routing Boundaries](references/routing-boundaries.md),
   [Route To Public Entry Mapping](../../references/route-entry-mapping.md), and
   [First-Principles Scope](../../references/first-principles-scope.md).
 - Before editing or accepting output: read
   [Execution Roles](references/execution-roles.md).
 - Creating a Goal or run: use the commands below and read
-  [Task Routing](../../references/task-routing.md) only when classification or
+  [Work Routing](../../references/task-routing.md) only when classification or
   work mode is ambiguous.
 - Launching or coordinating workers: read
   [Worker Runner Contract](../../references/worker-runner-contract.md) and
@@ -33,7 +37,7 @@ goal as a substitute for the repository Goal artifact.
 ## Core Workflow
 
 1. Read `AGENTS.md`, inspect the Harness config, and load the configured
-   adapter, task/status state, and relevant spec/Goal/run.
+   adapter, Goal/status state, and relevant spec/Goal/run.
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
@@ -65,7 +69,7 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
      important runtime/schema behavior changes, an acceptance or Milestone
      map, adapter-required gates, or when the user explicitly requests a Goal.
 
-   Bounded direct execution does not create a Goal, Run, DAG, task, or status
+   Bounded direct execution does not create a Goal, Run, DAG, Task, or status
    entry merely to record that the work happened. Prepare or validate the
    repository Goal only when the durable tier applies. The internal `goal`
    route maps here; it is not a separate skill.
@@ -101,7 +105,7 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
    local, reversible fixes with no accepted Harness artifact, public protocol,
    schema, external system, product semantics, gate, or delivery obligation.
 10. Verify and adversarially review completion. Synchronize only relevant
-    Harness task/status/Goal/Run/gate artifacts that already covered the work
+    Harness Goal, Task, status, Run, or gate artifacts that already covered the work
     before bounded direct execution began; do not create a lifecycle solely for
     bookkeeping. Durable Goal/Run execution follows its full state-sync
     contract. A status file is a bounded current snapshot and must not preserve

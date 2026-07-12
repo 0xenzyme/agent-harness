@@ -10,6 +10,8 @@ without starting implementation.
 
 ## Reference Map
 
+- Use [User-Facing Communication](../../references/user-facing-communication.md)
+  for the effective commentary policy before reporting orientation progress.
 - Use [Route Decision](references/route-decision.md) when recommending the next
   harness mode.
 - Use [Read-Only Boundary](references/read-only-boundary.md) when the request
@@ -30,7 +32,7 @@ node <plugin-root>/scripts/agent-harness.mjs config validate --cwd <project>
 ```
 
 3. Read `.harness/config.json` when it exists.
-4. In the adapter contract, read the configured project adapter, task index,
+4. In the adapter contract, read the configured project adapter, Goal index,
    status file, and relevant mental models.
    Apply `harness-rule:context-focus-routing` before reading broadly:
    normalize user intent to `Milestone`, `Goal`, `Task`, `Run`, `Priority`, or
@@ -55,7 +57,7 @@ node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project>
 6. Reconcile artifact state with the current conversation before recommending
    a route. If the active control thread contains a newer explicit user or
    controller decision, treat that conversation-confirmed state as the current
-   route context even when task, milestone, spec, or goal artifacts still show
+   route context even when Goal, milestone, spec, or run artifacts still show
    the older plan. Name the stale artifact risk and recommend `intake`,
    `shape`, `goal`, or `ask` to sync durable state before execution; do not
    recommend executing the superseded artifact as the active path.
@@ -70,10 +72,10 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
    user action with [Route To Public Entry Mapping](../../references/route-entry-mapping.md).
 9. Explain the route choice briefly and state what confirmation is needed
    before any mutation or implementation. The explanation should name the
-   observable reason, such as task state, missing spec, ambiguity, risk,
+   observable reason, such as Goal state, missing spec, ambiguity, risk,
    dirty checkout, stale artifacts, or user intent.
 10. For ambiguous route selection, read
-   [Task Routing](../../references/task-routing.md) and use its route decision
+   [Work Routing](../../references/task-routing.md) and use its route decision
    fields without mutating project state.
 11. Before the final answer, read
     [User-Facing Summary](references/user-facing-summary.md) and compress the
@@ -85,7 +87,7 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 
 - Do not implement, create branches, create worktrees, push, open PRs, deploy,
   publish, start daemons, or launch background sessions.
-- Do not mutate task state unless the user explicitly asks to record an intake
+- Do not mutate Goal state unless the user explicitly asks to record an intake
   item.
 - Do not turn a recommendation into goal creation, run preparation, or
   execution without explicit user intent.

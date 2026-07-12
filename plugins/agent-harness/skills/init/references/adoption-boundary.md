@@ -26,10 +26,10 @@ existing project.
   user explicitly asks to initialize, import, or repair harness files.
 - Prefer dry-run import for existing projects.
 - Print activation snippets; do not edit `AGENTS.md` automatically.
-- Preserve existing task indexes such as `todolist.md`.
+- Preserve existing Goal indexes such as `todolist.md`.
 
 ## Stop Conditions
 
 Pause when setup would write files without explicit setup intent, overwrite
-existing files, change activation behavior, create duplicate task indexes, or
+existing files, change activation behavior, create duplicate Goal indexes, or
 conflict with the existing contract.

@@ -7,7 +7,10 @@ the Agent Harness plugin references.
 
 ## Artifact Paths
 
-- Task index: `harness/tasks.md`
+- Goal index: `harness/tasks.md`
+  - Compatibility note: the storage filename and config key remain
+    `tasks` / `taskIndex`; user-facing project state should treat top-level
+    entries as Goals.
 - Status file: `harness/status.md`
 - Specs: `harness/specs/`
 - Goals: `harness/goals/`
@@ -50,6 +53,15 @@ the Agent Harness plugin references.
   commands, paths, APIs, package/skill/model names, abbreviations, and Git
   commit messages in their original form.
 
+## Commentary Policy
+
+- Machine-readable source: `.harness/config.json`
+  `communication.commentary`
+- Allowed values: `minimal`, `balanced`, `audit`
+- Project preference: `minimal`
+- Boundary: this shapes Harness instructions and generated artifacts; it does
+  not filter Codex messages or override host-required updates.
+
 ## Idea Inbox Policy
 
 - Capture thread:
@@ -75,8 +87,8 @@ the Agent Harness plugin references.
 ## State Sync Requirements
 
 - Treat the configured status file as a bounded current-state snapshot. Replace
-  current sections when syncing state; keep historical details in task entries,
-  Goal files, run logs, and gate records.
+  current sections when syncing state; keep historical details in Goal index
+  entries, Goal files, run logs, and gate records.
 
 ## Commit / PR / Ship Policy
 
@@ -92,11 +104,11 @@ the Agent Harness plugin references.
 - execution
 - integration
 
-## Task Kinds
+## Goal Kinds
 
 - `development`: scoped implementation, review, repair, or documentation work.
 - `observe`: ongoing monitoring that records signals and may produce follow-up
-  tasks after triage.
+  Goal entries after triage.
 
 ## Adapter-Owned Overrides
 

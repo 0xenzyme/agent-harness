@@ -1,6 +1,6 @@
 # Gate Results Reference
 
-Gate results record why a task, goal, run, or milestone can move forward.
+Gate results record why a Goal, Task, run, or milestone can move forward.
 
 ## Generic Format
 
@@ -48,7 +48,8 @@ Next executable:
 - Completed run records must include verification evidence. Completed
   `gate-only` records must also include explicit gate evidence that points to
   implementer output and acceptance review.
-- Batch or merged source-task runs must include a `Source Task Acceptance Map`.
+- Batch or merged source Goal/work item runs must include a
+  `Source Task Acceptance Map`.
   The control lane must verify every mapped acceptance item before marking the
   run completed.
 - Parent roadmap milestone runs must include a `Milestone Completion Map` when

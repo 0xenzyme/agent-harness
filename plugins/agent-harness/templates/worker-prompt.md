@@ -14,6 +14,9 @@ coding-agent handoff. Replace placeholders with the current goal/run values.
 - Execution branch: `{execution_branch}`
 - Execution slot: `{execution_slot}`
 - Parallel isolation: `{parallel_isolation}`
+- Commentary policy: `{commentary_policy}`
+- Report cadence: `{report_cadence}`
+- Notify on: `{notify_on}`
 
 You are an execution worker for one DAG node. You are not the controller or
 acceptance lane.
@@ -78,6 +81,10 @@ Forbidden scope:
 
 ## Rules
 
+- Apply `harness-rule:signal-only-commentary` from
+  `references/user-facing-communication.md`. Follow the resolved policy and
+  host requirements; do not narrate routine UI-visible tool activity or repeat
+  unchanged boundaries.
 - Use the default worker surface contract (`harness-rule:worker-surface-default`)
   from the run packet. Worker output is candidate evidence regardless of
   surface.
@@ -96,15 +103,15 @@ Forbidden scope:
 - Work only inside the locked execution cwd and allowed scope.
 - Do not run concurrently with another writer unless the launch packet records
   a separate locked worktree/cwd or proven non-overlapping file ownership.
-- Do not update accepted task, status, goal, run, gate, or release state.
+- Do not update accepted Goal, Task, status, run, gate, or release state.
 - Do not mark work complete.
 - Do not start dependent DAG nodes.
 - Return candidate evidence only; the controller accepts or rejects it.
 - Include state-sync evidence (`harness-rule:state-sync-evidence`) such as
   changed files, verification, known risks, dirty state, Delivery State, and
   deferred items.
-- Include `State Sync Notes` as part of task Done: name the
-  task/status/goal/run records that should change, the suggested state, and the
+- Include `State Sync Notes` as part of Goal/Task Done: name the Goal, Task,
+  status, or run records that should change, the suggested state, and the
   evidence. These notes remain candidate evidence until the controller or
   accepted-state owner records them.
 - Include concrete `Need user` and `Remaining` values. Use `Need user: None`

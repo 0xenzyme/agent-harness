@@ -5,7 +5,7 @@ threads or records gate outcomes.
 
 The controller thread is the acceptance lane for its authorized scope. Other
 threads, automation, proposal competition, and inbox notes may produce
-candidate evidence, but they do not update accepted task/status/run state until
+candidate evidence, but they do not update accepted Goal/status/run state until
 the controller validates the evidence and records the decision.
 
 `harness-rule:child-controller-boundary`: a visible long-lived thread must
@@ -66,7 +66,7 @@ Artifacts to update:
 ```
 
 When a controller accepts a revised plan, `Supersedes` should name the older
-milestone, spec, goal, route, or task state it replaces. `Artifacts to update`
+milestone, spec, goal, route, or Task state it replaces. `Artifacts to update`
 should list durable records that still reflect the old plan so later
 orientation does not treat stale artifacts as the active route.
 
@@ -139,10 +139,19 @@ Report cadence:
 Notify on:
 ```
 
+Apply `harness-rule:signal-only-commentary` and resolve `Report cadence` and `Notify on` from
+[User-Facing Communication](user-facing-communication.md) unless the accepted
+Goal overrides them. `minimal` defaults to
+`material-transition-or-host-heartbeat`; `balanced` adds meaningful execution
+phase transitions; `audit` adds compact gate, decision, and state-sync
+evidence. Overrides may increase detail or narrow timing, but must not hide
+blockers, risks, failed verification, changed scope/authorization, user
+decisions, delivery transitions, or host-required messages.
+
 `Thread role` must distinguish `child-controller` from `execution-worker` when
 the surface is a visible long-lived thread. Use `Accepted-state owner` and
 `Allowed state writes` to name exactly which lane may update accepted
-task/status/goal/run/gate state. For a child controller, `Parent return channel`
+Goal, Task, status, run, or gate state. For a child controller, `Parent return channel`
 is for parent-level status sync and true-gate escalation, not for duplicate
 same-scope acceptance. For an execution worker, the result remains candidate
 evidence only.
@@ -192,10 +201,10 @@ or `Remaining` instead of leaving fields blank.
 
 State changes should point to inspectable evidence: changed files, command
 summaries, run records, gate reports, or human review notes.
-State Sync Notes are part of task Done for executors and workers. They should
-name the task/status/goal/run records to update, the suggested state, and the
-evidence. For execution workers they remain candidate evidence until the
-accepted-state owner verifies and records the accepted state.
+State Sync Notes are part of Goal/Task Done for executors and workers. They
+should name the Goal, Task, status, or run records to update, the suggested
+state, and the evidence. For execution workers they remain candidate evidence
+until the accepted-state owner verifies and records the accepted state.
 
 For DAG execution, the controller launches only ready nodes. A worker must not
 start or claim completion for a node whose dependencies have not been recorded
@@ -214,7 +223,7 @@ revalidates that evidence.
 Worker prompts should follow `templates/worker-prompt.md`: the worker identity,
 controller, execution context lock, allowed scope, forbidden scope, validation,
 stop conditions, and return contract must be explicit. A worker must not update
-accepted task, status, goal, run, gate, or release state, but it must return
+accepted Goal, Task, status, run, gate, or release state, but it must return
 State Sync Notes as completion evidence for controller review.
 
 `harness-rule:degraded-execution-provenance`: if the planned worker surface is
@@ -239,10 +248,10 @@ integration decision should be `request-fix`, `blocked`, or `hold-for-user`.
 Worker self-tests, narrative summaries, and unreviewed result packets are not
 accepted state.
 
-For batch or merged source-task work, the controller must preserve a
+For batch or merged source Goal/work item work, the controller must preserve a
 `Source Task Acceptance Map`. Aggregate run evidence is not enough; each source
-task acceptance needs its own status and evidence before accepted state moves
-to Done.
+Goal/work item acceptance needs its own status and evidence before accepted
+state moves to Done. The section name remains compatibility syntax.
 
 For spec-heavy or adapter-gated work, the controller must preserve a
 `Spec Acceptance Checklist` and `Required Gate Evidence`. Candidate output,

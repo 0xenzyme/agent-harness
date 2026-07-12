@@ -3,23 +3,24 @@
 This model answers what one harness-managed unit of work is.
 
 ```text
-task with status + spec + DAG + goal + gate
+Goal with Tasks + status + spec + DAG + run + gate
 ```
 
 ## Components
 
-- task:
+- goal:
+- tasks:
 - status:
 - spec:
 - DAG:
-- goal:
+- run:
 - gate:
 - route explanation:
 - evidence:
 
 ## Artifact Mapping
 
-- task index:
+- Goal index:
 - status file:
 - specs:
 - goals:

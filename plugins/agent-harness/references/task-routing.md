@@ -1,6 +1,6 @@
-# Task Routing Reference
+# Work Routing Reference
 
-Task routing chooses the lightest harness flow that is still safe.
+Work routing chooses the lightest harness flow that is still safe.
 
 `orient`, `intake`, `init`, and `execute` are public skill entries. `shape`,
 `goal`, `competition`, and `ask` are internal routes governed by
@@ -79,7 +79,7 @@ Context layers:
   input shape.
 - `dialog`: current conversation-confirmed decisions, stale artifacts,
   superseded plans, `Need user`, and unresolved questions.
-- `project/world`: adapter/config, task/status/spec/goal/run state, git
+- `project/world`: adapter/config, Goal/status/spec/goal/run state, git
   posture, delivery posture, and external risk.
 - `capability`: available skills, tools, worker surfaces, deterministic
   commands, and validation limits.
@@ -97,7 +97,8 @@ Default focus presets:
 - `shape`: decisions, alternatives, source of truth, non-goals, acceptance,
   risks, verification, and pause triggers. Delay detailed implementation-file
   reading until the shape is accepted.
-- `goal`: accepted spec or explicit accepted scope, source task acceptance,
+- `goal`: accepted spec or explicit accepted scope, source Goal/work item
+  acceptance,
   role, context lock, delivery policy, verification, completion conditions,
   and state-sync obligations.
 - `execute`: goal/spec/run packet, execution DAG, allowed and forbidden scope,
@@ -107,7 +108,7 @@ Default focus presets:
 Token, noise, and lost-in-the-middle controls:
 
 - Prefer current conversation-confirmed state, repo instructions,
-  adapter/config, current status/task records, and active spec/goal/run before
+  adapter/config, current status/Goal records, and active spec/goal/run before
   broad docs or historical logs.
 - Read historical run logs only when they are directly relevant; otherwise cite
   their path and evidence summary.
@@ -127,7 +128,7 @@ feedback-quality checks, and stability/saturation pause triggers.
   `Run`, `Priority`, `Spec`, question, research note, or ask boundary must not
   be collapsed into the nearest locally executable artifact.
 - `harness-rule:sensor-freshness`: prefer newer explicit user instructions and
-  fresh local observations over stale task/status/spec/goal/run artifacts.
+  fresh local observations over stale Goal/status/spec/goal/run artifacts.
   Report stale artifact conflicts as route evidence.
 - `harness-rule:measurement-snapshot`: before execution and closeout, record or
   summarize target, observed state, evidence, conflicts or stale artifacts,
@@ -172,7 +173,7 @@ Use `observe` when the task is not complete after one implementation pass and
 instead monitors a source over time. Examples include SEO indexing, traffic
 changes, error rates, provider status, or recurring content quality checks.
 
-Observe task states:
+Observe states:
 
 - `watching`: observation is active.
 - `signal`: a notable signal has been recorded.
@@ -260,8 +261,8 @@ provided it does not change runtime/schema behavior or unresolved product
 semantics. This is the intended tier for a clear, single-threaded docs update
 with deterministic verification.
 
-Before editing, inspect whether a relevant Harness task/status/Goal/Run/gate
-already covers the work. Synchronize relevant task/status artifacts that
+Before editing, inspect whether a relevant Harness Goal, Task, status, Run, or
+gate already covers the work. Synchronize relevant Goal/status artifacts that
 predate execution. If an accepted Goal/Run, enforced DAG, checklist, or required
 gate covers it, follow that durable contract. Never create lifecycle artifacts
 solely to document bounded work after the fact.
@@ -309,7 +310,7 @@ choices. Competition should return candidate routes, tradeoffs, coverage union,
 risks, and a recommendation. It must not directly execute the selected route;
 execution starts only after the control lane accepts a route.
 
-Competition must not create branches/worktrees, write task/status state, start
+Competition must not create branches/worktrees, write Goal/status state, start
 daemons, prepare runs, push, open PRs, deploy, or mark tasks done. This package
 documents the protocol; it does not install `harness:compete` as a workflow
 skill.

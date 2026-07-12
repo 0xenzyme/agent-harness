@@ -1,4 +1,4 @@
-# Goal: {Task Name}
+# Goal: {Goal Name}
 
 Spec:
 Spec Policy:
@@ -17,7 +17,7 @@ cross-turn/thread recovery or handoff, workers/DAG, multi-stage or broad work,
 important runtime/schema behavior changes, an acceptance or Milestone map, or
 adapter-required gates.
 
-## Source Task
+## Source Goal Entry
 
 -
 
@@ -28,12 +28,14 @@ execution attempts rather than threads or sessions.
 
 ## Source Task Acceptance Map
 
-Use this section when one goal merges multiple source tasks or describes batch
-completion. Preserve each original source task acceptance before execution;
-update `Evidence` and `Status` before recording a completed run.
+Use this compatibility-named section when one Goal merges multiple source Goal
+entries or describes batch completion. Preserve each original source Goal/work
+item acceptance before execution; update `Evidence` and `Status` before
+recording a completed run. The section name and `- Task:` item key are retained
+for CLI compatibility.
 
-- Task: `<source task title>`
-  - Acceptance: `<original source task acceptance>`
+- Task: `<source Goal/work item title>`
+  - Acceptance: `<original source Goal/work item acceptance>`
   - Evidence: `TBD`
   - Status: `pending`
   - Unblocker: `N/A`
@@ -64,9 +66,9 @@ done.
 `harness-rule:context-focus-routing`: normalize user intent to `Milestone`,
 `Goal`, `Task`, `Run`, `Priority`, or `Spec` before selecting the focus preset.
 For this Goal, record the `goal` focus preset: accepted spec or explicit
-accepted scope, source task acceptance, execution role, context lock, delivery
-policy, verification, completion conditions, pause conditions, and state-sync
-obligations. Use `context focus` and `focus preset` in user-facing text;
+accepted scope, source Goal/work item acceptance, execution role, context lock,
+delivery policy, verification, completion conditions, pause conditions, and
+state-sync obligations. Use `context focus` and `focus preset` in user-facing text;
 `EnvContext` is internal design language only. Do not add a public focus
 parameter, config/schema field, storage migration, or activation behavior from
 this section.

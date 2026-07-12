@@ -14,9 +14,9 @@ Report:
 - whether a spec is likely needed
 - confirmation needed before recording or execution
 
-## Promote To Task Index
+## Promote To Goal Index
 
-Record only after explicit approval. If the configured task index format is not
+Record only after explicit approval. If the configured Goal index format is not
 safe for automatic writes, provide the exact entry and stop.
 
 ## Promote To Execution

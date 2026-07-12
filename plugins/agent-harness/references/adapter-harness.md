@@ -4,7 +4,7 @@ Agent Harness separates reusable protocol from project-specific policy through
 the adapter contract.
 
 ```text
-adapter contract = task with status + spec + DAG + goal + gate
+adapter contract = Goal with Tasks + status + spec + DAG + run + gate
 ```
 
 ## Layers
@@ -12,7 +12,7 @@ adapter contract = task with status + spec + DAG + goal + gate
 1. Harness plugin: reusable rules, packet formats, gates, and base templates.
 2. Project adapter: project artifact paths, hard boundaries, enabled gates,
    validation commands, and release policy.
-3. Documentation artifacts: task indexes, specs, goals, milestones, run logs,
+3. Documentation artifacts: Goal indexes, specs, goals, milestones, run logs,
    gate records, and deferred registers.
 
 ## Design Principles
@@ -55,12 +55,12 @@ adapter contract = task with status + spec + DAG + goal + gate
 - `done`: accepted and verified.
 - `cancelled`: explicitly not being pursued.
 
-## Task Kinds
+## Goal Kinds
 
 - `development`: concrete work intended to complete after implementation,
   review, and verification.
 - `observe`: ongoing observation that records signals, triages them, and may
-  produce follow-up tasks.
+  produce follow-up Goal entries.
 
 Adapters should declare project-specific observe sources, but the `observe`
 kind and its state model belong to the harness protocol.
@@ -103,6 +103,23 @@ APIs, package and skill names, model names, abbreviations, and Git commit
 messages in their original form. Adapter docs should state the desired project
 language and this implementation boundary without claiming artifact
 localization that the renderer does not provide.
+
+## Commentary Policy
+
+The project adapter may set the top-level `.harness/config.json` field:
+
+```json
+{
+  "communication": {
+    "commentary": "minimal"
+  }
+}
+```
+
+Use `minimal`, `balanced`, or `audit`. Omitted configuration resolves to
+`minimal`. Apply `harness-rule:signal-only-commentary`: this policy shapes
+Harness skills and generated Run/worker artifacts, but it does not filter Codex
+messages or override host-required tool, approval, safety, or heartbeat output.
 
 ## Fixed Compatibility
 

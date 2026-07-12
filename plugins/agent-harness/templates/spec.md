@@ -1,4 +1,4 @@
-# Spec: {Task Name}
+# Spec: {Goal Name}
 
 Created: YYYY-MM-DD
 Status: draft
@@ -47,15 +47,15 @@ Status: draft
     route, and whether a spec or accepted scope is needed.
   - `shape`: decisions, alternatives, source of truth, non-goals, acceptance,
     risks, verification, and pause triggers.
-  - `goal`: accepted spec or accepted scope, source task acceptance, role,
-    context lock, delivery policy, verification, completion conditions, and
-    state-sync obligations.
+  - `goal`: accepted spec or accepted scope, source Goal/work item acceptance,
+    role, context lock, delivery policy, verification, completion conditions,
+    and state-sync obligations.
   - `execute`: goal/spec/run packet, DAG, allowed and forbidden scope,
     implementation-relevant files, verification commands, delivery target, and
     state-sync requirements.
 - Token/noise controls:
   - Read current conversation-confirmed state, repo instructions,
-    adapter/config, current task/status, and active spec/goal/run before broad
+    adapter/config, current Goal/status, and active spec/goal/run before broad
     docs or historical logs.
   - Summarize old run logs unless their details directly affect routing,
     safety, verification, or acceptance.
@@ -81,7 +81,7 @@ Status: draft
   route oscillation, repeated ineffective actions, context limits, authority
   limits, external dependencies, cost, and risk.
 
-## Task Routing
+## Work Routing
 
 - Level:
 - Reason:
@@ -124,13 +124,14 @@ is necessary but does not replace gate evidence.
 
 ## Source Task Acceptance Map
 
-Use this section when a spec or goal merges multiple source tasks or describes
-batch completion. Preserve each original source task acceptance before
-execution; completed runs require every item to be `satisfied` with concrete
-evidence.
+Use this compatibility-named section when a spec or goal merges multiple source
+Goal entries or describes batch completion. Preserve each original source
+Goal/work item acceptance before execution; completed runs require every item
+to be `satisfied` with concrete evidence. The section name and `- Task:` item
+key are retained for CLI compatibility.
 
-- Task: `<source task title>`
-  - Acceptance: `<original source task acceptance>`
+- Task: `<source Goal/work item title>`
+  - Acceptance: `<original source Goal/work item acceptance>`
   - Evidence: `TBD`
   - Status: `pending`
   - Unblocker: `N/A`

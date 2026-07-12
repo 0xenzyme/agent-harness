@@ -70,14 +70,15 @@ sync, do not launch the worker. Shape the goal/run or ask for confirmation.
   operations, release, deploy, publish, or daemon launch unless the goal and
   controller explicitly authorize it.
 - Do not start dependent DAG nodes.
-- Do not update accepted task, status, goal, run, gate, or release state.
+- Do not update accepted Goal, Task, status, run, gate, or release state.
 - Do not mark work complete or promote candidate evidence to accepted evidence.
 - Return concrete changed files, validation, known risks, dirty state, delivery
   state, State Sync Notes, degraded provenance when applicable, and deferred
   items.
-- Treat State Sync Notes as part of task Done: name the task/status/goal/run
-  records that should change, the suggested state, and the evidence. These
-  notes remain candidate evidence until the accepted-state owner records them.
+- Treat State Sync Notes as part of Goal/Task Done: name the Goal, Task,
+  status, or run records that should change, the suggested state, and the
+  evidence. These notes remain candidate evidence until the accepted-state
+  owner records them.
 - If the controller sends a cancellation or supersession notice, stop expanding
   scope when possible and return a partial result or stop report. If you return
   later, mark the output as late candidate evidence for controller review.

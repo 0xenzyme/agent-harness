@@ -4,9 +4,9 @@ Use this reference when orientation needs to recommend the next harness mode.
 
 ## Inputs
 
-- current task state
+- current Goal state
 - configured harness contract and paths
-- relevant adapter, status, task index, specs, goals, runs, and mental models
+- relevant adapter, status, Goal index, specs, goals, runs, and mental models
 - current conversation-confirmed state from the active control thread,
   especially explicit user or controller decisions that revise or supersede
   older artifact state

@@ -10,6 +10,8 @@ workflow may already be in progress.
 
 ## Reference Map
 
+- Use [User-Facing Communication](../../references/user-facing-communication.md)
+  for the effective commentary policy before reporting intake progress.
 - Use [Capture Boundary](references/capture-boundary.md) when deciding whether a
   message belongs in intake.
 - Use [Promotion Rules](references/promotion-rules.md) before recording or
@@ -18,7 +20,7 @@ workflow may already be in progress.
 ## Workflow
 
 1. Read repo instructions such as `AGENTS.md`.
-2. Resolve harness contract and task-index path:
+2. Resolve harness contract and Goal-index path:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
@@ -28,7 +30,7 @@ Apply `harness-rule:context-focus-routing` before previewing or recording:
 normalize the request to `Milestone`, `Goal`, `Task`, `Run`, `Priority`, or
 `Spec`, then use the `intake` focus preset. Read the raw idea, entry/channel,
 modality when supplied, dialog context, related project/world artifacts, and
-the capability boundary for supported task-index writes. Avoid historical run
+the capability boundary for supported Goal-index writes. Avoid historical run
 logs and execution artifacts unless they prove duplication, dependency, or an
 already accepted scope.
 
@@ -47,19 +49,19 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 ```
 
 4. Report the candidate title, priority, target section, related existing
-   tasks/artifacts, acceptance hint, and whether a spec is likely needed.
+   Goals/artifacts, acceptance hint, and whether a spec is likely needed.
 5. Record only when the user explicitly asks to add it:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea "<idea text>" --record --priority P2 --section Next
 ```
 
-6. If the task index format is unsupported for automatic writes, give the exact
+6. If the Goal index format is unsupported for automatic writes, give the exact
    entry to add and leave execution to a later confirmed goal.
 7. If the user wants to implement the idea immediately, route to `execute`
    only after the scope and confirmation boundary are clear.
 8. For Idea Inbox Thread promotion, preserve the raw note, summarize only what
-   is needed for the task index, and make the control thread accept the route
+   is needed for the Goal index, and make the control thread accept the route
    before spec, goal, run, or execution work starts.
 
 ## Boundaries
@@ -67,9 +69,9 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 - Intake is capture, triage, and optional record. It is not execution.
 - For read-only project state or next-action requests, route to `orient`.
 - For harness setup or adoption, route to `init`.
-- Do not mutate the task index unless `--record` behavior or equivalent user
+- Do not mutate the Goal index unless `--record` behavior or equivalent user
   approval is explicit.
-- Do not overwrite, delete, or reorganize existing tasks during intake.
+- Do not overwrite, delete, or reorganize existing Goals during intake.
 - Do not create specs, goals, runs, branches, worktrees, PRs, or deployments
   unless the user separately asks for that next workflow.
 - Preserve raw capture-thread intent; do not turn rough ideas into accepted

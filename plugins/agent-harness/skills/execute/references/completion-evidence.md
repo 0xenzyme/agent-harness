@@ -14,15 +14,15 @@ Completed state for work already tracked by a task, Goal, Run, or gate requires:
 - concrete references to files, commands, run records, gate records, or human
   review notes
 
-Task Done includes the state-sync obligation. An implementer or worker must
-return concrete State Sync Notes even when that lane is not allowed to write
-accepted state. The accepted-state owner verifies those notes and records the
-accepted task, status, goal, run, or gate state.
+Goal/Task Done includes the state-sync obligation. An implementer or worker
+must return concrete State Sync Notes even when that lane is not allowed to
+write accepted state. The accepted-state owner verifies those notes and records
+the accepted Goal, Task, status, run, or gate state.
 
 For `harness-rule:bounded-direct-execution` that had no relevant Harness
 lifecycle before execution, the verified closeout is the completion record. Do
 not create a task, Goal, Run, gate, or status entry solely to manufacture
-state-sync evidence. If a relevant task/status artifact already covered the
+state-sync evidence. If a relevant Goal/status artifact already covered the
 work, synchronize that existing artifact; if an accepted Goal/Run or required
 gate covered it, follow the durable flow instead.
 
