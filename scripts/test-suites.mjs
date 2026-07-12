@@ -147,7 +147,7 @@ const ruleAnchors = [
     id: "harness-rule:bounded-direct-execution",
     files: [
       "README.md",
-      "README.zh-CN.md",
+      "README.en.md",
       "docs/HARNESSES.md",
       "docs/project-contract.md",
       "plugins/agent-harness/references/route-entry-mapping.md",
@@ -182,7 +182,7 @@ const ruleAnchors = [
       "plugins/agent-harness/templates/worker-prompt.md",
       "plugins/agent-harness/scripts/agent-harness.mjs",
       "README.md",
-      "README.zh-CN.md"
+      "README.en.md"
     ]
   },
   {
@@ -356,7 +356,7 @@ const publicFocusOptionSurfaces = [
 
 const matrixLinkExpectations = [
   ["README.md", "docs/HARNESSES.md"],
-  ["README.zh-CN.md", "docs/HARNESSES.md"],
+  ["README.en.md", "docs/HARNESSES.md"],
   ["docs/install.md", "HARNESSES.md"],
   ["docs/install.zh-CN.md", "HARNESSES.md"],
   ["docs/cli.md", "HARNESSES.md"],
@@ -365,8 +365,8 @@ const matrixLinkExpectations = [
 ];
 
 const languagePolicyExpectations = [
-  ["README.md", "Current boundary: this setting localizes supported human-facing CLI messages"],
-  ["README.zh-CN.md", "当前边界：该设置只会本地化已经支持的 human-facing CLI messages"],
+  ["README.md", "当前边界：该设置只会本地化已经支持的 human-facing CLI messages"],
+  ["README.en.md", "Current boundary: this setting localizes supported human-facing CLI messages"],
   ["docs/install.md", "--lang -> AGENT_HARNESS_LANG -> language.default -> LC_ALL -> LC_MESSAGES -> LANG -> en"],
   ["docs/install.zh-CN.md", "`--lang` 不会翻译这些文件"],
   ["docs/cli.md", "generated artifact bodies currently use English templates/renderers"],
@@ -380,19 +380,20 @@ const languagePolicyExpectations = [
 const presentationExpectations = [
   ["README.md", "docs/assets/readme/adapter-model.svg"],
   ["README.md", "docs/assets/readme/adapter-execution-model.svg"],
-  ["README.md", "## Use With A Coding Agent"],
+  ["README.md", "## 在项目中怎么用"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
   ["README.md", "docs/releases/v0.6.0.md"],
   ["README.md", "docs/cybernetic-stability.md"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-model.svg"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.svg"],
-  ["README.zh-CN.md", "## 在项目中怎么用"],
-  ["README.zh-CN.md", "docs/github-presentation.md"],
-  ["README.zh-CN.md", "CHANGELOG.md"],
-  ["README.zh-CN.md", "docs/releases/v0.6.0.md"],
-  ["README.zh-CN.md", "docs/cybernetic-stability.md"],
+  ["README.en.md", "docs/assets/readme/adapter-model.svg"],
+  ["README.en.md", "docs/assets/readme/adapter-execution-model.svg"],
+  ["README.en.md", "## Use With A Coding Agent"],
+  ["README.en.md", "docs/github-presentation.md"],
+  ["README.en.md", "CHANGELOG.md"],
+  ["README.en.md", "docs/releases/v0.6.0.md"],
+  ["README.en.md", "docs/cybernetic-stability.md"],
   ["docs/github-presentation.md", "Adapter-driven control plane for Codex and coding-agent work"],
+  ["docs/github-presentation.md", "`README.md` is the canonical Simplified Chinese README"],
   ["docs/github-presentation.md", "codex-plugin"],
   ["docs/github-presentation.md", "workflow-automation"],
   ["docs/github-presentation.md", "docs/assets/github/social-preview.svg"],
@@ -524,12 +525,15 @@ function checkPresentation() {
     "package.json and plugin manifest versions must stay aligned"
   );
   const adapterModelDiagram = readRepoFile("docs/assets/readme/adapter-model.svg");
-  const readme = readRepoFile("README.md");
-  const readmeZh = readRepoFile("README.zh-CN.md");
-  assert(!readme.includes("docs/assets/github/social-preview.svg"), "README.md must not embed the social preview asset");
-  assert(!readmeZh.includes("docs/assets/github/social-preview.svg"), "README.zh-CN.md must not embed the social preview asset");
-  assert(!readme.includes("docs/assets/readme/adapter-model.png"), "README.md must prefer lightweight SVG diagrams");
-  assert(!readmeZh.includes("docs/assets/readme/adapter-model.png"), "README.zh-CN.md must prefer lightweight SVG diagrams");
+  const readmeZh = readRepoFile("README.md");
+  const readmeEn = readRepoFile("README.en.md");
+  assert(!existsSync(join(repoRoot, "README.zh-CN.md")), "README.zh-CN.md must stay removed; README.md is the canonical Chinese README");
+  assert(!readmeZh.includes("docs/assets/github/social-preview.svg"), "README.md must not embed the social preview asset");
+  assert(!readmeEn.includes("docs/assets/github/social-preview.svg"), "README.en.md must not embed the social preview asset");
+  assert(!readmeZh.includes("docs/assets/readme/adapter-model.png"), "README.md must prefer lightweight SVG diagrams");
+  assert(!readmeEn.includes("docs/assets/readme/adapter-model.png"), "README.en.md must prefer lightweight SVG diagrams");
+  assert(readmeZh.includes("[English](README.en.md)"), "README.md must link to the secondary English README");
+  assert(readmeEn.includes("[简体中文](README.md)"), "README.en.md must link to the canonical Chinese README");
   assert(
     !adapterModelDiagram.includes("tasks, specs, goals, runs"),
     "adapter-model.svg must not preserve the old task-first diagram phrase"

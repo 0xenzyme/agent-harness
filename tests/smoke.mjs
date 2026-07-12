@@ -227,16 +227,17 @@ for (const needle of [
 for (const [file, needle] of [
   ["README.md", "docs/assets/readme/adapter-model.svg"],
   ["README.md", "docs/assets/readme/adapter-execution-model.svg"],
-  ["README.md", "## Use With A Coding Agent"],
+  ["README.md", "## 在项目中怎么用"],
   ["README.md", "docs/github-presentation.md"],
   ["README.md", "CHANGELOG.md"],
   ["README.md", "docs/releases/v0.6.0.md"],
   ["README.md", "docs/cybernetic-stability.md"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-model.svg"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.svg"],
+  ["README.en.md", "docs/assets/readme/adapter-model.svg"],
+  ["README.en.md", "docs/assets/readme/adapter-execution-model.svg"],
   ["docs/project-contract.md", "assets/readme/adapter-artifact-map.svg"],
-  ["README.zh-CN.md", "## 在项目中怎么用"],
+  ["README.en.md", "## Use With A Coding Agent"],
   ["docs/github-presentation.md", "codex-plugin"],
+  ["docs/github-presentation.md", "`README.md` is the canonical Simplified Chinese README"],
   ["CHANGELOG.md", "## 0.6.0 - 2026-07-09"],
   ["docs/releases/v0.6.0.md", "Agent Harness v0.6.0"],
   ["docs/cybernetic-stability.md", "Cybernetic Stability Model"],
@@ -272,7 +273,7 @@ assertIncludes(adapterArtifactMapDiagram, "Goal Index", "technical artifact map 
 assertExcludes(adapterArtifactMapDiagram, ".agent-harness/config.json", "artifact map should not use the obsolete config path");
 for (const [file, needle] of [
   ["README.md", "docs/HARNESSES.md"],
-  ["README.zh-CN.md", "docs/HARNESSES.md"],
+  ["README.en.md", "docs/HARNESSES.md"],
   ["docs/install.md", "HARNESSES.md"],
   ["docs/install.zh-CN.md", "HARNESSES.md"],
   ["docs/cli.md", "HARNESSES.md"],
@@ -846,7 +847,7 @@ for (const needle of ["new-project", "legacy-project", "non-harness-project", "m
 }
 const neutralFiles = [
   join(repoRoot, "README.md"),
-  join(repoRoot, "README.zh-CN.md"),
+  join(repoRoot, "README.en.md"),
   ...collectFiles(join(repoRoot, "docs"), (path) => path.endsWith(".md")),
   ...collectFiles(join(repoRoot, "evals"), (path) => path.endsWith(".md")),
   ...collectFiles(join(repoRoot, "plugins/agent-harness"), (path) => /\.(md|json|mjs)$/.test(path))
@@ -855,13 +856,14 @@ for (const file of neutralFiles) {
   const content = readFileSync(file, "utf8");
   assert(!/~\/project|\/Users\//i.test(content), `${file} should not expose local paths`);
   const relativeFile = file.startsWith(repoRoot) ? file.slice(repoRoot.length + 1) : file;
-  const allowsB3ehiveAttribution = ["README.md", "README.zh-CN.md"].includes(relativeFile);
+  const allowsB3ehiveAttribution = ["README.md", "README.en.md"].includes(relativeFile);
   if (!allowsB3ehiveAttribution) {
     assert(!/b3ehive/i.test(content), `${file} should stay project-neutral`);
   }
 }
-const rootReadme = readFileSync(join(repoRoot, "README.md"), "utf8");
-const rootReadmeZh = readFileSync(join(repoRoot, "README.zh-CN.md"), "utf8");
+assert(!existsSync(join(repoRoot, "README.zh-CN.md")), "README.zh-CN.md should be removed in favor of canonical Chinese README.md");
+const rootReadmeZh = readFileSync(join(repoRoot, "README.md"), "utf8");
+const rootReadmeEn = readFileSync(join(repoRoot, "README.en.md"), "utf8");
 const adapterLanguageReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/adapter-harness.md"), "utf8");
 const adapterTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/adapter.md"), "utf8");
 const userFacingCommunicationReference = readFileSync(
@@ -878,8 +880,10 @@ for (const skill of ["init", "intake", "orient", "execute"]) {
 for (const needle of ["harness-rule:signal-only-commentary", "minimal", "balanced", "audit", "host-required heartbeat"]) {
   assertIncludes(userFacingCommunicationReference, needle, "shared communication reference should define signal-only policy semantics");
 }
-assertExcludes(rootReadme, "docs/assets/github/social-preview.svg", "README should reserve the social preview for GitHub metadata");
-assertExcludes(rootReadmeZh, "docs/assets/github/social-preview.svg", "zh-CN README should reserve the social preview for GitHub metadata");
+assertExcludes(rootReadmeZh, "docs/assets/github/social-preview.svg", "README.md should reserve the social preview for GitHub metadata");
+assertExcludes(rootReadmeEn, "docs/assets/github/social-preview.svg", "README.en.md should reserve the social preview for GitHub metadata");
+assertIncludes(rootReadmeZh, "[English](README.en.md)", "README.md should link to the secondary English README");
+assertIncludes(rootReadmeEn, "[简体中文](README.md)", "README.en.md should link to the canonical Chinese README");
 const cliDoc = readFileSync(join(repoRoot, "docs/cli.md"), "utf8");
 const cliDocZh = readFileSync(join(repoRoot, "docs/cli.zh-CN.md"), "utf8");
 const packageDoc = readFileSync(join(repoRoot, "package.json"), "utf8");
@@ -888,10 +892,10 @@ const liveEvalRunner = readFileSync(join(repoRoot, "evals/run-live-skill-activat
 assertExcludes(cliDoc, publicFocusOption, "CLI reference should not expose a public focus option");
 assertExcludes(cliDocZh, publicFocusOption, "zh-CN CLI reference should not expose a public focus option");
 assertExcludes(JSON.stringify(configSchema), publicFocusOption, "config schema should not expose a focus option or field");
-assertIncludes(rootReadme, "## Use With A Coding Agent", "README should present a coding-agent-first entry path");
-assertIncludes(rootReadme, "language.default", "README should explain adapter-owned language configuration");
-assertIncludes(rootReadme, "Deterministic artifacts", "README should disclose the generated-artifact language boundary");
-assertIncludes(rootReadmeZh, "当前边界", "zh-CN README should disclose the generated-artifact language boundary");
+assertIncludes(rootReadmeZh, "## 在项目中怎么用", "README.md should present the Chinese coding-agent-first entry path");
+assertIncludes(rootReadmeZh, "language.default", "README.md should explain adapter-owned language configuration");
+assertIncludes(rootReadmeEn, "Deterministic artifacts", "README.en.md should disclose the generated-artifact language boundary");
+assertIncludes(rootReadmeZh, "当前边界", "README.md should disclose the generated-artifact language boundary");
 assertIncludes(adapterLanguageReference, "supported human-facing CLI messages only", "adapter reference should not overstate artifact localization");
 assertIncludes(adapterTemplateDoc, "## Language Policy", "adapter template should capture project language policy");
 assertIncludes(
@@ -899,23 +903,23 @@ assertIncludes(
   "not generated artifact bodies",
   "config schema should document the current language boundary"
 );
-assertIncludes(rootReadme, "docs/cli.md", "README should link to the detailed CLI reference");
-assertIncludes(rootReadmeZh, "docs/cli.zh-CN.md", "zh-CN README should link to the detailed CLI reference");
-assertExcludes(rootReadme, "## First Commands", "README should not lead with terminal-first commands");
-assertExcludes(rootReadme, "## Command Language", "README should keep CLI language details in docs");
-assertExcludes(rootReadmeZh, "## Command Language", "zh-CN README should keep CLI language details in docs");
+assertIncludes(rootReadmeEn, "docs/cli.md", "README.en.md should link to the detailed English CLI reference");
+assertIncludes(rootReadmeZh, "docs/cli.zh-CN.md", "README.md should link to the detailed Chinese CLI reference");
+assertExcludes(rootReadmeEn, "## First Commands", "README.en.md should not lead with terminal-first commands");
+assertExcludes(rootReadmeEn, "## Command Language", "README.en.md should keep CLI language details in docs");
+assertExcludes(rootReadmeZh, "## Command Language", "README.md should keep CLI language details in docs");
 assertExcludes(
-  rootReadme,
+  rootReadmeEn,
   "node plugins/agent-harness/scripts/agent-harness.mjs",
-  "README should not carry the detailed CLI command catalog"
+  "README.en.md should not carry the detailed CLI command catalog"
 );
 assertExcludes(
   rootReadmeZh,
   "node plugins/agent-harness/scripts/agent-harness.mjs",
   "zh-CN README should not carry the detailed CLI command catalog"
 );
-assertIncludes(rootReadme, "They are not installed as", "README should explain source adapter artifacts are not installed plugin content");
-assertIncludes(rootReadme, "does not run a model", "README should distinguish deterministic eval from live activation");
+assertIncludes(rootReadmeEn, "They are not installed as", "README.en.md should explain source adapter artifacts are not installed plugin content");
+assertIncludes(rootReadmeEn, "does not run a model", "README.en.md should distinguish deterministic eval from live activation");
 assertIncludes(packageDoc, '"test:eval:live"', "package should expose the opt-in live activation evaluator");
 assertIncludes(deterministicEvalRunner, "Model activation measured: no", "deterministic eval should disclaim model activation");
 assertIncludes(liveEvalRunner, "AGENT_HARNESS_LIVE_EVAL", "live eval should require explicit opt-in");
