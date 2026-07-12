@@ -36,6 +36,7 @@ const allowedTraceEventTypes = new Set([
   "control_notice",
   "gate_record",
   "state_transition",
+  "commentary",
   "closeout"
 ]);
 
@@ -155,6 +156,33 @@ function assertForbiddenMutations(trace, forbiddenMutations, caseId) {
         `${caseId}: forbidden mutation ${mutationName} matched ${forbiddenMutation}`
       );
     }
+  }
+}
+
+function assertCommentaryPolicy(trace, expectedPolicy, caseId) {
+  if (!expectedPolicy) {
+    return;
+  }
+  const commentary = trace.filter((event) => event.type === "commentary");
+  assert(commentary.length > 0, `${caseId}: missing commentary events`);
+  assert(
+    commentary.every((event) => traceEventField(event, "policy") === expectedPolicy.policy),
+    `${caseId}: commentary events must use ${expectedPolicy.policy}`
+  );
+  const kickoffCount = commentary.filter((event) => traceEventField(event, "kind") === "kickoff").length;
+  assert(kickoffCount <= expectedPolicy.max_kickoffs, `${caseId}: too many commentary kickoff events`);
+  if (expectedPolicy.require_new_fact_after_kickoff) {
+    for (const event of commentary) {
+      if (traceEventField(event, "kind") !== "kickoff" && traceEventField(event, "kind") !== "heartbeat") {
+        assert(traceEventField(event, "new_fact") === true, `${caseId}: non-heartbeat commentary must add a new fact`);
+      }
+    }
+  }
+  for (const forbiddenTarget of expectedPolicy.forbidden_targets || []) {
+    assert(
+      !commentary.some((event) => targetMatches(event.target, forbiddenTarget)),
+      `${caseId}: forbidden commentary target ${forbiddenTarget}`
+    );
   }
 }
 
@@ -349,7 +377,7 @@ function materializeFixture(name, projectDir) {
     write(
       join(projectDir, "harness/tasks.md"),
       [
-        "# Project Tasks",
+        "# Project Goals",
         "",
         "## Now",
         "",
@@ -437,6 +465,7 @@ function runBehaviorTraceCase(testCase) {
   assertDegradedProvenance(trace, assertions.required_degraded_provenance, testCase.id);
   assertGateOnlyAcceptanceEvidence(trace, assertions.required_gate_only_acceptance_evidence, testCase.id);
   assertCancellationBoundary(trace, assertions.required_cancellation_boundary, testCase.id);
+  assertCommentaryPolicy(trace, assertions.required_commentary_policy, testCase.id);
 }
 
 function runTaskCase(testCase) {

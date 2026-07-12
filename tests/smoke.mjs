@@ -226,7 +226,6 @@ for (const needle of [
 }
 for (const [file, needle] of [
   ["README.md", "docs/assets/readme/adapter-model.svg"],
-  ["README.md", "docs/assets/readme/adapter-artifact-map.svg"],
   ["README.md", "docs/assets/readme/adapter-execution-model.svg"],
   ["README.md", "## Use With A Coding Agent"],
   ["README.md", "docs/github-presentation.md"],
@@ -234,8 +233,8 @@ for (const [file, needle] of [
   ["README.md", "docs/releases/v0.6.0.md"],
   ["README.md", "docs/cybernetic-stability.md"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-model.svg"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-artifact-map.svg"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.svg"],
+  ["docs/project-contract.md", "assets/readme/adapter-artifact-map.svg"],
   ["README.zh-CN.md", "## 在项目中怎么用"],
   ["docs/github-presentation.md", "codex-plugin"],
   ["CHANGELOG.md", "## 0.6.0 - 2026-07-09"],
@@ -254,24 +253,22 @@ for (const [file, needle] of [
 const adapterModelDiagram = readFileSync(join(repoRoot, "docs/assets/readme/adapter-model.svg"), "utf8");
 const adapterExecutionDiagram = readFileSync(join(repoRoot, "docs/assets/readme/adapter-execution-model.svg"), "utf8");
 const adapterArtifactMapDiagram = readFileSync(join(repoRoot, "docs/assets/readme/adapter-artifact-map.svg"), "utf8");
-for (const needle of ["Roadmap", "Milestone", "Goal", "Tasks", "Run", "Evidence"]) {
-  assertIncludes(adapterModelDiagram, needle, "adapter model diagram should expose the current terminology hierarchy");
+for (const needle of ["Agent Harness", "Project Adapter", "Your Project", "Stable protocol, local control"]) {
+  assertIncludes(adapterModelDiagram, needle, "adapter model diagram should explain the stable-to-local boundary");
 }
-assertIncludes(
-  adapterModelDiagram,
-  "Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run",
-  "adapter model diagram should show the current terminology chain"
-);
 assertExcludes(
   adapterModelDiagram,
-  "tasks, specs, goals, runs",
-  "adapter model diagram should not preserve the old task-first artifact phrase"
+  "Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run",
+  "adapter model diagram should not expose the internal artifact hierarchy"
 );
-for (const needle of ["Roadmap", "Milestone", "Goal", "Tasks", "Run", "Verify", "Gate", "Sync"]) {
-  assertIncludes(adapterExecutionDiagram, needle, "adapter execution diagram should expose the current execution terminology");
+for (const needle of ["Set direction", "Agent Harness", "Carries accepted work", "Stays current"]) {
+  assertIncludes(adapterExecutionDiagram, needle, "execution diagram should explain the product-level handoff");
 }
-assertIncludes(adapterExecutionDiagram, "Specs constrain Goals before execution", "execution diagram should place Spec constraints before execution");
+for (const needle of ["Harness Work Loop", "Controller Gate", "Tasks", "Specs constrain Goals before execution"]) {
+  assertExcludes(adapterExecutionDiagram, needle, "execution diagram should hide internal workflow mechanics");
+}
 assertIncludes(adapterArtifactMapDiagram, ".harness/config.json", "artifact map should use the configured Harness path");
+assertIncludes(adapterArtifactMapDiagram, "Goal Index", "technical artifact map should use current Goal index terminology");
 assertExcludes(adapterArtifactMapDiagram, ".agent-harness/config.json", "artifact map should not use the obsolete config path");
 for (const [file, needle] of [
   ["README.md", "docs/HARNESSES.md"],
@@ -540,12 +537,12 @@ assertIncludes(
 );
 assertIncludes(
   workerRunnerContractReference,
-  "Do not update accepted task, status, goal, run, gate, or release state",
+  "Do not update accepted Goal, Task, status, run, gate, or release state",
   "worker runner contract should forbid workers from mutating accepted state"
 );
 assertIncludes(
   workerRunnerContractReference,
-  "Treat State Sync Notes as part of task Done",
+  "Treat State Sync Notes as part of Goal/Task Done",
   "worker runner contract should make state-sync notes part of task completion"
 );
 assertIncludes(
@@ -560,7 +557,7 @@ assertIncludes(
 );
 assertIncludes(
   workerPromptTemplate,
-  "Include `State Sync Notes` as part of task Done",
+  "Include `State Sync Notes` as part of Goal/Task Done",
   "worker prompt template should require state-sync notes without granting accepted-state authority"
 );
 assertIncludes(
@@ -794,7 +791,7 @@ for (const [value, needle, message] of [
   [taskRoutingReference, "Never create lifecycle artifacts", "bounded direct execution should reject bookkeeping lifecycle creation"],
   [taskRoutingReference, "do not automatically\npromote bounded work", "delivery authorization should not select durable orchestration"],
   [workflowSkillDocs.execute, "harness-rule:bounded-direct-execution", "execute should expose bounded direct execution"],
-  [workflowSkillDocs.execute, "does not create a Goal, Run, DAG, task, or status", "execute should not create lifecycle artifacts for bounded work"],
+  [workflowSkillDocs.execute, "does not create a Goal, Run, DAG, Task, or status", "execute should not create lifecycle artifacts for bounded work"],
   [projectContractReference, "docs-only contract clarification", "project contract should identify the bounded docs route"],
   [goalTemplateDoc, "Accepted scope alone is not a reason to create a Goal", "goal template should not promote all accepted scope to a Goal"]
 ]) {
@@ -827,6 +824,10 @@ assert(existsSync(schemaPath), "config schema should be packaged with the plugin
 const configSchema = readJson(schemaPath);
 assert(configSchema.properties.contract.enum.includes("fixed"), "config schema should include fixed contract");
 assert(configSchema.properties.contract.enum.includes("adapter"), "config schema should include adapter contract");
+assert(
+  JSON.stringify(configSchema.properties.communication.properties.commentary.enum) === JSON.stringify(["minimal", "balanced", "audit"]),
+  "config schema should expose the three supported commentary policies"
+);
 assert(
   configSchema.properties.gates.properties.requiredForCompletion.type === "array",
   "config schema should support adapter-required completion gates"
@@ -863,6 +864,20 @@ const rootReadme = readFileSync(join(repoRoot, "README.md"), "utf8");
 const rootReadmeZh = readFileSync(join(repoRoot, "README.zh-CN.md"), "utf8");
 const adapterLanguageReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/adapter-harness.md"), "utf8");
 const adapterTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/adapter.md"), "utf8");
+const userFacingCommunicationReference = readFileSync(
+  join(repoRoot, "plugins/agent-harness/references/user-facing-communication.md"),
+  "utf8"
+);
+for (const skill of ["init", "intake", "orient", "execute"]) {
+  assertIncludes(
+    readFileSync(join(repoRoot, `plugins/agent-harness/skills/${skill}/SKILL.md`), "utf8"),
+    "user-facing-communication.md",
+    `${skill} skill should load the shared user-facing communication contract`
+  );
+}
+for (const needle of ["harness-rule:signal-only-commentary", "minimal", "balanced", "audit", "host-required heartbeat"]) {
+  assertIncludes(userFacingCommunicationReference, needle, "shared communication reference should define signal-only policy semantics");
+}
 assertExcludes(rootReadme, "docs/assets/github/social-preview.svg", "README should reserve the social preview for GitHub metadata");
 assertExcludes(rootReadmeZh, "docs/assets/github/social-preview.svg", "zh-CN README should reserve the social preview for GitHub metadata");
 const cliDoc = readFileSync(join(repoRoot, "docs/cli.md"), "utf8");
@@ -913,7 +928,7 @@ assertIncludes(cliDocZh, "--allow-no-spec", "zh-CN CLI reference should document
 assertIncludes(cliDoc, "run node record", "CLI reference should document DAG node result recording");
 assertIncludes(cliDocZh, "run node record", "zh-CN CLI reference should document DAG node result recording");
 const projectContractDoc = readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8");
-for (const needle of ["## Conversation Reconciliation Rules", "## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Conversation Route And Execution Context Lock", "## Spec-Less Goal Policy", "`--allow-no-spec`", "table-based task indexes", "## Delivery State Gate", "## Agent-Neutral Delegation Rules", "`dag.json`"]) {
+for (const needle of ["## Conversation Reconciliation Rules", "## Execution Role Rules", "`gate-only`", "`implementer`", "`mixed`", "## Conversation Route And Execution Context Lock", "## Spec-Less Goal Policy", "`--allow-no-spec`", "table-based Goal indexes", "## Delivery State Gate", "## Agent-Neutral Delegation Rules", "`dag.json`"]) {
   assertIncludes(projectContractDoc, needle, "project contract should document execution roles");
 }
 const executeSkillDoc = readFileSync(join(repoRoot, "plugins/agent-harness/skills/execute/SKILL.md"), "utf8");
@@ -968,8 +983,27 @@ try {
   assertIncludes(run(["doctor", "--cwd", fixed]), "Harness contract: fixed", "fixed doctor should report fixed mode");
   assertIncludes(run(["config", "validate", "--cwd", fixed]), "Result: ok", "fixed config should validate");
   assert(JSON.parse(run(["config", "validate", "--cwd", fixed, "--json"])).ok === true, "fixed config validation json should pass");
+  const fixedConfigInspect = JSON.parse(run(["config", "inspect", "--cwd", fixed, "--json"]));
+  assert(fixedConfigInspect.communication.commentary === "minimal", "new fixed config should resolve minimal commentary");
+  assert(fixedConfigInspect.communication.source === "configured", "new fixed config should report configured commentary source");
+  const legacyCommunication = join(suiteDir, "legacy-commentary-config");
+  mkdirSync(join(legacyCommunication, ".harness"), { recursive: true });
+  write(join(legacyCommunication, ".harness/config.json"), `${JSON.stringify({
+    contract: "fixed",
+    projectName: "legacy-commentary-config",
+    paths: {
+      tasks: "harness/tasks.md",
+      status: "harness/status.md",
+      goals: "harness/goals",
+      runs: ".harness/runs"
+    }
+  }, null, 2)}\n`);
+  const legacyCommunicationInspect = JSON.parse(run(["config", "inspect", "--cwd", legacyCommunication, "--json"]));
+  assert(legacyCommunicationInspect.configValidation.ok === true, "legacy config without communication should remain valid");
+  assert(legacyCommunicationInspect.communication.commentary === "minimal", "legacy config should default commentary to minimal");
+  assert(legacyCommunicationInspect.communication.source === "default", "legacy config should report default commentary source");
   write(join(fixed, "harness/specs/fixed.md"), "# Fixed Spec\n\nStatus: accepted\n");
-  run(["goal", "create", "--cwd", fixed, "--task", "Define the next concrete task", "--spec", "harness/specs/fixed.md"]);
+  run(["goal", "create", "--cwd", fixed, "--task", "Define the next concrete Goal", "--spec", "harness/specs/fixed.md"]);
   const fixedGoal = latestFile(join(fixed, "harness/goals"));
   const fixedGoalContent = readFileSync(fixedGoal, "utf8");
   assertIncludes(fixedGoalContent, "harness-rule:bounded-direct-execution", "generated goal should preserve the bounded direct routing boundary");
@@ -1074,7 +1108,7 @@ try {
   assert(fixedMaintainRecord.record.taskIndexWritten === true, "maintain record should update exact markdown task completion");
   assertIncludes(
     readFileSync(join(fixed, "harness/tasks.md"), "utf8"),
-    "- [x] P1 Define the next concrete task",
+    "- [x] P1 Define the next concrete Goal",
     "maintain record should move exact completed task to Done"
   );
   assertIncludes(
@@ -1133,11 +1167,11 @@ try {
   assert(!existsSync(join(adapter, "AGENTS.md")), "activation snippet should not write AGENTS.md");
   const adapterOrient = run(["orient", "next", "--cwd", adapter]);
   assertIncludes(adapterOrient, "Agent Harness orientation", "orient next should print heading");
-  assertIncludes(adapterOrient, "Define the next concrete task", "orient next should include default ready task");
+  assertIncludes(adapterOrient, "Define the next concrete Goal", "orient next should include default ready task");
   assertIncludes(adapterOrient, "This command is read-only", "orient next should report read-only behavior");
   const adapterOrientJson = JSON.parse(run(["orient", "next", "--cwd", adapter, "--json"]));
-  assert(adapterOrientJson.tasks.ready[0].title === "Define the next concrete task", "orient json should expose ready task");
-  assert(adapterOrientJson.recommendation.title === "Define the next concrete task", "orient json should recommend ready task");
+  assert(adapterOrientJson.tasks.ready[0].title === "Define the next concrete Goal", "orient json should expose ready task");
+  assert(adapterOrientJson.recommendation.title === "Define the next concrete Goal", "orient json should recommend ready task");
   assert(adapterOrientJson.recommendation.route === "shape", "P1 todo without spec should route to shaping");
   assert(adapterOrientJson.recommendation.goalCommand === "", "P1 todo without spec should not recommend unusable goal create");
   assertIncludes(
@@ -1167,7 +1201,7 @@ try {
     "--cwd",
     adapter,
     "--idea",
-    "Define the next concrete task",
+    "Define the next concrete Goal",
     "--json"
   ]));
   assert(
@@ -1185,7 +1219,7 @@ try {
     "--cwd",
     adapter,
     "--task",
-    "Define the next concrete task",
+    "Define the next concrete Goal",
     "--spec",
     "harness/specs/default.md",
     "--dry-run"
@@ -1644,6 +1678,8 @@ Manual verification evidence only.
   assert(largeDagStatus.conversationRoute === "remote-control-worktree", "worktree run should record remote-control route");
   assert(largeDagStatus.executionContextLock.remoteControlWorktree === "yes", "worktree run should record remote-control lock");
   assert(largeDagStatus.deliveryState.state, "worktree run should record delivery state");
+  assert(largeDagStatus.communication.commentary === "minimal", "run status should record effective commentary policy");
+  assert(largeDagStatus.executionDag.communication.commentary === "minimal", "DAG status should expose effective commentary policy");
   assert(largeDagStatus.executionDag.defaultWorkerSurface === "codex-cli-subagent", "large DAG should default worker surface to subagent");
   assert(JSON.stringify(largeDagStatus.executionDag.preferredSurfaces) === JSON.stringify(["codex-cli-subagent"]), "large DAG should prefer only subagent by default");
   assert(largeDagStatus.executionDag.enforced === true, "large DAG run should enforce node completion before run completion");
@@ -1662,14 +1698,14 @@ Manual verification evidence only.
     "Your output is candidate evidence only",
     "generated worker prompts should prevent worker self-acceptance"
   );
-  assertIncludes(
-    cliWorkerPrompt,
-    "Do not update accepted task, status, goal, run, gate, integration, release, or ship state",
+assertIncludes(
+  cliWorkerPrompt,
+    "Do not update accepted Goal, Task, status, run, gate, integration, release, or ship state",
     "generated worker prompts should forbid accepted-state mutation"
   );
   assertIncludes(
     cliWorkerPrompt,
-    "Return State Sync Notes as part of task Done",
+    "Return State Sync Notes as part of Goal/Task Done",
     "generated worker prompts should require state-sync notes"
   );
   assertIncludes(
@@ -1680,6 +1716,8 @@ Manual verification evidence only.
   assertIncludes(cliWorkerPrompt, generatedContextFocusNeedle, "generated worker prompts should normalize intent before context focus");
   assertIncludes(cliWorkerPrompt, generatedExecuteFocusNeedle, "generated worker prompts should include execute focus guidance");
   assertIncludes(cliWorkerPrompt, generatedDegradedProvenanceNeedle, "generated worker prompts should include degraded provenance guidance");
+  assertIncludes(cliWorkerPrompt, "Commentary policy: `minimal`", "generated worker prompts should carry commentary policy");
+  assertIncludes(cliWorkerPrompt, "routine UI-visible tool activity", "generated worker prompts should carry signal-only guidance");
   assertIncludes(cliWorkerPrompt, "harness-rule:bounded-status-snapshot", "generated worker prompts should include bounded status guidance");
   assertIncludes(cliWorkerPrompt, "Delivery state:", "worker result packet should report delivery state");
   assertIncludes(cliWorkerPrompt, "State Sync Notes:", "worker result packet should report state-sync notes");
@@ -2516,11 +2554,15 @@ Manual verification evidence only.
     },
     workMode: {
       defaultPolicy: "teleport"
+    },
+    communication: {
+      commentary: "silent"
     }
   }, null, 2)}\n`);
   const invalidSchemaOutput = runFails(["config", "validate", "--cwd", invalidSchema, "--json"]);
   assertIncludes(invalidSchemaOutput, "\"ok\": false", "invalid schema config should fail json validation");
   assertIncludes(invalidSchemaOutput, "$.workMode.defaultPolicy must be one of", "invalid schema config should report enum errors");
+  assertIncludes(invalidSchemaOutput, "$.communication.commentary must be one of", "invalid commentary policy should fail schema validation");
   assertIncludes(invalidSchemaOutput, "$.adapter.docs must be a non-empty repo-relative path", "invalid schema config should reject absolute adapter path");
   assertIncludes(
     runFails(["doctor", "--cwd", invalidSchema]),

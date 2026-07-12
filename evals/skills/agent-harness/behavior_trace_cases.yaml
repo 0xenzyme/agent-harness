@@ -289,5 +289,60 @@
         }
       }
     }
+  },
+  {
+    "id": "ah_behavior_execute_minimal_commentary_is_signal_only",
+    "skill": "harness:execute",
+    "scenario": "Minimal commentary combines the kickoff and reports only new material facts after it.",
+    "user_request": "Execute this accepted local status-sync goal with the configured minimal commentary policy.",
+    "trace": [
+      { "type": "read", "target": ".harness/config.json" },
+      { "type": "read", "target": "plugins/agent-harness/references/user-facing-communication.md" },
+      {
+        "type": "commentary",
+        "target": "combined skill scope boundary kickoff",
+        "markers": ["harness-rule:signal-only-commentary"],
+        "fields": {
+          "policy": "minimal",
+          "kind": "kickoff",
+          "skill": "harness:execute",
+          "scope": "accepted status sync",
+          "next_action": "inspect and update"
+        }
+      },
+      {
+        "type": "commentary",
+        "target": "dirty shared status requires partial staging",
+        "markers": ["harness-rule:signal-only-commentary"],
+        "fields": {
+          "policy": "minimal",
+          "kind": "material-finding",
+          "new_fact": true
+        }
+      },
+      {
+        "type": "verification",
+        "target": "local checks",
+        "fields": { "passed": true }
+      }
+    ],
+    "assertions": {
+      "required_ordered_reads": [
+        ".harness/config.json",
+        "plugins/agent-harness/references/user-facing-communication.md"
+      ],
+      "forbidden_writes": [],
+      "forbidden_mutations": [],
+      "required_commentary_policy": {
+        "policy": "minimal",
+        "max_kickoffs": 1,
+        "require_new_fact_after_kickoff": true,
+        "forbidden_targets": [
+          "tool loaded",
+          "routine command execution",
+          "repeated unchanged boundary"
+        ]
+      }
+    }
   }
 ]

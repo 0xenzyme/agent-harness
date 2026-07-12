@@ -94,6 +94,18 @@ const ruleAnchors = [
     ]
   },
   {
+    id: "harness-rule:signal-only-commentary",
+    files: [
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/user-facing-communication.md",
+      "plugins/agent-harness/references/controller-communication.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/templates/worker-prompt.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
     id: "harness-rule:bounded-status-snapshot",
     files: [
       "docs/HARNESSES.md",
@@ -367,7 +379,6 @@ const languagePolicyExpectations = [
 
 const presentationExpectations = [
   ["README.md", "docs/assets/readme/adapter-model.svg"],
-  ["README.md", "docs/assets/readme/adapter-artifact-map.svg"],
   ["README.md", "docs/assets/readme/adapter-execution-model.svg"],
   ["README.md", "## Use With A Coding Agent"],
   ["README.md", "docs/github-presentation.md"],
@@ -375,7 +386,6 @@ const presentationExpectations = [
   ["README.md", "docs/releases/v0.6.0.md"],
   ["README.md", "docs/cybernetic-stability.md"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-model.svg"],
-  ["README.zh-CN.md", "docs/assets/readme/adapter-artifact-map.svg"],
   ["README.zh-CN.md", "docs/assets/readme/adapter-execution-model.svg"],
   ["README.zh-CN.md", "## 在项目中怎么用"],
   ["README.zh-CN.md", "docs/github-presentation.md"],
@@ -398,13 +408,14 @@ const presentationExpectations = [
   ["docs/assets/github/social-preview.svg", "bounded status"],
   ["docs/assets/github/social-preview.svg", "Roadmap"],
   ["docs/assets/github/social-preview.svg", "Task"],
-  ["docs/assets/readme/adapter-model.svg", "Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run"],
-  ["docs/assets/readme/adapter-model.svg", "milestones, goals, runs"],
-  ["docs/assets/readme/adapter-execution-model.svg", "Milestone"],
-  ["docs/assets/readme/adapter-execution-model.svg", "Goals are the primary execution unit"],
-  ["docs/assets/readme/adapter-execution-model.svg", "Specs constrain Goals before execution"],
+  ["docs/assets/readme/adapter-model.svg", "Stable protocol, local control"],
+  ["docs/assets/readme/adapter-model.svg", "Project Adapter"],
+  ["docs/assets/readme/adapter-execution-model.svg", "From direction to verified progress"],
+  ["docs/assets/readme/adapter-execution-model.svg", "Carries accepted work"],
+  ["docs/assets/readme/adapter-execution-model.svg", "Harness returns only when human judgment or authority is required"],
+  ["docs/project-contract.md", "assets/readme/adapter-artifact-map.svg"],
   ["docs/assets/readme/adapter-artifact-map.svg", ".harness/config.json"],
-  ["docs/assets/readme/adapter-artifact-map.svg", "Agent Harness Artifact Map"],
+  ["docs/assets/readme/adapter-artifact-map.svg", "Goal Index"],
   ["LICENSE", "MIT License"]
 ];
 
