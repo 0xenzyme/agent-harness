@@ -237,16 +237,50 @@ active lane is Controller / gate / review / acceptance, route through normal
 Harness execution, worker evidence, or `ask` for a corrected role instead of
 downgrading the work to Level 0.
 
-### Level 1: Light Adapter
+### Level 1: Bounded Direct Execution
 
-Use for bounded changes covered by existing docs or adapter rules. Record a
-short route decision when useful.
+`harness-rule:bounded-direct-execution`: use this tier for accepted work that
+is larger or more consequential than Level 0 but still does not benefit from
+durable orchestration. It may skip creation of a Goal, Run, DAG, task, status
+entry, and worker lane when all of these are true:
+
+- Objective, source of truth, scope, non-goals, verification, completion
+  conditions, and pause conditions are concrete and accepted.
+- One `implementer` thread can finish the work in the current checkout without
+  cross-turn/thread recovery or durable handoff.
+- No worker/DAG, multi-stage or broad implementation, important runtime/schema
+  behavior change, acceptance map, Milestone map, or adapter-required gate is
+  needed.
+- Risk does not require credentials, paid APIs, production access, destructive
+  operations, or an unresolved product decision.
+
+Documentation-only clarification of an existing contract may use bounded
+direct execution even when it edits public protocol or source-of-truth docs,
+provided it does not change runtime/schema behavior or unresolved product
+semantics. This is the intended tier for a clear, single-threaded docs update
+with deterministic verification.
+
+Before editing, inspect whether a relevant Harness task/status/Goal/Run/gate
+already covers the work. Synchronize relevant task/status artifacts that
+predate execution. If an accepted Goal/Run, enforced DAG, checklist, or required
+gate covers it, follow that durable contract. Never create lifecycle artifacts
+solely to document bounded work after the fact.
+
+Commit, push, review, integration, release, and local deploy requests affect
+delivery authorization and Delivery State only. They do not automatically
+promote bounded work to a durable Goal/Run/DAG. Their normal authority and risk
+checks still apply.
 
 ### Level 2: Standard Adapter
 
 Use for important tasks, cross-area changes, new abstractions, source-of-truth
 changes, or user-visible semantics. Require a spec or explicit existing spec
 coverage.
+
+Use a durable Goal/Run when Level 2 work needs cross-turn/thread recovery or
+handoff, workers/DAG, multi-stage or broad implementation, important
+runtime/schema behavior changes, an acceptance or Milestone map,
+adapter-required gates, or when the user explicitly requests a Goal.
 
 ### Level 3: Full Roadmap / Milestone
 

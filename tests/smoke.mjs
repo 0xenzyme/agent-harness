@@ -181,6 +181,7 @@ for (const needle of [
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
   "harness-rule:level-0-fast-path",
+  "harness-rule:bounded-direct-execution",
   "harness-rule:context-focus-routing",
   "harness-rule:cybernetic-stability",
   "harness-rule:intent-setpoint-selection",
@@ -208,6 +209,7 @@ for (const needle of [
   "harness-rule:project-neutral-core",
   "harness-rule:state-sync-evidence",
   "harness-rule:level-0-fast-path",
+  "harness-rule:bounded-direct-execution",
   "harness-rule:context-focus-routing",
   "harness-rule:cybernetic-stability",
   "harness-rule:intent-setpoint-selection",
@@ -784,6 +786,20 @@ for (const [value, needle, message] of [
 ]) {
   assertIncludes(value, needle, message);
 }
+for (const [value, needle, message] of [
+  [capabilityMatrix, "harness-rule:bounded-direct-execution", "capability matrix should expose bounded direct execution"],
+  [capabilityMatrix, "Bounded Direct Execution", "capability matrix should name the bounded direct surface"],
+  [taskRoutingReference, "### Level 1: Bounded Direct Execution", "task routing should define a tier between Level 0 and durable Goals"],
+  [taskRoutingReference, "Documentation-only clarification of an existing contract", "bounded direct execution should allow docs-only contract clarification"],
+  [taskRoutingReference, "Never create lifecycle artifacts", "bounded direct execution should reject bookkeeping lifecycle creation"],
+  [taskRoutingReference, "do not automatically\npromote bounded work", "delivery authorization should not select durable orchestration"],
+  [workflowSkillDocs.execute, "harness-rule:bounded-direct-execution", "execute should expose bounded direct execution"],
+  [workflowSkillDocs.execute, "does not create a Goal, Run, DAG, task, or status", "execute should not create lifecycle artifacts for bounded work"],
+  [projectContractReference, "docs-only contract clarification", "project contract should identify the bounded docs route"],
+  [goalTemplateDoc, "Accepted scope alone is not a reason to create a Goal", "goal template should not promote all accepted scope to a Goal"]
+]) {
+  assertIncludes(value, needle, message);
+}
 assertIncludes(
   readFileSync(join(repoRoot, "docs/project-contract.md"), "utf8"),
   "Run is not a Codex\n  thread, session, worker, or worktree identity",
@@ -916,7 +932,9 @@ assertExcludes(
   "goal template should not contradict its local-only delivery default"
 );
 assertIncludes(goalTemplateDoc, "harness-rule:context-focus-routing", "goal template should include context-focus routing guidance");
+assertIncludes(goalTemplateDoc, "harness-rule:bounded-direct-execution", "goal template should preserve the bounded direct routing boundary");
 const cliSource = readFileSync(cli, "utf8");
+assertIncludes(cliSource, "boundedDirectExecutionGuidance", "CLI renderers should preserve the bounded direct boundary");
 assertIncludes(cliSource, "## Execution Role", "goal generator should include an execution role section");
 assertIncludes(cliSource, "## Conversation Route", "goal generator should include conversation route section");
 assertIncludes(cliSource, "harness-rule:level-0-fast-path", "CLI generator should include the Level 0 Fast Path protocol anchor");
@@ -954,6 +972,7 @@ try {
   run(["goal", "create", "--cwd", fixed, "--task", "Define the next concrete task", "--spec", "harness/specs/fixed.md"]);
   const fixedGoal = latestFile(join(fixed, "harness/goals"));
   const fixedGoalContent = readFileSync(fixedGoal, "utf8");
+  assertIncludes(fixedGoalContent, "harness-rule:bounded-direct-execution", "generated goal should preserve the bounded direct routing boundary");
   assertIncludes(fixedGoalContent, "harness-rule:context-focus-routing", "generated goal should preserve the context-focus routing anchor");
   assertIncludes(fixedGoalContent, generatedContextFocusNeedle, "generated goal should normalize intent before context focus");
   assertIncludes(fixedGoalContent, generatedExecuteFocusNeedle, "generated goal should include execute focus guidance");
@@ -973,6 +992,11 @@ try {
     fixedRunMarkdown,
     "harness-rule:level-0-fast-path",
     "generated run packet should preserve the Level 0 Fast Path boundary"
+  );
+  assertIncludes(
+    fixedRunMarkdown,
+    "harness-rule:bounded-direct-execution",
+    "generated run packet should preserve the bounded direct routing boundary"
   );
   assertIncludes(
     fixedRunMarkdown,
@@ -1004,6 +1028,11 @@ try {
     fixedPromptMarkdown,
     "gate-only` cannot use Level 0",
     "execution prompt should prevent gate-only Level 0 implementation"
+  );
+  assertIncludes(
+    fixedPromptMarkdown,
+    "harness-rule:bounded-direct-execution",
+    "execution prompt should preserve the bounded direct routing boundary"
   );
   assertIncludes(
     fixedPromptMarkdown,

@@ -9,10 +9,13 @@ truth and there is intentionally no separate spec. Spec-less goals still require
 Scope, Non-Goals, Verification, Completion Conditions, Pause Conditions,
 Execution Role, and Delivery State.
 
-A true `harness-rule:level-0-fast-path` item normally does not need this
-template. Create a durable Goal when the user asks to use Harness, shape policy,
-act as Controller / gate / reviewer / acceptance lane, complete a larger Goal
-or Milestone, or when an accepted artifact or adapter gate requires state sync.
+`harness-rule:level-0-fast-path` and
+`harness-rule:bounded-direct-execution` items normally do not need this
+template. Accepted scope alone is not a reason to create a Goal. Create a
+durable Goal when the user explicitly requests one or execution needs durable
+cross-turn/thread recovery or handoff, workers/DAG, multi-stage or broad work,
+important runtime/schema behavior changes, an acceptance or Milestone map, or
+adapter-required gates.
 
 ## Source Task
 
@@ -106,6 +109,10 @@ Use `implementer`.
 
 Level 0 direct execution does not override `gate-only`: direct edits require
 `implementer` or explicitly accepted `mixed`.
+
+Bounded direct execution follows the same role rule. Once this durable Goal
+exists, do not downgrade its checklist, gate, or state-sync obligations to the
+bounded tier.
 
 ## Conversation Route
 

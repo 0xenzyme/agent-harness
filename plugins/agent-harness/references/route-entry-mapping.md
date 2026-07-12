@@ -9,8 +9,8 @@ state; they are not additional skills.
 | `intake` | Use `harness:intake`. |
 | `init` | Use `harness:init`. |
 | `shape` | Stay in `harness:orient`, clarify scope without mutation, then ask the user to accept it. After acceptance, use `harness:execute`. |
-| `goal` | Use `harness:execute` after the user authorizes the accepted scope; create or validate the durable Goal before implementation. |
-| `execute` | Use `harness:execute`. |
+| `goal` | Use `harness:execute` after the user authorizes accepted scope and durable orchestration is required, or when the user explicitly requests a Goal; create or validate the Goal before implementation. |
+| `execute` | Use `harness:execute`; bounded direct work may execute without creating a Goal/Run/DAG. |
 | `competition` | Keep it inside `harness:orient` as an optional proposal protocol. Do not imply that `harness:competition` exists. After the user accepts a route, continue through `harness:execute`. |
 | `ask` | Ask the smallest blocking question. Resume the skill implied by the answer; do not present `ask` as an invokable skill. |
 
@@ -20,5 +20,8 @@ state; they are not additional skills.
 - A route recommendation must include its public entry or exact user action.
 - `harness:execute` may prepare a Goal from accepted, authorized scope, but it
   must not turn rough or ambiguous direction into accepted scope.
+- Accepted scope alone does not require a Goal. Use
+  `harness-rule:bounded-direct-execution` when no durable orchestration need
+  applies.
 - Keep built-in Codex thread goals separate from repository Harness Goal files.
   A repository Goal is created only through the Harness artifact workflow.

@@ -171,6 +171,10 @@ Key boundaries:
   non-overlapping ownership; execution is sequential by default.
 - Local verification does not imply commit, push, review, integration, release,
   or deployment.
+- `harness-rule:bounded-direct-execution` lets accepted, finite, single-thread
+  work execute without creating a Goal/Run/DAG; docs-only contract
+  clarification is eligible, and delivery authorization alone does not promote
+  it to durable orchestration.
 - Status files are bounded current-state snapshots, not append-only history.
 - Newer conversation-confirmed direction is reconciled with stale artifacts
   before execution continues.

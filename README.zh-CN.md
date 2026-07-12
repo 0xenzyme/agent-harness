@@ -162,6 +162,9 @@ evidence，直到 control lane 完成验证。Completion 需要可检查的 evid
   默认顺序执行。
 - Local verification 不等于 commit、push、review、integration、release 或
   deployment。
+- `harness-rule:bounded-direct-execution` 允许已确认、有限、单线程的工作
+  无需新建 Goal/Run/DAG；docs-only contract clarification 同样适用，
+  delivery authorization 本身不会把它升级成 durable orchestration。
 - Status file 是 bounded current-state snapshot，不是 append-only history。
 - 执行前要把更新的 conversation-confirmed direction 与 stale artifact 对齐。
 - Conditional plugin bootstrap 尚未启用，因此安装 Harness 不会向无关项目

@@ -401,11 +401,12 @@ principles:
   examples, and templates must avoid
   private repository names, local absolute paths, customer names, provider-only
   rules, ports, credentials, and downstream production procedures.
-- state sync evidence (`harness-rule:state-sync-evidence`): task completion
-  includes state-sync evidence or state-sync notes from the executing lane.
-  Accepted task, status, goal, run, and gate state must cite concrete
-  state-sync evidence, and accepted-state writes remain limited to the
-  authorized accepted-state owner.
+- state sync evidence (`harness-rule:state-sync-evidence`): completion of work
+  already tracked by Harness includes state-sync evidence or state-sync notes
+  from the executing lane. Accepted task, status, goal, run, and gate state must
+  cite concrete evidence, and accepted-state writes remain limited to the
+  authorized owner. Untracked bounded direct work must not create a lifecycle
+  solely for bookkeeping.
 - lightweight route explanation: at workflow transitions, the active coding
   agent should briefly state why it is choosing orientation, intake, shape,
   goal, execute, competition, local, worktree, or ask.
@@ -413,6 +414,10 @@ principles:
   is allowed only for small local, reversible, low-risk fixes with concrete
   verification and no Harness artifact, adapter gate, Controller role, or
   product/source-of-truth impact that requires normal flow.
+- bounded direct execution (`harness-rule:bounded-direct-execution`): accepted,
+  finite, single-thread work may execute without a Goal/Run/DAG when durable
+  orchestration would add no safety. Documentation-only clarification of an
+  existing contract is eligible even when public protocol docs are edited.
 - role separation: control / gate work and implementation work should have an
   explicit execution role. A thread asked to act as main control, gate,
   reviewer, judge, or acceptance lane defaults to `gate-only` unless the user
@@ -602,6 +607,46 @@ Context focus changes, broader intent routing, control-theory research,
 storage/schema migration, downstream-specific policy, and source-of-truth
 contract changes are outside Level 0. Keep them as shaped specs, deferred
 references, or normal Harness Goals.
+
+## Bounded Direct Execution
+
+`harness-rule:bounded-direct-execution` fills the routing tier between the tiny
+Level 0 exception and durable Goal/Run orchestration. Use it when all of these
+conditions hold:
+
+- Objective, source of truth, scope, non-goals, verification, completion
+  conditions, and pause conditions are explicit and accepted.
+- One `implementer` thread can finish and verify the work in the current
+  checkout without durable cross-turn/thread recovery or handoff.
+- The work needs no worker/DAG, multi-stage or broad implementation, important
+  runtime/schema behavior change, acceptance map, Milestone map, or
+  adapter-required gate.
+- No unresolved product direction, credentials, paid API, production access,
+  or destructive operation blocks direct execution.
+
+Unlike Level 0, this tier may touch public protocol or source-of-truth
+documentation when the change only clarifies an existing accepted contract and
+does not change runtime/schema behavior or unresolved product semantics. It is
+the default route for clear, finite, docs-only contract clarification with
+deterministic verification.
+
+Before editing, inspect existing Harness state. If a relevant task or status
+record already covers the work, synchronize that pre-existing artifact after
+verification. If an accepted Goal/Run, enforced DAG/checklist, or
+adapter-required gate already covers it, follow the durable contract instead.
+Do not create a task, Goal, Run, DAG, gate, or status entry solely to record
+bounded work after the fact.
+
+Commit, push, review, integration, release, and local deploy requests are
+delivery authorization and Delivery State decisions. They do not by themselves
+require a Goal/Run/DAG or a second state-sync commit. Normal authority, risk,
+and evidence rules still apply; production or destructive delivery may still
+require a durable route or a pause.
+
+Use a durable Goal/Run when execution needs cross-turn/thread recovery or
+handoff, workers/DAG, multiple stages or broad implementation, important
+runtime/schema behavior changes, an acceptance or Milestone map,
+adapter-required gates, or when the user explicitly asks for a Goal.
 
 ## Agent-Neutral Delegation Rules
 

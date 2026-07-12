@@ -132,6 +132,22 @@ const ruleAnchors = [
     ]
   },
   {
+    id: "harness-rule:bounded-direct-execution",
+    files: [
+      "README.md",
+      "README.zh-CN.md",
+      "docs/HARNESSES.md",
+      "docs/project-contract.md",
+      "plugins/agent-harness/references/route-entry-mapping.md",
+      "plugins/agent-harness/references/task-routing.md",
+      "plugins/agent-harness/skills/execute/SKILL.md",
+      "plugins/agent-harness/skills/execute/references/completion-evidence.md",
+      "plugins/agent-harness/skills/execute/references/routing-boundaries.md",
+      "plugins/agent-harness/templates/goal.md",
+      "plugins/agent-harness/scripts/agent-harness.mjs"
+    ]
+  },
+  {
     id: "harness-rule:context-focus-routing",
     files: [
       "docs/HARNESSES.md",

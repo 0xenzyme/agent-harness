@@ -6,6 +6,7 @@ selection.
 ## Owns
 
 - Confirmed implementation slices.
+- Confirmed bounded direct execution that needs no durable handoff.
 - Confirmed gate-only or acceptance-lane reviews.
 - Confirmed run packets, DAG nodes, or goal execution.
 - Verification and state sync after authorized work.
@@ -46,4 +47,20 @@ already provide.
 - "Set up harness in this repo" -> `init`.
 - "Create a goal from this accepted spec" -> internal `goal` route through
   `harness:execute`.
+- "Clarify this existing contract in docs and verify it here" -> `execute`
+  with `harness-rule:bounded-direct-execution`; do not create bookkeeping
+  artifacts.
 - "Review worker output as the control lane" -> `execute` with `gate-only`.
+
+## Bounded Versus Durable
+
+Use `harness-rule:bounded-direct-execution` when accepted scope is finite,
+single-threaded, verifiable in the current checkout, and does not need durable
+recovery/handoff, workers/DAG, multi-stage or broad implementation, important
+runtime/schema behavior changes, acceptance or Milestone maps, or
+adapter-required gates. Documentation-only clarification of an existing
+contract is eligible even when public protocol or source-of-truth docs change.
+
+Use a durable Goal/Run for those orchestration needs or when the user explicitly
+requests a Goal. Commit, push, review, integration, release, and local deploy
+authorization are delivery decisions, not orchestration-tier selectors.

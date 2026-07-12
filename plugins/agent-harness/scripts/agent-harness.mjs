@@ -69,6 +69,7 @@ const cyberneticStabilityGuidance = "`harness-rule:cybernetic-stability`: contro
 const degradedExecutionProvenanceGuidance = "`harness-rule:degraded-execution-provenance`: When worker delegation falls back or the planned worker surface is unavailable or skipped, visibly report the actual execution method, unavailable or skipped surface, fallback reason, candidate-evidence boundary, and verification evidence.";
 const controllerCancellationBoundaryGuidance = "`harness-rule:controller-cancellation-boundary`: Controller cancellation and supersession are cooperative control-plane signals, not runtime kill guarantees. Before changing same-scope execution, snapshot active workers, stop new dependent launches, quarantine late worker output as candidate evidence, and record degraded provenance for any manual-foreground fallback.";
 const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
+const boundedDirectExecutionGuidance = "`harness-rule:bounded-direct-execution`: Accepted finite single-thread work may execute without creating a Goal/Run/DAG when it needs no durable recovery or handoff, worker/DAG, multi-stage or broad implementation, important runtime/schema behavior change, acceptance or Milestone map, or adapter-required gate. Docs-only clarification of an existing contract is eligible. Sync only relevant pre-existing Harness artifacts; delivery authorization alone does not select durable orchestration.";
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -3279,6 +3280,7 @@ Use \`implementer\`.
 - \`implementer\`: the current thread may edit files inside the accepted scope.
 - \`mixed\`: the current thread may both edit and gate only after recording why the tradeoff is acceptable.
 - \`harness-rule:level-0-fast-path\`: Level 0 Fast Path direct execution is only for tiny low-risk local reversible work. It can skip spec/goal/run/worker ceremony only when no existing Harness Goal/Run or adapter-required gate requires state sync. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. Verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- ${boundedDirectExecutionGuidance} Once this durable Goal exists, do not downgrade its checklist, gate, or state-sync obligations to the bounded tier.
 
 ## Conversation Route
 
@@ -4963,7 +4965,7 @@ ${sourceTask}
 1. ${specCheckpoint}
 2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
 3. Confirm the execution role. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
-4. \`harness-rule:level-0-fast-path\`: do not use Level 0 Fast Path to bypass this prepared run. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files.
+4. \`harness-rule:level-0-fast-path\`: do not use Level 0 Fast Path to bypass this prepared run. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. ${boundedDirectExecutionGuidance} This prepared durable Run must not be downgraded to that tier.
 5. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 6. ${cyberneticStabilityGuidance}
 7. ${degradedExecutionProvenanceGuidance}
@@ -4996,6 +4998,7 @@ ${verification}
 - Completion wording must not imply pushed, review-open, integrated, released, shipped, or deployed unless the delivery state records that evidence.
 - A completed run must reach its target delivery state. Use review / integration / release evidence fields when Git alone cannot prove the target.
 - Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync; verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- ${boundedDirectExecutionGuidance} This prepared Run remains authoritative.
 - Cybernetic stability closeout must identify the target, observed state, gap closed, remaining gap, feedback quality, and any stability/saturation pause trigger.
 - Direct worker launch remains controller-gated; the packet provides prompts and DAG constraints, not a background scheduler. For gate-only control lanes, launch subagents by default instead of changing the control thread into an implementer.
 - Degraded execution provenance must be visible when worker delegation falls back or a planned worker surface is unavailable or skipped.
@@ -5032,6 +5035,7 @@ Requirements:
 - Follow the goal's Execution Role: \`${executionRole}\`.
 - If Execution Role is \`gate-only\`, keep the current thread as controller and launch worker subagents by default. Do not ask the user to choose between worker launch and changing this thread to \`mixed\` unless subagent execution is unavailable or unsafe.
 - \`harness-rule:level-0-fast-path\`: Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. Verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- ${boundedDirectExecutionGuidance} The supplied Goal/Run remains authoritative and must not be downgraded.
 - ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 - ${cyberneticStabilityGuidance}
 - ${degradedExecutionProvenanceGuidance}

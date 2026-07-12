@@ -39,7 +39,7 @@ Use `mixed` only when:
 Do not infer `mixed` from low-risk local work alone. If the user requested
 control-lane behavior, `mixed` is not allowed without a new explicit approval.
 
-## Level 0 Interaction
+## Direct Execution Interaction
 
 `harness-rule:level-0-fast-path` does not change execution role authority. A
 small local fix may be executed directly only by an `implementer` thread or an
@@ -49,6 +49,12 @@ judge, or acceptance lane must not use Level 0 to edit implementation files.
 If a Level 0-looking request already has an accepted spec, goal, run, DAG node,
 adapter gate, or state-sync obligation, follow that Harness artifact instead
 of skipping ceremony.
+
+`harness-rule:bounded-direct-execution` uses the same role boundary: the
+current thread must be `implementer` or explicitly accepted `mixed`. It covers
+finite accepted work that is larger than Level 0 but needs no durable
+orchestration. A `gate-only` lane still delegates implementation or pauses for
+a corrected role.
 
 ## Stop Conditions
 
