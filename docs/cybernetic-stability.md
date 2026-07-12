@@ -48,7 +48,7 @@ Has the loop hit a stability or saturation limit?
 | --- | --- |
 | `setpoint` | Accepted scope, completion conditions, acceptance map, Delivery State, or a research question. |
 | `controller` | Current thread route and role: `orient`, `intake`, `shape`, `goal`, `execute`, `ask`, `gate-only`, `mixed`, or `implementer`. |
-| `plant` | The project being changed or inspected: repository, docs, task index, status file, specs, goals, runs, and adapters. |
+| `plant` | The project being changed or inspected: repository, docs, Goal index, status file, specs, goals, runs, and adapters. |
 | `sensor` | Current conversation, user-confirmed decisions, repo state, `git diff`, tests, CI, status files, run evidence, review comments, and command output. |
 | `measurement` | A current-state snapshot: target, observed state, evidence, conflicts, stale artifacts, delivery posture, and user-decision state. |
 | `error` / `gap` | The remaining difference between the target and the observed state. |
@@ -89,7 +89,7 @@ Default precedence:
    and freshly run tests.
 3. Accepted specs, goals, runs, and gate records that still match the current
    target.
-4. Status and task indexes, unless they conflict with newer conversation or
+4. Status and Goal indexes, unless they conflict with newer conversation or
    local evidence.
 5. Historical run logs and old summaries, which are context until their
    evidence is revalidated.

@@ -49,8 +49,8 @@ Initialize an adapter-contract downstream project:
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
 ```
 
-Import an existing adapter project that already has an adapter and task index,
-without creating a second task index:
+Import an existing adapter project that already has an adapter and a Goal index
+stored in a task-index-compatible file, without creating a second Goal index:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --dry-run
@@ -97,6 +97,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path
 node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
 ```
 
+`config inspect` also reports the effective `communication.commentary` policy,
+its configured/default source, `Report cadence`, and `Notify on` contract.
+
 Summarize current status and recommend the next action without starting work:
 
 ```bash
@@ -104,30 +107,30 @@ node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
 ```
 
-`orient next` routes by task state. `P0` / `P1` / `P2` / `P3` are priorities
-only, not task or milestone identifiers. For `P0` / `P1` `todo` or
-`spec-draft` tasks without a spec, it recommends shaping or confirming accepted
-scope instead of printing an unusable `goal create` command. `spec-ready` tasks
-with a linked spec route to `goal create --spec ...`; `goal-ready` tasks prefer
-existing goal validation and `run prepare`.
+`orient next` routes by Goal state. `P0` / `P1` / `P2` / `P3` are priorities
+only, not Goal, Task, or milestone identifiers. For `P0` / `P1` `todo` or
+`spec-draft` Goals without a spec, it recommends shaping or confirming
+accepted scope instead of printing an unusable `goal create` command.
+`spec-ready` Goals with a linked spec route to `goal create --spec ...`;
+`goal-ready` Goals prefer existing goal validation and `run prepare`.
 
 ## Intake And Maintenance
 
-Preview a new idea or requirement before modifying the task index:
+Preview a new idea or requirement before modifying the Goal index:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
 ```
 
-Append the candidate to a supported markdown task index only after explicit
+Append the candidate to a supported markdown Goal index only after explicit
 confirmation:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
 ```
 
-Preview deterministic task/status maintenance from current git state and
+Preview deterministic Goal/status maintenance from current git state and
 recent run records:
 
 ```bash
@@ -184,15 +187,15 @@ User-facing hierarchy is `Roadmap -> Milestone -> Goal -> Task -> Run`.
 execution breakdown inside a Goal. A `Run` is one execution attempt and
 evidence record, not a Codex thread or session.
 
-Create a goal handoff from the configured task index:
+Create a goal handoff from the configured Goal index:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
 ```
 
-The `--task` flag is a compatibility lookup into the configured task index. It
-creates a `Goal`; it does not make the task-index title the primary Harness work
-unit.
+The `--task` flag is a compatibility lookup into the configured Goal index
+storage path (`taskIndex`). It creates a `Goal`; the storage label does not make
+`Task` the primary Harness work unit.
 
 By default, adapter goals should reference an accepted spec:
 

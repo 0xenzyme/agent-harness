@@ -78,10 +78,10 @@
 用 harness 看一下现在还有什么需要人工确认的。
 ```
 
-如果你关心的是某个任务、里程碑或 spec：
+如果你关心的是某个 goal、里程碑或 spec：
 
 ```text
-用 harness 看一下 <任务/里程碑/spec 路径> 还有什么需要人工确认的。
+用 harness 看一下 <goal/里程碑/spec 路径> 还有什么需要人工确认的。
 ```
 
 ## 执行一个已确认的 goal
@@ -158,7 +158,7 @@
 
 ## 检查是否真的完成
 
-当你想知道某个任务是否已经可以关闭：
+当你想知道某个 Goal 是否已经可以关闭：
 
 ```text
 用 harness 检查 <goal/task/milestone> 是否真的完成，还差什么。
@@ -167,5 +167,5 @@
 如果已经实现但状态还没同步：
 
 ```text
-用 harness 验证 <goal path> 已完成的工作，并同步 task/status/run evidence。
+用 harness 验证 <goal path> 已完成的工作，并同步 Goal/status/run evidence。
 ```

@@ -30,7 +30,7 @@ codex plugin marketplace add <path-to-agent-harness-repo>
 从 GitHub 安装：
 
 ```bash
-codex plugin marketplace add <owner>/<repo>
+codex plugin marketplace add 0xenzyme/agent-harness
 ```
 
 Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
@@ -52,7 +52,7 @@ Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
 
 | 场景 | 公开 skill |
 | --- | --- |
-| 接入 Harness、导入已有 task index、运行 doctor，或预览 activation。 | `harness:init` |
+| 接入 Harness、导入已有 Goal index、运行 doctor，或预览 activation。 | `harness:init` |
 | 只读检查状态、blocker、stale artifact 或下一条 route。 | `harness:orient` |
 | 收集或 triage 想法、需求、bug 或 inbox note。 | `harness:intake` |
 | 从已接受 scope 准备 Goal，执行已确认工作，验证并同步状态。 | `harness:execute` |
@@ -70,8 +70,8 @@ Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责
 - 准备 Goal 和 execution DAG，而不是写完下一个小 spec 就停下；
 - 调度 worker，同时区分 candidate output 与 accepted state；
 - 在推进 delivery state 前验证 concrete evidence；
-- 把 `State Sync Notes` 作为 Task completion 的组成部分；
-- 对齐 task index、bounded status snapshot、Goal、Run 和 gate；
+- 把 `State Sync Notes` 作为 Goal 和 Task completion 的组成部分；
+- 对齐 Goal index、bounded status snapshot、Goal、Run 和 gate；
 - 只在方向不清、凭证、付费 API、生产访问、破坏性操作或超出 delivery
   policy 时暂停并交还给人。
 
@@ -80,7 +80,7 @@ implementation、verification、delivery 和 handoff 之间丢失主线。
 
 ## 工作方式
 
-![Agent Harness execution model](docs/assets/readme/adapter-execution-model.svg)
+![Agent Harness product loop](docs/assets/readme/adapter-execution-model.svg)
 
 用户可见的层级是：
 
@@ -95,6 +95,18 @@ Roadmap -> Milestone -> Goal -> Task -> Run
 - **Run** 是一次 execution attempt 和 evidence record，不等于 thread。
 - **Spec** 在执行前约束 Goal，不是 Run 之后才出现的 artifact。
 
+### Spec 与 PRD
+
+Agent Harness 不把 PRD 定义为独立的 protocol concept。Product Requirements
+Document 通常说明用户问题、产品价值和预期 outcome；它可以是 Harness Spec 的
+一种来源。
+
+`Spec` 是范围更广的 execution term，表示已经确认、足以明确 Goal 边界、约束
+和 acceptance conditions 的 scope。PRD 可能已经满足这些要求，也可能需要
+technical 或 operational supplement；对于非产品工作，PRD 也可能完全不适用。
+因此 Harness 不要求 PRD，也不增加 PRD 专属 path、config、lifecycle state 或
+gate。
+
 父级 Milestone 必须等 mapped items 满足后才能关闭。接受 `M5-S0` 这样的
 source-spec item，不能在 implementation 尚未完成时静默关闭父级 `M5`。
 
@@ -105,7 +117,7 @@ fresh observations 形成 measurement snapshot，controller 针对 remaining gap
 
 ## 架构
 
-![Agent Harness adapter model](docs/assets/readme/adapter-model.svg)
+![Agent Harness adapter boundary](docs/assets/readme/adapter-model.svg)
 
 Agent Harness 把稳定协议与项目事实分开：
 
@@ -120,10 +132,9 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 - **Project artifacts** 记录 roadmap、Milestone、Spec、Goal、Task、Run、
   gate result 和 evidence。
 
-![Agent Harness artifact map](docs/assets/readme/adapter-artifact-map.svg)
-
-Adapter project 通过 `.harness/config.json` 解析这些路径；plugin core 不会
-内置下游项目的产品名、端口、凭证、数据库规则或生产 policy。
+Adapter project 通过 `.harness/config.json` 解析 artifact paths；plugin core
+不会内置下游项目的产品名、端口、凭证、数据库规则或生产 policy。详细 path
+map 见 [Project Contract](docs/project-contract.md#adapter-contract)。
 
 ### Adapter 语言策略
 
@@ -147,6 +158,23 @@ Project adapter 通过 machine-readable config 声明语言偏好：
 command、path、API name、skill name、model name 和 Git commit message 的
 原始形式。详见[安装文档](docs/install.zh-CN.md#语言策略)与
 [Project Contract](docs/project-contract.md#adapter-language-policy)。
+
+### Commentary policy
+
+Project 可以减少重复的过程叙述，同时保留真正重要的信号：
+
+```json
+{
+  "communication": {
+    "commentary": "minimal"
+  }
+}
+```
+
+支持 `minimal`、`balanced` 和 `audit`；未配置时默认使用 `minimal`。该
+policy 只约束 Harness skill 与生成的 Run guidance，不会过滤 Codex message，
+也不会覆盖 host 强制要求的 tool、safety、approval 或 heartbeat 更新。详见
+[Project Contract](docs/project-contract.md#commentary-policy)。
 
 ## 安全与验收
 

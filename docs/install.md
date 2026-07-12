@@ -17,7 +17,7 @@ Then restart Codex and install `harness` from the plugin directory.
 After this repo is pushed to GitHub:
 
 ```bash
-codex plugin marketplace add <owner>/<repo>
+codex plugin marketplace add 0xenzyme/agent-harness
 ```
 
 The marketplace entry points to:
@@ -58,8 +58,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project
 ```
 
 For an existing adapter project that already has `harness/README.md`
-and a task index such as `todolist.md`, import the adapter config without
-creating a second task index:
+and a Goal index stored in a task-index-compatible file such as `todolist.md`,
+import the adapter config without creating a second Goal index:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --dry-run
@@ -76,7 +76,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/t
 
 The real import writes `.harness/config.json` and creates missing
 support artifacts such as the configured status file and runs directory. It
-does not create a second task index.
+does not create a second Goal index.
 
 Inspect the resolved paths:
 
@@ -141,8 +141,8 @@ is `gate-only` by default: it reviews candidate worker output and verification
 evidence, then accepts, blocks, or requests corrections without directly
 editing implementation files.
 
-After execution, agents/operators can preview deterministic state sync from git
-state and recent run records before writing:
+After execution, agents/operators can preview deterministic Goal/status state
+sync from git state and recent run records before writing:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
@@ -155,8 +155,8 @@ In the adapter contract, create goals from confirmed specs by default:
 node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
 ```
 
-If an adapter task has accepted scope but intentionally no standalone spec,
-use `--allow-no-spec`. The generated goal records `Spec Policy:
+If a Goal entry has accepted scope but intentionally no standalone spec, use
+`--allow-no-spec`. The generated goal records `Spec Policy:
 allow-no-spec` and still must validate `Scope`, `Non-Goals`, `Verification`,
 `Completion Conditions`, `Pause Conditions`, `Execution Role`, and `Delivery
 State`.

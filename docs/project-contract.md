@@ -98,6 +98,20 @@ Roadmap -> Milestone -> Goal -> Task -> Run
   names, stages, or milestone identifiers.
 - `Spec`: a user-visible specification, constraint, and acceptance document.
 
+### Documentation Note: PRD
+
+PRD is not a Harness protocol entity. A Product Requirements Document is a
+product-oriented source document that commonly describes the user problem,
+product value, requirements, and desired outcomes. Harness uses `Spec` as the
+broader execution term for accepted scope that makes Goal boundaries,
+constraints, and acceptance conditions clear.
+
+A PRD may serve as that Spec, may require technical or operational supplements,
+or may not apply to non-product work. Harness does not require PRDs and does not
+define PRD-specific artifact paths, config fields, lifecycle states, or gates.
+When documentation mentions a PRD, it describes a possible source for a Spec,
+not an additional level in the Harness hierarchy.
+
 Intent normalization:
 
 - "complete this task", "develop this task", or "用 harness 做这个任务" maps to
@@ -134,7 +148,7 @@ Harness context layers:
   shape that changes what evidence can be trusted.
 - `dialog`: current conversation-confirmed decisions, stale artifacts,
   superseded plans, `Need user`, open questions, and confirmation boundaries.
-- `project/world`: adapter, config, task/status/spec/goal/run state, git
+- `project/world`: adapter, config, Goal/status/spec/goal/run state, git
   posture, delivery posture, and external risk.
 - `capability`: available workflow skills, tools, worker surfaces,
   deterministic commands, and validation limits.
@@ -152,7 +166,8 @@ Default focus presets:
 - `shape`: decisions, alternatives, source of truth, non-goals, acceptance,
   risks, verification, and pause triggers. Avoid detailed implementation files
   until the shape is accepted.
-- `goal`: accepted spec or explicit accepted scope, source task acceptance,
+- `goal`: accepted spec or explicit accepted scope, source Goal/work item
+  acceptance,
   role, context lock, delivery policy, verification, completion conditions,
   and state-sync obligations.
 - `execute`: goal/spec/run packet, execution DAG, allowed and forbidden scope,
@@ -162,7 +177,7 @@ Default focus presets:
 Token, noise, and lost-in-the-middle controls:
 
 - Read conversation-confirmed decisions, repo instructions, adapter/config,
-  current task/status, and the active spec/goal/run before broad docs.
+  current Goal/status, and the active spec/goal/run before broad docs.
 - Prefer the current run packet and directly linked artifacts over historical
   run logs. Summarize old logs by path and evidence unless their details are
   directly relevant.
@@ -245,11 +260,13 @@ Prepared runs use:
 
 ## Adapter Contract
 
+![Agent Harness configured artifact map](assets/readme/adapter-artifact-map.svg)
+
 Adapter projects use `.harness/config.json` as the machine entry point
 when present, but artifact paths come from config and the project adapter.
-Projects that already have `harness/README.md` plus a known task index
-such as `todolist.md` can be discovered as adapter projects before config is
-imported.
+Projects that already have `harness/README.md` plus a known Goal index
+stored in a task-index-compatible file such as `todolist.md` can be discovered
+as adapter projects before config is imported.
 
 Minimum config:
 
@@ -274,12 +291,15 @@ Minimum config:
     "deferredRegister": "harness/milestones",
     "mentalModels": "harness/mental-models",
     "mentalModelIndex": "harness/mental-models/README.md"
+  },
+  "communication": {
+    "commentary": "minimal"
   }
 }
 ```
 
 Existing adapter projects can persist discovered paths without creating a
-second task index:
+second Goal index:
 
 ```bash
 agent-harness config import --cwd <project> --task-index todolist.md --dry-run
@@ -305,7 +325,7 @@ agent-harness config import --cwd <project> --task-index todolist.md \
 ```
 
 `--dry-run --json` reports the proposed config before writing. Import must not
-create a second task index when a configured or discovered task index such as
+create a second Goal index when a configured or discovered Goal index such as
 `todolist.md` already exists.
 
 The real import also creates required support artifacts that do not split
@@ -383,6 +403,41 @@ Goal/Run artifact renderers currently emit English document bodies. Neither
 adapters must state this limitation until localized artifact renderers and
 matching validation fixtures are shipped.
 
+## Commentary Policy
+
+Project adapters may set the top-level in-turn communication policy:
+
+```json
+{
+  "communication": {
+    "commentary": "minimal"
+  }
+}
+```
+
+Supported values are `minimal`, `balanced`, and `audit`. When the field or
+whole `communication` object is absent, the effective policy is `minimal` so
+existing configs remain valid and gain the signal-only default.
+
+`harness-rule:signal-only-commentary` is a prompt and artifact contract, not a
+transport filter. It cannot suppress host-required preambles, approvals,
+safety notices, or progress heartbeats. All modes report blockers, material
+risks, failed verification, changed scope/authorization, required user
+decisions, and delivery transitions.
+
+- `minimal`: one combined kickoff by default; later updates add a new material
+  fact or satisfy a one-sentence host heartbeat.
+- `balanced`: adds meaningful exploration, implementation, and verification
+  phase transitions without per-command narration.
+- `audit`: adds compact gate, decision, state-sync, and delivery evidence for
+  transcript-quality runs.
+
+`config inspect` reports the effective policy, source, report cadence, and
+notification set. Prepared Run, DAG, prompt, status, and worker artifacts carry
+the resolved values. Goal Launch Packet `Report cadence` and `Notify on` fields
+may increase detail or narrow timing, but cannot hide mandatory signals or
+conflict with host instructions.
+
 ## Design Principles
 
 Agent Harness contracts, adapters, templates, and skills should preserve these
@@ -391,7 +446,7 @@ principles:
 - optional proposal competition: use competition only as a Shape protocol for
   ambiguous or high-risk route selection; it proposes routes and tradeoffs but
   does not execute the chosen route.
-- inspectable evidence trail: accepted task, status, goal, run, and gate state
+- inspectable evidence trail: accepted Goal, Task, status, run, and gate state
   must point to concrete evidence such as specs, command summaries, run logs,
   gate records, or human review notes.
 - packaging discipline: public docs, install docs, marketplace metadata, skill
@@ -430,12 +485,13 @@ principles:
 These principles are protocol constraints. Project adapters may add local
 policy, but plugin core must not absorb downstream-specific facts.
 
-## Task Kinds And States
+## Goal Kinds And States
 
-`kind` describes the work pattern. `state` describes where the task is in that
-pattern.
+`kind` describes the work pattern. `state` describes where the Goal entry is
+in that pattern. The underlying storage and schema still use task-compatible
+names such as `taskIndex` for backward compatibility.
 
-Default task kinds:
+Default Goal kinds:
 
 - `development`
 - `observe`
@@ -474,7 +530,7 @@ Adapter artifacts record facts; they are not plugin rules.
 
 Common artifacts:
 
-- task index
+- Goal index
 - specs
 - goals
 - milestones
@@ -547,9 +603,9 @@ boundary before editing.
 role into the prepared run packet. `run record --phase completed` must not
 accept completion without verification evidence; for `gate-only`, it must also
 cite gate evidence from implementer output and acceptance review.
-Every executable task's Done contract includes state-sync evidence or
+Every executable Goal's Done contract includes state-sync evidence or
 state-sync notes, even when a worker is not authorized to write accepted state.
-The accepted-state owner verifies those notes before marking task, goal, run,
+The accepted-state owner verifies those notes before marking Goal, Task, run,
 or gate state complete.
 
 ## Level 0 Fast Path Direct Execution
@@ -630,7 +686,7 @@ does not change runtime/schema behavior or unresolved product semantics. It is
 the default route for clear, finite, docs-only contract clarification with
 deterministic verification.
 
-Before editing, inspect existing Harness state. If a relevant task or status
+Before editing, inspect existing Harness state. If a relevant Goal or status
 record already covers the work, synchronize that pre-existing artifact after
 verification. If an accepted Goal/Run, enforced DAG/checklist, or
 adapter-required gate already covers it, follow the durable contract instead.
@@ -670,7 +726,7 @@ scope.
 
 `harness-rule:child-controller-boundary`: any visible long-lived thread must be
 launched as either a child controller or an execution worker. A child controller
-owns accepted task/status/goal/run/gate state only inside the authorized scope
+owns accepted Goal, Task, status, run, or gate state only inside the authorized scope
 named by the launch packet. Its parent controller receives status snapshots,
 decision requests, and final result packets for portfolio or milestone sync,
 not duplicate same-scope acceptance. An execution worker remains candidate
@@ -708,13 +764,13 @@ packets from prerequisites.
 
 - `intake idea` turns a new idea or requirement into a candidate harness entry.
 - Preview is read-only by default and must not start implementation.
-- `--record` appends to the configured task index only for supported markdown
-  task lists.
-- Table-based or unknown task-index formats must refuse automatic recording
+- `--record` appends to the configured Goal index only for supported markdown
+  Goal lists.
+- Table-based or unknown Goal-index formats must refuse automatic recording
   rather than risk corrupting project state.
-- `maintain tasks --record` may read table-based task indexes, but it must
-  refuse automatic task-index writes until table row updates can be matched by
-  a unique task title, a recognized `Status` column, and a bounded status
+- `maintain tasks --record` may read table-based Goal indexes, but it must
+  refuse automatic Goal-index writes until table row updates can be matched by
+  a unique Goal title, a recognized `Status` column, and a bounded status
   transition. Status snapshots may still be written to the configured status
   file.
 - Intake must not create specs, goals, runs, branches, review requests,
@@ -722,7 +778,7 @@ packets from prerequisites.
 - Idea Inbox Threads are capture lanes. They preserve raw notes, questions,
   and rough requirements while a control thread continues the active goal.
 - Promotion from Idea Inbox to accepted state requires intake / triage. The
-  promoted result may become a task candidate, spec draft, goal-ready task, or
+  promoted result may become a Goal candidate, spec draft, goal-ready entry, or
   clarification question, but raw capture notes are not executable scope.
 
 ## Optional Competition Rules
@@ -731,7 +787,7 @@ packets from prerequisites.
   repeatedly failing work.
 - Competition may output candidate routes, tradeoffs, coverage union, risks,
   verification plans, and a recommendation.
-- Competition must not directly edit files, prepare runs, mark tasks done,
+- Competition must not directly edit files, prepare runs, mark Goals done,
   start daemons, create branches/worktrees, push, open review requests, deploy,
   or accept state.
 - The control thread must validate the recommendation before routing to goal
@@ -752,33 +808,34 @@ packets from prerequisites.
   harness artifact shapes and workflows without copying private downstream
   facts into plugin core.
 
-## Default Fixed Task Format
+## Default Fixed Goal Format
 
 ```md
-# Project Tasks
+# Project Goals
 
 ## Now
 
-- [ ] P1 short task title
+- [ ] P1 short Goal title
   - Source:
   - Acceptance:
   - Notes:
 
 ## Next
 
-- [ ] P2 short task title
+- [ ] P2 short Goal title
 
 ## Later
 
-- [ ] P3 short task title
+- [ ] P3 short Goal title
 
 ## Done
 
-- [x] Completed task title
+- [x] Completed Goal title
 ```
 
-In task indexes, the `P*` prefix is priority only. It must not be used as the
-task name, milestone number, or roadmap phase identifier.
+In Goal indexes, the `P*` prefix is priority only. It must not be used as the
+Goal name, Task name, milestone number, or roadmap phase identifier. The
+default file remains `harness/tasks.md` for storage compatibility.
 
 ## Run Rules
 
@@ -808,7 +865,7 @@ task name, milestone number, or roadmap phase identifier.
   completions whose dependencies are incomplete, rejects a second running node
   without isolation evidence, and requires verification for completed nodes.
 - `run record` updates only the target run directory's `status.json` and
-  `logs/`; it does not update source files, task indexes, review requests,
+  `logs/`; it does not update source files, Goal indexes, review requests,
   deployments, or releases. Completed records require verification evidence;
   completed `gate-only` records also require gate evidence. Runs with enforced
   DAGs cannot be completed until every DAG node is completed, and active
@@ -938,15 +995,17 @@ anything else to confirm. If no user action is needed, say so explicitly.
 
 ## Batch Acceptance Coverage
 
-When a goal or spec merges multiple source tasks, or describes batch /
-unfinished-task completion, it must include `Source Task Acceptance Map` before
-execution:
+When a goal or spec merges multiple source Goal entries, or describes batch /
+unfinished-Goal completion, it must include `Source Task Acceptance Map` before
+execution. The section name and `- Task:` item key are retained as
+compatibility syntax; user-facing meaning is source Goal/work item acceptance
+coverage:
 
 ```md
 ## Source Task Acceptance Map
 
-- Task: `source task title`
-  - Acceptance: `original source task acceptance`
+- Task: `source Goal/work item title`
+  - Acceptance: `original source Goal/work item acceptance`
   - Evidence: `TBD`
   - Status: `pending`
   - Unblocker: `N/A`
@@ -954,8 +1013,8 @@ execution:
 
 `goal validate` must reject batch goals without this map or with malformed
 items. `run record --phase completed` must reject batch runs unless every map
-item is `satisfied` and has concrete evidence. If any source task is deferred
-or blocked, the task must stay out of Done or the run should be recorded as
+item is `satisfied` and has concrete evidence. If any source Goal/work item is
+deferred or blocked, it must stay out of Done or the run should be recorded as
 blocked with an unblock condition.
 
 ## Milestone Completion Coverage
@@ -984,7 +1043,7 @@ required milestone items from the referenced `Implementation Phasing`.
 `run record --phase completed` must reject milestone runs unless every map item
 is `satisfied` and has concrete evidence. If only `M5-S0` is complete, the
 parent `M5` milestone must stay open and the remaining `D*` items must remain
-visible in the task index, milestone, deferred register, or active milestone
+visible in the Goal index, milestone, deferred register, or active milestone
 map.
 
 Legacy migration note: `Stage Completion Map` was renamed to

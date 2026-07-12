@@ -31,7 +31,7 @@ codex plugin marketplace add <path-to-agent-harness-repo>
 From GitHub:
 
 ```bash
-codex plugin marketplace add <owner>/<repo>
+codex plugin marketplace add 0xenzyme/agent-harness
 ```
 
 Codex reads `.agents/plugins/marketplace.json` and exposes the plugin as
@@ -53,7 +53,7 @@ Use the current thread as controller and carry the accepted spec through to comp
 
 | Situation | Public skill |
 | --- | --- |
-| Adopt Harness, import an existing task index, run doctor, or preview activation. | `harness:init` |
+| Adopt Harness, import an existing Goal index, run doctor, or preview activation. | `harness:init` |
 | Inspect status, blockers, stale artifacts, or the next route without mutation. | `harness:orient` |
 | Capture or triage an idea, requirement, bug, or inbox note. | `harness:intake` |
 | Prepare a Goal from accepted scope, execute confirmed work, verify, and sync state. | `harness:execute` |
@@ -73,8 +73,8 @@ owns the repeatable execution mechanics inside the project adapter:
 - prepare Goals and execution DAGs instead of stopping at the next small spec;
 - coordinate workers without confusing candidate output with accepted state;
 - verify concrete evidence before advancing delivery state;
-- require `State Sync Notes` as part of Task completion;
-- keep task indexes, bounded status snapshots, Goals, Runs, and gates aligned;
+- require `State Sync Notes` as part of Goal and Task completion;
+- keep Goal indexes, bounded status snapshots, Goals, Runs, and gates aligned;
 - pause for real human gates such as unclear direction, credentials, paid APIs,
   production access, destructive actions, or delivery above policy.
 
@@ -84,7 +84,7 @@ verification, delivery, and handoff.
 
 ## How It Works
 
-![Agent Harness execution model](docs/assets/readme/adapter-execution-model.svg)
+![Agent Harness product loop](docs/assets/readme/adapter-execution-model.svg)
 
 The user-facing hierarchy is:
 
@@ -99,6 +99,18 @@ Roadmap -> Milestone -> Goal -> Task -> Run
 - A **Run** is one execution attempt and evidence record, not a thread.
 - A **Spec** constrains the Goal before execution; it is not a post-Run artifact.
 
+### Spec and PRD
+
+Agent Harness does not define PRD as a separate protocol concept. A Product
+Requirements Document usually explains the user problem, product value, and
+desired outcome; it can be one source for a Harness Spec.
+
+`Spec` is the broader execution term. It means accepted scope that makes the
+Goal's boundaries, constraints, and acceptance conditions clear. A PRD may
+satisfy that need, may need technical or operational supplements, or may be
+irrelevant to non-product work. Harness therefore does not require a PRD and
+does not add PRD-specific paths, config, lifecycle state, or gates.
+
 Parent milestones stay open until their mapped items are satisfied. Accepting a
 source-spec item such as `M5-S0` cannot silently close the parent `M5` while
 implementation work remains.
@@ -111,7 +123,7 @@ continue, pause, ask, or close. See
 
 ## Architecture
 
-![Agent Harness adapter model](docs/assets/readme/adapter-model.svg)
+![Agent Harness adapter boundary](docs/assets/readme/adapter-model.svg)
 
 Agent Harness separates stable protocol from local project facts:
 
@@ -126,11 +138,10 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 - The **project artifacts** record the roadmap, milestones, specs, Goals,
   Tasks, Runs, gate results, and evidence.
 
-![Agent Harness artifact map](docs/assets/readme/adapter-artifact-map.svg)
-
-Adapter projects resolve these paths through `.harness/config.json`; plugin core
-does not embed downstream product names, ports, credentials, database rules, or
-production policy.
+Adapter projects resolve artifact paths through `.harness/config.json`; plugin
+core does not embed downstream product names, ports, credentials, database
+rules, or production policy. The detailed path map lives in the
+[Project Contract](docs/project-contract.md#adapter-contract).
 
 ### Adapter language policy
 
@@ -155,6 +166,25 @@ follow the user's language while preserving code, commands, paths, API names,
 skill names, model names, and Git commit messages in their original form. See
 [Install In Codex](docs/install.md#language-policy) and the
 [Project Contract](docs/project-contract.md#adapter-language-policy).
+
+### Commentary policy
+
+Projects can reduce redundant progress narration without hiding material
+signals:
+
+```json
+{
+  "communication": {
+    "commentary": "minimal"
+  }
+}
+```
+
+Supported values are `minimal`, `balanced`, and `audit`; omitted configuration
+defaults to `minimal`. The policy shapes Harness skill and generated-run
+guidance. It does not filter Codex messages or override host-required tool,
+safety, approval, or heartbeat updates. See the
+[Project Contract](docs/project-contract.md#commentary-policy).
 
 ## Safety And Acceptance
 

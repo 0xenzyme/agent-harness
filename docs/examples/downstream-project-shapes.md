@@ -33,7 +33,7 @@ agent-harness orient next --cwd <project>
 
 ## Existing Adapter Project
 
-Use when a project already has a task index and adapter-style docs.
+Use when a project already has a Goal index and adapter-style docs.
 
 Expected setup before import:
 
@@ -50,7 +50,7 @@ agent-harness config import --cwd <project> --task-index todolist.md
 agent-harness config validate --cwd <project>
 ```
 
-The import should preserve the existing task index and create only missing
+The import should preserve the existing Goal index and create only missing
 support artifacts.
 
 ## Fixed Compatibility Project

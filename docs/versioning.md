@@ -56,7 +56,7 @@ After `1.0.0`, switch to normal semver:
 A version bump should happen only after:
 
 - the blueprint status is implemented;
-- task/status records are synced;
+- Goal/status records are synced;
 - `package.json` and `plugins/agent-harness/.codex-plugin/plugin.json` versions
   match;
 - `npm run validate:plugin` passes;

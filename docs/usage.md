@@ -78,10 +78,10 @@ When the task is large, or you are not sure whether Harness can proceed automati
 Use harness to tell me what still needs human confirmation.
 ```
 
-For a specific task, milestone, or spec:
+For a specific goal, milestone, or spec:
 
 ```text
-Use harness to check what still needs human confirmation for <task/milestone/spec path>.
+Use harness to check what still needs human confirmation for <goal/milestone/spec path>.
 ```
 
 ## Execute Confirmed Work
@@ -158,7 +158,7 @@ Use harness to create a lightweight acceptance checklist, record it, and wrap up
 
 ## Check Whether Work Is Really Done
 
-When you want to know whether a task can be closed:
+When you want to know whether a Goal can be closed:
 
 ```text
 Use harness to check whether <goal/task/milestone> is really complete and what remains.
@@ -167,5 +167,5 @@ Use harness to check whether <goal/task/milestone> is really complete and what r
 If implementation is done but state is not synced:
 
 ```text
-Use harness to verify the completed work for <goal path> and sync task/status/run evidence.
+Use harness to verify the completed work for <goal path> and sync Goal/status/run evidence.
 ```
