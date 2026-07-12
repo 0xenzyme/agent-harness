@@ -33,6 +33,9 @@ agent-harness
 
 ## First Screen
 
+`README.md` is the canonical Simplified Chinese README. `README.en.md` is the
+secondary English edition. Do not maintain a duplicate `README.zh-CN.md`.
+
 The README first screen should communicate:
 
 - project identity: `Agent Harness`;

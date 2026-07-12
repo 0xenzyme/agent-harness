@@ -231,7 +231,8 @@ npm run test:all
 
 ## 继续阅读
 
-- 中文 README: [`../README.zh-CN.md`](../README.zh-CN.md)
+- 中文 README: [`../README.md`](../README.md)
+- English README: [`../README.en.md`](../README.en.md)
 - 中文 CLI reference: [`cli.zh-CN.md`](cli.zh-CN.md)
 - 英文 install source: [`install.md`](install.md)
 - 英文 project contract source of truth: [`project-contract.md`](project-contract.md)
