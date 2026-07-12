@@ -1,4 +1,4 @@
-# Project Tasks
+# Project Goals
 
 ## Now
 
@@ -7,6 +7,28 @@
 ## Later
 
 ## Done
+
+- [x] Add signal-only Commentary Policy controls.
+  - Completed: Added backward-compatible `communication.commentary` with
+    `minimal`, `balanced`, and `audit`; old configs default to `minimal`.
+  - Completed: `config inspect` exposes effective source/cadence/signals, and
+    Run, DAG, status, prompt, and worker artifacts carry the resolved policy.
+  - Completed: All four public skills load one shared signal-only contract;
+    controller packet cadence and notification semantics are now explicit.
+  - Spec:
+    `harness/specs/2026-07-12-signal-only-commentary-policy.md`
+  - Goal:
+    `harness/goals/2026-07-12-add-signal-only-commentary-policy-controls.md`
+  - Run:
+    `.harness/runs/20260712-095713-add-signal-only-commentary-policy-controls/`
+  - Verification: syntax/JSON checks, config validation/inspection,
+    `npm run test:all`, `npm run test:eval`, `npm run validate:plugin`, and
+    `git diff --check` passed.
+  - Delivery: `validated-local`; no commit, push, plugin-cache deployment,
+    publish, or release performed.
+  - Degraded provenance: active session policy did not authorize subagent
+    delegation, so enforced DAG nodes ran sequentially as `manual-foreground`
+    in the locked current thread.
 
 - [x] Document adapter language configuration and artifact-language boundaries.
   - Completed: Documented top-level `.harness/config.json`

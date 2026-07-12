@@ -7,45 +7,47 @@ Historical evidence lives in `harness/tasks.md`, `harness/goals/`, and
 ## Focus
 
 - Current Goal: None active.
-- Recently completed: Documented adapter language configuration, CLI selection
-  precedence, `auto` behavior, technical-term preservation, and the current
-  English-only generated-artifact boundary.
+- Recently completed: Added the signal-only Commentary Policy with
+  `minimal | balanced | audit`, backward-compatible `minimal` resolution,
+  config inspection, generated Run/worker propagation, shared skill guidance,
+  docs, and deterministic coverage.
 - Goal:
-  `harness/goals/2026-07-12-document-adapter-language-configuration-and-artifact-language-boundaries.md`
-- Run: Foreground execution in the current thread; no separate run packet.
+  `harness/goals/2026-07-12-add-signal-only-commentary-policy-controls.md`
+- Run:
+  `.harness/runs/20260712-095713-add-signal-only-commentary-policy-controls/`
+- Degraded provenance: active session policy did not authorize subagent
+  delegation; enforced nodes ran sequentially as `manual-foreground` in the
+  locked current thread.
 
 ## Git And Delivery
 
 - Current branch: `main`
 - Work mode: `local`
-- Delivery intent: `push-and-deploy-local-plugin`
-- Target delivery state: `pushed`
-- Commit authorized: `yes` (fresh user authorization on 2026-07-12)
-- Push authorized: `yes` (fresh user authorization on 2026-07-12)
+- Delivery intent: `local-validation`
+- Target delivery state: `validated-local`
+- Commit authorized: `no`
+- Push authorized: `no`
 - Review authorized: `no`
 - Integration authorized: `no`
 - Release authorized: `no`
-- Plugin-cache deployment authorized: `yes` (fresh user authorization on 2026-07-12)
+- Plugin-cache deployment authorized: `no`
 
-Commit, push, and local plugin cache deployment authorization comes only from
-the user's current 2026-07-12 instruction. Review, integration, and release
-remain unauthorized.
+No commit, push, review, integration, release, plugin-cache deployment,
+credentials, paid API, production, daemon, or destructive-operation authority
+is recorded for the Commentary Policy Goal.
 
 ## Verification
 
 - State: passed.
 - Required checks:
-  - `npm run validate:plugin`
-  - `npm run test:protocol`
-  - `npm run test:smoke`
-  - `npm run test:all`
-  - Goal validation
   - `git diff --check`
-  - `npm run deploy:local-plugin`
-- Deployment evidence: Documentation commit `3f40b19` pushed to `origin/main`;
-  local plugin cache refreshed at
-  `/Users/liuyj/.codex/plugins/cache/personal/harness/0.6.0` with validate,
-  smoke, reinstall, and cache sentinel checks passing.
+  - `npm run test:all`
+  - `npm run test:eval`
+  - `npm run validate:plugin`
+- Evidence: syntax/JSON parsing, config validation/inspection, presentation,
+  protocol, smoke, deterministic behavior eval, plugin validation, and diff
+  checks passed locally. Existing unrelated terminology cleanup changes remain
+  preserved in the dirty checkout.
 
 ## Route
 
@@ -54,8 +56,7 @@ remain unauthorized.
 - Execution role: None active.
 - Accepted-state owner: None active.
 - Need user: None
-- Remaining: None. Start a new Codex thread or restart Codex App to load the
-  refreshed plugin cache.
+- Remaining: None
 
 ## Blockers
 

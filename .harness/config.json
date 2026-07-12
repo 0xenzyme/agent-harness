@@ -28,6 +28,9 @@
   "language": {
     "default": "auto"
   },
+  "communication": {
+    "commentary": "minimal"
+  },
   "workMode": {
     "defaultPolicy": "ask"
   },
