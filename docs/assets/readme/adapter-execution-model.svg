@@ -1,98 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941" role="img" aria-labelledby="title desc">
-  <title id="title">Agent Harness Execution Model</title>
-  <desc id="desc">Human direction and a specification constrain a Goal before execution; Runs then produce verification, gate evidence, and synchronized state.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="720" viewBox="0 0 1440 720" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Harness product loop</title>
+  <desc id="desc">The user sets direction, Agent Harness carries accepted work forward, and the project receives verified progress and synchronized state. Harness returns to the user only when human judgment or authority is required.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f7fbff"/>
-      <stop offset="0.48" stop-color="#f7fbf4"/>
-      <stop offset="1" stop-color="#fff8ef"/>
-    </linearGradient>
-    <filter id="softShadow" x="-12%" y="-16%" width="124%" height="138%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#1f2937" flood-opacity="0.14"/>
-    </filter>
-    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M2 2 L14 8 L2 14 Z" fill="#64748b"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
     <style>
-      text { font-family: Arial, Helvetica, sans-serif; }
-      .title { font-size: 58px; font-weight: 700; fill: #132033; }
-      .subtitle { font-size: 26px; font-weight: 400; fill: #526173; }
-      .section { font-size: 25px; font-weight: 700; fill: #1f2937; }
-      .section-note { font-size: 18px; font-weight: 500; fill: #5b6878; }
-      .step-title { font-size: 26px; font-weight: 700; fill: #162235; }
-      .step-note { font-size: 17px; font-weight: 500; fill: #536272; }
-      .small-title { font-size: 21px; font-weight: 700; fill: #1f2937; }
-      .footer { font-size: 23px; font-weight: 600; fill: #263243; }
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .title { font-size: 46px; font-weight: 720; letter-spacing: -1.2px; fill: #132033; }
+      .subtitle { font-size: 21px; font-weight: 430; fill: #526173; }
+      .label { font-size: 16px; font-weight: 700; letter-spacing: 1.5px; fill: #0f766e; }
+      .stage-title { font-size: 30px; font-weight: 700; letter-spacing: -0.4px; fill: #132033; }
+      .stage-copy { font-size: 18px; font-weight: 450; fill: #526173; }
+      .harness-label { font-size: 16px; font-weight: 700; letter-spacing: 1.5px; fill: #99f6e4; }
+      .harness-title { font-size: 38px; font-weight: 730; letter-spacing: -0.7px; fill: #ffffff; }
+      .harness-copy { font-size: 19px; font-weight: 520; fill: #e6fffb; }
+      .note-title { font-size: 21px; font-weight: 700; fill: #132033; }
+      .note-copy { font-size: 17px; font-weight: 450; fill: #526173; }
     </style>
   </defs>
 
-  <rect width="1672" height="941" fill="url(#bg)"/>
-  <circle cx="1430" cy="142" r="124" fill="#f4c666" opacity="0.2"/>
-  <circle cx="242" cy="792" r="142" fill="#62c2b4" opacity="0.16"/>
+  <rect width="1440" height="720" fill="#f7f9fc"/>
+  <rect x="0" y="0" width="18" height="720" fill="#0f766e"/>
 
-  <text x="92" y="92" class="title">Agent Harness Execution Model</text>
-  <text x="94" y="137" class="subtitle">Accepted direction becomes scoped Goal work, verifiable Runs, and synchronized evidence.</text>
+  <text x="72" y="82" class="title">From direction to verified progress</text>
+  <text x="72" y="119" class="subtitle">Harness carries the execution burden while the human keeps product judgment.</text>
 
-  <rect x="92" y="176" width="1488" height="112" rx="24" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <text x="132" y="221" class="section">Human Steering</text>
-  <text x="132" y="253" class="section-note">Direction, constraints, acceptance, and true pause conditions.</text>
-  <rect x="564" y="201" width="220" height="58" rx="14" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="674" y="238" class="small-title" text-anchor="middle">Intent</text>
-  <rect x="812" y="201" width="220" height="58" rx="14" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="922" y="238" class="small-title" text-anchor="middle">Scope</text>
-  <rect x="1060" y="201" width="220" height="58" rx="14" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="1170" y="238" class="small-title" text-anchor="middle">Acceptance</text>
-  <rect x="1308" y="201" width="220" height="58" rx="14" fill="#fff0ed" stroke="#f2a691"/>
-  <text x="1418" y="238" class="small-title" text-anchor="middle">Pause Conditions</text>
+  <line x1="368" y1="343" x2="466" y2="343" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="974" y1="343" x2="1072" y2="343" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <line x1="836" y1="291" x2="836" y2="326" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <g>
+    <text x="72" y="239" class="label">YOU</text>
+    <text x="72" y="284" class="stage-title">Set direction</text>
+    <text x="72" y="327" class="stage-copy">Desired outcome</text>
+    <text x="72" y="361" class="stage-copy">Constraints and boundaries</text>
+    <text x="72" y="395" class="stage-copy">True pause conditions</text>
+    <line x1="72" y1="427" x2="330" y2="427" stroke="#cbd5e1"/>
+    <text x="72" y="462" class="stage-copy">You decide what matters.</text>
+  </g>
 
-  <rect x="92" y="332" width="1488" height="410" rx="26" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <text x="132" y="381" class="section">Harness Work Loop</text>
-  <text x="132" y="413" class="section-note">Goals are the primary execution unit; Specs constrain Goals before execution.</text>
+  <g>
+    <rect x="470" y="178" width="500" height="330" rx="16" fill="#0f766e"/>
+    <text x="514" y="226" class="harness-label">AGENT HARNESS</text>
+    <text x="514" y="270" class="harness-title">Carries accepted work</text>
+    <text x="514" y="310" class="harness-title">forward</text>
 
-  <rect x="632" y="430" width="212" height="70" rx="16" fill="#fff0ed" stroke="#f2a691"/>
-  <text x="738" y="459" class="step-title" text-anchor="middle">Spec</text>
-  <text x="738" y="484" class="step-note" text-anchor="middle">constraints</text>
-  <line x1="738" y1="502" x2="738" y2="527" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+    <circle cx="524" cy="350" r="5" fill="#5eead4"/>
+    <text x="544" y="357" class="harness-copy">Keeps scope and completion conditions explicit</text>
+    <circle cx="524" cy="391" r="5" fill="#5eead4"/>
+    <text x="544" y="398" class="harness-copy">Drives the next safe unit of work</text>
+    <circle cx="524" cy="432" r="5" fill="#5eead4"/>
+    <text x="544" y="439" class="harness-copy">Verifies evidence before advancing state</text>
+    <circle cx="524" cy="473" r="5" fill="#5eead4"/>
+    <text x="544" y="480" class="harness-copy">Synchronizes the project for the next handoff</text>
+  </g>
 
-  <rect x="132" y="532" width="212" height="96" rx="18" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="238" y="571" class="step-title" text-anchor="middle">Roadmap</text>
-  <text x="238" y="600" class="step-note" text-anchor="middle">direction</text>
-  <rect x="382" y="532" width="212" height="96" rx="18" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="488" y="571" class="step-title" text-anchor="middle">Milestone</text>
-  <text x="488" y="600" class="step-note" text-anchor="middle">phase outcome</text>
-  <rect x="632" y="532" width="212" height="96" rx="18" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="738" y="571" class="step-title" text-anchor="middle">Goal</text>
-  <text x="738" y="600" class="step-note" text-anchor="middle">main work unit</text>
-  <rect x="882" y="532" width="212" height="96" rx="18" fill="#f2efff" stroke="#b9a6f6"/>
-  <text x="988" y="571" class="step-title" text-anchor="middle">Tasks</text>
-  <text x="988" y="600" class="step-note" text-anchor="middle">checklist breakdown</text>
-  <rect x="1132" y="532" width="212" height="96" rx="18" fill="#eefbf9" stroke="#7ccdc3"/>
-  <text x="1238" y="571" class="step-title" text-anchor="middle">Run</text>
-  <text x="1238" y="600" class="step-note" text-anchor="middle">attempt + evidence</text>
+  <g>
+    <text x="1072" y="239" class="label">YOUR PROJECT</text>
+    <text x="1072" y="284" class="stage-title">Stays current</text>
+    <text x="1072" y="327" class="stage-copy">Verified changes</text>
+    <text x="1072" y="361" class="stage-copy">Inspectable evidence</text>
+    <text x="1072" y="395" class="stage-copy">Synchronized state</text>
+    <line x1="1072" y1="427" x2="1330" y2="427" stroke="#cbd5e1"/>
+    <text x="1072" y="462" class="stage-copy">The next safe action is clear.</text>
+  </g>
 
-  <line x1="344" y1="580" x2="382" y2="580" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="594" y1="580" x2="632" y2="580" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="844" y1="580" x2="882" y2="580" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="1094" y1="580" x2="1132" y2="580" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-
-  <rect x="520" y="656" width="166" height="58" rx="15" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="603" y="693" class="small-title" text-anchor="middle">Execute</text>
-  <rect x="724" y="656" width="166" height="58" rx="15" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="807" y="693" class="small-title" text-anchor="middle">Verify</text>
-  <rect x="928" y="656" width="166" height="58" rx="15" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="1011" y="693" class="small-title" text-anchor="middle">Gate</text>
-  <rect x="1132" y="656" width="166" height="58" rx="15" fill="#eefbf9" stroke="#7ccdc3"/>
-  <text x="1215" y="693" class="small-title" text-anchor="middle">Sync</text>
-  <path d="M1238 630 C1238 643 603 640 603 652" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="686" y1="685" x2="724" y2="685" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="890" y1="685" x2="928" y2="685" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="1094" y1="685" x2="1132" y2="685" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-
-  <rect x="92" y="782" width="1488" height="94" rx="24" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <text x="132" y="830" class="section">Controller Gate</text>
-  <text x="132" y="860" class="section-note">A Run is complete only when verification, gate evidence, and state sync match the Goal.</text>
-  <rect x="930" y="806" width="560" height="44" rx="22" fill="#f8fafc" stroke="#d9e2ec"/>
-  <text x="1210" y="836" class="footer" text-anchor="middle">Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run</text>
+  <g>
+    <rect x="242" y="570" width="956" height="92" rx="12" fill="#eaf4f2"/>
+    <text x="282" y="609" class="note-title">Harness returns only when human judgment or authority is required.</text>
+    <text x="282" y="639" class="note-copy">Unclear direction · credentials · paid APIs · production · destructive actions · delivery authorization</text>
+  </g>
 </svg>

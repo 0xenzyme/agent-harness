@@ -1,115 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941" role="img" aria-labelledby="title desc">
-  <title id="title">Agent Harness Adapter Model</title>
-  <desc id="desc">The harness plugin defines protocol, the project adapter maps local rules, and project artifacts record roadmap, milestones, goals, tasks, runs, and evidence.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="620" viewBox="0 0 1440 620" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Harness adapter model</title>
+  <desc id="desc">Agent Harness supplies a stable reusable workflow, the project adapter declares local policy, and the project keeps its own code, facts, and evidence.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f8fbff"/>
-      <stop offset="0.55" stop-color="#f3f7f4"/>
-      <stop offset="1" stop-color="#fff8ed"/>
-    </linearGradient>
-    <filter id="softShadow" x="-10%" y="-15%" width="120%" height="135%">
-      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1f2937" flood-opacity="0.14"/>
-    </filter>
-    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M2 2 L14 8 L2 14 Z" fill="#64748b"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
     <style>
-      text { font-family: Arial, Helvetica, sans-serif; }
-      .title { font-size: 58px; font-weight: 700; fill: #132033; }
-      .subtitle { font-size: 26px; font-weight: 400; fill: #526173; }
-      .layer-title { font-size: 32px; font-weight: 700; fill: #111827; }
-      .layer-note { font-size: 20px; font-weight: 500; fill: #475569; }
-      .card-title { font-size: 25px; font-weight: 700; fill: #182335; }
-      .card-note { font-size: 18px; font-weight: 500; fill: #536272; }
-      .chip { font-size: 23px; font-weight: 700; fill: #172033; }
-      .chip-note { font-size: 16px; font-weight: 500; fill: #536272; }
-      .footer { font-size: 23px; font-weight: 600; fill: #263243; }
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .title { font-size: 46px; font-weight: 720; letter-spacing: -1.2px; fill: #132033; }
+      .subtitle { font-size: 21px; font-weight: 430; fill: #526173; }
+      .label-light { font-size: 15px; font-weight: 700; letter-spacing: 1.4px; fill: #bfdbfe; }
+      .label-teal { font-size: 15px; font-weight: 700; letter-spacing: 1.4px; fill: #99f6e4; }
+      .label-dark { font-size: 15px; font-weight: 700; letter-spacing: 1.4px; fill: #0f766e; }
+      .card-title-light { font-size: 30px; font-weight: 710; fill: #ffffff; }
+      .card-title-dark { font-size: 30px; font-weight: 710; fill: #132033; }
+      .card-copy-light { font-size: 18px; font-weight: 450; fill: #dbeafe; }
+      .card-copy-teal { font-size: 18px; font-weight: 450; fill: #e6fffb; }
+      .card-copy-dark { font-size: 18px; font-weight: 450; fill: #526173; }
+      .footer { font-size: 20px; font-weight: 600; fill: #263243; }
     </style>
   </defs>
 
-  <rect width="1672" height="941" fill="url(#bg)"/>
-  <circle cx="1394" cy="136" r="118" fill="#f3c969" opacity="0.22"/>
-  <circle cx="194" cy="764" r="130" fill="#66c6b8" opacity="0.18"/>
+  <rect width="1440" height="620" fill="#f7f9fc"/>
+  <rect x="0" y="0" width="18" height="620" fill="#0f766e"/>
 
-  <text x="92" y="92" class="title">Agent Harness Adapter Model</text>
-  <text x="94" y="137" class="subtitle">Protocol is stable; project facts and execution evidence stay local and explicit.</text>
+  <text x="72" y="82" class="title">Stable protocol, local control</text>
+  <text x="72" y="119" class="subtitle">Harness stays reusable because each project keeps its own rules and facts.</text>
 
-  <rect x="92" y="184" width="1488" height="165" rx="24" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <rect x="112" y="204" width="12" height="125" rx="6" fill="#2c7be5"/>
-  <text x="150" y="238" class="layer-title">Harness Plugin</text>
-  <text x="150" y="272" class="layer-note">Reusable protocol, skills,</text>
-  <text x="150" y="299" class="layer-note">CLI gates, and templates.</text>
+  <line x1="432" y1="327" x2="510" y2="327" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="930" y1="327" x2="1008" y2="327" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <rect x="520" y="212" width="285" height="102" rx="16" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="662" y="253" class="card-title" text-anchor="middle">Protocol Anchors</text>
-  <text x="662" y="282" class="card-note" text-anchor="middle">harness-rule contracts</text>
+  <g>
+    <rect x="72" y="205" width="356" height="244" rx="14" fill="#17243a"/>
+    <text x="108" y="250" class="label-light">REUSABLE</text>
+    <text x="108" y="299" class="card-title-light">Agent Harness</text>
+    <text x="108" y="345" class="card-copy-light">Workflow and safety contracts</text>
+    <text x="108" y="379" class="card-copy-light">Skills, templates, and checks</text>
+    <text x="108" y="413" class="card-copy-light">Project-neutral behavior</text>
+  </g>
 
-  <rect x="840" y="212" width="285" height="102" rx="16" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="982" y="253" class="card-title" text-anchor="middle">Workflow Skills</text>
-  <text x="982" y="282" class="card-note" text-anchor="middle">init, orient, intake, execute</text>
+  <g>
+    <rect x="512" y="181" width="416" height="292" rx="16" fill="#0f766e"/>
+    <text x="552" y="230" class="label-teal">LOCAL POLICY</text>
+    <text x="552" y="281" class="card-title-light">Project Adapter</text>
+    <text x="552" y="329" class="card-copy-teal">Artifact paths and project boundaries</text>
+    <text x="552" y="365" class="card-copy-teal">Verification and state-sync rules</text>
+    <text x="552" y="401" class="card-copy-teal">Work mode and delivery policy</text>
+    <line x1="552" y1="431" x2="888" y2="431" stroke="#5eead4" stroke-opacity="0.5"/>
+    <text x="552" y="456" class="card-copy-teal">No project facts leak into plugin core.</text>
+  </g>
 
-  <rect x="1160" y="212" width="285" height="102" rx="16" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="1302" y="253" class="card-title" text-anchor="middle">CLI + Templates</text>
-  <text x="1302" y="282" class="card-note" text-anchor="middle">goal, run, gates, status</text>
+  <g>
+    <rect x="1012" y="205" width="356" height="244" rx="14" fill="#ffffff" stroke="#b8c4d4" stroke-width="1.5"/>
+    <text x="1048" y="250" class="label-dark">LOCAL FACTS</text>
+    <text x="1048" y="299" class="card-title-dark">Your Project</text>
+    <text x="1048" y="345" class="card-copy-dark">Code and product decisions</text>
+    <text x="1048" y="379" class="card-copy-dark">Goals and current state</text>
+    <text x="1048" y="413" class="card-copy-dark">Run evidence and delivery history</text>
+  </g>
 
-  <line x1="836" y1="356" x2="836" y2="390" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-
-  <rect x="92" y="395" width="1488" height="165" rx="24" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <rect x="112" y="415" width="12" height="125" rx="6" fill="#159a7f"/>
-  <text x="150" y="449" class="layer-title">Project Adapter</text>
-  <text x="150" y="483" class="layer-note">Declares paths, boundaries,</text>
-  <text x="150" y="510" class="layer-note">verification gates, and delivery.</text>
-
-  <rect x="520" y="423" width="285" height="102" rx="16" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="662" y="464" class="card-title" text-anchor="middle">Artifact Paths</text>
-  <text x="662" y="493" class="card-note" text-anchor="middle">milestones, goals, runs</text>
-
-  <rect x="840" y="423" width="285" height="102" rx="16" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="982" y="464" class="card-title" text-anchor="middle">Boundaries</text>
-  <text x="982" y="493" class="card-note" text-anchor="middle">scope, non-goals, pauses</text>
-
-  <rect x="1160" y="423" width="285" height="102" rx="16" fill="#f2efff" stroke="#b9a6f6"/>
-  <text x="1302" y="464" class="card-title" text-anchor="middle">Gates</text>
-  <text x="1302" y="493" class="card-note" text-anchor="middle">verification and state sync</text>
-
-  <line x1="836" y1="567" x2="836" y2="601" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
-
-  <rect x="92" y="606" width="1488" height="218" rx="24" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <rect x="112" y="626" width="12" height="178" rx="6" fill="#d99b22"/>
-  <text x="150" y="660" class="layer-title">Project Artifacts</text>
-  <text x="150" y="694" class="layer-note">Project source of truth</text>
-  <text x="150" y="721" class="layer-note">plus evidence from each Run.</text>
-
-  <rect x="442" y="646" width="156" height="82" rx="15" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="520" y="681" class="chip" text-anchor="middle">Roadmap</text>
-  <text x="520" y="707" class="chip-note" text-anchor="middle">direction</text>
-
-  <rect x="622" y="646" width="170" height="82" rx="15" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="707" y="681" class="chip" text-anchor="middle">Milestones</text>
-  <text x="707" y="707" class="chip-note" text-anchor="middle">outcomes</text>
-
-  <rect x="816" y="646" width="146" height="82" rx="15" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="889" y="681" class="chip" text-anchor="middle">Goals</text>
-  <text x="889" y="707" class="chip-note" text-anchor="middle">work units</text>
-
-  <rect x="986" y="646" width="142" height="82" rx="15" fill="#f2efff" stroke="#b9a6f6"/>
-  <text x="1057" y="681" class="chip" text-anchor="middle">Tasks</text>
-  <text x="1057" y="707" class="chip-note" text-anchor="middle">breakdown</text>
-
-  <rect x="1152" y="646" width="132" height="82" rx="15" fill="#eefbf9" stroke="#7ccdc3"/>
-  <text x="1218" y="681" class="chip" text-anchor="middle">Runs</text>
-  <text x="1218" y="707" class="chip-note" text-anchor="middle">attempts</text>
-
-  <rect x="1308" y="646" width="154" height="82" rx="15" fill="#fff0ed" stroke="#f2a691"/>
-  <text x="1385" y="681" class="chip" text-anchor="middle">Evidence</text>
-  <text x="1385" y="707" class="chip-note" text-anchor="middle">gates</text>
-
-  <line x1="598" y1="687" x2="622" y2="687" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="792" y1="687" x2="816" y2="687" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="962" y1="687" x2="986" y2="687" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="1128" y1="687" x2="1152" y2="687" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="1284" y1="687" x2="1308" y2="687" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
-
-  <rect x="412" y="759" width="1080" height="38" rx="19" fill="#f8fafc" stroke="#d9e2ec"/>
-  <text x="952" y="785" class="footer" text-anchor="middle">Roadmap -&gt; Milestone -&gt; Goal -&gt; Task -&gt; Run, with evidence synced back to project state.</text>
+  <text x="720" y="548" class="footer" text-anchor="middle">Plugin defines the contract · Adapter declares local policy · Project records the truth</text>
 </svg>

@@ -1,78 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="820" viewBox="0 0 1672 820" role="img" aria-labelledby="title desc">
-  <title id="title">Agent Harness Artifact Map</title>
-  <desc id="desc">The .harness config selects a project adapter, which resolves project-local task, roadmap, specification, milestone, goal, run, gate, and status paths.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="720" viewBox="0 0 1440 720" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Harness configured artifact map</title>
+  <desc id="desc">The Harness config selects a project adapter, which resolves project-local Goal index, specification, milestone, Goal, Run, gate, status, and mental-model paths.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f8fbff"/>
-      <stop offset="0.55" stop-color="#f3f7f4"/>
-      <stop offset="1" stop-color="#fff8ed"/>
-    </linearGradient>
-    <filter id="softShadow" x="-12%" y="-18%" width="124%" height="140%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#1f2937" flood-opacity="0.14"/>
-    </filter>
-    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M2 2 L14 8 L2 14 Z" fill="#64748b"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
     <style>
-      text { font-family: Arial, Helvetica, sans-serif; }
-      .title { font-size: 58px; font-weight: 700; fill: #132033; }
-      .subtitle { font-size: 26px; font-weight: 400; fill: #526173; }
-      .card-title { font-size: 30px; font-weight: 700; fill: #172033; }
-      .card-note { font-size: 20px; font-weight: 500; fill: #526173; }
-      .item-title { font-size: 23px; font-weight: 700; fill: #172033; }
-      .item-note { font-size: 16px; font-weight: 500; fill: #536272; }
-      .footer { font-size: 23px; font-weight: 600; fill: #263243; }
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .title { font-size: 44px; font-weight: 720; letter-spacing: -1.1px; fill: #132033; }
+      .subtitle { font-size: 20px; font-weight: 430; fill: #526173; }
+      .label { font-size: 15px; font-weight: 700; letter-spacing: 1.3px; fill: #0f766e; }
+      .label-light { font-size: 15px; font-weight: 700; letter-spacing: 1.3px; fill: #99f6e4; }
+      .block-title { font-size: 28px; font-weight: 700; fill: #132033; }
+      .block-title-light { font-size: 28px; font-weight: 700; fill: #ffffff; }
+      .block-copy { font-size: 17px; font-weight: 450; fill: #526173; }
+      .block-copy-light { font-size: 17px; font-weight: 450; fill: #e6fffb; }
+      .path-title { font-size: 18px; font-weight: 680; fill: #132033; }
+      .path { font-size: 15px; font-weight: 500; fill: #526173; }
+      .footer { font-size: 18px; font-weight: 600; fill: #263243; }
     </style>
   </defs>
 
-  <rect width="1672" height="820" fill="url(#bg)"/>
-  <circle cx="1410" cy="128" r="112" fill="#f3c969" opacity="0.22"/>
-  <circle cx="174" cy="690" r="118" fill="#66c6b8" opacity="0.18"/>
+  <rect width="1440" height="720" fill="#f7f9fc"/>
+  <rect x="0" y="0" width="18" height="720" fill="#0f766e"/>
 
-  <text x="92" y="92" class="title">Agent Harness Artifact Map</text>
-  <text x="94" y="137" class="subtitle">Configured paths keep project facts and execution evidence outside plugin core.</text>
+  <text x="72" y="78" class="title">Configured artifact paths</text>
+  <text x="72" y="114" class="subtitle">The adapter resolves project-local files; plugin core does not hard-code them.</text>
 
-  <rect x="92" y="232" width="350" height="252" rx="24" fill="#ffffff" stroke="#9ac4f8" filter="url(#softShadow)"/>
-  <rect x="92" y="232" width="350" height="10" rx="5" fill="#2c7be5"/>
-  <text x="267" y="307" class="card-title" text-anchor="middle">Harness Config</text>
-  <text x="267" y="350" class="card-note" text-anchor="middle">.harness/config.json</text>
-  <rect x="144" y="386" width="246" height="52" rx="13" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="267" y="419" class="item-title" text-anchor="middle">contract + paths</text>
+  <line x1="376" y1="354" x2="462" y2="354" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="820" y1="354" x2="906" y2="354" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <line x1="448" y1="358" x2="572" y2="358" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <g>
+    <rect x="72" y="222" width="300" height="264" rx="14" fill="#ffffff" stroke="#b8c4d4" stroke-width="1.5"/>
+    <text x="108" y="267" class="label">MACHINE ENTRY</text>
+    <text x="108" y="312" class="block-title">Harness Config</text>
+    <text x="108" y="354" class="block-copy">.harness/config.json</text>
+    <line x1="108" y1="382" x2="336" y2="382" stroke="#d7dee8"/>
+    <text x="108" y="419" class="block-copy">Contract type</text>
+    <text x="108" y="451" class="block-copy">Adapter location</text>
+  </g>
 
-  <rect x="580" y="232" width="350" height="252" rx="24" fill="#ffffff" stroke="#88d6be" filter="url(#softShadow)"/>
-  <rect x="580" y="232" width="350" height="10" rx="5" fill="#159a7f"/>
-  <text x="755" y="307" class="card-title" text-anchor="middle">Project Adapter</text>
-  <text x="755" y="350" class="card-note" text-anchor="middle">local rules and overrides</text>
-  <rect x="632" y="386" width="246" height="52" rx="13" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="755" y="419" class="item-title" text-anchor="middle">boundaries + gates</text>
+  <g>
+    <rect x="466" y="198" width="350" height="312" rx="16" fill="#0f766e"/>
+    <text x="506" y="247" class="label-light">LOCAL POLICY</text>
+    <text x="506" y="294" class="block-title-light">Project Adapter</text>
+    <text x="506" y="339" class="block-copy-light">Declares artifact paths</text>
+    <text x="506" y="374" class="block-copy-light">Adds project boundaries</text>
+    <text x="506" y="409" class="block-copy-light">Defines verification and gates</text>
+    <line x1="506" y1="439" x2="776" y2="439" stroke="#5eead4" stroke-opacity="0.5"/>
+    <text x="506" y="474" class="block-copy-light">Keeps protocol project-neutral</text>
+  </g>
 
-  <line x1="936" y1="358" x2="1028" y2="358" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)"/>
+  <g>
+    <rect x="910" y="166" width="458" height="376" rx="14" fill="#ffffff" stroke="#b8c4d4" stroke-width="1.5"/>
+    <text x="950" y="211" class="label">RESOLVED PROJECT ARTIFACTS</text>
 
-  <rect x="1036" y="184" width="544" height="402" rx="26" fill="#ffffff" stroke="#cbd5e1" filter="url(#softShadow)"/>
-  <text x="1076" y="229" class="card-title">Project Artifacts</text>
-  <text x="1076" y="263" class="card-note">source of truth + Run evidence</text>
+    <text x="950" y="260" class="path-title">Goal Index</text>
+    <text x="950" y="286" class="path">harness/tasks.md</text>
+    <text x="950" y="335" class="path-title">Specs + Goals</text>
+    <text x="950" y="361" class="path">harness/specs/</text>
+    <text x="950" y="383" class="path">harness/goals/</text>
+    <text x="950" y="430" class="path-title">Milestones</text>
+    <text x="950" y="456" class="path">harness/milestones/</text>
 
-  <rect x="1076" y="296" width="214" height="76" rx="15" fill="#eef6ff" stroke="#9ac4f8"/>
-  <text x="1183" y="327" class="item-title" text-anchor="middle">Task Index</text>
-  <text x="1183" y="352" class="item-note" text-anchor="middle">active work</text>
+    <text x="1170" y="260" class="path-title">Runs + Gates</text>
+    <text x="1170" y="286" class="path">.harness/runs/</text>
+    <text x="1170" y="335" class="path-title">Current Status</text>
+    <text x="1170" y="361" class="path">harness/status.md</text>
+    <text x="1170" y="410" class="path-title">Mental Models</text>
+    <text x="1170" y="436" class="path">adapter-defined</text>
 
-  <rect x="1324" y="296" width="214" height="76" rx="15" fill="#f0fbf7" stroke="#88d6be"/>
-  <text x="1431" y="327" class="item-title" text-anchor="middle">Roadmap + Milestones</text>
-  <text x="1431" y="352" class="item-note" text-anchor="middle">direction + outcomes</text>
+    <line x1="950" y1="474" x2="1328" y2="474" stroke="#d7dee8"/>
+    <text x="1139" y="507" class="path" text-anchor="middle">Fixed and adapter contracts resolve through the same protocol.</text>
+  </g>
 
-  <rect x="1076" y="394" width="214" height="76" rx="15" fill="#fff0ed" stroke="#f2a691"/>
-  <text x="1183" y="425" class="item-title" text-anchor="middle">Specs + Goals</text>
-  <text x="1183" y="450" class="item-note" text-anchor="middle">constraints + work units</text>
-
-  <rect x="1324" y="394" width="214" height="76" rx="15" fill="#f2efff" stroke="#b9a6f6"/>
-  <text x="1431" y="425" class="item-title" text-anchor="middle">Runs + Gates</text>
-  <text x="1431" y="450" class="item-note" text-anchor="middle">attempts + acceptance</text>
-
-  <rect x="1076" y="492" width="462" height="58" rx="15" fill="#fff7e5" stroke="#e9bb55"/>
-  <text x="1307" y="528" class="item-title" text-anchor="middle">Bounded Status + State Sync</text>
-
-  <rect x="326" y="650" width="1020" height="48" rx="24" fill="#ffffff" stroke="#d9e2ec"/>
-  <text x="836" y="682" class="footer" text-anchor="middle">Plugin protocol stays reusable; every project keeps its own facts, paths, and evidence.</text>
+  <text x="720" y="628" class="footer" text-anchor="middle">Project facts and execution evidence stay local, inspectable, and replaceable by configuration.</text>
 </svg>
