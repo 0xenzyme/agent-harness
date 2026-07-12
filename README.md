@@ -1,151 +1,144 @@
 # Agent Harness
 
-[简体中文](README.zh-CN.md)
+[English](README.en.md)
 
 [![Version](https://img.shields.io/badge/version-0.6.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
-Agent Harness is an adapter-driven control plane for Codex and coding-agent
-work. It turns accepted direction into scoped execution, verifiable evidence,
-and synchronized project state—without making the human route every task.
+Agent Harness 是面向 Codex 和 coding agent 的 adapter-driven control plane。
+它把已经确认的方向转成边界明确的执行、可验证的 evidence 和同步后的项目状态，
+减少人持续充当 task router 的负担。
 
 ```text
 Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 ```
 
-[Quick Start](#use-with-a-coding-agent) · [How It Works](#how-it-works) ·
-[Architecture](#architecture) · [Safety](#safety-and-acceptance) ·
-[Documentation](#documentation)
+[快速开始](#在项目中怎么用) · [工作方式](#工作方式) ·
+[架构](#架构) · [安全与验收](#安全与验收) · [文档](#文档)
 
-## Use With A Coding Agent
+## 在项目中怎么用
 
-### 1. Install the plugin
+### 1. 安装 plugin
 
-From a local checkout:
+从本地 checkout 安装：
 
 ```bash
 codex plugin marketplace add <path-to-agent-harness-repo>
 ```
 
-From GitHub:
+从 GitHub 安装：
 
 ```bash
 codex plugin marketplace add 0xenzyme/agent-harness
 ```
 
-Codex reads `.agents/plugins/marketplace.json` and exposes the plugin as
-`harness`. See [Install In Codex](docs/install.md) for updates, activation, and
-project-adoption details.
+Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
+`harness`。更新、activation 和项目接入细节见
+[Codex 安装说明](docs/install.zh-CN.md)。
 
-### 2. Ask Codex to use Harness
+### 2. 直接让 Codex 使用 Harness
 
-Most users do not need to name a skill or run the CLI directly:
+大多数用户不需要指定 skill，也不需要直接运行 CLI：
 
 ```text
-Use harness to check the next step in this project.
-Use harness to record this idea, but do not implement it yet: Add an import flow.
-Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
-Use the current thread as controller and carry the accepted spec through to completion.
+用 harness 看当前项目下一步。
+用 harness 记录这个想法，先不要实现：增加一个 import flow。
+用 harness 执行 harness/goals/YYYY-MM-DD-task-title.md，验证并同步状态。
+使用当前 thread 作为 controller，把已接受的 spec 推进到完成。
 ```
 
-### 3. Choose an explicit entry when needed
+### 3. 需要时选择明确入口
 
-| Situation | Public skill |
+| 场景 | 公开 skill |
 | --- | --- |
-| Adopt Harness, import an existing Goal index, run doctor, or preview activation. | `harness:init` |
-| Inspect status, blockers, stale artifacts, or the next route without mutation. | `harness:orient` |
-| Capture or triage an idea, requirement, bug, or inbox note. | `harness:intake` |
-| Prepare a Goal from accepted scope, execute confirmed work, verify, and sync state. | `harness:execute` |
+| 接入 Harness、导入已有 Goal index、运行 doctor，或预览 activation。 | `harness:init` |
+| 只读检查状态、blocker、stale artifact 或下一条 route。 | `harness:orient` |
+| 收集或 triage 想法、需求、bug 或 inbox note。 | `harness:intake` |
+| 从已接受 scope 准备 Goal，执行已确认工作，验证并同步状态。 | `harness:execute` |
 
-`shape`, `goal`, `competition`, and `ask` are internal route states, not
-additional installed skills. Harness maps them back to one of the public skills
-or to an exact user decision.
+`shape`、`goal`、`competition` 和 `ask` 是内部 route state，不是额外安装的
+skill。Harness 会把它们映射回公开 skill 或明确的用户决策。
 
-## Why Agent Harness
+## 为什么需要 Agent Harness
 
-Agent Harness is for the moment after the human has set direction. The human
-still owns product judgment, authorization, and true pause conditions. Harness
-owns the repeatable execution mechanics inside the project adapter:
+Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责产品判断、授权和真正
+需要暂停的条件；Harness 在 project adapter 边界内负责可重复的执行机制：
 
-- discover roadmap, milestone, spec, Goal, Task, and Run state;
-- turn a request such as `complete M5` into explicit completion items;
-- prepare Goals and execution DAGs instead of stopping at the next small spec;
-- coordinate workers without confusing candidate output with accepted state;
-- verify concrete evidence before advancing delivery state;
-- require `State Sync Notes` as part of Goal and Task completion;
-- keep Goal indexes, bounded status snapshots, Goals, Runs, and gates aligned;
-- pause for real human gates such as unclear direction, credentials, paid APIs,
-  production access, destructive actions, or delivery above policy.
+- 读取 roadmap、milestone、spec、Goal、Task 和 Run 状态；
+- 把 `完成 M5` 这样的请求展开成明确的 completion items；
+- 准备 Goal 和 execution DAG，而不是写完下一个小 spec 就停下；
+- 调度 worker，同时区分 candidate output 与 accepted state；
+- 在推进 delivery state 前验证 concrete evidence；
+- 把 `State Sync Notes` 作为 Goal 和 Task completion 的组成部分；
+- 对齐 Goal index、bounded status snapshot、Goal、Run 和 gate；
+- 只在方向不清、凭证、付费 API、生产访问、破坏性操作或超出 delivery
+  policy 时暂停并交还给人。
 
-The promise is not merely that agents write files. The promise is that coding
-agents stop losing the plot between roadmap, specification, implementation,
-verification, delivery, and handoff.
+核心承诺不只是“agent 会改文件”，而是 coding agent 不会在 roadmap、spec、
+implementation、verification、delivery 和 handoff 之间丢失主线。
 
-## How It Works
+## 工作方式
 
 ![Agent Harness product loop](docs/assets/readme/adapter-execution-model.svg)
 
-The user-facing hierarchy is:
+用户可见的层级是：
 
 ```text
 Roadmap -> Milestone -> Goal -> Task -> Run
 ```
 
-- A **Roadmap** carries longer-range direction.
-- A **Milestone** is a phase-level outcome and may require several Goals.
-- A **Goal** is the primary Harness work unit with scope and acceptance.
-- A **Task** is a concrete checklist or execution item inside a Goal.
-- A **Run** is one execution attempt and evidence record, not a thread.
-- A **Spec** constrains the Goal before execution; it is not a post-Run artifact.
+- **Roadmap** 保存长期方向。
+- **Milestone** 是阶段性 outcome，通常包含多个 Goal。
+- **Goal** 是带 scope 和 acceptance 的主要 Harness work unit。
+- **Task** 是 Goal 内部的 checklist 或 execution item。
+- **Run** 是一次 execution attempt 和 evidence record，不等于 thread。
+- **Spec** 在执行前约束 Goal，不是 Run 之后才出现的 artifact。
 
-### Spec and PRD
+### Spec 与 PRD
 
-Agent Harness does not define PRD as a separate protocol concept. A Product
-Requirements Document usually explains the user problem, product value, and
-desired outcome; it can be one source for a Harness Spec.
+Agent Harness 不把 PRD 定义为独立的 protocol concept。Product Requirements
+Document 通常说明用户问题、产品价值和预期 outcome；它可以是 Harness Spec 的
+一种来源。
 
-`Spec` is the broader execution term. It means accepted scope that makes the
-Goal's boundaries, constraints, and acceptance conditions clear. A PRD may
-satisfy that need, may need technical or operational supplements, or may be
-irrelevant to non-product work. Harness therefore does not require a PRD and
-does not add PRD-specific paths, config, lifecycle state, or gates.
+`Spec` 是范围更广的 execution term，表示已经确认、足以明确 Goal 边界、约束
+和 acceptance conditions 的 scope。PRD 可能已经满足这些要求，也可能需要
+technical 或 operational supplement；对于非产品工作，PRD 也可能完全不适用。
+因此 Harness 不要求 PRD，也不增加 PRD 专属 path、config、lifecycle state 或
+gate。
 
-Parent milestones stay open until their mapped items are satisfied. Accepting a
-source-spec item such as `M5-S0` cannot silently close the parent `M5` while
-implementation work remains.
+父级 Milestone 必须等 mapped items 满足后才能关闭。接受 `M5-S0` 这样的
+source-spec item，不能在 implementation 尚未完成时静默关闭父级 `M5`。
 
-`harness-rule:cybernetic-stability` keeps the loop explicit: intent selects the
-target, fresh observations form a measurement snapshot, the controller acts on
-the remaining gap, and verification determines whether the loop should
-continue, pause, ask, or close. See
-[Cybernetic Stability](docs/cybernetic-stability.md).
+`harness-rule:cybernetic-stability` 让控制闭环保持明确：intent 选择 target，
+fresh observations 形成 measurement snapshot，controller 针对 remaining gap
+行动，verification 决定继续、暂停、询问还是关闭。详见
+[Cybernetic Stability](docs/cybernetic-stability.md)。
 
-## Architecture
+## 架构
 
 ![Agent Harness adapter boundary](docs/assets/readme/adapter-model.svg)
 
-Agent Harness separates stable protocol from local project facts:
+Agent Harness 把稳定协议与项目事实分开：
 
 ```text
 Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 ```
 
-- The **plugin** ships workflow skills, protocol references, schemas,
-  templates, and deterministic CLI gates.
-- The **project adapter** declares artifact paths, boundaries, verification,
-  state-sync rules, work mode, and delivery policy.
-- The **project artifacts** record the roadmap, milestones, specs, Goals,
-  Tasks, Runs, gate results, and evidence.
+- **Plugin** 提供 workflow skills、protocol references、schemas、templates
+  和 deterministic CLI gates。
+- **Project adapter** 声明 artifact paths、边界、verification、state sync、
+  work mode 和 delivery policy。
+- **Project artifacts** 记录 roadmap、Milestone、Spec、Goal、Task、Run、
+  gate result 和 evidence。
 
-Adapter projects resolve artifact paths through `.harness/config.json`; plugin
-core does not embed downstream product names, ports, credentials, database
-rules, or production policy. The detailed path map lives in the
-[Project Contract](docs/project-contract.md#adapter-contract).
+Adapter project 通过 `.harness/config.json` 解析 artifact paths；plugin core
+不会内置下游项目的产品名、端口、凭证、数据库规则或生产 policy。详细 path
+map 见 [Project Contract](docs/project-contract.md#adapter-contract)。
 
-### Adapter language policy
+### Adapter 语言策略
 
-The project adapter owns the machine-readable language preference:
+Project adapter 通过 machine-readable config 声明语言偏好：
 
 ```json
 {
@@ -155,22 +148,20 @@ The project adapter owns the machine-readable language preference:
 }
 ```
 
-Supported values are `auto`, `en`, and `zh-CN`. CLI language selection uses
-this precedence: `--lang`, `AGENT_HARNESS_LANG`, `language.default`, `LC_ALL`,
-`LC_MESSAGES`, then `LANG`; unresolved `auto` falls back to English.
+支持值为 `auto`、`en` 和 `zh-CN`。CLI 按以下优先级选择语言：`--lang`、
+`AGENT_HARNESS_LANG`、`language.default`、`LC_ALL`、`LC_MESSAGES`、`LANG`；
+无法解析的 `auto` 最终 fallback 到英文。
 
-Current boundary: this setting localizes supported human-facing CLI messages.
-Deterministic artifacts created by `init`, `goal create`, and `run prepare`
-still use the English base templates and renderers. Agent responses should
-follow the user's language while preserving code, commands, paths, API names,
-skill names, model names, and Git commit messages in their original form. See
-[Install In Codex](docs/install.md#language-policy) and the
-[Project Contract](docs/project-contract.md#adapter-language-policy).
+当前边界：该设置只会本地化已经支持的 human-facing CLI messages。
+`init`、`goal create` 和 `run prepare` 创建的 deterministic artifacts 仍使用
+英文 base templates 与 renderers。Agent 回复应跟随用户语言，同时保持 code、
+command、path、API name、skill name、model name 和 Git commit message 的
+原始形式。详见[安装文档](docs/install.zh-CN.md#语言策略)与
+[Project Contract](docs/project-contract.md#adapter-language-policy)。
 
 ### Commentary policy
 
-Projects can reduce redundant progress narration without hiding material
-signals:
+Project 可以减少重复的过程叙述，同时保留真正重要的信号：
 
 ```json
 {
@@ -180,59 +171,53 @@ signals:
 }
 ```
 
-Supported values are `minimal`, `balanced`, and `audit`; omitted configuration
-defaults to `minimal`. The policy shapes Harness skill and generated-run
-guidance. It does not filter Codex messages or override host-required tool,
-safety, approval, or heartbeat updates. See the
-[Project Contract](docs/project-contract.md#commentary-policy).
+支持 `minimal`、`balanced` 和 `audit`；未配置时默认使用 `minimal`。该
+policy 只约束 Harness skill 与生成的 Run guidance，不会过滤 Codex message，
+也不会覆盖 host 强制要求的 tool、safety、approval 或 heartbeat 更新。详见
+[Project Contract](docs/project-contract.md#commentary-policy)。
 
-## Safety And Acceptance
+## 安全与验收
 
-Harness treats worker, automation, inbox, and proposal output as candidate
-evidence until the control lane validates it. Completion requires concrete,
-inspectable evidence such as changed files, command summaries, Run records,
-gate records, or human review notes.
+Harness 把 worker、automation、inbox 和 proposal output 视为 candidate
+evidence，直到 control lane 完成验证。Completion 需要可检查的 evidence，
+例如 changed files、command summary、Run record、gate record 或人工 review。
 
-Key boundaries:
+关键边界：
 
-- `gate-only` controllers review and accept evidence without editing candidate
-  implementation directly.
-- Parallel writers require separate locked worktrees/cwds or recorded proof of
-  non-overlapping ownership; execution is sequential by default.
-- Local verification does not imply commit, push, review, integration, release,
-  or deployment.
-- `harness-rule:bounded-direct-execution` lets accepted, finite, single-thread
-  work execute without creating a Goal/Run/DAG; docs-only contract
-  clarification is eligible, and delivery authorization alone does not promote
-  it to durable orchestration.
-- Status files are bounded current-state snapshots, not append-only history.
-- Newer conversation-confirmed direction is reconciled with stale artifacts
-  before execution continues.
-- Conditional plugin bootstrap is not enabled, so installed Harness skills do
-  not inject instructions into unrelated projects.
+- `gate-only` controller 负责 review 和 acceptance，不直接修改 candidate
+  implementation。
+- Parallel writer 需要独立锁定的 worktree/cwd，或记录 non-overlap evidence；
+  默认顺序执行。
+- Local verification 不等于 commit、push、review、integration、release 或
+  deployment。
+- `harness-rule:bounded-direct-execution` 允许已确认、有限、单线程的工作
+  无需新建 Goal/Run/DAG；docs-only contract clarification 同样适用，
+  delivery authorization 本身不会把它升级成 durable orchestration。
+- Status file 是 bounded current-state snapshot，不是 append-only history。
+- 执行前要把更新的 conversation-confirmed direction 与 stale artifact 对齐。
+- Conditional plugin bootstrap 尚未启用，因此安装 Harness 不会向无关项目
+  注入 instructions。
 
-The complete runtime surfaces, protocol anchors, and verification suites are in
-the [Capability Matrix](docs/HARNESSES.md).
+完整 runtime surface、protocol anchors 和 verification suites 见
+[Capability Matrix](docs/HARNESSES.md)。
 
-## Repository And Validation
+## 仓库与验证
 
-This repository is both the Agent Harness source project and a Codex local
-marketplace:
+这个仓库同时是 Agent Harness source project 和 Codex local marketplace：
 
-- `.agents/plugins/marketplace.json` exposes the local plugin.
-- `plugins/agent-harness/` contains the installable plugin.
-- `plugins/agent-harness/skills/` contains the four public workflow skills.
-- `plugins/agent-harness/references/` contains canonical protocols.
-- `plugins/agent-harness/schemas/` and `templates/` define project contracts.
-- `plugins/agent-harness/scripts/agent-harness.mjs` provides deterministic CLI
-  operations for agents and maintainers.
-- `evals/` contains project-neutral evaluation fixtures.
+- `.agents/plugins/marketplace.json` 暴露本地 plugin。
+- `plugins/agent-harness/` 包含可安装 plugin。
+- `plugins/agent-harness/skills/` 包含四个公开 workflow skills。
+- `plugins/agent-harness/references/` 包含 canonical protocols。
+- `plugins/agent-harness/schemas/` 和 `templates/` 定义项目 contract。
+- `plugins/agent-harness/scripts/agent-harness.mjs` 为 agent 和 maintainer
+  提供 deterministic CLI operations。
+- `evals/` 包含 project-neutral evaluation fixtures。
 
-The repository's own `harness/` and `.harness/` directories are development
-state for this project. They are not installed as plugin content. Downstream
-projects receive their own adapter artifacts only through adoption or import.
+仓库自身的 `harness/` 和 `.harness/` 是当前项目的开发状态，不会作为 plugin
+内容安装。下游项目只会在 adoption 或 import 时得到自己的 adapter artifacts。
 
-For README, documentation, or plugin-surface changes, run:
+README、文档或 plugin surface 发生变化时，运行：
 
 ```bash
 git diff --check
@@ -242,25 +227,25 @@ npm run test:smoke
 npm run validate:plugin
 ```
 
-The CLI remains deterministic tooling rather than the primary first-use path.
-See the [CLI reference](docs/cli.md) for its command surface.
+CLI 是 deterministic tooling，不是大多数用户的首要入口。完整 command
+surface 见 [CLI reference](docs/cli.zh-CN.md)。
 
-## Evaluation
+## 评估
 
-The deterministic suite under [`evals/`](evals/) validates fixtures and trace
-contracts; it does not run a model or prove GPT-5.6 activation. The separately
-authorized `npm run test:eval:live` lane uses ephemeral read-only Codex
-execution and requires runtime-reported model evidence.
+[`evals/`](evals/) 下的 deterministic suite 验证 fixtures 和 trace
+contracts；它不会运行模型，也不能证明 GPT-5.6 activation。单独授权的
+`npm run test:eval:live` lane 使用 ephemeral read-only Codex execution，
+并要求 runtime-reported model evidence。
 
-Project-neutral adoption examples cover new projects, existing adapter imports,
-fixed-contract compatibility, non-Harness projects, and messy realistic states:
-[Downstream Project Shapes](docs/examples/downstream-project-shapes.md).
+Project-neutral adoption examples 覆盖新项目、已有 adapter import、
+fixed-contract compatibility、非 Harness 项目和 messy realistic state：
+[Downstream Project Shapes](docs/examples/downstream-project-shapes.md)。
 
-## Documentation
+## 文档
 
-- [Usage](docs/usage.md)
-- [Install In Codex](docs/install.md)
-- [CLI Reference](docs/cli.md)
+- [使用说明](docs/usage.zh-CN.md)
+- [Codex 安装说明](docs/install.zh-CN.md)
+- [CLI Reference](docs/cli.zh-CN.md)
 - [Capability Matrix](docs/HARNESSES.md)
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
@@ -268,14 +253,13 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [v0.6.0 Release Notes](docs/releases/v0.6.0.md)
 - [Changelog](CHANGELOG.md)
 
-Agent Harness is inspired in part by b3ehive's controller-led approach, while
-keeping its own fixed/adapter contracts and project-neutral core.
+Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的
+fixed/adapter contracts 和 project-neutral core。
 
 ## Roadmap
 
-The next direction is an agent-neutral adapter layer that other coding agents
-can implement without weakening Harness contracts. New execution surfaces
-should be added only when they can declare isolation, return inspectable result
-packets, report verification and state-sync evidence, and respect delivery
-boundaries. When those capabilities are missing, Harness should fall back to
-bounded foreground execution rather than pretend parallelism or isolation.
+下一步方向是让其他 coding agent 也能实现同一套 agent-neutral adapter
+contract，而不削弱 Harness 边界。只有当新的 execution surface 能声明
+isolation、返回 inspectable result packet、报告 verification 和 state-sync
+evidence，并遵守 delivery policy 时，才应该加入。能力不足时，Harness 应
+fallback 到 bounded foreground execution，而不是假装具备并行或隔离能力。
