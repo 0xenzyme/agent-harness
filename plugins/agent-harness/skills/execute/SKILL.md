@@ -27,6 +27,8 @@ goal as a substitute for the repository Goal artifact.
 - Launching or coordinating workers: read
   [Worker Runner Contract](../../references/worker-runner-contract.md) and
   [Controller Communication](../../references/controller-communication.md).
+  Read [Model Routing](../../references/model-routing.md) as well when choosing
+  a worker model or creating a named Codex agent.
 - Accepting completion: read
   [Completion Evidence](references/completion-evidence.md),
   [Adversarial Acceptance](references/adversarial-acceptance.md), and
@@ -99,7 +101,10 @@ node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <r
    verification, context lock, return contract, and isolation are explicit.
    Worker output is candidate evidence. If delegation falls back, report
    `harness-rule:degraded-execution-provenance`; cancellation is cooperative
-   and late output remains quarantined candidate evidence.
+   and late output remains quarantined candidate evidence. A `Recommended
+   model` in the launch packet is advisory; pin a Codex worker by launching a
+   named custom agent whose `.codex/agents/<name>.toml` sets `model` and
+   `model_reasoning_effort`.
 9. In `implementer` or accepted `mixed`, edit only the owned DAG node or
    foreground scope. `harness-rule:level-0-fast-path` applies only to tiny,
    local, reversible fixes with no accepted Harness artifact, public protocol,

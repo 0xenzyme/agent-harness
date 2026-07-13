@@ -8,6 +8,22 @@
 
 ## Done
 
+- [x] Add reusable Codex custom-agent templates for Harness execution roles.
+  - Completed: Added project-neutral `harness_explorer`,
+    `harness_implementer`, and `harness_reviewer` TOML templates with pinned
+    model/reasoning/sandbox policy and candidate-evidence-only instructions.
+  - Completed: Added English and zh-CN project/user scoped install guidance,
+    explicit named-worker launch language, model-routing references, and smoke
+    coverage for required fields and controller-only accepted state.
+  - Goal:
+    `harness/goals/2026-07-13-add-reusable-codex-custom-agent-templates-for-harness-execution-roles.md`
+  - Run:
+    `.harness/runs/20260713-135738-add-reusable-codex-custom-agent-templates-for-harness-execution-roles/`
+  - Verification: canonical TOML policy parse, `npm run test:smoke`, `npm run
+    test:protocol`, `npm run validate:plugin`, and `git diff --check` passed.
+  - Delivery: `validated-local`; no commit, push, review, integration, release,
+    deploy, or plugin-cache refresh performed.
+
 - [x] Add signal-only Commentary Policy controls.
   - Completed: Added backward-compatible `communication.commentary` with
     `minimal`, `balanced`, and `audit`; old configs default to `minimal`.

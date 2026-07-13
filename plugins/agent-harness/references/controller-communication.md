@@ -119,6 +119,7 @@ Return channel:
 Parent return channel:
 Prompt artifact:
 Output artifact:
+Named Codex agent:
 Recommended model:
 Recommended reasoning effort:
 Why this level:

@@ -368,6 +368,12 @@ const workerPromptTemplate = readFileSync(
   join(repoRoot, "plugins/agent-harness/templates/worker-prompt.md"),
   "utf8"
 );
+const customAgentTemplateDir = join(repoRoot, "plugins/agent-harness/templates/codex-agents");
+const customAgentTemplates = {
+  harness_explorer: readFileSync(join(customAgentTemplateDir, "harness_explorer.toml"), "utf8"),
+  harness_implementer: readFileSync(join(customAgentTemplateDir, "harness_implementer.toml"), "utf8"),
+  harness_reviewer: readFileSync(join(customAgentTemplateDir, "harness_reviewer.toml"), "utf8")
+};
 const goalTemplateDoc = readFileSync(join(repoRoot, "plugins/agent-harness/templates/goal.md"), "utf8");
 const orientRouteDecisionReference = readFileSync(
   join(repoRoot, "plugins/agent-harness/skills/orient/references/route-decision.md"),
@@ -566,6 +572,40 @@ assertIncludes(
   "Need user: None",
   "worker prompt template should tell workers how to report no user need"
 );
+for (const [name, policy] of Object.entries({
+  harness_explorer: {
+    model: "gpt-5.6-terra",
+    effort: "low",
+    sandbox: "read-only",
+    boundary: "Do not\nedit files, update accepted Harness state"
+  },
+  harness_implementer: {
+    model: "gpt-5.6",
+    effort: "medium",
+    sandbox: "workspace-write",
+    boundary: "Do not update accepted Harness state"
+  },
+  harness_reviewer: {
+    model: "gpt-5.6",
+    effort: "high",
+    sandbox: "read-only",
+    boundary: "Do not edit files, update accepted Harness\nstate"
+  }
+})) {
+  const template = customAgentTemplates[name];
+  for (const field of [
+    `name = "${name}"`,
+    "description =",
+    `model = "${policy.model}"`,
+    `model_reasoning_effort = "${policy.effort}"`,
+    `sandbox_mode = "${policy.sandbox}"`,
+    "developer_instructions = \"\"\"",
+    "candidate evidence",
+    policy.boundary
+  ]) {
+    assertIncludes(template, field, `${name} template should preserve its required TOML policy field`);
+  }
+}
 assertIncludes(
   readFileSync(join(repoRoot, "plugins/agent-harness/templates/status.md"), "utf8"),
   "bounded current-state\nsnapshot, not an append-only history log",
@@ -925,6 +965,30 @@ assertIncludes(deterministicEvalRunner, "Model activation measured: no", "determ
 assertIncludes(liveEvalRunner, "AGENT_HARNESS_LIVE_EVAL", "live eval should require explicit opt-in");
 assertIncludes(liveEvalRunner, "runtimeReportedModels", "live eval should record runtime model evidence");
 assertIncludes(liveEvalRunner, "refusing to claim GPT-5.6", "live eval should reject missing runtime model evidence");
+const modelRoutingReference = readFileSync(join(repoRoot, "plugins/agent-harness/references/model-routing.md"), "utf8");
+assertIncludes(modelRoutingReference, "gpt-5.6-terra", "model routing should recommend the current efficient Codex worker model");
+assertIncludes(modelRoutingReference, "Pinning A Codex Worker Model", "model routing should document custom-agent model pinning");
+assertIncludes(modelRoutingReference, "model_reasoning_effort", "model routing should document worker reasoning configuration");
+for (const template of ["harness_explorer.toml", "harness_implementer.toml", "harness_reviewer.toml"]) {
+  assertIncludes(modelRoutingReference, `templates/codex-agents/${template}`, "model routing should point to the canonical custom-agent templates");
+}
+for (const [installDoc, language, namedLaunchBoundary] of [
+  [readFileSync(join(repoRoot, "docs/install.md"), "utf8"), "English", "launch the named worker explicitly"],
+  [readFileSync(join(repoRoot, "docs/install.zh-CN.md"), "utf8"), "zh-CN", "launch named worker"]
+]) {
+  for (const needle of [
+    ".codex/agents/",
+    "~/.codex/agents/",
+    "harness_explorer",
+    "harness_implementer",
+    "harness_reviewer",
+    "candidate evidence",
+    "Recommended model"
+  ]) {
+    assertIncludes(installDoc, needle, `${language} install guide should document custom-agent placement and controller boundary`);
+  }
+  assertIncludes(installDoc, namedLaunchBoundary, `${language} install guide should require explicit named-worker launch`);
+}
 assertIncludes(cliDoc, "--gate-evidence", "CLI reference should document gate-only run evidence");
 assertIncludes(cliDocZh, "--gate-evidence", "zh-CN CLI reference should document gate-only run evidence");
 assertIncludes(cliDoc, "--allow-no-spec", "CLI reference should document explicit spec-less goals");

@@ -141,6 +141,40 @@ is `gate-only` by default: it reviews candidate worker output and verification
 evidence, then accepts, blocks, or requests corrections without directly
 editing implementation files.
 
+## Optional Reusable Codex Agents
+
+Agent Harness ships project-neutral custom-agent templates under
+`plugins/agent-harness/templates/codex-agents/`:
+
+| Named worker | Template | Model / effort | Sandbox |
+| --- | --- | --- | --- |
+| `harness_explorer` | `harness_explorer.toml` | `gpt-5.6-terra` / `low` | `read-only` |
+| `harness_implementer` | `harness_implementer.toml` | `gpt-5.6` / `medium` | `workspace-write` |
+| `harness_reviewer` | `harness_reviewer.toml` | `gpt-5.6` / `high` | `read-only` |
+
+For a project policy, copy only the role you need into that project's
+`.codex/agents/` directory:
+
+```bash
+mkdir -p .codex/agents
+cp /path/to/agent-harness/plugins/agent-harness/templates/codex-agents/harness_explorer.toml .codex/agents/harness_explorer.toml
+```
+
+For a personal policy shared by projects, use `~/.codex/agents/` instead:
+
+```bash
+mkdir -p ~/.codex/agents
+cp /path/to/agent-harness/plugins/agent-harness/templates/codex-agents/harness_reviewer.toml ~/.codex/agents/harness_reviewer.toml
+```
+
+Ask Codex to launch the named worker explicitly, for example: “Launch the
+`harness_explorer` custom agent to map this Goal’s allowed scope and return an
+Execution Result Packet.” The template pins its `model` and
+`model_reasoning_effort`; a Harness launch packet's `Recommended model` remains
+advisory and does not itself change runtime routing. Worker output is candidate evidence only.
+The controller verifies it and is the only lane that accepts
+Goal, Task, status, run, or gate state.
+
 After execution, agents/operators can preview deterministic Goal/status state
 sync from git state and recent run records before writing:
 

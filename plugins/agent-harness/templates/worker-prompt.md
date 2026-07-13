@@ -14,6 +14,9 @@ coding-agent handoff. Replace placeholders with the current goal/run values.
 - Execution branch: `{execution_branch}`
 - Execution slot: `{execution_slot}`
 - Parallel isolation: `{parallel_isolation}`
+- Named Codex agent: `{named_codex_agent}`
+- Recommended model: `{recommended_model}`
+- Recommended reasoning effort: `{recommended_reasoning_effort}`
 - Commentary policy: `{commentary_policy}`
 - Report cadence: `{report_cadence}`
 - Notify on: `{notify_on}`
@@ -88,6 +91,10 @@ Forbidden scope:
 - Use the default worker surface contract (`harness-rule:worker-surface-default`)
   from the run packet. Worker output is candidate evidence regardless of
   surface.
+- Treat the named Codex agent and recommended model as launch policy, not
+  evidence of actual runtime routing. Report `Actual model` and `Actual
+  reasoning effort` when the runtime exposes them; otherwise say they were not
+  exposed.
 - If the default worker surface is unavailable, skipped, or replaced by
   foreground execution, include `harness-rule:degraded-execution-provenance`
   in the result packet with actual execution method, unavailable or skipped

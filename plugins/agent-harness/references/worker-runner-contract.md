@@ -50,6 +50,7 @@ Every worker launch must name:
 - controller thread or lane
 - goal, run, and DAG node
 - worker surface
+- named Codex agent and model policy, when a model must be pinned
 - execution cwd, branch, and slot
 - prompt artifact or launch packet
 - parallel isolation evidence or `sequential`

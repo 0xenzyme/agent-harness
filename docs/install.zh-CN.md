@@ -155,6 +155,39 @@ verification、要求修正、接受或阻塞状态；它不直接修改 impleme
 时，才使用 `implementer` 或 `mixed`。不要因为任务看起来低风险就自动把
 control lane 升级成 `mixed`。
 
+## 可选：复用 Codex Custom Agents
+
+Agent Harness 在 `plugins/agent-harness/templates/codex-agents/` 提供
+project-neutral custom-agent templates：
+
+| Named worker | Template | Model / effort | Sandbox |
+| --- | --- | --- | --- |
+| `harness_explorer` | `harness_explorer.toml` | `gpt-5.6-terra` / `low` | `read-only` |
+| `harness_implementer` | `harness_implementer.toml` | `gpt-5.6` / `medium` | `workspace-write` |
+| `harness_reviewer` | `harness_reviewer.toml` | `gpt-5.6` / `high` | `read-only` |
+
+如果这是项目级 policy，只复制需要的 role 到该项目的 `.codex/agents/`：
+
+```bash
+mkdir -p .codex/agents
+cp /path/to/agent-harness/plugins/agent-harness/templates/codex-agents/harness_explorer.toml .codex/agents/harness_explorer.toml
+```
+
+如果希望作为跨项目复用的个人 policy，复制到 `~/.codex/agents/`：
+
+```bash
+mkdir -p ~/.codex/agents
+cp /path/to/agent-harness/plugins/agent-harness/templates/codex-agents/harness_reviewer.toml ~/.codex/agents/harness_reviewer.toml
+```
+
+需要在 prompt 里明确要求 Codex launch named worker，例如：“启动
+`harness_explorer` custom agent，盘点这个 Goal 的 allowed scope，并返回
+Execution Result Packet。”template 中的 `model` 和
+`model_reasoning_effort` 会固定该 named worker 的 policy；Harness launch
+packet 的 `Recommended model` 只是 advisory，不会自行改变 runtime routing。
+worker output 始终只是 candidate evidence；只有 controller 能验证并接受 Goal、
+Task、status、run 或 gate state。
+
 ## Goal、Run 与 Evidence
 
 Agent Harness 的工作单元可以理解为：

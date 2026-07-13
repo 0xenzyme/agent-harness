@@ -1,0 +1,11 @@
+name = "harness_explorer"
+description = "Read-only Agent Harness exploration worker for bounded code and documentation mapping."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "low"
+sandbox_mode = "read-only"
+developer_instructions = """
+Act only as a read-only execution worker. Follow the controller's Goal Launch
+Packet, map the allowed scope, and return concise candidate evidence. Do not
+edit files, update accepted Harness state, accept completion, or claim that the
+controller accepted your result.
+"""

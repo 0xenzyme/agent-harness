@@ -7,47 +7,46 @@ Historical evidence lives in `harness/tasks.md`, `harness/goals/`, and
 ## Focus
 
 - Current Goal: None active.
-- Recently completed: Added the signal-only Commentary Policy with
-  `minimal | balanced | audit`, backward-compatible `minimal` resolution,
-  config inspection, generated Run/worker propagation, shared skill guidance,
-  docs, and deterministic coverage.
+- Recently completed: Added reusable `harness_explorer`,
+  `harness_implementer`, and `harness_reviewer` Codex custom-agent templates,
+  bilingual installation guidance, model-routing integration, and deterministic
+  smoke coverage.
 - Goal:
-  `harness/goals/2026-07-12-add-signal-only-commentary-policy-controls.md`
+  `harness/goals/2026-07-13-add-reusable-codex-custom-agent-templates-for-harness-execution-roles.md`
 - Run:
-  `.harness/runs/20260712-095713-add-signal-only-commentary-policy-controls/`
-- Degraded provenance: active session policy did not authorize subagent
-  delegation; enforced nodes ran sequentially as `manual-foreground` in the
-  locked current thread.
+  `.harness/runs/20260713-135738-add-reusable-codex-custom-agent-templates-for-harness-execution-roles/`
+- Execution evidence: explorer, implementation, and independent verification
+  nodes completed sequentially; execution-worker output was reviewed and
+  accepted only by this controller.
 
 ## Git And Delivery
 
 - Current branch: `main`
 - Work mode: `local`
 - Delivery intent: `local-validation`
-- Target delivery state: `validated-local`
-- Commit authorized: `no`
-- Push authorized: `no`
+- Target delivery state: `pushed`
+- Commit authorized: `yes` (fresh user authorization on 2026-07-13)
+- Push authorized: `yes` (fresh user authorization on 2026-07-13)
 - Review authorized: `no`
 - Integration authorized: `no`
 - Release authorized: `no`
-- Plugin-cache deployment authorized: `no`
+- Plugin-cache deployment authorized: `yes` (fresh user authorization on 2026-07-13)
 
 No commit, push, review, integration, release, plugin-cache deployment,
 credentials, paid API, production, daemon, or destructive-operation authority
-is recorded for the Commentary Policy Goal.
+is recorded for the custom-agent templates Goal.
 
 ## Verification
 
 - State: passed.
 - Required checks:
   - `git diff --check`
-  - `npm run test:all`
-  - `npm run test:eval`
+  - `npm run test:smoke`
+  - `npm run test:protocol`
   - `npm run validate:plugin`
-- Evidence: syntax/JSON parsing, config validation/inspection, presentation,
-  protocol, smoke, deterministic behavior eval, plugin validation, and diff
-  checks passed locally. Existing unrelated terminology cleanup changes remain
-  preserved in the dirty checkout.
+- Evidence: canonical TOML policy parse, smoke, protocol, plugin validation,
+  and diff checks passed locally. The working tree remains dirty only with
+  this validated-local Goal's in-scope artifacts.
 
 ## Route
 
