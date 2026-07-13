@@ -21,8 +21,9 @@
     `.harness/runs/20260713-135738-add-reusable-codex-custom-agent-templates-for-harness-execution-roles/`
   - Verification: canonical TOML policy parse, `npm run test:smoke`, `npm run
     test:protocol`, `npm run validate:plugin`, and `git diff --check` passed.
-  - Delivery: `validated-local`; no commit, push, review, integration, release,
-    deploy, or plugin-cache refresh performed.
+  - Delivery: committed as `6b4460c`, pushed to `origin/main`, and deployed to
+    the local `harness@personal` plugin cache. No review, integration, release,
+    or production deployment performed.
 
 - [x] Add signal-only Commentary Policy controls.
   - Completed: Added backward-compatible `communication.commentary` with

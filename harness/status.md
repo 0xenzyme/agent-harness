@@ -18,6 +18,9 @@ Historical evidence lives in `harness/tasks.md`, `harness/goals/`, and
 - Execution evidence: explorer, implementation, and independent verification
   nodes completed sequentially; execution-worker output was reviewed and
   accepted only by this controller.
+- Delivery evidence: commit `6b4460c` pushed to `origin/main`; local
+  `harness@personal` plugin cache refreshed at
+  `/Users/liuyj/.codex/plugins/cache/personal/harness/0.6.0`.
 
 ## Git And Delivery
 
@@ -45,8 +48,8 @@ is recorded for the custom-agent templates Goal.
   - `npm run test:protocol`
   - `npm run validate:plugin`
 - Evidence: canonical TOML policy parse, smoke, protocol, plugin validation,
-  and diff checks passed locally. The working tree remains dirty only with
-  this validated-local Goal's in-scope artifacts.
+  and diff checks passed locally; plugin deployment re-ran plugin validation
+  and smoke successfully.
 
 ## Route
 

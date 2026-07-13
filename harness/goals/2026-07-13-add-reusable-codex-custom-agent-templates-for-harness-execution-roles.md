@@ -2,7 +2,7 @@
 
 Spec: TBD
 Spec Policy: allow-no-spec
-Status: Completed; delivery state pending authorized commit, push, and local plugin-cache deployment.
+Status: Completed; delivery state `pushed`; local plugin cache deployed.
 
 ## Source Task
 
@@ -174,6 +174,9 @@ git diff --check
 - Verified TOML policy fields and candidate-evidence/controller-only state
   boundaries; `npm run test:smoke`, `npm run test:protocol`,
   `npm run validate:plugin`, and `git diff --check` passed locally.
+- Committed as `6b4460c` (`feat: add reusable Codex custom agent templates`),
+  pushed to `origin/main`, and refreshed the local `harness@personal` plugin
+  cache at `/Users/liuyj/.codex/plugins/cache/personal/harness/0.6.0`.
 
 ## Pause Conditions
 
