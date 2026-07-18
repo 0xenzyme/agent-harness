@@ -2,347 +2,85 @@
   {
     "id": "ah_behavior_orient_read_only",
     "skill": "harness:orient",
-    "scenario": "Orient inspects configured adapter state before recommending a route and performs no writes.",
-    "user_request": "Use harness to inspect the current project state and recommend the next safe action.",
+    "scenario": "Orientation reads configured durable state without mutation.",
+    "user_request": "Inspect Harness state and tell me the next entry.",
     "trace": [
       { "type": "read", "target": ".harness/config.json" },
-      { "type": "read", "target": "harness/README.md" },
-      { "type": "read", "target": "harness/tasks.md" },
       { "type": "read", "target": "harness/status.md" },
-      {
-        "type": "closeout",
-        "target": "route recommendation",
-        "fields": {
-          "route": "orient",
-          "read_only": true,
-          "need_user": "None",
-          "remaining": "None"
-        }
-      }
+      { "type": "closeout", "target": "read-only route recommendation", "markers": ["harness-rule:durable-tier-boundary"] }
     ],
     "assertions": {
-      "required_ordered_reads": [
-        ".harness/config.json",
-        "harness/README.md",
-        "harness/tasks.md",
-        "harness/status.md"
-      ],
-      "forbidden_writes": [
-        "harness/tasks.md",
-        "harness/status.md",
-        ".harness/runs/**"
-      ],
-      "forbidden_mutations": [
-        "accepted-state-write",
-        "goal-create",
-        "run-prepare",
-        "commit",
-        "push",
-        "deploy"
-      ]
+      "required_ordered_reads": [".harness/config.json", "harness/status.md"],
+      "forbidden_writes": ["harness/tasks.md", "harness/status.md", ".harness/runs/**"],
+      "forbidden_mutations": ["goal-create", "run-prepare", "accepted-state-write"]
     }
   },
   {
-    "id": "ah_behavior_execute_gate_only_worker_candidate",
+    "id": "ah_behavior_execute_runtime_owned_candidate",
     "skill": "harness:execute",
-    "scenario": "Gate-only execution launches a worker and treats the worker result as candidate evidence.",
-    "user_request": "Execute this accepted goal as the gate-only controller.",
+    "scenario": "A durable Run exposes ready ownership while runtime-selected execution returns candidate evidence.",
+    "user_request": "Execute this accepted durable Goal.",
     "trace": [
       { "type": "read", "target": "harness/goals/accepted-goal.md" },
-      { "type": "read", "target": "harness/specs/accepted-spec.md" },
-      { "type": "read", "target": ".harness/runs/20260708-000000-example/run.md" },
-      { "type": "read", "target": ".harness/runs/20260708-000000-example/dag.md" },
-      { "type": "read", "target": "plugins/agent-harness/references/worker-runner-contract.md" },
-      { "type": "read", "target": "plugins/agent-harness/references/controller-communication.md" },
-      {
-        "type": "tool_call",
-        "target": "worker launch packet",
-        "name": "codex-cli-subagent",
-        "fields": {
-          "thread_role": "execution-worker",
-          "accepted_state_owner": "controller",
-          "allowed_state_writes": "none"
-        }
-      },
-      {
-        "type": "worker_result",
-        "target": "worker result packet",
-        "fields": {
-          "candidate_evidence": true,
-          "implementer_output": "focused patch",
-          "validation": "npm run test:eval passed",
-          "delivery_state": "validated-local"
-        }
-      }
+      { "type": "read", "target": ".harness/runs/example/dag.json" },
+      { "type": "status_snapshot", "target": "ready DAG state", "markers": ["harness-rule:run-dag-ownership"], "fields": { "ready_nodes": ["worker"], "ownership": "accepted scope", "runtime_owns_scheduling": true } },
+      { "type": "worker_result", "target": "runtime-selected result", "markers": ["harness-rule:candidate-accepted-evidence"], "fields": { "candidate_evidence": true, "implementer_output": "focused patch", "validation": "tests passed" } }
     ],
     "assertions": {
-      "required_ordered_reads": [
-        "harness/goals/accepted-goal.md",
-        "harness/specs/accepted-spec.md",
-        ".harness/runs/20260708-000000-example/run.md",
-        ".harness/runs/20260708-000000-example/dag.md",
-        "plugins/agent-harness/references/worker-runner-contract.md",
-        "plugins/agent-harness/references/controller-communication.md"
-      ],
-      "forbidden_writes": [
-        "harness/tasks.md",
-        "harness/status.md",
-        ".harness/runs/**"
-      ],
-      "forbidden_mutations": [
-        "accepted-state-write",
-        "run-record-completed",
-        "gate-acceptance"
-      ],
-      "required_worker_evidence": {
-        "candidate_evidence": true,
-        "implementer_output": true,
-        "validation": true
-      }
+      "required_ordered_reads": ["harness/goals/accepted-goal.md", ".harness/runs/example/dag.json"],
+      "forbidden_writes": ["harness/tasks.md", "harness/status.md"],
+      "forbidden_mutations": ["accepted-state-write", "runtime-scheduler-policy", "model-pin"],
+      "required_worker_evidence": { "candidate_evidence": true, "implementer_output": true, "validation": true }
     }
   },
   {
-    "id": "ah_behavior_execute_degraded_worker_fallback",
+    "id": "ah_behavior_gate_acceptance_requires_evidence",
     "skill": "harness:execute",
-    "scenario": "A controller-visible fallback to foreground execution reports degraded execution provenance.",
-    "user_request": "Execute this accepted goal, but worker delegation is unavailable.",
+    "scenario": "Gate-only acceptance follows candidate verification and state-sync evidence.",
+    "user_request": "Accept the durable Run only if all evidence is complete.",
     "trace": [
-      { "type": "read", "target": "harness/goals/accepted-goal.md" },
-      { "type": "read", "target": ".harness/runs/20260708-000001-example/run.md" },
-      { "type": "read", "target": ".harness/runs/20260708-000001-example/dag.md" },
-      { "type": "read", "target": "plugins/agent-harness/references/worker-runner-contract.md" },
-      {
-        "type": "closeout",
-        "target": "degraded execution report",
-        "markers": ["harness-rule:degraded-execution-provenance"],
-        "fields": {
-          "degraded": true,
-          "worker_surface": "manual-foreground",
-          "execution_method": "manual-foreground",
-          "fallback_reason": "codex-cli-subagent unavailable",
-          "candidate_evidence": true
-        }
-      }
+      { "type": "read", "target": "plugins/agent-harness/skills/execute/references/completion-evidence.md" },
+      { "type": "worker_result", "target": "candidate result", "fields": { "candidate_evidence": true, "implementer_output": "patch", "validation": "test:all passed" } },
+      { "type": "verification", "target": "controller verification", "fields": { "passed": true } },
+      { "type": "gate_record", "target": "accepted gate", "markers": ["harness-rule:state-sync-evidence"], "fields": { "controller_acceptance": true, "implementer_output": "patch", "verification": "test:all passed", "state_sync": "verified" } }
     ],
     "assertions": {
-      "required_ordered_reads": [
-        "harness/goals/accepted-goal.md",
-        ".harness/runs/20260708-000001-example/run.md",
-        ".harness/runs/20260708-000001-example/dag.md",
-        "plugins/agent-harness/references/worker-runner-contract.md"
-      ],
-      "forbidden_writes": [
-        "harness/tasks.md",
-        "harness/status.md"
-      ],
-      "forbidden_mutations": [
-        "silent-worker-fallback",
-        "accepted-state-write"
-      ],
-      "required_degraded_provenance": {
-        "markers": ["harness-rule:degraded-execution-provenance"],
-        "fields": {
-          "degraded": true,
-          "worker_surface": "manual-foreground",
-          "execution_method": "manual-foreground",
-          "fallback_reason": "codex-cli-subagent unavailable"
-        }
-      }
-    }
-  },
-  {
-    "id": "ah_behavior_gate_only_acceptance_requires_evidence",
-    "skill": "harness:execute",
-    "scenario": "Gate-only accepted state moves forward only after implementer output, verification, and controller acceptance evidence exist.",
-    "user_request": "Review the worker result and accept it only if the gate evidence is complete.",
-    "trace": [
-      { "type": "read", "target": "plugins/agent-harness/references/gate-results.md" },
-      { "type": "read", "target": "plugins/agent-harness/references/controller-communication.md" },
-      {
-        "type": "worker_result",
-        "target": "worker result packet",
-        "fields": {
-          "candidate_evidence": true,
-          "implementer_output": "changed eval runner and docs",
-          "validation": "node --check evals/run-agent-harness-eval.mjs"
-        }
-      },
-      {
-        "type": "verification",
-        "target": "controller verification",
-        "fields": {
-          "commands": ["npm run test:eval", "npm run test:protocol"],
-          "passed": true
-        }
-      },
-      {
-        "type": "gate_record",
-        "target": "integration gate",
-        "fields": {
-          "implementer_output": "worker result packet",
-          "verification": "npm run test:eval; npm run test:protocol",
-          "controller_acceptance": "reviewed by gate-only controller",
-          "accepted_state_move": "after_controller_acceptance"
-        }
-      },
-      {
-        "type": "state_transition",
-        "target": "accepted state",
-        "fields": {
-          "from": "candidate",
-          "to": "accepted",
-          "after": "integration gate"
-        }
-      }
-    ],
-    "assertions": {
-      "required_ordered_reads": [
-        "plugins/agent-harness/references/gate-results.md",
-        "plugins/agent-harness/references/controller-communication.md"
-      ],
+      "required_ordered_reads": ["plugins/agent-harness/skills/execute/references/completion-evidence.md"],
       "forbidden_writes": [],
-      "forbidden_mutations": [
-        "accepted-state-before-gate",
-        "completion-without-verification"
-      ],
-      "required_worker_evidence": {
-        "candidate_evidence": true,
-        "implementer_output": true,
-        "validation": true
-      },
-      "required_gate_only_acceptance_evidence": {
-        "implementer_output": true,
-        "verification": true,
-        "controller_acceptance": true,
-        "state_transition_after_gate": true
-      }
+      "forbidden_mutations": ["accept-without-verification"],
+      "required_gate_only_acceptance_evidence": { "controller_acceptance": true, "implementer_output": true, "verification": true }
     }
   },
   {
-    "id": "ah_behavior_controller_cancellation_quarantines_late_worker_output",
+    "id": "ah_behavior_run_scoped_delivery",
     "skill": "harness:execute",
-    "scenario": "Controller cancellation is cooperative control-plane state and late worker output remains candidate evidence.",
-    "user_request": "The active worker is not returning; cancel that lane and continue safely.",
+    "scenario": "Delivery evidence compares the Run start snapshot and current delta.",
+    "user_request": "Record this Run as validated without inventing push evidence.",
     "trace": [
-      { "type": "read", "target": ".harness/runs/20260709-000002-example/run.md" },
-      { "type": "read", "target": ".harness/runs/20260709-000002-example/dag.md" },
-      { "type": "read", "target": "plugins/agent-harness/references/worker-runner-contract.md" },
-      { "type": "read", "target": "plugins/agent-harness/references/controller-communication.md" },
-      {
-        "type": "status_snapshot",
-        "target": "active worker snapshot",
-        "fields": {
-          "active_workers": ["backend-worker"],
-          "running_nodes": ["backend"],
-          "ready_nodes": [],
-          "accepted_state_owner": "controller"
-        }
-      },
-      {
-        "type": "control_notice",
-        "target": "Cancellation / Supersession Notice",
-        "markers": ["harness-rule:controller-cancellation-boundary"],
-        "fields": {
-          "runtime_guarantee": "none",
-          "no_new_launches": true,
-          "late_output_handling": "quarantine-as-candidate",
-          "manual_foreground_fallback": "requires-degraded-provenance"
-        }
-      },
-      {
-        "type": "worker_result",
-        "target": "late worker output",
-        "fields": {
-          "candidate_evidence": true,
-          "late_output": true,
-          "accepted": false
-        }
-      }
+      { "type": "read", "target": ".harness/runs/example/status.json" },
+      { "type": "verification", "target": "local validation", "markers": ["harness-rule:run-scoped-delivery", "harness-rule:local-delivery-ceiling"], "fields": { "passed": true, "head_changed": false, "push": "none" } },
+      { "type": "state_transition", "target": "validated-local", "fields": { "accepted": false, "candidate_evidence": true } }
     ],
     "assertions": {
-      "required_ordered_reads": [
-        ".harness/runs/20260709-000002-example/run.md",
-        ".harness/runs/20260709-000002-example/dag.md",
-        "plugins/agent-harness/references/worker-runner-contract.md",
-        "plugins/agent-harness/references/controller-communication.md"
-      ],
-      "forbidden_writes": [
-        "harness/tasks.md",
-        "harness/status.md"
-      ],
-      "forbidden_mutations": [
-        "run-record-completed",
-        "accepted-state-write",
-        "dependent-worker-launch",
-        "runtime-kill-claim"
-      ],
-      "required_worker_evidence": {
-        "candidate_evidence": true,
-        "late_output": true
-      },
-      "required_cancellation_boundary": {
-        "markers": ["harness-rule:controller-cancellation-boundary"],
-        "fields": {
-          "runtime_guarantee": "none",
-          "no_new_launches": true,
-          "late_output_handling": "quarantine-as-candidate"
-        }
-      }
+      "required_ordered_reads": [".harness/runs/example/status.json"],
+      "forbidden_writes": ["external/**"],
+      "forbidden_mutations": ["claim-pushed", "claim-integrated"]
     }
   },
   {
-    "id": "ah_behavior_execute_minimal_commentary_is_signal_only",
+    "id": "ah_behavior_path_containment_blocks_external_run",
     "skill": "harness:execute",
-    "scenario": "Minimal commentary combines the kickoff and reports only new material facts after it.",
-    "user_request": "Execute this accepted local status-sync goal with the configured minimal commentary policy.",
+    "scenario": "A Run argument outside configured paths.runs is rejected before mutation.",
+    "user_request": "Record this external Run path.",
     "trace": [
       { "type": "read", "target": ".harness/config.json" },
-      { "type": "read", "target": "plugins/agent-harness/references/user-facing-communication.md" },
-      {
-        "type": "commentary",
-        "target": "combined skill scope boundary kickoff",
-        "markers": ["harness-rule:signal-only-commentary"],
-        "fields": {
-          "policy": "minimal",
-          "kind": "kickoff",
-          "skill": "harness:execute",
-          "scope": "accepted status sync",
-          "next_action": "inspect and update"
-        }
-      },
-      {
-        "type": "commentary",
-        "target": "dirty shared status requires partial staging",
-        "markers": ["harness-rule:signal-only-commentary"],
-        "fields": {
-          "policy": "minimal",
-          "kind": "material-finding",
-          "new_fact": true
-        }
-      },
-      {
-        "type": "verification",
-        "target": "local checks",
-        "fields": { "passed": true }
-      }
+      { "type": "verification", "target": "configured Run root containment", "markers": ["harness-rule:path-containment"], "fields": { "passed": true, "external_write_count": 0 } },
+      { "type": "closeout", "target": "rejected external Run", "fields": { "candidate_evidence": true } }
     ],
     "assertions": {
-      "required_ordered_reads": [
-        ".harness/config.json",
-        "plugins/agent-harness/references/user-facing-communication.md"
-      ],
-      "forbidden_writes": [],
-      "forbidden_mutations": [],
-      "required_commentary_policy": {
-        "policy": "minimal",
-        "max_kickoffs": 1,
-        "require_new_fact_after_kickoff": true,
-        "forbidden_targets": [
-          "tool loaded",
-          "routine command execution",
-          "repeated unchanged boundary"
-        ]
-      }
+      "required_ordered_reads": [".harness/config.json"],
+      "forbidden_writes": ["external/**"],
+      "forbidden_mutations": ["run-record", "accepted-state-write"]
     }
   }
 ]

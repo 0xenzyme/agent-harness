@@ -4,7 +4,7 @@ Use this contract for user-visible in-turn `commentary`. It controls Harness
 prompt and artifact behavior; it does not filter Codex transport events or
 override host system/developer instructions.
 
-`harness-rule:signal-only-commentary`: resolve the effective policy from
+The Commentary Policy resolves its effective value from
 `.harness/config.json` `communication.commentary`. Supported values are
 `minimal`, `balanced`, and `audit`; omitted configuration defaults to
 `minimal`. There is no `off` mode because hosts may require tool preambles,

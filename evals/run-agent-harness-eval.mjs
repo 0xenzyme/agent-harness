@@ -208,29 +208,6 @@ function assertWorkerEvidence(trace, expectedEvidence, caseId) {
   );
 }
 
-function assertDegradedProvenance(trace, expectedProvenance, caseId) {
-  if (!expectedProvenance) {
-    return;
-  }
-  const provenanceEvent = trace.find((event) => {
-    const markers = event.markers || [];
-    return markers.includes("harness-rule:degraded-execution-provenance") || event.fields?.degraded === true;
-  });
-  assert(provenanceEvent, `${caseId}: missing degraded execution provenance event`);
-  for (const marker of expectedProvenance.markers || []) {
-    assert(
-      (provenanceEvent.markers || []).includes(marker),
-      `${caseId}: missing degraded execution provenance marker ${marker}`
-    );
-  }
-  for (const [field, expected] of Object.entries(expectedProvenance.fields || {})) {
-    assert(
-      JSON.stringify(traceEventField(provenanceEvent, field)) === JSON.stringify(expected),
-      `${caseId}: expected degraded provenance ${field}=${JSON.stringify(expected)}, got ${JSON.stringify(traceEventField(provenanceEvent, field))}`
-    );
-  }
-}
-
 function assertGateOnlyAcceptanceEvidence(trace, expectedEvidence, caseId) {
   if (!expectedEvidence) {
     return;
@@ -249,26 +226,6 @@ function assertGateOnlyAcceptanceEvidence(trace, expectedEvidence, caseId) {
     assert(
       stateTransitionIndex > gateIndex,
       `${caseId}: accepted-state transition must occur after gate evidence`
-    );
-  }
-}
-
-function assertCancellationBoundary(trace, expectedBoundary, caseId) {
-  if (!expectedBoundary) {
-    return;
-  }
-  const boundaryEvent = trace.find((event) => {
-    const markers = event.markers || [];
-    return markers.includes("harness-rule:controller-cancellation-boundary");
-  });
-  assert(boundaryEvent, `${caseId}: missing controller cancellation boundary event`);
-  for (const marker of expectedBoundary.markers || []) {
-    assert((boundaryEvent.markers || []).includes(marker), `${caseId}: missing cancellation boundary marker ${marker}`);
-  }
-  for (const [field, expected] of Object.entries(expectedBoundary.fields || {})) {
-    assert(
-      JSON.stringify(traceEventField(boundaryEvent, field)) === JSON.stringify(expected),
-      `${caseId}: expected cancellation boundary ${field}=${JSON.stringify(expected)}, got ${JSON.stringify(traceEventField(boundaryEvent, field))}`
     );
   }
 }
@@ -462,9 +419,7 @@ function runBehaviorTraceCase(testCase) {
   assertForbiddenWrites(trace, assertions.forbidden_writes, testCase.id);
   assertForbiddenMutations(trace, assertions.forbidden_mutations, testCase.id);
   assertWorkerEvidence(trace, assertions.required_worker_evidence, testCase.id);
-  assertDegradedProvenance(trace, assertions.required_degraded_provenance, testCase.id);
   assertGateOnlyAcceptanceEvidence(trace, assertions.required_gate_only_acceptance_evidence, testCase.id);
-  assertCancellationBoundary(trace, assertions.required_cancellation_boundary, testCase.id);
   assertCommentaryPolicy(trace, assertions.required_commentary_policy, testCase.id);
 }
 
@@ -535,8 +490,8 @@ function main() {
   }
 
   const totalTriggerCases = Object.values(triggerCounts).reduce((sum, count) => sum + count, 0);
-  console.log("Agent Harness deterministic fixture eval passed.");
-  console.log("Model activation measured: no (use npm run test:eval:live with explicit opt-in).");
+  console.log("Agent Harness deterministic routing-classification checks passed.");
+  console.log("This suite validates fixture routes and CLI/trace contracts; it does not measure activation provenance.");
   console.log(
     `Trigger cases: ${totalTriggerCases} (${triggerCounts.positive} positive, ${triggerCounts.negative} negative, ${triggerCounts.boundary} boundary).`
   );

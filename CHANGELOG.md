@@ -2,15 +2,29 @@
 
 ## Unreleased
 
-- Mapped internal `shape`, `goal`, `competition`, and `ask` routes back to the
-  four published workflow skills.
-- Shortened skill discovery descriptions and moved detailed `execute` rules to
-  path-specific references.
-- Changed generated Goal delivery defaults to `validated-local` with no
-  invented commit, push, review, integration, or release authority.
-- Added sequential-by-default DAG launch with explicit parallel isolation
-  evidence, plus an opt-in live Codex activation evaluator that cannot be
-  confused with deterministic fixture validation.
+## 0.7.0 - 2026-07-18
+
+- Refocused Agent Harness on persistent project control: deterministic config
+  and doctor checks, adapter paths, repository Goal/Run/DAG state, delivery
+  evidence, and controller-owned acceptance gates.
+- Returned ordinary clear change/build execution, worker scheduling,
+  concurrency, cancellation, and model selection to the Codex runtime; removed
+  the public `mixed` role and the bundled explorer/implementer agent templates.
+- Added configured-root, path traversal, and symlink containment for config,
+  Goal, Spec, Run, DAG, status, result, and log paths.
+- Made delivery state Run-scoped by recording start Git evidence and comparing
+  branch, HEAD, upstream, and dirty state at completion.
+- Replaced the colliding personal marketplace identity with
+  `agent-harness-local` and added strict marketplace/plugin/root checks to the
+  local deployment helper.
+- Reduced the public routing and rule surface, narrowed implicit skill
+  activation, merged duplicate references, and reframed deterministic evals as
+  routing classification rather than activation provenance.
+- Simplified configuration to canonical fields while retaining legacy reads
+  with conflict detection, and changed the plugin `defaultPrompt` to the
+  current array form.
+- Fixed Windows suite spawning and locale-dependent smoke/eval assertions;
+  version tests now compare canonical sources instead of hard-coding a release.
 
 ## 0.6.0 - 2026-07-09
 

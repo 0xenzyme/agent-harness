@@ -1,11 +1,11 @@
 # Agent Harness Evaluation Fixtures
 
-This directory defines deterministic fixtures plus an optional live Codex
-activation runner for evaluating Agent Harness across downstream shapes.
+This directory defines deterministic routing-classification fixtures plus an
+optional live runner for separately observed runtime behavior.
 
 Deterministic fixtures describe expected agent behavior, but they do not run a
-model. A passing `npm run test:eval` proves fixture, CLI, and trace-contract
-consistency only; it is not GPT-5.6 activation evidence.
+model. A passing `npm run test:routing-classification` proves fixture, CLI, and
+trace-contract consistency only; it does not implement activation provenance.
 
 ## Fixtures
 
@@ -86,14 +86,14 @@ until the project needs a full YAML parser.
 - `assertions.required_worker_evidence`: fields required on a `worker_result`
   event; worker output must remain `candidate_evidence: true`.
 - `assertions.required_degraded_provenance`: required
-  `harness-rule:degraded-execution-provenance` marker and fallback fields.
+  candidate-versus-accepted evidence fields without assuming a worker surface.
 - `assertions.required_gate_only_acceptance_evidence`: gate-only evidence that
   must exist before an accepted-state transition.
 
 Run the deterministic eval harness with:
 
 ```bash
-npm run test:eval
+npm run test:routing-classification
 ```
 
 This command validates trigger case coverage, materializes temporary fixture

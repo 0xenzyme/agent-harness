@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-[![Version](https://img.shields.io/badge/version-0.6.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -19,25 +19,26 @@ Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 
 ## 在项目中怎么用
 
-### 1. 安装 plugin
+### 1. 注册本地 marketplace
 
-从本地 checkout 安装：
+从本地 checkout 注册：
 
 ```bash
 codex plugin marketplace add <path-to-agent-harness-repo>
 ```
 
-从 GitHub 安装：
+这一步只注册 checkout 中的 marketplace metadata，不安装 plugin。
 
-```bash
-codex plugin marketplace add 0xenzyme/agent-harness
-```
+### 2. 从 Plugins Directory 安装
+
+在 Codex 的 Plugins Directory 中选择 `harness`（marketplace
+`agent-harness-local`）并安装。GitHub/远程 marketplace 的注册方式见安装文档。
 
 Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
 `harness`。更新、activation 和项目接入细节见
 [Codex 安装说明](docs/install.zh-CN.md)。
 
-### 2. 直接让 Codex 使用 Harness
+### 3. 直接让 Codex 使用 Harness
 
 大多数用户不需要指定 skill，也不需要直接运行 CLI：
 
@@ -48,17 +49,17 @@ Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
 使用当前 thread 作为 controller，把已接受的 spec 推进到完成。
 ```
 
-### 3. 需要时选择明确入口
+### 4. 需要时选择明确入口
 
 | 场景 | 公开 skill |
 | --- | --- |
 | 接入 Harness、导入已有 Goal index、运行 doctor，或预览 activation。 | `harness:init` |
 | 只读检查状态、blocker、stale artifact 或下一条 route。 | `harness:orient` |
 | 收集或 triage 想法、需求、bug 或 inbox note。 | `harness:intake` |
-| 从已接受 scope 准备 Goal，执行已确认工作，验证并同步状态。 | `harness:execute` |
+| 控制需要 recovery、audit、state sync、milestone/DAG、multi-worker 或 high-risk 边界的已接受工作。 | `harness:execute` |
 
-`shape`、`goal`、`competition` 和 `ask` 是内部 route state，不是额外安装的
-skill。Harness 会把它们映射回公开 skill 或明确的用户决策。
+普通、明确的 change/build 请求由 Codex 直接执行。澄清 scope、提问和创建 Goal
+是动作，不是额外 route；proposal competition 仅是显式选择的高级只读技术。
 
 ## 为什么需要 Agent Harness
 
@@ -68,7 +69,7 @@ Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责
 - 读取 roadmap、milestone、spec、Goal、Task 和 Run 状态；
 - 把 `完成 M5` 这样的请求展开成明确的 completion items；
 - 准备 Goal 和 execution DAG，而不是写完下一个小 spec 就停下；
-- 调度 worker，同时区分 candidate output 与 accepted state；
+- 记录 worker ownership、DAG 和 candidate evidence；调度交给 Codex runtime；
 - 在推进 delivery state 前验证 concrete evidence；
 - 把 `State Sync Notes` 作为 Goal 和 Task completion 的组成部分；
 - 对齐 Goal index、bounded status snapshot、Goal、Run 和 gate；
@@ -110,10 +111,11 @@ gate。
 父级 Milestone 必须等 mapped items 满足后才能关闭。接受 `M5-S0` 这样的
 source-spec item，不能在 implementation 尚未完成时静默关闭父级 `M5`。
 
-`harness-rule:cybernetic-stability` 让控制闭环保持明确：intent 选择 target，
-fresh observations 形成 measurement snapshot，controller 针对 remaining gap
-行动，verification 决定继续、暂停、询问还是关闭。详见
-[Cybernetic Stability](docs/cybernetic-stability.md)。
+9 个领域不变量把 durable control 保持在明确边界内：配置路径 containment、
+Run/DAG ownership、candidate/accepted evidence、run-scoped delivery 和 state
+sync。普通 clear change/build 由 Codex 直接执行；只有 recovery、audit、
+milestone/DAG、multi-worker、persistent state sync 或 high-risk 工作进入
+`harness-rule:durable-tier-boundary`。详见 [Capability Matrix](docs/HARNESSES.md)。
 
 ## 架构
 
@@ -187,12 +189,11 @@ evidence，直到 control lane 完成验证。Completion 需要可检查的 evid
 - `gate-only` controller 负责 review 和 acceptance，不直接修改 candidate
   implementation。
 - Parallel writer 需要独立锁定的 worktree/cwd，或记录 non-overlap evidence；
-  默认顺序执行。
+  scheduling 和 concurrency 由 Codex runtime 决定。
 - Local verification 不等于 commit、push、review、integration、release 或
   deployment。
-- `harness-rule:bounded-direct-execution` 允许已确认、有限、单线程的工作
-  无需新建 Goal/Run/DAG；docs-only contract clarification 同样适用，
-  delivery authorization 本身不会把它升级成 durable orchestration。
+- `harness-rule:durable-tier-boundary` 让普通 clear change/build 直接使用
+  Codex；Harness ceremony 只用于需要持久化控制的工作。
 - Status file 是 bounded current-state snapshot，不是 append-only history。
 - 执行前要把更新的 conversation-confirmed direction 与 stale artifact 对齐。
 - Conditional plugin bootstrap 尚未启用，因此安装 Harness 不会向无关项目
@@ -250,7 +251,7 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.6.0 Release Notes](docs/releases/v0.6.0.md)
+- [v0.7.0 Release Notes](docs/releases/v0.7.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的

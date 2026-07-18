@@ -8,6 +8,27 @@
 
 ## Done
 
+- [x] Refocus Agent Harness on durable project control and current Codex runtime boundaries.
+  - Completed: Closed configured-path, Run-directory, Goal/Spec, DAG artifact,
+    and symlink containment gaps before writes.
+  - Completed: Added Run-start Git snapshots and Run-scoped delivery
+    classification; historical upstream state and cross-branch changes cannot
+    promote the current Run.
+  - Completed: Simplified public skills, roles, routes, 9 domain invariants,
+    worker/model policy, config/schema, marketplace identity, docs, tests, and
+    routing-classification eval while preserving adapter and durable evidence.
+  - Spec: `harness/specs/2026-07-18-refocus-agent-harness-on-durable-project-control.md`
+  - Goal: `harness/goals/2026-07-18-refocus-agent-harness-on-durable-project-control-and-current-codex-runtime-boundaries.md`
+  - Run: `.harness/runs/20260718-083037-refocus-agent-harness-on-durable-project-control-and-current-codex-runtime-boundaries/`
+  - Verification: syntax checks, `npm run test:all`, `npm run test:eval`,
+    `npm run validate:plugin`, four skill validators, zh-CN regressions, and
+    `git diff --check` passed under controller review.
+  - Follow-up correction: constrained `run record` Goal/Spec lookups to their
+    configured roots and added zero-write tamper regressions; targeted smoke,
+    `test:all`, plugin validation, syntax, and diff checks passed.
+  - Delivery: `validated-local`; no commit, push, review, integration,
+    release, deploy, or plugin-cache refresh performed.
+
 - [x] Add reusable Codex custom-agent templates for Harness execution roles.
   - Completed: Added project-neutral `harness_explorer`,
     `harness_implementer`, and `harness_reviewer` TOML templates with pinned

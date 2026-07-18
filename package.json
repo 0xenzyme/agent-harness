@@ -1,6 +1,6 @@
 {
   "name": "agent-harness",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Reusable Codex workflow harness for project task control and loop engineering.",
   "type": "module",
@@ -12,6 +12,7 @@
     "deploy:local-plugin": "node tools/deploy-local-plugin.mjs",
     "print-contract": "node plugins/agent-harness/scripts/agent-harness.mjs print-contract",
     "test:all": "node scripts/test-suites.mjs all",
+    "test:routing-classification": "node evals/run-agent-harness-eval.mjs",
     "test:eval": "node evals/run-agent-harness-eval.mjs",
     "test:eval:live": "node evals/run-live-skill-activation.mjs",
     "test:presentation": "node scripts/test-suites.mjs presentation",

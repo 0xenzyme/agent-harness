@@ -1,7 +1,7 @@
 {
-  "name": "personal",
+  "name": "agent-harness-local",
   "interface": {
-    "displayName": "Personal"
+    "displayName": "Agent Harness Local"
   },
   "plugins": [
     {

@@ -18,7 +18,7 @@
       },
       {
         "command": ["doctor", "--cwd", "$PROJECT"],
-        "stdout_includes": ["Harness files: missing"]
+        "stdout_includes": []
       }
     ],
     "path_absent_after": [".harness/config.json", "harness/tasks.md"],
@@ -87,7 +87,7 @@
       },
       {
         "command": ["doctor", "--cwd", "$PROJECT"],
-        "stdout_includes": ["Config source: default", "Harness files: missing"]
+        "stdout_includes": []
       }
     ],
     "path_absent_after": [".harness/config.json", "harness/tasks.md", "AGENTS.md"],

@@ -4,144 +4,41 @@ Spec:
 Spec Policy:
 Status: Ready for execution from confirmed spec.
 
-Use `Spec Policy: allow-no-spec` only when accepted scope is the source of
-truth and there is intentionally no separate spec. Spec-less goals still require
-Scope, Non-Goals, Verification, Completion Conditions, Pause Conditions,
-Execution Role, and Delivery State.
-
-`harness-rule:level-0-fast-path` and
-`harness-rule:bounded-direct-execution` items normally do not need this
-template. Accepted scope alone is not a reason to create a Goal. Create a
-durable Goal when the user explicitly requests one or execution needs durable
-cross-turn/thread recovery or handoff, workers/DAG, multi-stage or broad work,
-important runtime/schema behavior changes, an acceptance or Milestone map, or
-adapter-required gates.
-
-## Source Goal Entry
+## Source Task
 
 -
 
-`harness-rule:terminology-boundary`: user-facing hierarchy is
-`Roadmap -> Milestone -> Goal -> Task -> Run`. `P0` / `P1` / `P2` / `P3`
-are priorities only, `M*` identifies roadmap milestones, and Runs are
-execution attempts rather than threads or sessions.
-
-## Source Task Acceptance Map
-
-Use this compatibility-named section when one Goal merges multiple source Goal
-entries or describes batch completion. Preserve each original source Goal/work
-item acceptance before execution; update `Evidence` and `Status` before
-recording a completed run. The section name and `- Task:` item key are retained
-for CLI compatibility.
-
-- Task: `<source Goal/work item title>`
-  - Acceptance: `<original source Goal/work item acceptance>`
-  - Evidence: `TBD`
-  - Status: `pending`
-  - Unblocker: `N/A`
-
-## Milestone Completion Map
-
-Use this section when the user asks to complete a roadmap milestone such as
-`M5`. The parent milestone is not complete until every map item is `satisfied`
-with concrete evidence. If the current goal is only a source-spec slice, name
-it as the leaf item, such as `M5-S0`, and do not mark the parent milestone
-done.
-
-- Item: `<milestone item, e.g. M5-D1 Diagnosis Read Model>`
-  - Acceptance: `<what must be true for this milestone item>`
-  - Evidence: `TBD`
-  - Status: `pending`
-  - Unblocker: `N/A`
-
 ## Read First
 
-- `AGENTS.md`
-- Project adapter
-- `.harness/config.json`
-- Spec, unless `Spec Policy: allow-no-spec` is declared
-
-## Context Focus
-
-`harness-rule:context-focus-routing`: normalize user intent to `Milestone`,
-`Goal`, `Task`, `Run`, `Priority`, or `Spec` before selecting the focus preset.
-For this Goal, record the `goal` focus preset: accepted spec or explicit
-accepted scope, source Goal/work item acceptance, execution role, context lock,
-delivery policy, verification, completion conditions, pause conditions, and
-state-sync obligations. Use `context focus` and `focus preset` in user-facing text;
-`EnvContext` is internal design language only. Do not add a public focus
-parameter, config/schema field, storage migration, or activation behavior from
-this section.
-
-## Cybernetic Stability
-
-`harness-rule:cybernetic-stability`: execute toward an explicit target using
-fresh observations, a measurement snapshot, remaining-gap comparison,
-feedback-quality checks, and stability/saturation pause triggers.
-
-- `harness-rule:intent-setpoint-selection`: record what user intent selected as
-  the target / setpoint for this Goal.
-- `harness-rule:sensor-freshness`: prefer newer user-confirmed state and fresh
-  local observations over stale artifacts; report conflicts.
-- `harness-rule:measurement-snapshot`: before implementation and closeout,
-  summarize target, observed state, evidence, conflicts or stale artifacts,
-  Delivery State, user-decision state, and remaining gap.
-- `harness-rule:remaining-gap`: closeout must say what gap was closed and what
-  remains; if no gap shrank, re-orient or pause.
-- `harness-rule:feedback-quality`: do not treat weak, stale, delayed, or
-  advisory feedback as completion evidence.
-- `harness-rule:stability-saturation`: pause or re-route on route oscillation,
-  repeated ineffective actions, context saturation, missing authority,
-  credentials, paid APIs, production, destructive approval, cost/risk limits,
-  or external feedback delay.
+1. `AGENTS.md`
+2. `.harness/config.json`
+3. Project adapter
+4. Referenced Spec
 
 ## Work Mode Recommendation
 
-Use `ask` until scope, ownership, and checkout state are clear.
+Use `ask` until cwd and ownership are confirmed.
 
 ## Execution Role
 
 Use `implementer`.
 
-- `gate-only`: the current thread reviews candidate output and verification
-  evidence, but does not directly edit implementation files.
-- `implementer`: the current thread may edit files inside the accepted scope.
-- `mixed`: the current thread may both edit and gate only after recording why
-  the tradeoff is acceptable.
-
-Level 0 direct execution does not override `gate-only`: direct edits require
-`implementer` or explicitly accepted `mixed`.
-
-Bounded direct execution follows the same role rule. Once this durable Goal
-exists, do not downgrade its checklist, gate, or state-sync obligations to the
-bounded tier.
+- `gate-only`: verify candidate evidence and own accepted state; do not edit.
+- `implementer`: edit only accepted owned scope and return candidate evidence.
 
 ## Conversation Route
 
 Use `current-thread`.
 
-- `current-thread`: the current conversation owns execution in the locked cwd.
-- `slot-thread`: hand off to a dedicated slot conversation before editing.
-- `remote-control-worktree`: the current conversation may control a different
-  locked worktree only when explicitly approved.
-
 ## Execution Context Lock
 
 - Conversation lane: `current-thread`
-- Parent controller thread: `N/A`
 - Controller thread: `current-thread`
 - Accepted-state owner: `current-thread`
 - Execution cwd: `TBD`
 - Execution branch: `TBD`
 - Execution slot: `N/A`
 - Remote-control worktree: `no`
-
-`harness-rule:child-controller-boundary`: if this goal is handed to a visible
-long-lived thread, declare whether that thread is a `child-controller` or an
-`execution-worker`. A child controller may write accepted state only inside the
-authorized scope named here and reports snapshots, decision requests, and final
-result packets to the parent controller. An execution worker returns candidate
-evidence only.
 
 ## Delivery State
 
@@ -153,53 +50,23 @@ evidence only.
 - Integration authorized: `no`
 - Release authorized: `no`
 
-Generated Goals are local-only by default. Raise the delivery target and its
-required authorizations only from fresh explicit user/spec authority; never
-inherit delivery permission from status history.
+## Durable Control Invariants
 
-Completed development runs must reach Target delivery state. The default
-`validated-local` target requires local verification but grants no commit,
-push, review, integration, release, or ship authority. Continue beyond that
-target only when the delivery policy records fresh explicit authorization.
+- `harness-rule:path-containment`
+- `harness-rule:run-dag-ownership`
+- `harness-rule:candidate-accepted-evidence`
+- `harness-rule:local-delivery-ceiling`
+- `harness-rule:run-scoped-delivery`
+- `harness-rule:state-sync-evidence`
+- `harness-rule:bounded-status-snapshot`
+- `harness-rule:project-neutral-core`
+- `harness-rule:durable-tier-boundary`
 
-`harness-rule:local-delivery-ceiling`: `validated-local` is local verification
-evidence only; it is not commit, push, review, integration, release, or ship
-evidence.
-
-The locked Execution branch records where implementation happens. It is not
-automatically the integration target, and Harness core does not assume a branch
-named `main`.
-
-## User-Facing Closeout
-
-`harness-rule:need-user-digest`: final answers must include explicit `Need user`
-and `Remaining` values. Use `Need user: None` when no true pause trigger or
-human action remains. Use `Remaining: None` when no non-user follow-up remains.
-List only concrete decisions, manual verification, authorization, external
-evidence, or blockers instead of asking broad confirmation questions.
-
-## Execution DAG
-
-Use `run prepare` to generate `dag.json`, `dag.md`, and per-node
-`agents/<node>/prompt.md` files. Run packets default worker nodes to
-`codex-cli-subagent`; create a new Codex thread only when the controller
-explicitly needs a visible, long-lived handoff lane. Fork is not the default
-worker surface; use it only when the controller explicitly approves inherited
-context.
-
-## Route Explanation
-
-- Why this is the right next mode:
-- Confirmation boundary:
-
-If this Goal exists, do not later skip its checklist, DAG, gate, or state-sync
-obligations by reclassifying the work as `harness-rule:level-0-fast-path`.
+The Codex runtime owns scheduling, delegation, concurrency, cancellation, and
+model selection. Harness records ready nodes, dependencies, ownership,
+verification, candidate evidence, gates, and state sync.
 
 ## Spec Acceptance Checklist
-
-Use this section when the referenced spec has concrete acceptance criteria,
-required coverage, or product-quality gates. Candidate implementation evidence
-is not accepted completion until relevant checklist items are satisfied.
 
 - Item: `<checklist item>`
   - Acceptance: `<what must be true>`
@@ -208,10 +75,6 @@ is not accepted completion until relevant checklist items are satisfied.
   - Unblocker: `N/A`
 
 ## Required Gate Evidence
-
-Use this section for adapter-declared completion gates such as product review,
-content quality, security review, source coverage, or milestone acceptance.
-Technical verification is necessary but does not replace gate evidence.
 
 - Gate: `<gate name>`
   - Required: `yes`
@@ -225,40 +88,18 @@ Technical verification is necessary but does not replace gate evidence.
 
 ## Non-Goals
 
-- Do not release, deploy, publish, start a daemon, or launch workers outside
-  the run packet DAG unless explicitly requested.
-- Do not execute delivery steps above the Delivery State policy.
-- Do not use credentials, paid APIs, production data, or destructive operations
-  without explicit approval.
-- Preserve `harness-rule:project-neutral-core`: keep plugin templates generic;
-  put downstream product facts, credentials, provider policy, ports, and
-  production procedures in project adapters and artifacts.
+- Do not exceed recorded authority or delivery policy.
 
 ## Verification
 
 -
 
-## Evidence And State Sync
-
-- Candidate evidence:
-- Accepted evidence:
-- State Sync Notes:
-- State records to update:
-
 ## Completion Conditions
 
-- Implementation evidence is verified.
-- State-sync evidence or State Sync Notes are reviewed by the accepted-state
-  owner before any task, status, goal, run, or gate state is marked complete.
+- Accepted scope, verification, required gates, and state sync are satisfied.
 
 ## Pause Conditions
 
-- The goal conflicts with the spec or accepted scope, adapter, repo
-  instructions, production constraints, or newer user instructions.
-- Requirements are unclear in a way that affects cost, risk, compatibility, or
-  product direction.
-- The measurement snapshot cannot identify a reliable observed state,
-  feedback quality is insufficient for completion, or the remaining gap is not
-  shrinking.
-- Credentials, paid APIs, production access, destructive operations, release,
-  or a delivery step above the Delivery State policy is required.
+- Accepted scope conflicts with current repository facts or newer instructions.
+- Credentials, production, destructive work, or unauthorized delivery is needed.
+- Evidence cannot validate the accepted objective.

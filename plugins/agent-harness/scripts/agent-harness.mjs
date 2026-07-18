@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, extname, join, relative, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -54,7 +55,7 @@ const commonTaskIndexCandidates = [
   "tasks.md"
 ];
 
-const validExecutionRoles = new Set(["gate-only", "implementer", "mixed"]);
+const validExecutionRoles = new Set(["gate-only", "implementer"]);
 const validConversationRoutes = new Set(["current-thread", "slot-thread", "remote-control-worktree"]);
 const deliveryStateOrder = ["implemented-local", "validated-local", "committed", "pushed", "review-open", "integrated", "released/shipped"];
 const validDeliveryStates = new Set(deliveryStateOrder);
@@ -63,14 +64,15 @@ const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "
 const recordableRunNodePhases = new Set(["running", "completed", "blocked"]);
 const validCommentaryPolicies = new Set(["minimal", "balanced", "audit"]);
 const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
-const contextFocusWorkflowPresets = "`orient`, `intake`, `shape`, `goal`, and `execute`";
-const contextFocusRoutingGuidance = `\`harness-rule:context-focus-routing\`: Normalize user intent to ${contextFocusIntentTargets} before choosing context focus. Use the smallest useful workflow focus preset (${contextFocusWorkflowPresets}) and prefer current confirmed state, accepted specs/goals/runs, adapter/config/status, then broad docs or historical logs.`;
-const executeContextFocusGuidance = "For execution, use the `execute` focus preset: goal/spec/run packet, execution DAG, allowed and forbidden scope, implementation-relevant files, verification commands, delivery target, and state-sync requirements.";
-const cyberneticStabilityGuidance = "`harness-rule:cybernetic-stability`: control toward an explicit target using `harness-rule:intent-setpoint-selection`, `harness-rule:sensor-freshness`, `harness-rule:measurement-snapshot`, `harness-rule:remaining-gap`, `harness-rule:feedback-quality`, and `harness-rule:stability-saturation`. Before closeout, state the selected target, observed state, evidence, stale/conflict risks, Delivery State, user-decision state, gap closed, remaining gap, feedback quality, and whether the stable next action is continue, pause, ask, or close.";
-const degradedExecutionProvenanceGuidance = "`harness-rule:degraded-execution-provenance`: When worker delegation falls back or the planned worker surface is unavailable or skipped, visibly report the actual execution method, unavailable or skipped surface, fallback reason, candidate-evidence boundary, and verification evidence.";
-const controllerCancellationBoundaryGuidance = "`harness-rule:controller-cancellation-boundary`: Controller cancellation and supersession are cooperative control-plane signals, not runtime kill guarantees. Before changing same-scope execution, snapshot active workers, stop new dependent launches, quarantine late worker output as candidate evidence, and record degraded provenance for any manual-foreground fallback.";
+const contextFocusRoutingGuidance = `\`harness-rule:project-neutral-core\`: Normalize the durable target to ${contextFocusIntentTargets}; adapters own downstream paths and facts while plugin core remains project-neutral.`;
+const executeContextFocusGuidance = "`harness-rule:path-containment`: configured writes, Goal/Spec references, Run arguments, and DAG artifacts stay inside configured roots after lexical and existing-parent realpath checks.";
+const cyberneticStabilityGuidance = "`harness-rule:state-sync-evidence`: durable completion includes verified State Sync Notes and synchronization of the configured Goal, Task, Run, gate, and bounded status records.";
+const degradedExecutionProvenanceGuidance = "`harness-rule:candidate-accepted-evidence`: execution and worker output remains candidate evidence until the accepted-state owner verifies and records it.";
+const controllerCancellationBoundaryGuidance = "`harness-rule:run-dag-ownership`: Harness records ready nodes, dependencies, ownership, verification, and candidate evidence; the Codex runtime owns scheduling, delegation, concurrency, and cancellation.";
 const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
-const boundedDirectExecutionGuidance = "`harness-rule:bounded-direct-execution`: Accepted finite single-thread work may execute without creating a Goal/Run/DAG when it needs no durable recovery or handoff, worker/DAG, multi-stage or broad implementation, important runtime/schema behavior change, acceptance or Milestone map, or adapter-required gate. Docs-only clarification of an existing contract is eligible. Sync only relevant pre-existing Harness artifacts; delivery authorization alone does not select durable orchestration.";
+const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex directly; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, DAGs, multiple workers, or high-risk control.";
+const localDeliveryCeilingGuidance = "`harness-rule:local-delivery-ceiling`: local implementation or validation is not commit, push, review, integration, release, or deploy evidence.";
+const runScopedDeliveryGuidance = "`harness-rule:run-scoped-delivery`: delivery claims compare this Run's recorded start snapshot, current delta, and explicit evidence.";
 
 function commentaryPolicyDetails(config = {}) {
   const configured = config.communication?.commentary;
@@ -190,6 +192,55 @@ function toCamelCase(value) {
 
 function targetCwd(args) {
   return resolve(args.cwd || process.cwd());
+}
+
+function isPathInside(root, candidate) {
+  const rel = relative(root, candidate);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+function existingAncestor(path) {
+  let cursor = resolve(path);
+  while (!existsSync(cursor)) {
+    const parent = dirname(cursor);
+    if (parent === cursor) break;
+    cursor = parent;
+  }
+  return cursor;
+}
+
+function assertContainedPath(root, candidate, label = "Path") {
+  const absoluteRoot = resolve(root);
+  const absoluteCandidate = resolve(candidate);
+  if (!isPathInside(absoluteRoot, absoluteCandidate)) {
+    throw new Error(`${label} must stay inside ${absoluteRoot}: ${candidate}`);
+  }
+  const rootAnchor = realpathSync(existingAncestor(absoluteRoot));
+  const candidateAnchor = realpathSync(existingAncestor(absoluteCandidate));
+  if (!isPathInside(rootAnchor, candidateAnchor)) {
+    throw new Error(`${label} escapes ${absoluteRoot} through an existing symlink: ${candidate}`);
+  }
+  if (existsSync(absoluteCandidate)) {
+    const candidateReal = realpathSync(absoluteCandidate);
+    if (!isPathInside(rootAnchor, candidateReal)) {
+      throw new Error(`${label} resolves outside ${absoluteRoot}: ${candidate}`);
+    }
+  }
+  return absoluteCandidate;
+}
+
+function configuredPath(cwd, relPath, label = "Configured path") {
+  if (!isRelativeHarnessPath(relPath)) {
+    throw new Error(`${label} must be a non-empty project-relative path without '..': ${relPath}`);
+  }
+  return assertContainedPath(cwd, resolve(cwd, relPath), label);
+}
+
+function artifactPath(root, relPath, label = "Artifact path") {
+  if (!isRelativeHarnessPath(relPath)) {
+    throw new Error(`${label} must be relative and must not contain '..': ${relPath}`);
+  }
+  return assertContainedPath(root, resolve(root, relPath), label);
 }
 
 function readTemplate(name) {
@@ -547,6 +598,22 @@ function isRelativeHarnessPath(value) {
 function validateConfiguredPaths(config, contract) {
   const errors = [];
   const paths = config.paths || {};
+  if (paths.tasks && paths.taskIndex && paths.tasks !== paths.taskIndex) {
+    errors.push("$.paths.tasks and $.paths.taskIndex conflict; keep only canonical taskIndex output.");
+  }
+  if (paths.mentalModel && paths.mentalModelIndex && paths.mentalModel !== paths.mentalModelIndex) {
+    errors.push("$.paths.mentalModel and $.paths.mentalModelIndex conflict; keep only canonical mentalModelIndex output.");
+  }
+  if (config.worktree?.defaultPolicy && config.workMode?.defaultPolicy
+      && config.worktree.defaultPolicy !== config.workMode.defaultPolicy) {
+    errors.push("$.worktree.defaultPolicy and legacy $.workMode.defaultPolicy conflict.");
+  }
+  const canonicalGates = stringList(config.gates?.requiredForCompletion).sort();
+  const legacyGates = stringList(config.gates?.enabled).sort();
+  if (canonicalGates.length && legacyGates.length
+      && JSON.stringify(canonicalGates) !== JSON.stringify(legacyGates)) {
+    errors.push("$.gates.requiredForCompletion and legacy $.gates.enabled conflict.");
+  }
   const pathKeys = [
     "tasks",
     "taskIndex",
@@ -742,6 +809,10 @@ function buildAdapterConfigPayload(projectName, discovery = {}) {
 
 function normalizeHarnessContract(config) {
   const rawContract = typeof config.contract === "string" ? config.contract.trim().toLowerCase() : "";
+  const rawMode = typeof config.mode === "string" ? config.mode.trim().toLowerCase() : "";
+  if (rawContract && rawMode && rawContract !== rawMode) {
+    throw new Error(`Conflicting config aliases: contract=${config.contract} and mode=${config.mode}.`);
+  }
   if (rawContract) {
     if (rawContract === "fixed" || rawContract === "adapter") {
       return rawContract;
@@ -749,7 +820,6 @@ function normalizeHarnessContract(config) {
     throw new Error(`Unsupported harness contract in ${configRelPath}: ${config.contract}`);
   }
 
-  const rawMode = typeof config.mode === "string" ? config.mode.trim().toLowerCase() : "";
   if (rawMode && !["fixed", "adapter"].includes(rawMode)) {
     throw new Error(`Unsupported harness mode in ${configRelPath}: ${config.mode}`);
   }
@@ -762,6 +832,12 @@ function normalizeHarnessContract(config) {
 function resolvedAdapterPaths(config, activeConfigRelPath = configRelPath) {
   const paths = config.paths || {};
   const adapter = config.adapter || {};
+  if (paths.taskIndex && paths.tasks && paths.taskIndex !== paths.tasks) {
+    throw new Error(`Conflicting config aliases: paths.taskIndex=${paths.taskIndex} and paths.tasks=${paths.tasks}.`);
+  }
+  if (paths.mentalModelIndex && paths.mentalModel && paths.mentalModelIndex !== paths.mentalModel) {
+    throw new Error(`Conflicting config aliases: paths.mentalModelIndex=${paths.mentalModelIndex} and paths.mentalModel=${paths.mentalModel}.`);
+  }
   const mentalModelIndex = paths.mentalModelIndex || paths.mentalModel || adapterContract.mentalModelIndex;
   return {
     taskIndex: paths.taskIndex || paths.tasks || adapterContract.taskIndex,
@@ -884,6 +960,9 @@ function resolveHarnessContext(cwd) {
 
 function fixedPathsFromConfig(config, activeConfigRelPath = configRelPath) {
   const paths = config.paths || {};
+  if (paths.tasks && paths.taskIndex && paths.tasks !== paths.taskIndex) {
+    throw new Error(`Conflicting config aliases: paths.tasks=${paths.tasks} and paths.taskIndex=${paths.taskIndex}.`);
+  }
   return {
     taskIndex: paths.tasks || paths.taskIndex || fixedContract.taskIndex,
     config: activeConfigRelPath,
@@ -915,7 +994,7 @@ function ensureDir(cwd, relPath, created) {
   if (!relPath) {
     return;
   }
-  const absPath = join(cwd, relPath);
+  const absPath = configuredPath(cwd, relPath, "Directory path");
   if (!existsSync(absPath)) {
     mkdirSync(absPath, { recursive: true });
     created.push(relPath);
@@ -935,20 +1014,20 @@ function mentalModelArtifactPaths(paths) {
 function ensureMentalModelArtifacts(cwd, paths, created, force = false) {
   const mentalModelsDir = paths.mentalModels || dirname(paths.mentalModelIndex || adapterContract.mentalModelIndex);
 
-  if (paths.mentalModelIndex && writeIfMissing(join(cwd, paths.mentalModelIndex), readTemplate("mental-models.md"), force)) {
+  if (paths.mentalModelIndex && writeIfMissing(configuredPath(cwd, paths.mentalModelIndex, "Mental model index"), readTemplate("mental-models.md"), force)) {
     created.push(paths.mentalModelIndex);
   }
 
   for (const [fileName, templateName] of mentalModelTemplates) {
     const relPath = join(mentalModelsDir, fileName);
-    if (writeIfMissing(join(cwd, relPath), readTemplate(templateName), force)) {
+    if (writeIfMissing(configuredPath(cwd, relPath, "Mental model artifact"), readTemplate(templateName), force)) {
       created.push(relPath);
     }
   }
 }
 
 function ensureImportSupportArtifacts(cwd, paths, created) {
-  if (writeIfMissing(join(cwd, paths.status), readTemplate("status.md"))) {
+  if (writeIfMissing(configuredPath(cwd, paths.status, "Status path"), readTemplate("status.md"))) {
     created.push(paths.status);
   }
   for (const dir of [paths.specs, paths.goals, paths.milestones, paths.runs, paths.mentalModels]) {
@@ -1001,6 +1080,17 @@ function initPlan(args, cwd, projectName) {
   };
 }
 
+function validateWritablePlan(cwd, mode, paths) {
+  const files = [paths.taskIndex, paths.config, paths.status];
+  const dirs = [paths.goals, paths.runs];
+  if (mode === "adapter") {
+    files.push(paths.adapterDocs, paths.mentalModelIndex);
+    dirs.push(paths.specs, paths.milestones, paths.gateRecords, paths.deferredRegister, paths.mentalModels);
+  }
+  for (const path of uniqueList(files.filter(Boolean))) configuredPath(cwd, path, "Writable file path");
+  for (const path of uniqueList(dirs.filter(Boolean))) configuredPath(cwd, path, "Writable directory path");
+}
+
 function init(args) {
   const cwd = targetCwd(args);
   const lang = args.language;
@@ -1008,25 +1098,30 @@ function init(args) {
   const created = [];
   const plan = initPlan(args, cwd, projectName);
   const { mode, configPayload, paths } = plan;
+  const configValidation = validateConfigPayloadObject(configPayload);
+  if (!configValidation.ok) {
+    throw new Error(`Harness config is invalid:\n${configValidation.errors.map((error) => `- ${error}`).join("\n")}`);
+  }
+  validateWritablePlan(cwd, mode, paths);
 
   const taskTemplate = mode === "adapter" ? "task-index.md" : "tasks.md";
-  const tasksPath = join(cwd, paths.taskIndex);
+  const tasksPath = configuredPath(cwd, paths.taskIndex, "Task index path");
   if (writeIfMissing(tasksPath, readTemplate(taskTemplate), args.force)) {
     created.push(paths.taskIndex);
   }
 
-  const configPath = join(cwd, paths.config);
+  const configPath = configuredPath(cwd, paths.config, "Config path");
   if (plan.writeConfig && writeIfMissing(configPath, `${JSON.stringify(configPayload, null, 2)}\n`, args.force)) {
     created.push(paths.config);
   }
 
-  const statusPath = join(cwd, paths.status);
+  const statusPath = configuredPath(cwd, paths.status, "Status path");
   if (writeIfMissing(statusPath, readTemplate("status.md"), args.force)) {
     created.push(paths.status);
   }
 
   if (mode === "adapter") {
-    const adapterPath = join(cwd, paths.adapterDocs);
+    const adapterPath = configuredPath(cwd, paths.adapterDocs, "Adapter docs path");
     if (writeIfMissing(adapterPath, renderAdapterTemplate(paths), args.force)) {
       created.push(paths.adapterDocs);
     }
@@ -1036,7 +1131,7 @@ function init(args) {
     ? [paths.specs, paths.goals, paths.milestones, paths.runs, paths.mentalModels]
     : [paths.goals, paths.runs];
   for (const dir of dirs) {
-    mkdirSync(join(cwd, dir), { recursive: true });
+    mkdirSync(configuredPath(cwd, dir, "Harness directory"), { recursive: true });
   }
 
   if (mode === "adapter" && paths.mentalModelIndex) {
@@ -1050,7 +1145,7 @@ function init(args) {
 function configImport(args) {
   const cwd = targetCwd(args);
   const projectName = args.projectName || basename(cwd);
-  const configPath = join(cwd, configRelPath);
+  const configPath = configuredPath(cwd, configRelPath, "Config path");
   const activeConfigRelPath = findConfigRelPath(cwd);
   const discovery = discoverAdapterProject(cwd, {
     taskIndex: args.taskIndex,
@@ -1088,6 +1183,7 @@ function configImport(args) {
     throw new Error(`Proposed adapter config is invalid:\n${configValidation.errors.map((error) => `- ${error}`).join("\n")}`);
   }
   const paths = resolvedAdapterPaths(configPayload, configRelPath);
+  validateWritablePlan(cwd, "adapter", paths);
 
   const payload = {
     dryRun: Boolean(args.dryRun),
@@ -1215,10 +1311,12 @@ function worktreeConfig(cwd) {
   const config = context.config;
   const worktree = config.worktree || {};
   const workMode = config.workMode || {};
+  if (worktree.defaultPolicy && workMode.defaultPolicy && worktree.defaultPolicy !== workMode.defaultPolicy) {
+    throw new Error(`Conflicting config aliases: worktree.defaultPolicy=${worktree.defaultPolicy} and workMode.defaultPolicy=${workMode.defaultPolicy}.`);
+  }
   return {
     contract: context.contract,
-    defaultPolicy: workMode.defaultPolicy || worktree.defaultPolicy || "ask",
-    autoRules: Array.isArray(worktree.autoRules) ? worktree.autoRules : []
+    defaultPolicy: worktree.defaultPolicy || workMode.defaultPolicy || "ask"
   };
 }
 
@@ -1256,70 +1354,6 @@ function recommendWorkMode({ cwd, config, gitState }) {
       code: "clean_checkout",
       detail: "0 changed paths"
     });
-
-  for (const rule of config.autoRules) {
-    const when = typeof rule?.when === "string" ? rule.when : "";
-    const use = typeof rule?.use === "string" ? rule.use : "";
-
-    if (!validWorkModes.has(use)) {
-      reasons.push({
-        source: "config",
-        code: "invalid_auto_rule_use",
-        rule: when,
-        use,
-        detail: "expected local, worktree, or ask"
-      });
-      continue;
-    }
-
-    if (when === "local_checkout_has_unrelated_changes") {
-      if (gitState.dirty) {
-        matchedRule = when;
-        reasons.push({
-          source: "config",
-          code: "auto_rule_matched",
-          rule: when,
-          use
-        });
-        if (validWorkModes.has(config.defaultPolicy)) {
-          reasons.push({
-            source: "config",
-            code: "default_policy_not_used",
-            use: config.defaultPolicy,
-            detail: `defaultPolicy=${config.defaultPolicy}`
-          });
-        }
-        return {
-          contract: config.contract || config.mode || "fixed",
-          cwd,
-          recommendation: use,
-          reasons,
-          git: gitState,
-          config: {
-            defaultPolicy: config.defaultPolicy,
-            matchedRule
-          }
-        };
-      }
-
-      reasons.push({
-        source: "config",
-        code: "auto_rule_not_matched",
-        rule: when,
-        use,
-        detail: "checkout is clean"
-      });
-      continue;
-    }
-
-    reasons.push({
-      source: "config",
-      code: "auto_rule_skipped",
-      rule: when,
-      use,
-      detail: "not observable by this command"
-    });
-  }
 
   if (validWorkModes.has(config.defaultPolicy)) {
     reasons.push({
@@ -2243,7 +2277,7 @@ function appendTaskToSection(content, section, entry) {
 }
 
 function recordIntake(payload) {
-  const taskIndexAbs = join(payload.cwd, payload.taskIndex);
+  const taskIndexAbs = configuredPath(payload.cwd, payload.taskIndex, "Task index path");
   if (!existsSync(taskIndexAbs)) {
     throw new Error(`Task index not found: ${payload.taskIndex}`);
   }
@@ -2425,6 +2459,66 @@ function deliveryStateSnapshot(cwd, { completed = false } = {}) {
     merge: "none",
     release: "none",
     statusShort: gitState.statusShort
+  };
+}
+
+function runStartSnapshot(cwd) {
+  const state = deliveryStateSnapshot(cwd);
+  const status = Array.isArray(state.statusShort) ? state.statusShort : [];
+  return {
+    startHead: state.isRepo ? git({ cwd }, ["rev-parse", "HEAD"]) || "none" : "none",
+    startBranch: state.branch || "none",
+    startUpstream: state.upstream || "none",
+    startDirtyState: {
+      dirty: state.workingTreeDirty,
+      changedPathCount: state.changedPathCount,
+      statusShort: status,
+      digest: createHash("sha256").update(status.join("\n")).digest("hex")
+    }
+  };
+}
+
+function runScopedDeliveryState(cwd, start, { completed = false } = {}) {
+  const current = deliveryStateSnapshot(cwd, { completed });
+  if (!current.isRepo) return current;
+  const currentHead = git({ cwd }, ["rev-parse", "HEAD"]) || "none";
+  const branchMatches = Boolean(
+    start?.startBranch
+    && start.startBranch !== "none"
+    && current.branch
+    && current.branch !== "none"
+    && current.branch === start.startBranch
+  );
+  const headChanged = Boolean(branchMatches && start?.startHead && start.startHead !== "none" && currentHead !== start.startHead);
+  const upstreamMatches = Boolean(
+    current.upstream
+    && current.upstream !== "none"
+    && (!start?.startUpstream || start.startUpstream === "none" || current.upstream === start.startUpstream)
+  );
+  let state = completed ? "validated-local" : "implemented-local";
+  let push = "none";
+  if (headChanged) {
+    state = "committed";
+    if (upstreamMatches && current.ahead === 0) {
+      state = "pushed";
+      push = current.upstream;
+    }
+  }
+  return {
+    ...current,
+    state,
+    commit: headChanged ? currentHead : "none",
+    push,
+    runDelta: {
+      headChanged,
+      branchMatches,
+      startBranch: start?.startBranch || "none",
+      currentBranch: current.branch || "none",
+      startHead: start?.startHead || "none",
+      currentHead,
+      startDirtyDigest: start?.startDirtyState?.digest || "",
+      currentDirtyDigest: createHash("sha256").update((current.statusShort || []).join("\n")).digest("hex")
+    }
   };
 }
 
@@ -2860,7 +2954,7 @@ function recordMaintenance(payload) {
   if (!statusPath) {
     throw new Error("Status path is not configured.");
   }
-  const statusAbs = join(payload.cwd, statusPath);
+  const statusAbs = configuredPath(payload.cwd, statusPath, "Status path");
   const statusContent = existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "# Project Status\n";
 
   const taskCompletions = payload.proposed.actions.filter((action) => action.kind === "task-completion");
@@ -2869,7 +2963,7 @@ function recordMaintenance(payload) {
       payload.record.taskIndexRefused = true;
       payload.record.taskIndexRefusalReason = "table-based task index";
     } else if (payload.paths.taskIndex) {
-      const taskIndexAbs = join(payload.cwd, payload.paths.taskIndex);
+      const taskIndexAbs = configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path");
       let taskContent = readFileSync(taskIndexAbs, "utf8");
       for (const action of taskCompletions) {
         taskContent = moveTaskToDone(taskContent, action.task);
@@ -3172,8 +3266,14 @@ function adapterRequirementLists(context) {
 
 function adapterRequiredCompletionGates(context) {
   const gates = context.config.gates || {};
+  const canonical = stringList(gates.requiredForCompletion);
+  const legacy = stringList(gates.enabled);
+  if (canonical.length && legacy.length
+      && JSON.stringify([...canonical].sort()) !== JSON.stringify([...legacy].sort())) {
+    throw new Error("Conflicting config aliases: gates.requiredForCompletion and legacy gates.enabled.");
+  }
   return uniqueList([
-    ...stringList(gates.requiredForCompletion),
+    ...(canonical.length ? canonical : legacy),
     ...stringList(gates.blocking)
   ]);
 }
@@ -3314,8 +3414,7 @@ Use \`implementer\`.
 
 - \`gate-only\`: the current thread reviews candidate output and verification evidence, but does not directly edit implementation files.
 - \`implementer\`: the current thread may edit files inside the accepted scope.
-- \`mixed\`: the current thread may both edit and gate only after recording why the tradeoff is acceptable.
-- \`harness-rule:level-0-fast-path\`: Level 0 Fast Path direct execution is only for tiny low-risk local reversible work. It can skip spec/goal/run/worker ceremony only when no existing Harness Goal/Run or adapter-required gate requires state sync. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. Verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- Ordinary clear change/build requests use Codex directly. This durable Goal uses only \`gate-only\` or \`implementer\` roles.
 - ${boundedDirectExecutionGuidance} Once this durable Goal exists, do not downgrade its checklist, gate, or state-sync obligations to the bounded tier.
 
 ## Conversation Route
@@ -3356,10 +3455,8 @@ named \`main\`.
 ## Execution DAG
 
 Use \`run prepare\` to generate \`dag.json\`, \`dag.md\`, and per-node
-\`agents/<node>/prompt.md\` files. Prefer Codex CLI subagents for worker nodes.
-Create a new Codex thread only when the controller explicitly needs a visible,
-long-lived handoff lane. Fork is not the default worker surface; use it only
-when the controller explicitly approves inherited context.
+\`agents/<node>/prompt.md\` files. The Codex runtime owns worker selection,
+delegation, concurrency, and cancellation; Harness records ownership and evidence.
 
 ## Context Focus Routing
 
@@ -3437,18 +3534,21 @@ function goalCreate(args) {
   }
 
   const taskIndexRelPath = paths.taskIndex || paths.tasks;
-  const tasksPath = join(cwd, taskIndexRelPath);
+  const tasksPath = configuredPath(cwd, taskIndexRelPath, "Task index path");
   if (!existsSync(tasksPath)) {
     throw new Error(`Missing ${taskIndexRelPath}`);
   }
-  if (args.spec && !existsSync(join(cwd, args.spec))) {
-    throw new Error(`Spec file not found: ${args.spec}`);
+  if (args.spec) {
+    const specRoot = configuredPath(cwd, paths.specs || dirname(args.spec), "Specs root");
+    const specPath = assertContainedPath(specRoot, resolve(cwd, args.spec), "Spec path");
+    if (!existsSync(specPath)) throw new Error(`Spec file not found: ${args.spec}`);
   }
 
   const task = findTask(parseTasks(readFileSync(tasksPath, "utf8")), taskQuery, taskIndexRelPath);
   const slug = slugify(task.title);
   const goalRelPath = join(paths.goals, `${todayStamp()}-${slug}.md`);
-  const goalPath = join(cwd, goalRelPath);
+  const goalRoot = configuredPath(cwd, paths.goals, "Goals root");
+  const goalPath = assertContainedPath(goalRoot, resolve(cwd, goalRelPath), "Goal path");
   const content = buildGoalContent({
     task,
     context,
@@ -3494,7 +3594,7 @@ function missingSpecValue(value) {
 
 function resolveProjectPath(cwd, relPath) {
   const cleaned = cleanLinkedTarget(relPath);
-  return cleaned ? resolve(cwd, cleaned) : "";
+  return cleaned ? assertContainedPath(cwd, resolve(cwd, cleaned), "Project reference") : "";
 }
 
 function isInsideProject(cwd, absPath) {
@@ -4102,6 +4202,7 @@ function goalMetadata(cwd, goalPath) {
 function validateGoal(cwd, goalPath) {
   const errors = [];
   const warnings = [];
+  const context = resolveHarnessContext(cwd);
   const content = readFileIfExists(goalPath);
 
   if (!content) {
@@ -4127,7 +4228,8 @@ function validateGoal(cwd, goalPath) {
     }
   } else {
     const specAbs = resolveProjectPath(cwd, spec);
-    if (!isInsideProject(cwd, specAbs)) {
+    const specsRoot = context.paths.specs ? configuredPath(cwd, context.paths.specs, "Specs root") : cwd;
+    if (!isInsideProject(cwd, specAbs) || !isPathInside(specsRoot, specAbs)) {
       errors.push(`Spec must stay inside the project: ${spec}`);
     } else if (!existsSync(specAbs)) {
       errors.push(`Spec file not found: ${spec}`);
@@ -4164,7 +4266,7 @@ function validateGoal(cwd, goalPath) {
   }
 
   if (!validExecutionRoles.has(metadata.executionRole)) {
-    errors.push(`Execution Role must use one of gate-only, implementer, or mixed; found ${metadata.executionRole || "(missing)"}.`);
+    errors.push(`Execution Role must use gate-only or implementer; found ${metadata.executionRole || "(missing)"}.`);
   }
   errors.push(...executionContextValidationErrors({
     workMode: metadata.workMode,
@@ -4190,7 +4292,6 @@ function validateGoal(cwd, goalPath) {
     itemTitle: "Item",
     requireAcceptance: true
   }));
-  const context = resolveHarnessContext(cwd);
   const requiredGates = adapterRequiredCompletionGates(context);
   const gateEvidence = gateEvidenceDetails(content, specContent);
   if (requiredGates.length && !gateEvidence.section) {
@@ -4229,7 +4330,7 @@ function validateGoal(cwd, goalPath) {
 }
 
 function goalFiles(cwd, goalsRelPath) {
-  const goalsDir = join(cwd, goalsRelPath);
+  const goalsDir = configuredPath(cwd, goalsRelPath, "Goals root");
   if (!existsSync(goalsDir)) {
     return [];
   }
@@ -4276,11 +4377,12 @@ function goalList(args) {
 
 function goalInspect(args) {
   const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
   if (!args.goal) {
     throw new Error("Usage: agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]");
   }
 
-  const goalPath = resolve(cwd, args.goal);
+  const goalPath = assertContainedPath(configuredPath(cwd, context.paths.goals, "Goals root"), resolve(cwd, args.goal), "Goal path");
   const validation = validateGoal(cwd, goalPath);
   const payload = {
     ...validation.metadata,
@@ -4315,11 +4417,12 @@ function goalInspect(args) {
 
 function goalValidate(args) {
   const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
   if (!args.goal) {
     throw new Error("Usage: agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]");
   }
 
-  const goalPath = resolve(cwd, args.goal);
+  const goalPath = assertContainedPath(configuredPath(cwd, context.paths.goals, "Goals root"), resolve(cwd, args.goal), "Goal path");
   const validation = validateGoal(cwd, goalPath);
   const payload = {
     ok: validation.ok,
@@ -4376,7 +4479,11 @@ function extractWorkMode(goalContent, cwd) {
   }
 
   const config = loadProjectConfig(cwd);
-  return config.workMode?.defaultPolicy || config.worktree?.defaultPolicy || "ask";
+  if (config.worktree?.defaultPolicy && config.workMode?.defaultPolicy
+      && config.worktree.defaultPolicy !== config.workMode.defaultPolicy) {
+    throw new Error(`Conflicting config aliases: worktree.defaultPolicy=${config.worktree.defaultPolicy} and workMode.defaultPolicy=${config.workMode.defaultPolicy}.`);
+  }
+  return config.worktree?.defaultPolicy || config.workMode?.defaultPolicy || "ask";
 }
 
 function countSectionBullets(section) {
@@ -4577,15 +4684,9 @@ function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole, c
     executionRole,
     communication,
     enforcement: taskSize === "medium" || taskSize === "large" ? "required-before-run-completion" : "advisory",
-    launchPolicy: "controller-gated-manual",
-    defaultWorkerSurface: "codex-cli-subagent",
-    preferredSurfaces: ["codex-cli-subagent"],
-    fallbackSurfaces: ["codex-app-create-thread", "manual-foreground"],
-    threadPolicy: "new Codex threads are explicit long-lived handoff lanes, not the default worker surface",
-    forkPolicy: "fork is not a default execution surface; use only with explicit controller approval and a corrected role packet",
+    launchPolicy: "runtime-dispatched",
+    runtimeOwnership: "Codex owns scheduling, delegation, concurrency, cancellation, and model selection; Harness records dependencies, ownership, verification, and candidate evidence",
     parallelSafety: {
-      launchMode: "sequential-until-isolation-proved",
-      maxParallelWithoutIsolation: 1,
       requirement: "parallel writers require separate locked worktrees/cwds; otherwise concurrent nodes must be read-only or have proven non-overlapping file ownership"
     },
     nodes,
@@ -4595,7 +4696,7 @@ function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole, c
 }
 
 function nodeStatusPath(runDir, node) {
-  return join(runDir, node.status);
+  return artifactPath(runDir, node.status, `DAG node '${node.id}' status`);
 }
 
 function readNodeStatus(runDir, node) {
@@ -4622,6 +4723,9 @@ function executionDagSnapshot(dag, runDir) {
     const phase = status.phase || "prepared";
     nodeStatuses[node.id] = {
       phase,
+      ownership: node.ownership || "",
+      verification: status.verificationSummary || "",
+      candidateEvidence: status.result || node.result || "",
       thread: status.thread || "",
       surface: status.surface || "",
       isolationEvidence: status.isolationEvidence || ""
@@ -4652,11 +4756,6 @@ function executionDagSnapshot(dag, runDir) {
     }
   }
 
-  const parallelCandidates = [...ready];
-  const safeReady = dag.parallelSafety?.launchMode === "sequential-until-isolation-proved"
-    ? ready.slice(0, 1)
-    : ready;
-
   return {
     version: dag.version,
     dag: "dag.json",
@@ -4665,20 +4764,13 @@ function executionDagSnapshot(dag, runDir) {
     enforced: dag.enforcement === "required-before-run-completion",
     communication: dag.communication || commentaryPolicyDetails(),
     launchPolicy: dag.launchPolicy,
-    defaultWorkerSurface: dag.defaultWorkerSurface,
-    preferredSurfaces: dag.preferredSurfaces,
-    fallbackSurfaces: dag.fallbackSurfaces,
-    threadPolicy: dag.threadPolicy,
-    forkPolicy: dag.forkPolicy,
+    runtimeOwnership: dag.runtimeOwnership,
     parallelSafety: dag.parallelSafety || {
-      launchMode: "sequential-until-isolation-proved",
-      maxParallelWithoutIsolation: 1,
       requirement: "record explicit isolation evidence before parallel launch"
     },
     nodeCount: dag.nodes.length,
     parallelLayers: dag.parallelLayers,
-    readyNodes: safeReady,
-    parallelCandidates,
+    readyNodes: ready,
     runningNodes: running,
     waitingNodes: waiting,
     completedNodes: completed,
@@ -4689,11 +4781,19 @@ function executionDagSnapshot(dag, runDir) {
 }
 
 function readExecutionDag(runDir) {
-  const dagPath = join(runDir, "dag.json");
+  const dagPath = artifactPath(runDir, "dag.json", "DAG path");
   if (!existsSync(dagPath)) {
     return null;
   }
-  return JSON.parse(readFileSync(dagPath, "utf8"));
+  const dag = JSON.parse(readFileSync(dagPath, "utf8"));
+  if (!Array.isArray(dag.nodes)) throw new Error("DAG nodes must be an array.");
+  for (const node of dag.nodes) {
+    if (!node || typeof node.id !== "string" || !node.id) throw new Error("Every DAG node requires an id.");
+    artifactPath(runDir, node.prompt, `DAG node '${node.id}' prompt`);
+    artifactPath(runDir, node.status, `DAG node '${node.id}' status`);
+    artifactPath(runDir, node.result, `DAG node '${node.id}' result`);
+  }
+  return dag;
 }
 
 function formatNodeList(values) {
@@ -4715,16 +4815,12 @@ Run: \`${relRunDir}\`
 Launch policy: \`${dag.launchPolicy}\`
 Enforcement: \`${dag.enforcement}\`
 
-## Worker Surfaces
+## Runtime Ownership
 
 - Commentary policy: \`${dag.communication.commentary}\`
 - Report cadence: \`${dag.communication.reportCadence}\`
 - Notify on: ${dag.communication.notifyOn}
-- Default worker surface: \`${dag.defaultWorkerSurface}\`
-- Preferred: \`${dag.preferredSurfaces.join("`, `")}\`
-- Fallback: \`${dag.fallbackSurfaces.join("`, `")}\`
-- Thread policy: ${dag.threadPolicy}
-- Fork policy: ${dag.forkPolicy}
+- Runtime: ${dag.runtimeOwnership}
 - Parallel safety: ${dag.parallelSafety.requirement}
 - Degraded provenance: ${degradedExecutionProvenanceGuidance}
 - Cancellation boundary: ${controllerCancellationBoundaryGuidance}
@@ -4741,18 +4837,13 @@ ${layers || "No valid layers; inspect `dag.json` before execution."}
 
 ## Controller Rules
 
-- Launch only nodes listed as ready by \`run status --json\`.
-- Launch sequentially by default. Parallel launch requires recorded isolation
-  evidence: separate locked worktrees/cwds for writers, or proof that concurrent
-  work is read-only or has non-overlapping file ownership.
-- Use \`${dag.defaultWorkerSurface}\` by default for ready worker nodes.
-- Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
+- Dispatch only nodes listed as ready by \`run status --json\`; the runtime owns scheduling and delegation.
+- Concurrent writers require recorded isolation evidence: separate locked
+  worktrees/cwds or proven non-overlapping ownership.
 - Use \`agent-harness run node record\` for each worker result before launching dependent nodes.
 - Read \`plugins/agent-harness/references/worker-runner-contract.md\` before launching or accepting worker output.
 - Treat worker output as candidate evidence until the controller validates scope, verification, State Sync Notes, and required gates.
-- Do not use fork as the default execution surface.
-- Do not silently treat fallback execution as normal worker execution; record degraded provenance in worker result, gate, or closeout evidence.
-- Do not present cancellation or supersession as proof that a worker runtime stopped; unresolved active workers or late outputs remain candidate evidence until the controller quarantines, rejects, or revalidates them.
+- Do not present runtime cancellation or supersession as accepted evidence; unresolved or late output remains candidate evidence.
 `;
 }
 
@@ -4801,17 +4892,13 @@ ${node.stopConditions}
 - ${contextFocusRoutingGuidance}
 - ${executeContextFocusGuidance}
 
-## Surface Policy
+## Runtime Policy
 
 - Commentary: ${dag.communication.guidance}
 - Report cadence: \`${dag.communication.reportCadence}\`
 - Notify on: ${dag.communication.notifyOn}
-- Default worker surface is \`${dag.defaultWorkerSurface}\`.
-- Parallel isolation defaults to sequential. A concurrent writer requires a
-  separate locked worktree/cwd or recorded proof of non-overlapping ownership.
-- Prefer Codex CLI subagents for bounded worker execution.
-- Create a new Codex thread only when the controller explicitly needs a visible, long-lived handoff lane.
-- Do not use fork unless the controller explicitly approves it and restates your execution role.
+- Worker selection, delegation, concurrency, cancellation, and model selection belong to the Codex runtime.
+- Concurrent writers require a separate locked worktree/cwd or recorded proof of non-overlapping ownership.
 - ${degradedExecutionProvenanceGuidance}
 - ${controllerCancellationBoundaryGuidance}
 - ${boundedStatusSnapshotGuidance}
@@ -4864,14 +4951,14 @@ Deferred items:
 }
 
 function writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag, createdAt }) {
-  writeFileSync(join(runDir, "dag.json"), `${JSON.stringify(dag, null, 2)}\n`);
-  writeFileSync(join(runDir, "dag.md"), buildDagMarkdown({ cwd, runDir, dag }));
+  writeFileSync(artifactPath(runDir, "dag.json", "DAG path"), `${JSON.stringify(dag, null, 2)}\n`);
+  writeFileSync(artifactPath(runDir, "dag.md", "DAG documentation path"), buildDagMarkdown({ cwd, runDir, dag }));
 
   for (const node of dag.nodes) {
-    const agentDir = join(runDir, "agents", node.id);
+    const agentDir = artifactPath(runDir, join("agents", node.id), `DAG node '${node.id}' directory`);
     mkdirSync(agentDir, { recursive: true });
-    writeFileSync(join(agentDir, "prompt.md"), buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }));
-    writeFileSync(join(agentDir, "status.json"), `${JSON.stringify({
+    writeFileSync(artifactPath(runDir, node.prompt, `DAG node '${node.id}' prompt`), buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }));
+    writeFileSync(nodeStatusPath(runDir, node), `${JSON.stringify({
       node: node.id,
       label: node.label,
       phase: "prepared",
@@ -4931,6 +5018,10 @@ function buildRunMarkdown({
   conversationRoute,
   executionContextLock,
   deliveryState,
+  startHead,
+  startBranch,
+  startUpstream,
+  startDirtyState,
   deliveryPolicy,
   acceptanceMap,
   stageCompletionMap,
@@ -4982,6 +5073,10 @@ Execution slot: \`${executionContextLock.executionSlot || "not-recorded"}\`
 Remote-control worktree: \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`
 Task size: \`${taskSize}\`
 Delivery state: \`${deliveryState.state}\`
+Start HEAD: \`${startHead || "none"}\`
+Start branch: \`${startBranch || "none"}\`
+Start upstream: \`${startUpstream || "none"}\`
+Start dirty digest: \`${startDirtyState?.digest || "none"}\`
 Working tree dirty: \`${deliveryState.workingTreeDirty}\`
 Commit: \`${deliveryState.commit}\`
 Push: \`${deliveryState.push}\`
@@ -5013,9 +5108,9 @@ ${sourceTask}
 1. ${specCheckpoint}
 2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
 3. Confirm the execution role. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
-4. \`harness-rule:level-0-fast-path\`: do not use Level 0 Fast Path to bypass this prepared run. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. ${boundedDirectExecutionGuidance} This prepared durable Run must not be downgraded to that tier.
+4. Do not bypass this prepared durable Run with ordinary direct execution.
 5. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
-6. Apply \`harness-rule:signal-only-commentary\`: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
+6. Apply the configured Commentary Policy: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
 7. ${cyberneticStabilityGuidance}
 8. ${degradedExecutionProvenanceGuidance}
 9. ${controllerCancellationBoundaryGuidance}
@@ -5026,12 +5121,14 @@ ${sourceTask}
 14. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
 15. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
 16. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes and default to sequential execution; parallel workers require recorded isolation evidence.
-17. Use \`agents/<node>/prompt.md\` with Codex CLI subagents by default. Create a new Codex thread only for explicit, visible, long-lived handoff lanes.
+17. Give ready node packets to the Codex runtime and record ownership, verification, and candidate evidence.
 18. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
 19. Run the verification commands from the goal.
 20. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
 21. ${boundedStatusSnapshotGuidance}
 22. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
+    ${localDeliveryCeilingGuidance}
+    ${runScopedDeliveryGuidance}
 23. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
 24. Record any command output summaries or follow-ups under this run directory.
 25. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
@@ -5049,8 +5146,7 @@ ${verification}
 - Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync; verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
 - ${boundedDirectExecutionGuidance} This prepared Run remains authoritative.
 - Cybernetic stability closeout must identify the target, observed state, gap closed, remaining gap, feedback quality, and any stability/saturation pause trigger.
-- Direct worker launch remains controller-gated; the packet provides prompts and DAG constraints, not a background scheduler. For gate-only control lanes, launch subagents by default instead of changing the control thread into an implementer.
-- Degraded execution provenance must be visible when worker delegation falls back or a planned worker surface is unavailable or skipped.
+- The packet provides dependencies and evidence boundaries, not a scheduler or worker-selection policy.
 - Stop if the goal conflicts with repository instructions, production constraints, or newer user instructions.
 `;
 }
@@ -5079,12 +5175,11 @@ In \`${cwd}\`, execute this goal:
 Requirements:
 
 - ${readGoalInstruction}
-- Apply \`harness-rule:signal-only-commentary\` with effective policy \`${context.communication.commentary}\`: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
+- Apply Commentary Policy \`${context.communication.commentary}\`: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
 - ${context.mode === "adapter" && adapterPath ? `Read \`${adapterPath}\` and apply its project-specific hard boundaries, preflight requirements, and state-sync rules.` : "Follow the repository instructions and configured harness paths."}
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
 - Follow the goal's Execution Role: \`${executionRole}\`.
-- If Execution Role is \`gate-only\`, keep the current thread as controller and launch worker subagents by default. Do not ask the user to choose between worker launch and changing this thread to \`mixed\` unless subagent execution is unavailable or unsafe.
-- \`harness-rule:level-0-fast-path\`: Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync. Level 0 direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files. Verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- If Execution Role is \`gate-only\`, keep the current thread as controller; the Codex runtime decides whether and how to delegate implementation.
 - ${boundedDirectExecutionGuidance} The supplied Goal/Run remains authoritative and must not be downgraded.
 - ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 - ${cyberneticStabilityGuidance}
@@ -5093,6 +5188,8 @@ Requirements:
 - Follow the goal's Conversation Route: \`${conversationRoute}\`.
 - Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
 - Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; review \`${deliveryState.review || deliveryState.pr}\`; integration \`${deliveryState.integration || deliveryState.merge}\`; release \`${deliveryState.release}\`.
+- ${localDeliveryCeilingGuidance}
+- ${runScopedDeliveryGuidance}
 - Target Delivery State: \`${deliveryPolicy.target}\`; delivery intent \`${deliveryPolicy.deliveryIntent}\`; commit authorized \`${deliveryPolicy.commitAuthorized}\`; push authorized \`${deliveryPolicy.pushAuthorized}\`; review authorized \`${deliveryPolicy.reviewAuthorized}\`; integration authorized \`${deliveryPolicy.integrationAuthorized}\`; release authorized \`${deliveryPolicy.releaseAuthorized}\`.
 - Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
 - Treat State Sync Notes as part of Goal/Task Done. Executors must provide them; the accepted-state owner verifies them before recording accepted Goal, Task, status, run, or gate state.
@@ -5118,7 +5215,7 @@ function recommendedSubagentTasks(taskSize, executionRole) {
     if (executionRole === "gate-only") {
       return `Recommended for this run: \`small\`.
 
-The current thread is \`gate-only\`; launch one worker subagent for the implementation node and keep this thread for acceptance. Do not switch the controller to \`mixed\` unless the user explicitly requests same-thread implementation.`;
+The current thread is \`gate-only\`; keep it for acceptance and give the implementation node to the Codex runtime.`;
     }
     return `Recommended for this run: \`small\`.
 
@@ -5202,9 +5299,9 @@ Goal: \`${relGoal}\`
 
 - Treat \`dag.json\` as the source of execution order. This file explains how to
   split work; it does not override DAG dependencies or controller gates.
-- \`harness-rule:level-0-fast-path\`: Level 0 Fast Path direct execution requires \`implementer\` or explicitly accepted \`mixed\`; \`gate-only\` cannot use Level 0 to edit implementation files.
+- This prepared Run is durable and must not be downgraded to ordinary direct execution.
 - ${cyberneticStabilityGuidance}
-- \`small\`: no subagent by default only when the current thread is \`implementer\` or accepted \`mixed\`; for \`gate-only\`, launch one worker subagent.
+- \`small\`: the runtime may keep implementer work in the current lane or delegate it; gate-only remains read-only.
 - \`medium\`: split into \`explorer\` plus \`worker\`, or \`worker\` plus \`verification\`, when it reduces context load.
 - \`large\`: split into multiple workers only when file ownership is non-overlapping and merge responsibility is clear.
 - \`ask\`: pause before splitting when the work involves production, destructive actions, credentials, paid APIs, product direction, or unclear file ownership.
@@ -5223,7 +5320,8 @@ function runPrepare(args) {
     throw new Error("Usage: agent-harness run prepare --goal <goal-file> [--cwd PATH]");
   }
 
-  const goalPath = resolve(cwd, args.goal);
+  const goalsRoot = configuredPath(cwd, paths.goals, "Goals root");
+  const goalPath = assertContainedPath(goalsRoot, resolve(cwd, args.goal), "Goal path");
   if (!existsSync(goalPath)) {
     throw new Error(`Goal file not found: ${args.goal}`);
   }
@@ -5235,7 +5333,8 @@ function runPrepare(args) {
 
   const goalContent = readFileSync(goalPath, "utf8");
   const specRel = extractInlinePath(goalContent, "Spec");
-  const specAbs = resolveProjectPath(cwd, specRel);
+  const specsRoot = paths.specs ? configuredPath(cwd, paths.specs, "Specs root") : cwd;
+  const specAbs = specRel ? assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Spec path") : "";
   const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
   const createdAt = new Date().toISOString();
   const workMode = extractWorkMode(goalContent, cwd);
@@ -5243,6 +5342,7 @@ function runPrepare(args) {
   const conversationRoute = extractConversationRouteRaw(goalContent);
   const executionContextLock = executionContextLockDetails(goalContent);
   const deliveryState = deliveryStateSnapshot(cwd);
+  const startSnapshot = runStartSnapshot(cwd);
   const deliveryPolicy = deliveryPolicyDetails(goalContent);
   const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
   const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
@@ -5259,13 +5359,14 @@ function runPrepare(args) {
     communication: context.communication
   });
   const runSlug = runSlugFromGoal(goalPath);
-  const runDir = nextAvailableRunDir(join(cwd, paths.runs, `${runTimestamp()}-${runSlug}`));
+  const runsRoot = configuredPath(cwd, paths.runs, "Runs root");
+  const runDir = assertContainedPath(runsRoot, nextAvailableRunDir(join(runsRoot, `${runTimestamp()}-${runSlug}`)), "Run directory");
   const files = ["run.md", "prompt.md", "subagents.md", "dag.md", "dag.json", "agents", "status.json"];
-  const logsDir = join(runDir, "logs");
+  const logsDir = artifactPath(runDir, "logs", "Run logs path");
 
   mkdirSync(logsDir, { recursive: true });
   writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag: executionDag, createdAt });
-  writeFileSync(join(runDir, "run.md"), buildRunMarkdown({
+  writeFileSync(artifactPath(runDir, "run.md", "Run document path"), buildRunMarkdown({
     context,
     createdAt,
     cwd,
@@ -5279,6 +5380,7 @@ function runPrepare(args) {
     conversationRoute,
     executionContextLock,
     deliveryState,
+    ...startSnapshot,
     deliveryPolicy,
     acceptanceMap,
     stageCompletionMap,
@@ -5286,10 +5388,10 @@ function runPrepare(args) {
     gateEvidence,
     requiredGates
   }));
-  writeFileSync(join(runDir, "prompt.md"), buildPromptMarkdown({ context, cwd, goalPath, goalContent }));
-  writeFileSync(join(runDir, "subagents.md"), buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }));
+  writeFileSync(artifactPath(runDir, "prompt.md", "Run prompt path"), buildPromptMarkdown({ context, cwd, goalPath, goalContent }));
+  writeFileSync(artifactPath(runDir, "subagents.md", "Run guidance path"), buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }));
   const executionDagState = executionDagSnapshot(executionDag, runDir);
-  writeFileSync(join(runDir, "status.json"), `${JSON.stringify({
+  writeFileSync(artifactPath(runDir, "status.json", "Run status path"), `${JSON.stringify({
     harnessContract: context.contract,
     phase: "prepared",
     createdAt,
@@ -5310,6 +5412,7 @@ function runPrepare(args) {
       remoteControlWorktree: executionContextLock.remoteControlWorktree
     },
     deliveryState,
+    ...startSnapshot,
     deliveryPolicy,
     acceptanceMapRequired: acceptanceMap.required,
     acceptanceMapSource: acceptanceMap.source,
@@ -5338,14 +5441,21 @@ function runPrepare(args) {
   console.log(`Prompt: ${displayPath(cwd, join(runDir, "prompt.md"))}`);
   console.log(`DAG: ${displayPath(cwd, join(runDir, "dag.md"))}`);
   console.log(`Ready nodes: ${executionDagState.readyNodes.join(", ") || "none"}`);
-  console.log(`Default worker surface: ${executionDagState.defaultWorkerSurface}`);
-  console.log("Next: launch ready node prompts as Codex CLI subagents by default; use new Codex threads only for explicit long-lived handoff lanes.");
+  console.log("Next: hand ready nodes to the Codex runtime; record ownership, verification, and candidate evidence in this Run.");
 }
 
 const recordableRunPhases = new Set(["completed", "blocked"]);
 
+function configuredRunDir(cwd, context, value) {
+  const runsRoot = configuredPath(cwd, context.paths.runs, "Runs root");
+  const runDir = assertContainedPath(runsRoot, resolve(cwd, value), "Run directory");
+  if (runDir === runsRoot) throw new Error("Run directory must name a child of the configured runs root.");
+  return runDir;
+}
+
 function runNodeRecord(args) {
   const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
   if (!args.run || !args.node) {
     throw new Error("Usage: agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]");
   }
@@ -5359,8 +5469,8 @@ function runNodeRecord(args) {
     throw new Error("Completed DAG nodes require --verification evidence.");
   }
 
-  const runDir = resolve(cwd, args.run);
-  const runStatusPath = join(runDir, "status.json");
+  const runDir = configuredRunDir(cwd, context, args.run);
+  const runStatusPath = artifactPath(runDir, "status.json", "Run status path");
   if (!existsSync(runStatusPath)) {
     throw new Error(`Missing ${displayPath(cwd, runStatusPath)}`);
   }
@@ -5401,7 +5511,7 @@ function runNodeRecord(args) {
     isolationEvidence: args.isolationEvidence || previousNodeStatus.isolationEvidence || "sequential",
     result: node.result
   };
-  const resultPath = join(runDir, node.result);
+  const resultPath = artifactPath(runDir, node.result, `DAG node '${node.id}' result`);
   const resultContent = `# DAG Node ${titleCase(args.phase)}: ${node.id}
 
 Updated: ${now}
@@ -5463,6 +5573,7 @@ ${args.verification || "Not recorded."}
 
 function runRecord(args) {
   const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
   if (!args.run) {
     throw new Error("Usage: agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--cwd PATH] [--json]");
   }
@@ -5473,8 +5584,8 @@ function runRecord(args) {
     throw new Error("Missing --summary <text>");
   }
 
-  const runDir = resolve(cwd, args.run);
-  const statusPath = join(runDir, "status.json");
+  const runDir = configuredRunDir(cwd, context, args.run);
+  const statusPath = artifactPath(runDir, "status.json", "Run status path");
   if (!existsSync(statusPath)) {
     throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
   }
@@ -5482,7 +5593,7 @@ function runRecord(args) {
   const now = new Date().toISOString();
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
   const executionRole = status.executionRole || "unknown";
-  let deliveryState = applyDeliveryEvidence(deliveryStateSnapshot(cwd, { completed: args.phase === "completed" }), {
+  let deliveryState = applyDeliveryEvidence(runScopedDeliveryState(cwd, status, { completed: args.phase === "completed" }), {
     reviewUrl: args.reviewUrl || args.prUrl || status.deliveryState?.review || status.deliveryState?.pr,
     integrationRef: args.integrationRef || args.mergeSha || status.deliveryState?.integration || status.deliveryState?.merge,
     releaseRef: args.releaseRef || status.deliveryState?.release
@@ -5501,10 +5612,16 @@ function runRecord(args) {
   if (args.phase === "completed" && dagState?.enforced && !dagState.allNodesCompleted) {
     throw new Error(`Completed DAG runs require every execution DAG node to be completed; ready: ${dagState.readyNodes.join(", ") || "none"}, waiting: ${dagState.waitingNodes.join(", ") || "none"}.`);
   }
-  const goalPath = status.goalPath ? resolveProjectPath(cwd, status.goalPath) : "";
+  const goalsRoot = configuredPath(cwd, context.paths.goals || fixedContract.goals, "Goals root");
+  const goalPath = status.goalPath
+    ? assertContainedPath(goalsRoot, resolveProjectPath(cwd, status.goalPath), "Run Goal path")
+    : "";
   const goalContent = goalPath && existsSync(goalPath) ? readFileSync(goalPath, "utf8") : "";
   const specRel = goalContent ? extractInlinePath(goalContent, "Spec") : "";
-  const specAbs = specRel ? resolveProjectPath(cwd, specRel) : "";
+  const specsRoot = context.paths.specs ? configuredPath(cwd, context.paths.specs, "Specs root") : cwd;
+  const specAbs = specRel
+    ? assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Goal Spec path")
+    : "";
   const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
   const deliveryPolicy = status.deliveryPolicy || deliveryPolicyDetails(goalContent);
   const deliveryPolicyErrors = deliveryPolicyValidationErrors(deliveryPolicy);
@@ -5572,7 +5689,7 @@ function runRecord(args) {
     deliveryPolicy,
     executionDag: dagState || status.executionDag
   };
-  const logsDir = join(runDir, "logs");
+  const logsDir = artifactPath(runDir, "logs", "Run logs path");
   mkdirSync(logsDir, { recursive: true });
   const logPath = join(logsDir, `${runTimestamp()}-${args.phase}.md`);
   const logContent = `# Run ${titleCase(args.phase)} Summary
@@ -5642,19 +5759,20 @@ A completed run must reach Target delivery state. If actual state is below targe
 
 function runStatus(args) {
   const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
   if (!args.run) {
     throw new Error("Usage: agent-harness run status --run <run-dir> [--cwd PATH]");
   }
 
-  const runDir = resolve(cwd, args.run);
-  const statusPath = join(runDir, "status.json");
+  const runDir = configuredRunDir(cwd, context, args.run);
+  const statusPath = artifactPath(runDir, "status.json", "Run status path");
   if (!existsSync(statusPath)) {
     throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
   }
 
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
   const expectedFiles = status.files || ["run.md", "prompt.md", "subagents.md", "status.json"];
-  const missing = expectedFiles.filter((file) => !existsSync(join(runDir, file)));
+  const missing = expectedFiles.filter((file) => !existsSync(artifactPath(runDir, file, "Run artifact path")));
   const dag = readExecutionDag(runDir);
   const dagState = dag ? executionDagSnapshot(dag, runDir) : status.executionDag || null;
 

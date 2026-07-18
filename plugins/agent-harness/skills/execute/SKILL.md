@@ -1,162 +1,75 @@
 ---
 name: execute
-description: Prepare or execute authorized Agent Harness work, including Goal creation, gates, verification, and state sync. Use after scope and safety boundaries are accepted; not for read-only status, rough intake, setup, or ambiguous direction. / 执行已授权范围，不用于未确认需求。
+description: Execute accepted durable Harness Goals and Runs for recovery, audit, milestones, DAGs, multi-worker or high-risk work; ordinary clear changes use Codex directly. / 执行已接受的持久化控制工作。
 ---
 
 # Harness Execute
 
-Execute an authorized implementation slice or act as the control lane for an
-authorized Goal/run. Accepted scope may still need a repository Harness Goal;
-prepare or validate it before editing. Do not treat a built-in Codex thread
-goal as a substitute for the repository Goal artifact.
+Use this skill only when accepted work needs durable recovery, audit, state
+sync, milestone acceptance, a Run/DAG, multiple workers, or high-risk control.
+A clear ordinary change/build request should be executed directly by Codex.
 
-## Load Only The Active Path
+Read [Completion Evidence](references/completion-evidence.md) before accepting
+or recording durable completion.
 
-- Before user-visible progress updates: read
-  [User-Facing Communication](../../references/user-facing-communication.md)
-  and apply `harness-rule:signal-only-commentary` with the effective policy
-  from Harness config.
-- Route unclear: read [Routing Boundaries](references/routing-boundaries.md),
-  [Route To Public Entry Mapping](../../references/route-entry-mapping.md), and
-  [First-Principles Scope](../../references/first-principles-scope.md).
-- Before editing or accepting output: read
-  [Execution Roles](references/execution-roles.md).
-- Creating a Goal or run: use the commands below and read
-  [Work Routing](../../references/task-routing.md) only when classification or
-  work mode is ambiguous.
-- Launching or coordinating workers: read
-  [Worker Runner Contract](../../references/worker-runner-contract.md) and
-  [Controller Communication](../../references/controller-communication.md).
-  Read [Model Routing](../../references/model-routing.md) as well when choosing
-  a worker model or creating a named Codex agent.
-- Accepting completion: read
-  [Completion Evidence](references/completion-evidence.md),
-  [Adversarial Acceptance](references/adversarial-acceptance.md), and
-  [Gate Results](../../references/gate-results.md).
-- Final response: read
-  [User-Facing Closeout](references/user-facing-closeout.md).
+## Workflow
 
-## Core Workflow
-
-1. Read `AGENTS.md`, inspect the Harness config, and load the configured
-   adapter, Goal/status state, and relevant spec/Goal/run.
+1. Read `AGENTS.md`, inspect `.harness/config.json`, and load the configured
+   adapter, accepted Spec/Goal, active Run, and required gates.
+2. Select `gate-only` or `implementer`. A gate-only lane reviews candidate
+   evidence and accepted state; an implementer edits only its owned scope.
+3. Validate or create the repository Goal, then prepare a Run when durable
+   execution is required:
 
 ```bash
-node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project>
-```
-
-2. Reconcile fresh conversation and Git observations with durable artifacts.
-   Never inherit credentials, commit/push permission, delivery authorization,
-   or product decisions from stale status text.
-3. Confirm scope, non-goals, verification, completion conditions, pause
-   conditions, execution role, `Execution Context Lock`, and delivery target. Route rough
-   direction to `harness:intake`; use `harness:orient` for read-only shaping.
-4. Select the role before editing:
-   - `gate-only`: review candidate evidence and run gates; do not edit.
-   - `implementer`: edit only the authorized scope.
-   - `mixed`: edit and gate only after explicit acceptance; do not infer
-     `mixed` from low-risk local work alone.
-   “main control”, “gate”, “judge”, “review”, or “acceptance” defaults to
-   `gate-only` only when the request concerns a confirmed Goal/run.
-5. Choose the lightest execution tier that preserves the accepted scope:
-   - `harness-rule:level-0-fast-path`: tiny, obvious, local fixes.
-   - `harness-rule:bounded-direct-execution`: accepted, finite, single-thread
-     work that can finish and be verified in the current checkout without a
-     durable handoff, worker/DAG, multi-stage acceptance, or important
-     runtime/schema behavior change. Documentation-only clarification of an
-     existing contract may use this tier even when it touches public protocol
-     or source-of-truth docs.
-   - durable Goal/Run: use when the work needs cross-turn/thread recovery or
-     handoff, workers or a DAG, multiple stages or broad implementation,
-     important runtime/schema behavior changes, an acceptance or Milestone
-     map, adapter-required gates, or when the user explicitly requests a Goal.
-
-   Bounded direct execution does not create a Goal, Run, DAG, Task, or status
-   entry merely to record that the work happened. Prepare or validate the
-   repository Goal only when the durable tier applies. The internal `goal`
-   route maps here; it is not a separate skill.
-
-```bash
-node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task "<task>" --spec <spec-path>
-node <plugin-root>/scripts/agent-harness.mjs goal create --cwd <project> --task "<task>" --allow-no-spec
 node <plugin-root>/scripts/agent-harness.mjs goal validate --cwd <project> --goal <goal-file>
-```
-
-   Use `--allow-no-spec` only for explicitly accepted scope. Generated Goals
-   must default to `validated-local` with all delivery authorizations `no`;
-   raise the target only from fresh explicit authorization.
-6. Prepare or inspect a run when controlled execution is useful.
-
-```bash
 node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
-node <plugin-root>/scripts/agent-harness.mjs run status --cwd <project> --run <run-dir> --json
 ```
 
-7. Follow the DAG. Launch only `readyNodes`. Default to sequential workers.
-   Parallel launch is allowed only when every concurrent writer has a separate
-   locked worktree/cwd, or all concurrent work is read-only or has proven
-   non-overlapping file ownership. Record isolation evidence in the launch
-   packets; otherwise launch one node at a time.
-8. In `gate-only`, launch a worker subagent by default only after scope,
-   verification, context lock, return contract, and isolation are explicit.
-   Worker output is candidate evidence. If delegation falls back, report
-   `harness-rule:degraded-execution-provenance`; cancellation is cooperative
-   and late output remains quarantined candidate evidence. A `Recommended
-   model` in the launch packet is advisory; pin a Codex worker by launching a
-   named custom agent whose `.codex/agents/<name>.toml` sets `model` and
-   `model_reasoning_effort`.
-9. In `implementer` or accepted `mixed`, edit only the owned DAG node or
-   foreground scope. `harness-rule:level-0-fast-path` applies only to tiny,
-   local, reversible fixes with no accepted Harness artifact, public protocol,
-   schema, external system, product semantics, gate, or delivery obligation.
-10. Verify and adversarially review completion. Synchronize only relevant
-    Harness Goal, Task, status, Run, or gate artifacts that already covered the work
-    before bounded direct execution began; do not create a lifecycle solely for
-    bookkeeping. Durable Goal/Run execution follows its full state-sync
-    contract. A status file is a bounded current snapshot and must not preserve
-    obsolete authorization.
+4. Give ready DAG nodes to the Codex runtime. Harness does not start workers,
+   choose concurrency, cancel runtimes, or pin model/effort by default. Record
+   node ownership, verification, and candidate evidence before dependents run.
+5. Verify the accepted scope and required gates. Worker output remains
+   candidate evidence until the accepted-state owner validates it.
+   Before acceptance, challenge scope coverage, stale evidence, missing
+   dependencies, path ownership, required checklist items, and whether the
+   user's Milestone/Goal objective is larger than the local artifact.
+6. Record run-scoped Delivery State from the Run start snapshot, current delta,
+   and explicit evidence. A clean upstream checkout alone is not this Run's
+   push evidence.
+7. Synchronize the configured Goal/Task/status/Run state. Keep status bounded.
+   Completion evidence must name changed files, commands/results, gate evidence,
+   Delivery State, State Sync Notes, remaining work, and any true user decision.
+8. Close with changed output, verification, Delivery State, `Need user`, and
+   `Remaining`.
 
-```bash
-node <plugin-root>/scripts/agent-harness.mjs run node record --cwd <project> --run <run-dir> --node <node-id> --phase completed --summary "<summary>" --verification "<evidence>"
-node <plugin-root>/scripts/agent-harness.mjs run record --cwd <project> --run <run-dir> --phase completed --summary "<summary>" --verification "<evidence>" --gate-evidence "<evidence>"
-```
+## Domain Invariants
 
-11. Report Delivery State separately. Commit, push, review, integration,
-    release, or local deploy authorization raises delivery permission/target;
-    it does not by itself require a Goal, Run, or DAG. `implemented-local` and
-    `validated-local` are not committed, pushed, reviewed, integrated, or
-    released. Do not complete a run below its authorized target.
-12. Close with changed/reviewed output, verification, Delivery State,
-    `Need user`, and `Remaining`. Use `Need user: None` and `Remaining: None`
-    when nothing remains.
+- `harness-rule:path-containment`: every configured write, Goal/Spec reference,
+  Run argument, and DAG artifact stays inside its configured project root,
+  including existing-parent realpath and symlink checks.
+- `harness-rule:run-dag-ownership`: a Run records ready nodes, dependencies,
+  ownership, verification, and candidate evidence; scheduling belongs to the runtime.
+- `harness-rule:candidate-accepted-evidence`: executors return candidate
+  evidence; only the accepted-state owner accepts gates or durable state.
+- `harness-rule:local-delivery-ceiling`: local implementation or validation is
+  not commit, push, review, integration, release, or deploy evidence.
+- `harness-rule:run-scoped-delivery`: delivery claims require this Run's Git
+  delta or explicit evidence relative to its recorded start snapshot.
+- `harness-rule:state-sync-evidence`: durable completion includes verified
+  State Sync Notes and updates to already configured records.
+- `harness-rule:bounded-status-snapshot`: status is a bounded current snapshot,
+  while Goals, Runs, and gate records retain durable history.
+- `harness-rule:project-neutral-core`: adapters own downstream paths and facts;
+  plugin core stays project-neutral.
+- `harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex
+  directly; durable ceremony is reserved for recovery, audit, milestone/DAG,
+  multi-worker, state-sync, or high-risk control.
 
-## Hard Boundaries
+## Boundaries
 
-Stable anchors applied through the referenced path-specific contracts:
-`harness-rule:gate-only-controller`, `harness-rule:local-delivery-ceiling`,
-`harness-rule:bounded-direct-execution`,
-`harness-rule:need-user-digest`, `harness-rule:bounded-status-snapshot`,
-`harness-rule:degraded-execution-provenance`,
-`harness-rule:controller-cancellation-boundary`,
-`harness-rule:cybernetic-stability`, `harness-rule:intent-setpoint-selection`,
-`harness-rule:sensor-freshness`, `harness-rule:measurement-snapshot`,
-`harness-rule:remaining-gap`, `harness-rule:feedback-quality`, and
-`harness-rule:stability-saturation`.
-
-- Do not execute ambiguous product direction or broaden authority from route
-  selection.
-- Do not let a `gate-only` controller patch candidate output.
-- A `gate-only` cannot use Level 0 to edit implementation files.
-- Do not invent or inherit delivery authorization; commit, push, PR, review,
-  integration, release, deploy, credentials, paid APIs, production,
-  destructive operations, and daemons require fresh explicit authority.
-- Do not mark tracked or durable work complete without verification, required
-  state-sync evidence, all enforced DAG nodes, required checklist items, and
-  adapter gates. Untracked bounded direct work requires verified closeout
-  evidence, not a newly invented Harness lifecycle.
-- Do not treat worker self-tests, build success, page existence, or narrative
-  summaries as accepted completion by themselves.
-- Preserve fixed-contract behavior and adapter-configured paths. Keep plugin
-  core project-neutral.
-- Report in the user's language while preserving code, command, path, package,
-  skill, API, model, acronym, and Git commit message spelling.
+- Do not infer delivery authorization, credentials, production access,
+  destructive operations, daemons, release, deploy, publish, commit, or push.
+- Do not mark durable work complete without required verification, gates, DAG
+  evidence, and state sync.
+- Preserve fixed and adapter contracts and report in the user's language.

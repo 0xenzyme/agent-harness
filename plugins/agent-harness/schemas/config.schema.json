@@ -25,6 +25,7 @@
       ]
     },
     "mode": {
+      "description": "Legacy alias for contract; canonical output omits it and conflicts fail.",
       "type": "string",
       "enum": [
         "fixed",
@@ -67,6 +68,7 @@
       "additionalProperties": false,
       "properties": {
         "tasks": {
+          "description": "Legacy fixed-contract alias for taskIndex; canonical adapter output uses taskIndex and conflicts fail.",
           "type": "string",
           "minLength": 1
         },
@@ -107,6 +109,7 @@
           "minLength": 1
         },
         "mentalModel": {
+          "description": "Legacy alias for mentalModelIndex; canonical output omits it and conflicts fail.",
           "type": "string",
           "minLength": 1
         },
@@ -155,35 +158,11 @@
             "worktree",
             "ask"
           ]
-        },
-        "autoRules": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "when": {
-                "type": "string",
-                "minLength": 1
-              },
-              "use": {
-                "type": "string",
-                "enum": [
-                  "local",
-                  "worktree",
-                  "ask"
-                ]
-              }
-            },
-            "required": [
-              "when",
-              "use"
-            ]
-          }
         }
       }
     },
     "workMode": {
+      "description": "Legacy alias for worktree; canonical output omits it and conflicts fail.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -197,69 +176,12 @@
         }
       }
     },
-    "loops": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "defaultMode": {
-          "type": "string",
-          "minLength": 1
-        },
-        "maxIterations": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "requiresVerification": {
-          "type": "boolean"
-        }
-      }
-    },
-    "lifecycle": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "taskKinds": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 1,
-          "uniqueItems": true
-        },
-        "taskStates": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 1,
-          "uniqueItems": true
-        },
-        "observeStates": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 1,
-          "uniqueItems": true
-        }
-      }
-    },
     "gates": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "enabled": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "uniqueItems": true
-        },
-        "optional": {
+          "description": "Legacy alias for requiredForCompletion; canonical output omits it and conflicts fail.",
           "type": "array",
           "items": {
             "type": "string",

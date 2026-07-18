@@ -230,12 +230,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 ```
 
 Prepared run packets include `dag.json`, `dag.md`, and
-`agents/<node>/prompt.md` files. The controller launches ready worker nodes on
-the `codex-cli-subagent` surface by default. New Codex threads are explicit,
-visible, long-lived handoff lanes, not the default worker surface. `run prepare`
-itself does not start workers. Run packets also record conversation route,
-execution context lock, and the current delivery state so local worktree
-execution is not confused with committed, pushed, integrated, or shipped state.
+`agents/<node>/prompt.md`. Harness records ready nodes, ownership, verification,
+and candidate evidence; the Codex runtime owns worker selection, delegation,
+concurrency, and cancellation. `run prepare` does not start workers or pin
+model/effort. Run packets also record the start Git snapshot so historical
+upstream state is not confused with this Run's delivery evidence.
 
 Inspect a prepared run:
 

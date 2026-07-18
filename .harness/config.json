@@ -31,46 +31,15 @@
   "communication": {
     "commentary": "minimal"
   },
-  "workMode": {
+  "worktree": {
     "defaultPolicy": "ask"
   },
-  "lifecycle": {
-    "taskKinds": [
-      "development",
-      "observe",
-      "research",
-      "ops",
-      "docs"
-    ],
-    "taskStates": [
-      "todo",
-      "spec-draft",
-      "spec-ready",
-      "goal-ready",
-      "doing",
-      "review",
-      "blocked",
-      "done",
-      "cancelled"
-    ],
-    "observeStates": [
-      "watching",
-      "signal",
-      "triage",
-      "action-needed",
-      "paused",
-      "closed"
-    ]
-  },
   "gates": {
-    "enabled": [
+    "requiredForCompletion": [
       "spec",
       "execution",
       "integration"
     ],
-    "optional": [
-      "walkthrough",
-      "retrospective"
-    ]
+    "blocking": []
   }
 }

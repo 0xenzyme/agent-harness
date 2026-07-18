@@ -9,9 +9,28 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageManifest = readJson(join(repoRoot, "package.json"));
 const pluginManifest = readJson(join(repoRoot, "plugins/agent-harness/.codex-plugin/plugin.json"));
+const marketplaceManifest = readJson(join(repoRoot, ".agents/plugins/marketplace.json"));
+const marketplaceEntries = Array.isArray(marketplaceManifest.plugins) ? marketplaceManifest.plugins : [];
+if (marketplaceEntries.length !== 1) {
+  throw new Error("Local marketplace must declare exactly one plugin entry.");
+}
+const marketplaceEntry = marketplaceEntries[0];
+const marketplace = marketplaceManifest.name;
+const pluginName = marketplaceEntry.name;
+const declaredPluginRoot = resolve(repoRoot, marketplaceEntry.source?.path || "");
+const manifestPluginRoot = resolve(repoRoot, "plugins/agent-harness");
+if (!marketplace || pluginName !== pluginManifest.name || declaredPluginRoot !== manifestPluginRoot) {
+  throw new Error(`Marketplace identity mismatch: marketplace=${marketplace || "missing"}, entry=${pluginName || "missing"}, manifest=${pluginManifest.name}, root=${declaredPluginRoot}.`);
+}
+for (const [key, expected] of [
+  ["AGENT_HARNESS_PLUGIN_MARKETPLACE", marketplace],
+  ["AGENT_HARNESS_PLUGIN_NAME", pluginName]
+]) {
+  if (process.env[key] && process.env[key] !== expected) {
+    throw new Error(`${key} conflicts with repository metadata: expected ${expected}, got ${process.env[key]}.`);
+  }
+}
 
-const marketplace = process.env.AGENT_HARNESS_PLUGIN_MARKETPLACE || "personal";
-const pluginName = process.env.AGENT_HARNESS_PLUGIN_NAME || pluginManifest.name;
 const pluginVersion = process.env.AGENT_HARNESS_PLUGIN_VERSION || pluginManifest.version || packageManifest.version;
 const pluginSelector = process.env.AGENT_HARNESS_PLUGIN_SELECTOR || `${pluginName}@${marketplace}`;
 const codexHome = resolve(process.env.CODEX_HOME || join(homedir(), ".codex"));
@@ -66,11 +85,7 @@ function assertCacheSentinels() {
   const sentinels = [
     {
       file: "skills/orient/SKILL.md",
-      text: "User-Facing Summary"
-    },
-    {
-      file: "skills/orient/references/user-facing-summary.md",
-      text: "Do not paste"
+      text: "ordinary actions"
     },
     {
       file: "references/worker-runner-contract.md",
@@ -113,6 +128,10 @@ run(process.execPath, ["tests/smoke.mjs"], { env: smokeEnv });
 
 console.log(`Refreshing Codex plugin cache for ${pluginSelector}...`);
 run("codex", ["plugin", "--help"], { capture: true });
+const marketplaceBefore = run("codex", ["plugin", "marketplace", "list"], { capture: true });
+if (marketplaceBefore.stdout.includes(marketplace) && !marketplaceBefore.stdout.includes(repoRoot)) {
+  throw new Error(`Marketplace ${JSON.stringify(marketplace)} is already registered to a different root; refusing to deploy from ${repoRoot}.`);
+}
 const marketplaceAdd = run("codex", ["plugin", "marketplace", "add", repoRoot], {
   allowFailure: true,
   capture: true
@@ -124,11 +143,8 @@ if (marketplaceAdd.status !== 0) {
   }
 }
 const marketplaceList = run("codex", ["plugin", "marketplace", "list"], { capture: true });
-if (!marketplaceList.stdout.includes(marketplace)) {
-  console.warn(`Warning: marketplace list does not show ${JSON.stringify(marketplace)} after registration.`);
-}
-if (!marketplaceList.stdout.includes(repoRoot)) {
-  console.warn(`Warning: marketplace list does not show this repo root: ${repoRoot}`);
+if (!marketplaceList.stdout.includes(marketplace) || !marketplaceList.stdout.includes(repoRoot)) {
+  throw new Error(`Marketplace registration did not confirm name ${JSON.stringify(marketplace)} at root ${repoRoot}.`);
 }
 
 const removeResult = run("codex", ["plugin", "remove", pluginSelector], {

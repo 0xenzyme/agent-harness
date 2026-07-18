@@ -261,7 +261,7 @@
     "user_request": "Act as the control lane, but also patch the worker output if it is tiny.",
     "expected_skills": ["harness:execute"],
     "should_trigger": true,
-    "rationale": "Control-lane wording triggers execute gate-only; patching requires explicit mixed approval."
+    "rationale": "Control-lane wording triggers execute gate-only; implementation belongs to a separate implementer/runtime-selected execution lane."
   },
   {
     "id": "ah_trigger_boundary_003",

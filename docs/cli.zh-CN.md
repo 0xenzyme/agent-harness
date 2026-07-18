@@ -227,12 +227,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 ```
 
 准备好的 run packet 会包含 `dag.json`、`dag.md` 和
-`agents/<node>/prompt.md`。controller 默认把 ready worker nodes 分发到
-`codex-cli-subagent` surface。新的 Codex thread 是显式、可见、长期的
-handoff lane，不是默认 worker surface。`run prepare` 本身不会启动 workers。
-Run packet 也会记录 conversation route、execution context lock 和当前
-delivery state，避免把本地 worktree 执行误解为已 commit、push、integrate 或
-ship。
+`agents/<node>/prompt.md`。Harness 记录 ready nodes、ownership、verification
+和 candidate evidence；Codex runtime 负责 worker selection、delegation、
+concurrency 与 cancellation。`run prepare` 不启动 worker，也不固定 model/
+effort。Run packet 还记录 Git 起点，避免把历史 upstream 状态误认为本 Run 的
+delivery evidence。
 
 查看已准备的 run：
 

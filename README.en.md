@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.6.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -20,7 +20,7 @@ Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 
 ## Use With A Coding Agent
 
-### 1. Install the plugin
+### 1. Register the local marketplace
 
 From a local checkout:
 
@@ -28,17 +28,18 @@ From a local checkout:
 codex plugin marketplace add <path-to-agent-harness-repo>
 ```
 
-From GitHub:
+This registers marketplace metadata from the checkout; it does not install the plugin.
 
-```bash
-codex plugin marketplace add 0xenzyme/agent-harness
-```
+### 2. Install from the Plugins Directory
+
+In Codex, open the Plugins Directory and install `harness` from
+`agent-harness-local`. See the install guide for remote marketplace registration.
 
 Codex reads `.agents/plugins/marketplace.json` and exposes the plugin as
 `harness`. See [Install In Codex](docs/install.md) for updates, activation, and
 project-adoption details.
 
-### 2. Ask Codex to use Harness
+### 3. Ask Codex to use Harness
 
 Most users do not need to name a skill or run the CLI directly:
 
@@ -49,18 +50,18 @@ Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sy
 Use the current thread as controller and carry the accepted spec through to completion.
 ```
 
-### 3. Choose an explicit entry when needed
+### 4. Choose an explicit entry when needed
 
 | Situation | Public skill |
 | --- | --- |
 | Adopt Harness, import an existing Goal index, run doctor, or preview activation. | `harness:init` |
 | Inspect status, blockers, stale artifacts, or the next route without mutation. | `harness:orient` |
 | Capture or triage an idea, requirement, bug, or inbox note. | `harness:intake` |
-| Prepare a Goal from accepted scope, execute confirmed work, verify, and sync state. | `harness:execute` |
+| Control accepted work that needs recovery, audit, state sync, milestone/DAG, multi-worker, or high-risk boundaries. | `harness:execute` |
 
-`shape`, `goal`, `competition`, and `ask` are internal route states, not
-additional installed skills. Harness maps them back to one of the public skills
-or to an exact user decision.
+Ordinary clear change/build requests use Codex directly. Clarifying scope,
+asking a question, and creating a Goal are actions rather than extra routes;
+proposal competition is an explicitly chosen advanced read-only technique.
 
 ## Why Agent Harness
 
@@ -71,7 +72,7 @@ owns the repeatable execution mechanics inside the project adapter:
 - discover roadmap, milestone, spec, Goal, Task, and Run state;
 - turn a request such as `complete M5` into explicit completion items;
 - prepare Goals and execution DAGs instead of stopping at the next small spec;
-- coordinate workers without confusing candidate output with accepted state;
+- record worker ownership, DAG state, and candidate evidence while the Codex runtime schedules work;
 - verify concrete evidence before advancing delivery state;
 - require `State Sync Notes` as part of Goal and Task completion;
 - keep Goal indexes, bounded status snapshots, Goals, Runs, and gates aligned;
@@ -115,11 +116,12 @@ Parent milestones stay open until their mapped items are satisfied. Accepting a
 source-spec item such as `M5-S0` cannot silently close the parent `M5` while
 implementation work remains.
 
-`harness-rule:cybernetic-stability` keeps the loop explicit: intent selects the
-target, fresh observations form a measurement snapshot, the controller acts on
-the remaining gap, and verification determines whether the loop should
-continue, pause, ask, or close. See
-[Cybernetic Stability](docs/cybernetic-stability.md).
+Nine domain invariants bound durable control: configured path containment,
+Run/DAG ownership, candidate-versus-accepted evidence, run-scoped delivery,
+and state sync. Ordinary clear change/build uses Codex directly; recovery,
+audit, milestone/DAG, multi-worker, persistent state-sync, or high-risk work
+crosses the `harness-rule:durable-tier-boundary`. See the
+[Capability Matrix](docs/HARNESSES.md).
 
 ## Architecture
 
@@ -198,13 +200,11 @@ Key boundaries:
 - `gate-only` controllers review and accept evidence without editing candidate
   implementation directly.
 - Parallel writers require separate locked worktrees/cwds or recorded proof of
-  non-overlapping ownership; execution is sequential by default.
+  non-overlapping ownership; the Codex runtime owns scheduling and concurrency.
 - Local verification does not imply commit, push, review, integration, release,
   or deployment.
-- `harness-rule:bounded-direct-execution` lets accepted, finite, single-thread
-  work execute without creating a Goal/Run/DAG; docs-only contract
-  clarification is eligible, and delivery authorization alone does not promote
-  it to durable orchestration.
+- `harness-rule:durable-tier-boundary` sends ordinary clear change/build to
+  Codex directly and reserves Harness ceremony for persistent control needs.
 - Status files are bounded current-state snapshots, not append-only history.
 - Newer conversation-confirmed direction is reconciled with stale artifacts
   before execution continues.
@@ -265,7 +265,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.6.0 Release Notes](docs/releases/v0.6.0.md)
+- [v0.7.0 Release Notes](docs/releases/v0.7.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while

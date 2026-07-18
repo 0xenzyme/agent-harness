@@ -42,7 +42,8 @@ Examples:
 0.3.0 -> 0.4.0  added capability matrix, stable rule anchors, and suite routing
 0.4.0 -> 0.5.0  added cybernetic stability model and version-line positioning
 0.5.0 -> 0.6.0  added state-sync completion and bounded status snapshots
-0.6.0 -> 0.6.1  fix wording or validation coverage for that blueprint line
+0.6.0 -> 0.7.0  refocused Harness on durable control and current Codex runtime boundaries
+0.7.0 -> 0.7.1  fix wording or validation coverage for that blueprint line
 ```
 
 After `1.0.0`, switch to normal semver:
