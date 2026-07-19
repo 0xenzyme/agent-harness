@@ -34,13 +34,14 @@ This file is a bounded current-state snapshot. Historical evidence belongs in
 
 - Branch: `main`
 - Work mode: `local`
-- Delivery state: `validated-local`
-- Commit authorized/performed: `no`
-- Push authorized/performed: `no`
+- Delivery state: `pushed`
+- Commit authorized/performed: `yes` / `67b94cc`
+- Push authorized/performed: `yes` / `origin/main`
 - Review authorized/performed: `no`
 - Integration authorized/performed: `no`
 - Release/publish authorized/performed: `no`
-- Deploy/plugin-cache refresh authorized/performed: `no`
+- Deploy/plugin-cache refresh authorized/performed: `yes` / local
+  `harness@agent-harness-local` `0.8.0`
 
 ## Verification
 
@@ -51,6 +52,8 @@ This file is a bounded current-state snapshot. Historical evidence belongs in
   `git diff --check`.
 - Deterministic eval: 40 trigger cases, 4 task cases, 8 hard CLI checks, and 10
   behavior traces.
+- Plugin cache verification: 44 source files and 44 cached files; SHA-256
+  differences: `0`.
 
 ## Route
 

@@ -27,8 +27,10 @@
   - Verification: `npm run test:all`, `npm run test:eval`, plugin validation,
     four skill validators, Chinese-locale smoke/eval, four syntax checks, and
     `git diff --check` passed.
-  - Delivery: `validated-local`; no commit, push, review, integration, release,
-    deploy, or plugin-cache refresh performed.
+  - Delivery: implementation commit `67b94cc` pushed to `origin/main`; local
+    `harness@agent-harness-local` cache refreshed at `0.8.0` with 44/44 files
+    and zero SHA-256 differences. No review, integration, release, publish, or
+    production deployment performed.
 
 - [x] Refocus Agent Harness on durable project control and current Codex runtime boundaries.
   - Completed: Closed configured-path, Run-directory, Goal/Spec, DAG artifact,

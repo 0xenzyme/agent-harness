@@ -1,7 +1,7 @@
 # Goal: Integrate Agent Harness With Codex-Native Goal And Plan Execution.
 
 Spec: harness/specs/2026-07-19-integrate-agent-harness-with-codex-native-execution.md
-Status: Completed at `validated-local`.
+Status: Completed at `pushed`; local plugin cache refreshed.
 
 ## Source Task
 
@@ -48,10 +48,10 @@ Use `current-thread`.
 
 ## Delivery State
 
-- Delivery intent: `local-validation`
-- Target delivery state: `validated-local`
-- Commit authorized: `no`
-- Push authorized: `no`
+- Delivery intent: `push-and-local-plugin-refresh`
+- Target delivery state: `pushed`
+- Commit authorized: `yes`
+- Push authorized: `yes`
 - Review authorized: `no`
 - Integration authorized: `no`
 - Release authorized: `no`
@@ -160,8 +160,9 @@ delegation, concurrency, and cancellation; Harness records ownership and evidenc
 
 - Source: current user decision
 - Notes: target version is `0.8.0`; preserve the pre-existing uncommitted
-  deploy-helper sentinel correction. No commit, push, tag, publish, deploy, or
-  plugin-cache refresh is authorized in this Run.
+  deploy-helper sentinel correction. The user subsequently authorized commit,
+  push, and local plugin-cache refresh; tag, publish, release, review,
+  integration, and production deployment remain unauthorized.
 
 ## Project Adapter Requirements
 
@@ -201,9 +202,13 @@ checks, and 10 behavior traces passed.
 - The source Task is recorded Done with the Spec, Goal, Run, verification, and
   Delivery State.
 - `harness/status.md` is replaced with the bounded `0.8.0` accepted result.
-- The Run records all DAG nodes and closes at `validated-local`.
-- Git delivery remains intentionally unperformed: no commit, push, review,
-  integration, release, deployment, or plugin-cache refresh.
+- The Run records all DAG nodes and originally closed at `validated-local`.
+- Fresh user authorization promoted delivery to `pushed`: implementation commit
+  `67b94cc` is on `origin/main`.
+- Local `harness@agent-harness-local` `0.8.0` cache was refreshed and verified
+  against source: 44/44 files with zero SHA-256 differences.
+- No review, integration, release, publish, tag, or production deployment was
+  performed.
 
 ## Completion Conditions
 
