@@ -64,13 +64,13 @@ the Settings -> General -> Social preview control.
 
 ## Release Surface
 
-The release surface for `0.7.0` is:
+The release surface for `0.8.0` is:
 
 - `CHANGELOG.md`
-- `docs/releases/v0.7.0.md`
-- Git tag `v0.7.0`
-- GitHub Release `v0.7.0`
+- `docs/releases/v0.8.0.md`
+- Git tag `v0.8.0`
+- GitHub Release `v0.8.0`
 
 Do not claim a Git tag or GitHub Release exists unless `gh release view
-v0.7.0` succeeds. Until the release step is explicitly authorized and
+v0.8.0` succeeds. Until the release step is explicitly authorized and
 completed, local docs are release-prep evidence only.

@@ -190,6 +190,7 @@
           "uniqueItems": true
         },
         "requiredForCompletion": {
+          "description": "Gate labels required when completing a durable Harness Goal/Run; does not apply to Codex-direct or postflight-only work.",
           "type": "array",
           "items": {
             "type": "string",
@@ -198,6 +199,7 @@
           "uniqueItems": true
         },
         "blocking": {
+          "description": "Additional blocking gate labels for durable Harness Goal/Run completion only.",
           "type": "array",
           "items": {
             "type": "string",

@@ -6,6 +6,10 @@ accepted evidence, controller gates, run-scoped Delivery State, and state sync.
 Codex runtime owns ordinary execution, delegation, concurrency, cancellation,
 and model/effort selection.
 
+Runtime Goal owns the current long-running outcome; Codex Plan owns transient
+steps. Harness does not mirror every Plan transition. It records project facts
+at durable boundaries or in one bounded postflight closeout.
+
 ## Contracts
 
 - `fixed`: `harness/tasks.md`, `.harness/config.json`, `harness/status.md`,
@@ -20,14 +24,19 @@ writes current fields, and conflicts fail.
 
 ## Routing
 
-Ordinary clear questions, reviews, changes, and builds use Codex directly.
-Use `harness:execute` only for accepted work needing recovery, audit, persistent
-state sync, milestone acceptance, Run/DAG, multiple workers, or high-risk
-control. `harness:orient`, `harness:intake`, and `harness:init` cover read-only
+The three execution paths are `codex-direct`, `codex-direct-postflight`, and
+`durable-harness`. Ordinary clear questions, reviews, changes, and builds use
+Codex directly without lifecycle artifacts. Simple completed work linked to
+state that already existed may use bounded postflight sync. Use durable
+`harness:execute` for recovery, audit, persistent state sync, milestone
+acceptance, Run/DAG, multiple workers, or high-risk control.
+`harness:orient`, `harness:intake`, and `harness:init` cover read-only
 state, unaccepted capture, and setup respectively. Shaping and asking are
 ordinary actions; proposal competition is explicit and advanced.
 
-Durable execution roles are `gate-only` and `implementer`. Workers return
+Controller means outcome owner and accepted-state owner. It may implement
+foreground work; only explicit `gate-only` or review-only direction makes it
+non-editing. Durable execution roles remain `gate-only` and `implementer`. Workers return
 candidate evidence; the accepted-state owner alone records accepted Goal,
 Task, Run, gate, and status state.
 
@@ -49,6 +58,9 @@ fresh authority.
 
 Canonical behavior fields include adapter/configured paths,
 `worktree.defaultPolicy`, `gates.requiredForCompletion`, and `gates.blocking`.
+These configured gates apply to durable Goal/Run completion. They do not apply
+to `codex-direct` or postflight-only synchronization, and postflight cannot
+bypass an existing enforced Run.
 Legacy `mode`, `paths.tasks`, `paths.mentalModel`, `workMode.defaultPolicy`, and
 `gates.enabled` remain readable at the migration boundary. `loops`, `lifecycle`,
 `gates.optional`, and worktree auto-rules do not drive current behavior and are
@@ -60,3 +72,7 @@ Durable completion includes verified State Sync Notes. The Goal index records
 durable work state; status is a bounded current snapshot; Goals, Runs, and gate
 records retain detailed evidence. Plugin core stays project-neutral and the
 adapter owns downstream facts.
+
+Postflight sync updates existing tracked state only with fresh verification,
+observed outcome, actual Delivery State, and remaining gap. It does not create
+a Goal, Run, DAG, gate, or status artifact solely for bookkeeping.

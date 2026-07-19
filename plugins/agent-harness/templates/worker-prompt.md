@@ -19,6 +19,10 @@ The Codex runtime owns scheduling, delegation, concurrency, cancellation, and
 model selection. Harness records dependencies, ready state, ownership,
 verification, and candidate evidence.
 
+Use the active runtime Goal for the long-running outcome and Codex Plan for
+transient steps when those native capabilities are exposed. Do not create a
+second repository Goal or mirror every Plan transition.
+
 ## Invariants
 
 - `harness-rule:path-containment`: stay inside the locked cwd and owned roots.

@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.7.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -47,7 +47,7 @@ Most users do not need to name a skill or run the CLI directly:
 Use harness to check the next step in this project.
 Use harness to record this idea, but do not implement it yet: Add an import flow.
 Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
-Use the current thread as controller and carry the accepted spec through to completion.
+Use the current thread as controller and carry the accepted spec through to completion; keep the outcome in Codex Goal and current steps in Codex Plan.
 ```
 
 ### 4. Choose an explicit entry when needed
@@ -57,11 +57,21 @@ Use the current thread as controller and carry the accepted spec through to comp
 | Adopt Harness, import an existing Goal index, run doctor, or preview activation. | `harness:init` |
 | Inspect status, blockers, stale artifacts, or the next route without mutation. | `harness:orient` |
 | Capture or triage an idea, requirement, bug, or inbox note. | `harness:intake` |
-| Control accepted work that needs recovery, audit, state sync, milestone/DAG, multi-worker, or high-risk boundaries. | `harness:execute` |
+| Control durable work, or sync existing Harness state after Codex completes simple work. | `harness:execute` |
 
 Ordinary clear change/build requests use Codex directly. Clarifying scope,
-asking a question, and creating a Goal are actions rather than extra routes;
+asking a question, and creating a repository Goal are actions rather than extra routes;
 proposal competition is an explicitly chosen advanced read-only technique.
+
+Harness uses three execution paths:
+
+- `codex-direct`: ordinary work stays entirely in Codex and creates no Harness lifecycle.
+- `codex-direct-postflight`: after Codex completes simple work, verify and update only Task, Goal, or status state that already existed before execution.
+- `durable-harness`: cross-task recovery, audit, milestone/DAG, multi-worker, persistent state sync, or high-risk work uses a repository Goal/Run.
+
+Long-running controller work should use Codex runtime Goal for the current
+outcome and Codex Plan for transient steps. Harness does not mirror every Plan
+transition; it records project facts at durable boundaries or postflight closeout.
 
 ## Why Agent Harness
 
@@ -118,9 +128,10 @@ implementation work remains.
 
 Nine domain invariants bound durable control: configured path containment,
 Run/DAG ownership, candidate-versus-accepted evidence, run-scoped delivery,
-and state sync. Ordinary clear change/build uses Codex directly; recovery,
-audit, milestone/DAG, multi-worker, persistent state-sync, or high-risk work
-crosses the `harness-rule:durable-tier-boundary`. See the
+and state sync. Ordinary clear change/build uses Codex directly; existing
+simple state gets postflight sync only; recovery, audit, milestone/DAG,
+multi-worker, persistent state-sync, or high-risk work crosses the
+`harness-rule:durable-tier-boundary`. See the
 [Capability Matrix](docs/HARNESSES.md).
 
 ## Architecture
@@ -197,14 +208,16 @@ gate records, or human review notes.
 
 Key boundaries:
 
-- `gate-only` controllers review and accept evidence without editing candidate
-  implementation directly.
+- A controller is the outcome owner and accepted-state owner. Foreground
+  implementation is prohibited only when the user or Goal explicitly says
+  `gate-only` or review-only.
 - Parallel writers require separate locked worktrees/cwds or recorded proof of
   non-overlapping ownership; the Codex runtime owns scheduling and concurrency.
 - Local verification does not imply commit, push, review, integration, release,
   or deployment.
 - `harness-rule:durable-tier-boundary` sends ordinary clear change/build to
-  Codex directly and reserves Harness ceremony for persistent control needs.
+  Codex, limits existing simple state to postflight sync, and reserves Harness
+  ceremony for persistent control needs.
 - Status files are bounded current-state snapshots, not append-only history.
 - Newer conversation-confirmed direction is reconciled with stale artifacts
   before execution continues.
@@ -265,7 +278,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.7.0 Release Notes](docs/releases/v0.7.0.md)
+- [v0.8.0 Release Notes](docs/releases/v0.8.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while

@@ -63,8 +63,9 @@ Skill-level cases live under `skills/agent-harness/`:
 - `task_cases.yaml`: deterministic task cases based on the fixture shapes in
   this directory.
 - `behavior_trace_cases.yaml`: deterministic tool-call trace cases for
-  read-order, forbidden mutation, worker evidence, degraded provenance, and
-  gate-only acceptance behavior.
+  read/event order, runtime Goal/Plan binding, direct and postflight paths,
+  forbidden mutation, worker evidence, degraded provenance, enforced-Run
+  protection, and gate-only acceptance behavior.
 - `transcript_rubric.md`: 0-2 human/model scoring rubric for agent
   transcripts after deterministic checks pass.
 
@@ -89,6 +90,10 @@ until the project needs a full YAML parser.
   candidate-versus-accepted evidence fields without assuming a worker surface.
 - `assertions.required_gate_only_acceptance_evidence`: gate-only evidence that
   must exist before an accepted-state transition.
+- `assertions.required_ordered_events`: required event type/target sequence,
+  including `create_goal` before `update_plan` for long-running controller work.
+- `assertions.required_event_fields`: exact fields required on a matching trace
+  event, such as postflight lifecycle/gate boundaries or native fallback facts.
 
 Run the deterministic eval harness with:
 

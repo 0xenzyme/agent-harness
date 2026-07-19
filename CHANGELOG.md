@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## 0.8.0 - 2026-07-19
+
+- Added the Codex-native execution bridge: runtime Goal owns the current
+  long-running outcome, Codex Plan owns transient steps, and the runtime owns
+  Thread/subagent execution.
+- Defined three execution paths: `codex-direct`, bounded
+  `codex-direct-postflight`, and `durable-harness`.
+- Changed controller semantics so controller means outcome and accepted-state
+  owner; only explicit `gate-only` or review-only direction forbids foreground
+  implementation.
+- Scoped configured completion gates to durable Goal/Run completion and kept
+  existing enforced Runs protected from postflight bypass.
+- Replaced generic explorer/worker DAG expansion with minimal durable execution
+  and verification nodes while leaving delegation decisions to Codex.
+- Added deterministic behavior traces for runtime Goal/Plan ordering,
+  postflight-only state sync, direct work without Harness artifacts, bounded
+  native-capability fallback, and enforced-Run protection.
+- Updated skills, prompts, templates, README, usage, contracts, CLI guidance,
+  presentation, and release documentation for the 0.8.0 behavior.
+
 ## 0.7.0 - 2026-07-18
 
 - Refocused Agent Harness on persistent project control: deterministic config

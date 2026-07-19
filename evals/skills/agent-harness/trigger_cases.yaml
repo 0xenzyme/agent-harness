@@ -168,6 +168,22 @@
     "rationale": "The internal goal route maps to execute after scope is accepted and authorized."
   },
   {
+    "id": "ah_trigger_positive_execute_007",
+    "kind": "positive",
+    "user_request": "按照 harness，把当前 thread 作为主控开发这个已接受的多阶段目标，推进直到完成。",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Accepted long-running controller work uses the durable path and binds to runtime Goal and Plan."
+  },
+  {
+    "id": "ah_trigger_positive_execute_008",
+    "kind": "positive",
+    "user_request": "这个小修改已经由 Codex 完成；用 harness 验证并只同步已有 Task/status，不要创建 Goal 或 Run。",
+    "expected_skills": ["harness:execute"],
+    "should_trigger": true,
+    "rationale": "Explicit bounded postflight sync to existing tracked state belongs to execute."
+  },
+  {
     "id": "ah_trigger_negative_001",
     "kind": "negative",
     "user_request": "What is Agent Harness? Answer in three sentences.",
@@ -248,6 +264,14 @@
     "rationale": "Image generation does not require Agent Harness."
   },
   {
+    "id": "ah_trigger_negative_011",
+    "kind": "negative",
+    "user_request": "Fix this clear one-line typo, run the focused test, and report the result.",
+    "expected_skills": [],
+    "should_trigger": false,
+    "rationale": "Ordinary clear untracked work is Codex-direct and should not invoke Harness."
+  },
+  {
     "id": "ah_trigger_boundary_001",
     "kind": "boundary",
     "user_request": "Use harness to inspect this repo and fix the first easy issue you find.",
@@ -261,7 +285,7 @@
     "user_request": "Act as the control lane, but also patch the worker output if it is tiny.",
     "expected_skills": ["harness:execute"],
     "should_trigger": true,
-    "rationale": "Control-lane wording triggers execute gate-only; implementation belongs to a separate implementer/runtime-selected execution lane."
+    "rationale": "A confirmed durable control lane uses execute, but controller wording alone does not imply gate-only; only explicit review-only direction forbids foreground edits."
   },
   {
     "id": "ah_trigger_boundary_003",

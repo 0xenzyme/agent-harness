@@ -8,6 +8,28 @@
 
 ## Done
 
+- [x] P0 Integrate Agent Harness with Codex-native Goal and Plan execution.
+  - Completed: Added three explicit execution paths: Codex-only direct work,
+    Codex execution with bounded postflight state sync, and durable Harness
+    Goal/Run control.
+  - Completed: Long-running controller work now establishes or reuses a Codex
+    runtime Goal and uses Codex Plan; controller means outcome owner, while
+    only explicit review-only or `gate-only` direction forbids implementation.
+  - Completed: Scoped adapter completion gates to durable Goal/Run completion,
+    preserved enforced Run obligations, and reduced future medium/large Runs
+    to a minimal `execution -> verification` DAG owned by the Codex runtime.
+  - Completed: Synchronized skills, references, CLI, templates, schema text,
+    deterministic evals, tests, public docs, release notes, and version
+    metadata at `0.8.0`.
+  - Spec: `harness/specs/2026-07-19-integrate-agent-harness-with-codex-native-execution.md`
+  - Goal: `harness/goals/2026-07-19-integrate-agent-harness-with-codex-native-goal-and-plan-execution.md`
+  - Run: `.harness/runs/20260719-085333-integrate-agent-harness-with-codex-native-goal-and-plan-execution/`
+  - Verification: `npm run test:all`, `npm run test:eval`, plugin validation,
+    four skill validators, Chinese-locale smoke/eval, four syntax checks, and
+    `git diff --check` passed.
+  - Delivery: `validated-local`; no commit, push, review, integration, release,
+    deploy, or plugin-cache refresh performed.
+
 - [x] Refocus Agent Harness on durable project control and current Codex runtime boundaries.
   - Completed: Closed configured-path, Run-directory, Goal/Spec, DAG artifact,
     and symlink containment gaps before writes.

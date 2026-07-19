@@ -27,6 +27,13 @@ Status: draft
 - `harness-rule:project-neutral-core`
 - `harness-rule:durable-tier-boundary`
 
+## Codex-Native Execution
+
+- Direct work uses Codex without Harness lifecycle artifacts.
+- Already tracked simple work may use one bounded postflight sync.
+- Long-running controller work uses runtime Goal and Codex Plan when exposed.
+- Durable Goal/Run evidence remains authoritative across tasks.
+
 ## Acceptance Criteria
 
 -

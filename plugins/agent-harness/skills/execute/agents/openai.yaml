@@ -1,6 +1,6 @@
 interface:
   display_name: "Harness Execute"
-  short_description: "Execute existing durable Harness state"
-  default_prompt: "Use $execute only for existing durable Harness state or explicitly requested durable Harness work, with verification and state sync."
+  short_description: "Run long controller work or sync existing state"
+  default_prompt: "Use $execute for accepted long-running controller work, existing durable Harness state, explicitly requested durable work, or bounded postflight sync to state that already existed. Let ordinary clear work use Codex directly."
 policy:
   allow_implicit_invocation: true

@@ -70,7 +70,9 @@ const cyberneticStabilityGuidance = "`harness-rule:state-sync-evidence`: durable
 const degradedExecutionProvenanceGuidance = "`harness-rule:candidate-accepted-evidence`: execution and worker output remains candidate evidence until the accepted-state owner verifies and records it.";
 const controllerCancellationBoundaryGuidance = "`harness-rule:run-dag-ownership`: Harness records ready nodes, dependencies, ownership, verification, and candidate evidence; the Codex runtime owns scheduling, delegation, concurrency, and cancellation.";
 const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
-const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex directly; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, DAGs, multiple workers, or high-risk control.";
+const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex directly; already tracked simple work may use one bounded postflight sync; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, DAGs, multiple workers, or high-risk control.";
+const codexNativeExecutionGuidance = "For accepted long-running controller work, establish or reuse a compatible Codex runtime Goal and use Codex Plan for current multi-step progress. Controller means outcome owner and accepted-state owner; only explicit review-only or gate-only direction prohibits foreground implementation.";
+const postflightSyncGuidance = "Postflight sync verifies completed work and updates existing tracked state only. It creates no Goal, Run, DAG, gate, or status artifact solely for bookkeeping, and durable completion gates do not apply unless a durable Goal/Run is being closed.";
 const localDeliveryCeilingGuidance = "`harness-rule:local-delivery-ceiling`: local implementation or validation is not commit, push, review, integration, release, or deploy evidence.";
 const runScopedDeliveryGuidance = "`harness-rule:run-scoped-delivery`: delivery claims compare this Run's recorded start snapshot, current delta, and explicit evidence.";
 
@@ -3264,7 +3266,7 @@ function adapterRequirementLists(context) {
   };
 }
 
-function adapterRequiredCompletionGates(context) {
+function durableRequiredCompletionGates(context) {
   const gates = context.config.gates || {};
   const canonical = stringList(gates.requiredForCompletion);
   const legacy = stringList(gates.enabled);
@@ -3362,7 +3364,7 @@ function buildGoalContent({ task, context, specPath, workMode, allowNoSpec = fal
   ]);
 
   const adapterRequirements = adapterRequirementLists(context);
-  const requiredGates = adapterRequiredCompletionGates(context);
+  const requiredGates = durableRequiredCompletionGates(context);
   const defaultAdapterRequirements = context.mode === "adapter"
     ? [
       `Read \`${paths.adapterDocs}\` for project-specific hard boundaries, validation rules, preflight requirements, and state-sync requirements.`,
@@ -3414,8 +3416,17 @@ Use \`implementer\`.
 
 - \`gate-only\`: the current thread reviews candidate output and verification evidence, but does not directly edit implementation files.
 - \`implementer\`: the current thread may edit files inside the accepted scope.
+- Controller means outcome owner and accepted-state owner. Use \`gate-only\` only when review-only behavior is explicit; otherwise a controller may implement foreground work.
 - Ordinary clear change/build requests use Codex directly. This durable Goal uses only \`gate-only\` or \`implementer\` roles.
 - ${boundedDirectExecutionGuidance} Once this durable Goal exists, do not downgrade its checklist, gate, or state-sync obligations to the bounded tier.
+
+## Codex-Native Execution
+
+- ${codexNativeExecutionGuidance}
+- Runtime Goal owns the current outcome and continuation; Codex Plan owns transient steps.
+- Codex runtime owns Thread/subagent scheduling, concurrency, cancellation, and model/effort selection.
+- Repository Goal/Run owns cross-task recovery, durable dependencies, evidence, gates, Delivery State, and state sync.
+- If native Goal or Plan is unavailable, continue in the current thread and record degraded provenance only when this durable Run requires it. Never invent runtime identifiers.
 
 ## Conversation Route
 
@@ -3475,6 +3486,8 @@ implementation evidence is not accepted completion until relevant checklist
 items are satisfied.
 
 ## Required Gate Evidence
+
+These gates apply only to durable Goal/Run completion. ${postflightSyncGuidance}
 
 ${requiredGateLines}
 
@@ -4292,10 +4305,10 @@ function validateGoal(cwd, goalPath) {
     itemTitle: "Item",
     requireAcceptance: true
   }));
-  const requiredGates = adapterRequiredCompletionGates(context);
+  const requiredGates = durableRequiredCompletionGates(context);
   const gateEvidence = gateEvidenceDetails(content, specContent);
   if (requiredGates.length && !gateEvidence.section) {
-    errors.push(`Required Gate Evidence must include adapter-required gate(s): ${requiredGates.join(", ")}.`);
+    errors.push(`Required Gate Evidence must include durable adapter-required gate(s): ${requiredGates.join(", ")}.`);
   } else {
     errors.push(...evidenceItemValidationErrors(gateEvidence, {
       sectionTitle: "Required Gate Evidence",
@@ -4571,72 +4584,25 @@ function defaultDagNodes(taskSize, executionRole) {
     ];
   }
 
-  if (taskSize === "medium") {
-    return [
-      buildDagNode({
-        id: "explorer",
-        label: "Explorer",
-        mode: "read-only",
-        ownership: "goal, spec, relevant docs, and the smallest source-file map needed for implementation",
-        expectedOutput: "implementation map, risks, and exact file ownership recommendation",
-        stopConditions: "spec conflict, unclear product direction, or file ownership overlap"
-      }),
-      buildDagNode({
-        id: "worker",
-        label: "Worker",
-        mode: "write",
-        dependencies: ["explorer"],
-        ownership: "files assigned by the explorer; avoid unrelated refactors",
-        expectedOutput: "focused patch plus notes on behavior changes",
-        stopConditions: "credentials, destructive commands, daemon behavior, or broad contract changes outside the goal"
-      }),
-      buildDagNode({
-        id: "verification",
-        label: "Verification",
-        mode: "read/execute",
-        dependencies: ["worker"],
-        ownership: "deterministic validation commands, run artifacts, and residual-risk reporting",
-        expectedOutput: "pass/fail summary, command evidence, and unresolved risks",
-        stopConditions: "failing verification that needs a product or scope decision"
-      })
-    ];
-  }
-
   return [
     buildDagNode({
-      id: "explorer",
-      label: "Explorer",
-      mode: "read-only",
-      ownership: "goal, spec, architecture docs, dependency map, and file ownership plan",
-      expectedOutput: "non-overlapping worker boundaries and merge responsibility",
-      stopConditions: "unclear merge responsibility, conflicting instructions, or overlapping ownership"
-    }),
-    buildDagNode({
-      id: "cli-contract-worker",
-      label: "CLI/Contract Worker",
-      mode: "write",
-      dependencies: ["explorer"],
-      ownership: "CLI scripts, schemas, deterministic file contracts, and tests for those surfaces",
-      expectedOutput: "focused implementation patch and machine-readable contract notes",
-      stopConditions: "contract migration, daemon behavior, direct Codex execution, or hidden UI automation"
-    }),
-    buildDagNode({
-      id: "docs-skill-worker",
-      label: "Docs/Skill Worker",
-      mode: "write",
-      dependencies: ["explorer"],
-      ownership: "README, docs, templates, and skill instructions",
-      expectedOutput: "documentation and skill guidance that match implemented behavior",
-      stopConditions: "downstream-project-specific assumptions or language/product direction questions"
+      id: "execution",
+      label: "Runtime Execution",
+      mode: executionRole === "gate-only" ? "write" : "implementer",
+      ownership: executionRole === "gate-only"
+        ? "runtime-selected implementation inside the accepted goal scope; the controller remains review-only"
+        : "accepted goal scope in the current Codex runtime; runtime Goal and Plan own transient execution",
+      expectedOutput: "focused implementation evidence, changed files, verification summary, and state-sync notes",
+      stopConditions: "scope conflict, unclear ownership, credentials, destructive commands, production access, or unauthorized delivery"
     }),
     buildDagNode({
       id: "verification",
       label: "Verification",
       mode: "read/execute",
-      dependencies: ["cli-contract-worker", "docs-skill-worker"],
-      ownership: "validation commands, temporary-project checks, and run packet inspection",
-      expectedOutput: "pass/fail summary, exact follow-up tasks, and residual risks",
-      stopConditions: "failing verification that requires scope expansion"
+      dependencies: ["execution"],
+      ownership: "fresh deterministic validation, durable acceptance evidence, and residual-risk reporting",
+      expectedOutput: "pass/fail summary, command evidence, state-sync evidence, and unresolved risks",
+      stopConditions: "failing verification that needs a product or scope decision"
     })
   ];
 }
@@ -5107,31 +5073,32 @@ ${sourceTask}
 
 1. ${specCheckpoint}
 2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
-3. Confirm the execution role. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
+3. Confirm the execution role. Controller means outcome and accepted-state owner; only explicit \`gate-only\` direction makes it review-only. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
 4. Do not bypass this prepared durable Run with ordinary direct execution.
-5. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
-6. Apply the configured Commentary Policy: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
-7. ${cyberneticStabilityGuidance}
-8. ${degradedExecutionProvenanceGuidance}
-9. ${controllerCancellationBoundaryGuidance}
-10. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
-11. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
-12. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-13. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-14. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
-15. If adapter-required gates exist, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording a completed run.
-16. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes and default to sequential execution; parallel workers require recorded isolation evidence.
-17. Give ready node packets to the Codex runtime and record ownership, verification, and candidate evidence.
-18. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
-19. Run the verification commands from the goal.
-20. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
-21. ${boundedStatusSnapshotGuidance}
-22. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
+5. ${codexNativeExecutionGuidance} Runtime Goal owns the outcome; Codex Plan owns transient steps. Do not mirror every Plan transition into Git.
+6. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
+7. Apply the configured Commentary Policy: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
+8. ${cyberneticStabilityGuidance}
+9. ${degradedExecutionProvenanceGuidance}
+10. ${controllerCancellationBoundaryGuidance}
+11. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
+12. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
+13. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+14. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+15. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
+16. Adapter completion gates are durable-only. For this prepared Run, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording completion.
+17. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; parallel workers require recorded isolation evidence.
+18. Give ready node packets to the Codex runtime and record ownership, verification, and candidate evidence.
+19. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
+20. Run the verification commands from the goal.
+21. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
+22. ${boundedStatusSnapshotGuidance}
+23. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
     ${localDeliveryCeilingGuidance}
     ${runScopedDeliveryGuidance}
-23. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
-24. Record any command output summaries or follow-ups under this run directory.
-25. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+24. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
+25. Record any command output summaries or follow-ups under this run directory.
+26. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -5143,7 +5110,8 @@ ${verification}
 - This prepared run packet does not start Codex, create a daemon, push, deploy, publish, open a review request, or integrate changes by itself.
 - Completion wording must not imply pushed, review-open, integrated, released, shipped, or deployed unless the delivery state records that evidence.
 - A completed run must reach its target delivery state. Use review / integration / release evidence fields when Git alone cannot prove the target.
-- Level 0 Fast Path can skip spec/goal/run/worker ceremony only for tiny low-risk local reversible work when no existing Harness Goal/Run or adapter-required gate requires state sync; verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- ${postflightSyncGuidance} This prepared enforced Run is not postflight-only and remains authoritative.
+- Direct execution can skip spec/goal/run/worker ceremony for ordinary clear local work when no existing Harness Goal/Run or tracked sync obligation applies; verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
 - ${boundedDirectExecutionGuidance} This prepared Run remains authoritative.
 - Cybernetic stability closeout must identify the target, observed state, gap closed, remaining gap, feedback quality, and any stability/saturation pause trigger.
 - The packet provides dependencies and evidence boundaries, not a scheduler or worker-selection policy.
@@ -5179,7 +5147,10 @@ Requirements:
 - ${context.mode === "adapter" && adapterPath ? `Read \`${adapterPath}\` and apply its project-specific hard boundaries, preflight requirements, and state-sync rules.` : "Follow the repository instructions and configured harness paths."}
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
 - Follow the goal's Execution Role: \`${executionRole}\`.
-- If Execution Role is \`gate-only\`, keep the current thread as controller; the Codex runtime decides whether and how to delegate implementation.
+- Controller means outcome owner and accepted-state owner. It may implement foreground work unless Execution Role is explicitly \`gate-only\`.
+- If Execution Role is \`gate-only\`, keep the current thread review-only; the Codex runtime decides whether and how to delegate implementation.
+- ${codexNativeExecutionGuidance}
+- Runtime Goal owns the current outcome and continuation; Codex Plan owns transient steps. Reuse compatible active state and never invent runtime ids.
 - ${boundedDirectExecutionGuidance} The supplied Goal/Run remains authoritative and must not be downgraded.
 - ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 - ${cyberneticStabilityGuidance}
@@ -5211,81 +5182,20 @@ ${goalContent.trimEnd()}
 }
 
 function recommendedSubagentTasks(taskSize, executionRole) {
-  if (taskSize === "small") {
-    if (executionRole === "gate-only") {
-      return `Recommended for this run: \`small\`.
-
-The current thread is \`gate-only\`; keep it for acceptance and give the implementation node to the Codex runtime.`;
-    }
-    return `Recommended for this run: \`small\`.
-
-No subagent is required. Keep exploration, implementation, and verification in the main context unless the task unexpectedly grows.`;
-  }
-
   if (taskSize === "ask") {
     return `Recommended for this run: \`ask\`.
 
 Do not split work yet. Pause for the user when product direction, production access, destructive operations, or file ownership is unclear.`;
   }
 
-  if (taskSize === "medium") {
-    return `Recommended for this run: \`medium\`.
+  return `Recommended for this run: \`${taskSize}\`.
 
-## Suggested Subtasks
-
-### Explorer
-
-- Mode: read-only.
-- Ownership: goal file, referenced spec, relevant docs, and the smallest set of source files needed to map the implementation.
-- Expected output: implementation map, risks, and exact files the worker should touch.
-- Stop conditions: spec conflict, unclear product direction, or file ownership overlap.
-
-### Worker
-
-- Mode: write.
-- Ownership: files identified by the explorer; avoid unrelated refactors.
-- Expected output: focused patch plus notes on behavior changes.
-- Stop conditions: need for credentials, destructive commands, daemon behavior, or broad contract changes outside the goal.
-
-### Verification
-
-- Mode: read/execute deterministic commands.
-- Ownership: validation commands and generated run artifacts.
-- Expected output: command results, artifact paths, and residual risks.
-- Stop conditions: failing verification that needs a product or scope decision.`;
-  }
-
-  return `Recommended for this run: \`large\`.
-
-## Suggested Subtasks
-
-### Explorer
-
-- Mode: read-only.
-- Ownership: goal, spec, architecture docs, and dependency map.
-- Expected output: file ownership plan with non-overlapping worker boundaries.
-- Stop conditions: unclear merge responsibility or conflicting instructions.
-
-### CLI/Contract Worker
-
-- Mode: write.
-- Ownership: CLI scripts, schemas, deterministic file contracts, and tests for those surfaces.
-- Expected output: focused implementation patch and machine-readable contract notes.
-- Stop conditions: contract migration, daemon behavior, or direct Codex execution.
-
-### Docs/Skill Worker
-
-- Mode: write.
-- Ownership: README, docs, templates, and skill instructions.
-- Expected output: docs that match the implemented command surface.
-- Stop conditions: downstream-project-specific assumptions or language/product direction questions.
-
-### Verification
-
-- Mode: read/execute deterministic commands.
-- Ownership: validation commands, temporary-project checks, and run packet inspection.
-- Expected output: pass/fail summary and exact follow-up tasks.
-- Stop conditions: failing verification that requires scope expansion.`;
+Use the active runtime Goal for the outcome and Codex Plan for current steps.
+The runtime may keep work in the foreground or delegate it. Harness does not
+prescribe explorer/implementer/reviewer workers. If delegation occurs, record
+only durable dependencies, ownership, verification, and candidate evidence.
+The controller may implement unless its accepted role is explicitly
+\`gate-only\`.`;
 }
 
 function buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }) {
@@ -5302,8 +5212,8 @@ Goal: \`${relGoal}\`
 - This prepared Run is durable and must not be downgraded to ordinary direct execution.
 - ${cyberneticStabilityGuidance}
 - \`small\`: the runtime may keep implementer work in the current lane or delegate it; gate-only remains read-only.
-- \`medium\`: split into \`explorer\` plus \`worker\`, or \`worker\` plus \`verification\`, when it reduces context load.
-- \`large\`: split into multiple workers only when file ownership is non-overlapping and merge responsibility is clear.
+- \`medium\` and \`large\`: use Codex Plan for transient steps; delegate only
+  when the runtime finds it useful or durable ownership requires it.
 - \`ask\`: pause before splitting when the work involves production, destructive actions, credentials, paid APIs, product direction, or unclear file ownership.
 
 Every subagent task must include context, goal path, read/write scope, file ownership, expected output, and stop conditions. Subagents must not revert user changes or edits owned by another agent.
@@ -5348,7 +5258,7 @@ function runPrepare(args) {
   const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
   const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
   const gateEvidence = gateEvidenceDetails(goalContent, specContent);
-  const requiredGates = adapterRequiredCompletionGates(context);
+  const requiredGates = durableRequiredCompletionGates(context);
   const taskSize = classifyTask(goalContent, workMode);
   const executionDag = buildExecutionDag({
     cwd,
@@ -5661,7 +5571,7 @@ function runRecord(args) {
       const requiredGates = Array.isArray(status.requiredGates) ? status.requiredGates : [];
       const gateEvidence = gateEvidenceDetails(goalContent, specContent);
       if (requiredGates.length && !gateEvidence.section) {
-        throw new Error(`Required Gate Evidence must include adapter-required gate(s): ${requiredGates.join(", ")}.`);
+        throw new Error(`Required Gate Evidence must include durable adapter-required gate(s): ${requiredGates.join(", ")}.`);
       }
       const gateErrors = evidenceItemValidationErrors(gateEvidence, {
         sectionTitle: "Required Gate Evidence",

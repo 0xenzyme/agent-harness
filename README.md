@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-[![Version](https://img.shields.io/badge/version-0.7.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -46,7 +46,7 @@ Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
 用 harness 看当前项目下一步。
 用 harness 记录这个想法，先不要实现：增加一个 import flow。
 用 harness 执行 harness/goals/YYYY-MM-DD-task-title.md，验证并同步状态。
-使用当前 thread 作为 controller，把已接受的 spec 推进到完成。
+使用当前 thread 作为 controller，把已接受的 spec 推进到完成；当前目标用 Codex Goal，步骤用 Codex Plan。
 ```
 
 ### 4. 需要时选择明确入口
@@ -56,10 +56,20 @@ Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
 | 接入 Harness、导入已有 Goal index、运行 doctor，或预览 activation。 | `harness:init` |
 | 只读检查状态、blocker、stale artifact 或下一条 route。 | `harness:orient` |
 | 收集或 triage 想法、需求、bug 或 inbox note。 | `harness:intake` |
-| 控制需要 recovery、audit、state sync、milestone/DAG、multi-worker 或 high-risk 边界的已接受工作。 | `harness:execute` |
+| 控制 durable work，或在 Codex 完成简单任务后同步已有 Harness 状态。 | `harness:execute` |
 
-普通、明确的 change/build 请求由 Codex 直接执行。澄清 scope、提问和创建 Goal
+普通、明确的 change/build 请求由 Codex 直接执行。澄清 scope、提问和创建 repository Goal
 是动作，不是额外 route；proposal competition 仅是显式选择的高级只读技术。
+
+Harness 使用三条执行路径：
+
+- `codex-direct`：普通任务完全交给 Codex，不创建 Harness lifecycle。
+- `codex-direct-postflight`：Codex 完成简单任务后，只验证并同步执行前已经存在的 Task、Goal 或 status。
+- `durable-harness`：跨 task 恢复、audit、milestone/DAG、multi-worker、persistent state sync 或 high-risk 工作使用 repository Goal/Run。
+
+长时间的 controller 工作优先使用 Codex runtime Goal 保存当前 outcome，用 Codex Plan
+维护即时步骤。Harness 不镜像每一次 Plan 更新，只在 durable boundary 或 postflight
+closeout 保存项目事实。
 
 ## 为什么需要 Agent Harness
 
@@ -113,9 +123,10 @@ source-spec item，不能在 implementation 尚未完成时静默关闭父级 `M
 
 9 个领域不变量把 durable control 保持在明确边界内：配置路径 containment、
 Run/DAG ownership、candidate/accepted evidence、run-scoped delivery 和 state
-sync。普通 clear change/build 由 Codex 直接执行；只有 recovery、audit、
-milestone/DAG、multi-worker、persistent state sync 或 high-risk 工作进入
-`harness-rule:durable-tier-boundary`。详见 [Capability Matrix](docs/HARNESSES.md)。
+sync。普通 clear change/build 由 Codex 直接执行；已有简单状态只在完成后做
+postflight sync；只有 recovery、audit、milestone/DAG、multi-worker、persistent
+state sync 或 high-risk 工作进入 `harness-rule:durable-tier-boundary`。详见
+[Capability Matrix](docs/HARNESSES.md)。
 
 ## 架构
 
@@ -186,14 +197,14 @@ evidence，直到 control lane 完成验证。Completion 需要可检查的 evid
 
 关键边界：
 
-- `gate-only` controller 负责 review 和 acceptance，不直接修改 candidate
-  implementation。
+- Controller 是 outcome owner 和 accepted-state owner；只有用户或 Goal 明确要求
+  `gate-only` / 只审 evidence 时才禁止 foreground implementation。
 - Parallel writer 需要独立锁定的 worktree/cwd，或记录 non-overlap evidence；
   scheduling 和 concurrency 由 Codex runtime 决定。
 - Local verification 不等于 commit、push、review、integration、release 或
   deployment。
 - `harness-rule:durable-tier-boundary` 让普通 clear change/build 直接使用
-  Codex；Harness ceremony 只用于需要持久化控制的工作。
+  Codex，已有简单状态只做 postflight sync；Harness ceremony 只用于需要持久化控制的工作。
 - Status file 是 bounded current-state snapshot，不是 append-only history。
 - 执行前要把更新的 conversation-confirmed direction 与 stale artifact 对齐。
 - Conditional plugin bootstrap 尚未启用，因此安装 Harness 不会向无关项目
@@ -251,7 +262,7 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.7.0 Release Notes](docs/releases/v0.7.0.md)
+- [v0.8.0 Release Notes](docs/releases/v0.8.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的

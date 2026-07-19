@@ -54,6 +54,20 @@
 已经实现完了，用 harness 看一下 next 是什么。
 ```
 
+## 普通任务与轻量状态同步
+
+明确、一次性、未被 Harness 追踪的任务直接交给 Codex：
+
+```text
+修正这个明确的小问题，验证后告诉我结果。
+```
+
+如果 Codex 已完成简单任务，而它关联执行前已经存在的 Harness Task 或 status：
+
+```text
+用 harness 做 postflight：验证刚才的结果，只同步已有 Task/status，不创建 Goal 或 Run。
+```
+
 ## 记录想法
 
 当你有一个需求、bug、优化点或粗略想法，只想先放进项目队列：
@@ -106,11 +120,15 @@
 
 ## 让当前 thread 做主控
 
-当你希望当前对话负责控场、拆解、调度和验收，但不直接改代码：
+当你希望当前对话负责 outcome、拆解、调度和验收：
 
 ```text
 把当前 thread 作为主控，推进 spec 直到完成。
 ```
+
+主控默认是 outcome owner 和 accepted-state owner，可以直接实现 foreground
+work。对长任务，Harness 应建立或复用 Codex runtime Goal，并用 Codex Plan
+维护当前步骤。
 
 也可以说得更自然：
 
@@ -130,7 +148,7 @@
 启动一个新 Thread 作为主控执行这项任务。
 ```
 
-如果你希望当前对话自己改代码，就不要叫主控，直接说实现：
+如果你只需要普通实现而不需要 durable control，直接说实现：
 
 ```text
 用 harness 实现 spec1，验证并同步状态。

@@ -93,7 +93,7 @@ function assertCacheSentinels() {
     },
     {
       file: "templates/worker-prompt.md",
-      text: "Return candidate evidence only"
+      text: "harness-rule:candidate-accepted-evidence"
     }
   ];
 

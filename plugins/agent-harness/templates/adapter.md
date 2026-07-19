@@ -89,6 +89,15 @@ the Agent Harness plugin references.
 - Treat the configured status file as a bounded current-state snapshot. Replace
   current sections when syncing state; keep historical details in Goal index
   entries, Goal files, run logs, and gate records.
+- Ordinary work may use Codex directly. Postflight sync updates existing state
+  only and creates no lifecycle solely for bookkeeping.
+
+## Codex-Native Execution
+
+- Runtime Goal owns accepted long-running outcomes.
+- Codex Plan owns transient execution steps.
+- Harness Goal/Run owns durable recovery, evidence, gates, and Delivery State.
+- Controller may implement unless explicitly `gate-only` or review-only.
 
 ## Commit / PR / Ship Policy
 
@@ -98,11 +107,14 @@ the Agent Harness plugin references.
 
 -
 
-## Enabled Gates
+## Durable Completion Gates
 
 - spec
 - execution
 - integration
+
+These gates apply only when completing a durable Goal/Run. They do not promote
+ordinary direct or postflight-only work into a Run.
 
 ## Goal Kinds
 

@@ -57,7 +57,11 @@ for (const skill of ["init", "execute"]) {
 const initMetadata = readFileSync(join(repoRoot, "plugins/agent-harness/skills/init/agents/openai.yaml"), "utf8");
 assert(initMetadata.includes("Set up, import, or repair") && !initMetadata.includes("audit"), "init implicit metadata must stay limited to setup/import/repair");
 const executeMetadata = readFileSync(join(repoRoot, "plugins/agent-harness/skills/execute/agents/openai.yaml"), "utf8");
-assert(executeMetadata.includes("existing durable Harness state") && executeMetadata.includes("explicitly requested durable Harness work"), "execute implicit metadata must stay limited to durable Harness work");
+assert(executeMetadata.includes("long-running controller work") && executeMetadata.includes("existing durable Harness state") && executeMetadata.includes("bounded postflight sync") && executeMetadata.includes("ordinary clear work use Codex directly"), "execute implicit metadata must cover controller, durable, and tracked postflight work only");
+const nativeBridge = readFileSync(join(repoRoot, "plugins/agent-harness/references/codex-native-execution.md"), "utf8");
+for (const marker of ["codex-direct", "codex-direct-postflight", "durable-harness", "create_goal", "update_plan"]) {
+  assert(nativeBridge.includes(marker), `Codex-native bridge must include ${marker}`);
+}
 
 const temp = mkdtempSync(join(tmpdir(), "agent-harness-smoke-"));
 const outside = mkdtempSync(join(tmpdir(), "agent-harness-outside-"));
@@ -154,6 +158,14 @@ try {
   run(["goal", "create", "--cwd", runProject, "--task", "Smoke durable run", "--allow-no-spec", "--work-mode", "local"]);
   const goalName = readdirSync(join(runProject, "harness/goals")).find((name) => name.endsWith(".md"));
   const goalRel = `harness/goals/${goalName}`;
+  const generatedGoalPath = join(runProject, goalRel);
+  const generatedGoal = readFileSync(generatedGoalPath, "utf8");
+  assert(generatedGoal.includes("## Codex-Native Execution"), "generated durable Goals must bind to Codex-native execution");
+  assert(generatedGoal.includes("These gates apply only to durable Goal/Run completion"), "generated Goal gates must declare durable-only scope");
+  writeFileSync(generatedGoalPath, generatedGoal.replace(
+    /## Scope\r?\n[\s\S]*?\r?\n## Non-Goals/,
+    "## Scope\n\n- Implement the accepted behavior.\n- Preserve compatibility.\n- Add regression coverage.\n- Update durable evidence.\n\n## Non-Goals"
+  ));
   run(["run", "prepare", "--cwd", runProject, "--goal", goalRel]);
   const runName = readdirSync(join(runProject, ".harness/runs")).find((name) => !name.startsWith("."));
   const runRel = `.harness/runs/${runName}`;
@@ -161,11 +173,18 @@ try {
   for (const field of ["startHead", "startBranch", "startUpstream", "startDirtyState"]) assert(field in status, `Run status must record ${field}`);
   assert(typeof status.startDirtyState.digest === "string", "startDirtyState must include a comparable digest");
   assert(status.executionDag.readyNodes.length > 0, "DAG must record readyNodes");
-  const firstNode = status.executionDag.readyNodes[0];
-  assert(status.executionDag.nodeStatus[firstNode].ownership, "DAG snapshot must record ownership");
-  run(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", firstNode, "--phase", "completed", "--summary", "candidate", "--verification", "node check"]);
-  const afterNode = JSON.parse(run(["run", "status", "--cwd", runProject, "--run", runRel, "--json"]));
-  assert(afterNode.executionDag.nodeStatus[firstNode].verification === "node check", "normal DAG node recording must retain verification evidence");
+  assert(JSON.stringify(status.executionDag.parallelLayers) === JSON.stringify([["execution"], ["verification"]]), "medium durable DAG must keep only execution and verification boundaries");
+  let currentRunStatus = status;
+  while (!currentRunStatus.executionDag.allNodesCompleted) {
+    const readyNodes = currentRunStatus.executionDag.readyNodes;
+    assert(readyNodes.length > 0, "durable DAG must make progress while incomplete");
+    for (const node of readyNodes) {
+      assert(currentRunStatus.executionDag.nodeStatus[node].ownership, "DAG snapshot must record ownership");
+      run(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", node, "--phase", "completed", "--summary", "candidate", "--verification", "node check"]);
+    }
+    currentRunStatus = JSON.parse(run(["run", "status", "--cwd", runProject, "--run", runRel, "--json"]));
+  }
+  assert(currentRunStatus.executionDag.nodeStatus.execution.verification === "node check", "normal DAG node recording must retain verification evidence");
 
   const recorded = JSON.parse(run(["run", "record", "--cwd", runProject, "--run", runRel, "--phase", "completed", "--summary", "validated", "--verification", "smoke passed", "--json"]));
   assert(recorded.deliveryState.state === "validated-local", "clean upstream history must not count as this Run's push");

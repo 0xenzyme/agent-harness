@@ -6,25 +6,29 @@ This file is a bounded current-state snapshot. Historical evidence belongs in
 ## Focus
 
 - Current Goal: None active.
-- Recently completed: Refocused Agent Harness on durable project control and
-  current Codex runtime boundaries.
-- Spec: `harness/specs/2026-07-18-refocus-agent-harness-on-durable-project-control.md`
-- Goal: `harness/goals/2026-07-18-refocus-agent-harness-on-durable-project-control-and-current-codex-runtime-boundaries.md`
-- Run: `.harness/runs/20260718-083037-refocus-agent-harness-on-durable-project-control-and-current-codex-runtime-boundaries/`
+- Recently completed: Integrated Agent Harness with Codex-native Goal, Plan,
+  direct execution, and bounded postflight state sync.
+- Spec: `harness/specs/2026-07-19-integrate-agent-harness-with-codex-native-execution.md`
+- Goal: `harness/goals/2026-07-19-integrate-agent-harness-with-codex-native-goal-and-plan-execution.md`
+- Run: `.harness/runs/20260719-085333-integrate-agent-harness-with-codex-native-goal-and-plan-execution/`
 
 ## Accepted Result
 
-- Configured writes, Run arguments, Goal/Spec references, DAG artifacts, and
-  existing-parent symlink paths are contained before writes.
-- `run record` also rejects project-internal Goal/Spec references outside the
-  configured goals/specs roots before changing Run status or logs.
-- Delivery State is Run-scoped through start HEAD/branch/upstream/dirty state,
-  current delta, and explicit evidence.
-- Ordinary clear change/build uses Codex directly; repository Goal/Run remains
-  for durable recovery, audit, milestone/DAG, and persistent state sync.
-- Public roles are `gate-only` and `implementer`; Codex runtime owns worker,
-  concurrency, cancellation, model, and effort choices.
-- The current protocol exposes 9 domain invariants and a slim canonical config.
+- Ordinary clear, local, reversible work uses `codex-direct` and creates no
+  Harness lifecycle artifacts.
+- Simple work linked to existing Harness state uses
+  `codex-direct-postflight`: Codex executes, then updates only existing tracked
+  outcome, verification, Delivery State, and remaining gap.
+- Durable recovery, audit, milestone, DAG, multi-worker, persistent state, or
+  high-risk work uses `durable-harness` with repository Goal/Run evidence.
+- Long-running controller work uses a Codex runtime Goal and Plan. Controller
+  means outcome and accepted-state owner; only explicit review-only or
+  `gate-only` direction prevents foreground implementation.
+- Completion gates are durable-only. Existing enforced Runs cannot bypass
+  their DAG, evidence, or gates through postflight labeling.
+- Future medium/large Runs default to `execution -> verification`; Codex owns
+  worker selection, scheduling, concurrency, cancellation, model, and effort.
+- Package and plugin version are `0.8.0`; docs and release notes are aligned.
 
 ## Git And Delivery
 
@@ -41,14 +45,12 @@ This file is a bounded current-state snapshot. Historical evidence belongs in
 ## Verification
 
 - State: passed.
-- Passed: four JavaScript syntax checks, `npm run test:all`,
-  `npm run test:eval`, `npm run validate:plugin`, four skill validators,
-  zh-CN smoke and routing-classification, residual protocol searches, config /
-  path / delivery code review, marketplace listing inspection, and
+- Passed: four JavaScript syntax checks, `npm run test:all`, `npm run
+  test:eval`, `npm run validate:plugin`, four skill validators, Chinese-locale
+  smoke and routing-classification, residual protocol/version searches, and
   `git diff --check`.
-- Follow-up containment correction: targeted smoke, CLI/smoke syntax,
-  `npm run test:all`, `npm run validate:plugin`, and `git diff --check` passed.
-- Deterministic eval: 37 trigger cases, 4 task cases, and 5 behavior traces.
+- Deterministic eval: 40 trigger cases, 4 task cases, 8 hard CLI checks, and 10
+  behavior traces.
 
 ## Route
 

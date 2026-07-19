@@ -130,6 +130,35 @@ function assertRequiredOrderedReads(trace, requiredReads, caseId) {
   }
 }
 
+function assertRequiredOrderedEvents(trace, requiredEvents, caseId) {
+  let cursor = 0;
+  for (const expected of requiredEvents || []) {
+    const index = trace.findIndex(
+      (event, eventIndex) => eventIndex >= cursor
+        && event.type === expected.type
+        && targetMatches(event.target, expected.target)
+    );
+    assert(index !== -1, `${caseId}: missing ordered ${expected.type} event ${expected.target}`);
+    cursor = index + 1;
+  }
+}
+
+function assertRequiredEventFields(trace, requirements, caseId) {
+  for (const requirement of requirements || []) {
+    const event = trace.find(
+      (candidate) => candidate.type === requirement.type && targetMatches(candidate.target, requirement.target)
+    );
+    assert(event, `${caseId}: missing ${requirement.type} event ${requirement.target}`);
+    for (const [field, expected] of Object.entries(requirement.fields || {})) {
+      const actual = traceEventField(event, field);
+      assert(
+        expected === true ? Boolean(actual) : JSON.stringify(actual) === JSON.stringify(expected),
+        `${caseId}: expected ${requirement.target}.${field}=${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+      );
+    }
+  }
+}
+
 function assertForbiddenWrites(trace, forbiddenWrites, caseId) {
   for (const event of trace) {
     if (event.type !== "write") {
@@ -407,6 +436,12 @@ function validateBehaviorTraceCaseShape(testCase) {
 
   const assertions = testCase.assertions;
   assert(Array.isArray(assertions.required_ordered_reads), `${testCase.id}: required_ordered_reads must be an array`);
+  if (assertions.required_ordered_events !== undefined) {
+    assert(Array.isArray(assertions.required_ordered_events), `${testCase.id}: required_ordered_events must be an array`);
+  }
+  if (assertions.required_event_fields !== undefined) {
+    assert(Array.isArray(assertions.required_event_fields), `${testCase.id}: required_event_fields must be an array`);
+  }
   assert(Array.isArray(assertions.forbidden_writes), `${testCase.id}: forbidden_writes must be an array`);
   assert(Array.isArray(assertions.forbidden_mutations), `${testCase.id}: forbidden_mutations must be an array`);
 }
@@ -416,6 +451,8 @@ function runBehaviorTraceCase(testCase) {
   const { trace, assertions } = testCase;
 
   assertRequiredOrderedReads(trace, assertions.required_ordered_reads, testCase.id);
+  assertRequiredOrderedEvents(trace, assertions.required_ordered_events, testCase.id);
+  assertRequiredEventFields(trace, assertions.required_event_fields, testCase.id);
   assertForbiddenWrites(trace, assertions.forbidden_writes, testCase.id);
   assertForbiddenMutations(trace, assertions.forbidden_mutations, testCase.id);
   assertWorkerEvidence(trace, assertions.required_worker_evidence, testCase.id);

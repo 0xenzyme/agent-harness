@@ -268,6 +268,14 @@ completed enforced-DAG run 还要求所有 worker node 已收口。active `runni
 node 会阻止 completion；cancellation 或 supersession 是 cooperative
 controller signal，不是 worker runtime 已停止的证明。
 
+配置的 `gates.requiredForCompletion` 和 `gates.blocking` 只约束 durable
+Goal/Run completion。普通 Codex-direct 工作和轻量 postflight-only 状态更新不需要
+因此创建 Run。一旦 Run 已 prepared 且 enforced，不能用 postflight 表述绕过 DAG、
+gate 或 evidence。
+
+CLI 记录 durable state，不实现 Codex runtime Goal 或 Plan。Skill 在 host 暴露
+原生能力时，把长时间 controller 工作绑定到 runtime Goal 和 Plan。
+
 对 completed run，`run record` 会强制检查 goal 的 Target delivery state。
 如果目标是 `review-open`、`integrated` 或 `released/shipped`，在完成已授权的
 交付步骤后，用 `--review-url`、`--integration-ref` 或 `--release-ref` 传入

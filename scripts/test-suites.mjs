@@ -32,6 +32,18 @@ function protocol() {
   includes("plugins/agent-harness/references/route-entry-mapping.md", "Ordinary clear change/build requests use Codex directly");
   includes("plugins/agent-harness/references/model-routing.md", "not pin either by default");
   includes("plugins/agent-harness/references/worker-runner-contract.md", "Codex runtime owns delegation");
+  includes("plugins/agent-harness/references/codex-native-execution.md", "codex-direct-postflight");
+  includes("plugins/agent-harness/references/codex-native-execution.md", "create_goal");
+  includes("plugins/agent-harness/references/codex-native-execution.md", "update_plan");
+  includes(execute, "Controller means outcome owner and accepted-state owner");
+  includes(execute, "Do not apply durable gates");
+  includes("plugins/agent-harness/references/gate-results.md", "Configured completion gates are durable Goal/Run gates");
+  includes("plugins/agent-harness/scripts/agent-harness.mjs", "durableRequiredCompletionGates");
+  excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "explorer"');
+  excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "cli-contract-worker"');
+  excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "docs-skill-worker"');
+  includes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "execution"');
+  includes("plugins/agent-harness/scripts/agent-harness.mjs", 'dependencies: ["execution"]');
   assert(!existsSync(join(repoRoot, "plugins/agent-harness/templates/codex-agents/harness_explorer.toml")), "explorer template must be absent");
   assert(!existsSync(join(repoRoot, "plugins/agent-harness/templates/codex-agents/harness_implementer.toml")), "implementer template must be absent");
   const schema = json("plugins/agent-harness/schemas/config.schema.json");

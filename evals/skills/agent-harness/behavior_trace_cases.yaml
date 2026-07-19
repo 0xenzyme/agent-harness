@@ -82,5 +82,121 @@
       "forbidden_writes": ["external/**"],
       "forbidden_mutations": ["run-record", "accepted-state-write"]
     }
+  },
+  {
+    "id": "ah_behavior_controller_uses_runtime_goal_and_plan",
+    "skill": "harness:execute",
+    "scenario": "Accepted long-running controller development binds the outcome to runtime Goal and transient work to Codex Plan.",
+    "user_request": "作为主控开发这个已接受的多阶段目标，推进直到完成。",
+    "trace": [
+      { "type": "read", "target": "harness/goals/accepted-goal.md" },
+      { "type": "tool_call", "target": "create_goal", "fields": { "objective": "accepted durable outcome", "success_criteria": true } },
+      { "type": "tool_call", "target": "update_plan", "fields": { "multi_step": true, "transient": true } },
+      { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_goal_active": true, "plan_active": true } }
+    ],
+    "assertions": {
+      "required_ordered_reads": ["harness/goals/accepted-goal.md"],
+      "required_ordered_events": [
+        { "type": "tool_call", "target": "create_goal" },
+        { "type": "tool_call", "target": "update_plan" }
+      ],
+      "required_event_fields": [
+        { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_goal_active": true, "plan_active": true } }
+      ],
+      "forbidden_writes": [],
+      "forbidden_mutations": ["model-pin", "runtime-scheduler-policy"]
+    }
+  },
+  {
+    "id": "ah_behavior_postflight_updates_existing_state_only",
+    "skill": "harness:execute",
+    "scenario": "A simple completed change linked to an existing Task receives bounded postflight verification and sync without lifecycle creation.",
+    "user_request": "这个小修改已经完成，验证后把已有 Harness Task 状态同步一下。",
+    "trace": [
+      { "type": "read", "target": "harness/tasks.md" },
+      { "type": "verification", "target": "fresh postflight verification", "fields": { "passed": true } },
+      { "type": "write", "target": "harness/tasks.md", "fields": { "existing_state_only": true } },
+      { "type": "write", "target": "harness/status.md", "fields": { "bounded": true, "existing_state_only": true } },
+      { "type": "closeout", "target": "codex-direct-postflight", "fields": { "durable_gates_applied": false, "lifecycle_created": false } }
+    ],
+    "assertions": {
+      "required_ordered_reads": ["harness/tasks.md"],
+      "required_ordered_events": [
+        { "type": "verification", "target": "fresh postflight verification" },
+        { "type": "write", "target": "harness/tasks.md" },
+        { "type": "closeout", "target": "codex-direct-postflight" }
+      ],
+      "required_event_fields": [
+        { "type": "closeout", "target": "codex-direct-postflight", "fields": { "durable_gates_applied": false, "lifecycle_created": false } }
+      ],
+      "forbidden_writes": ["harness/goals/**", ".harness/runs/**"],
+      "forbidden_mutations": ["goal-create", "run-prepare", "gate-create"]
+    }
+  },
+  {
+    "id": "ah_behavior_direct_work_creates_no_harness_state",
+    "skill": "harness:orient",
+    "scenario": "Ordinary clear untracked work is routed to Codex without Harness execution or state creation.",
+    "user_request": "修正这个明确的一行拼写错误并跑测试。",
+    "trace": [
+      { "type": "closeout", "target": "codex-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }
+    ],
+    "assertions": {
+      "required_ordered_reads": [],
+      "required_ordered_events": [
+        { "type": "closeout", "target": "codex-direct" }
+      ],
+      "required_event_fields": [
+        { "type": "closeout", "target": "codex-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }
+      ],
+      "forbidden_writes": ["harness/**", ".harness/**"],
+      "forbidden_mutations": ["goal-create", "run-prepare", "accepted-state-write"]
+    }
+  },
+  {
+    "id": "ah_behavior_runtime_goal_fallback_is_bounded",
+    "skill": "harness:execute",
+    "scenario": "A durable Run continues in the current thread when native runtime Goal is unavailable without inventing provenance.",
+    "user_request": "继续这个 durable Run；如果原生 Goal 不可用就用当前 thread 完成。",
+    "trace": [
+      { "type": "read", "target": ".harness/runs/example/status.json" },
+      { "type": "control_notice", "target": "runtime Goal unavailable", "fields": { "fallback": "current-thread", "invented_runtime_id": false, "durable_run_preserved": true } },
+      { "type": "tool_call", "target": "update_plan", "fields": { "multi_step": true, "transient": true } }
+    ],
+    "assertions": {
+      "required_ordered_reads": [".harness/runs/example/status.json"],
+      "required_ordered_events": [
+        { "type": "control_notice", "target": "runtime Goal unavailable" },
+        { "type": "tool_call", "target": "update_plan" }
+      ],
+      "required_event_fields": [
+        { "type": "control_notice", "target": "runtime Goal unavailable", "fields": { "fallback": "current-thread", "invented_runtime_id": false, "durable_run_preserved": true } }
+      ],
+      "forbidden_writes": [],
+      "forbidden_mutations": ["fake-runtime-goal-id", "downgrade-to-postflight"]
+    }
+  },
+  {
+    "id": "ah_behavior_enforced_run_cannot_use_postflight_bypass",
+    "skill": "harness:execute",
+    "scenario": "An existing enforced Run keeps its DAG and durable gates even when the implementation step is small.",
+    "user_request": "这个改动很小，直接按 postflight 关闭现有 Run。",
+    "trace": [
+      { "type": "read", "target": ".harness/runs/example/dag.json" },
+      { "type": "status_snapshot", "target": "enforced durable Run", "fields": { "enforced": true, "durable_gates_required": true } },
+      { "type": "closeout", "target": "postflight bypass rejected", "fields": { "run_preserved": true } }
+    ],
+    "assertions": {
+      "required_ordered_reads": [".harness/runs/example/dag.json"],
+      "required_ordered_events": [
+        { "type": "status_snapshot", "target": "enforced durable Run" },
+        { "type": "closeout", "target": "postflight bypass rejected" }
+      ],
+      "required_event_fields": [
+        { "type": "status_snapshot", "target": "enforced durable Run", "fields": { "enforced": true, "durable_gates_required": true } }
+      ],
+      "forbidden_writes": [],
+      "forbidden_mutations": ["downgrade-to-postflight", "skip-dag", "skip-gates"]
+    }
   }
 ]

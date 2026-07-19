@@ -28,5 +28,6 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 
 5. Refuse unsupported table writes without changing the file. Do not promote a
    candidate to accepted scope, create Spec/Goal/Run artifacts, or implement it.
-   An accepted ordinary change returns to Codex directly; durable accepted work
-   uses `harness:execute` only when its tier boundary applies.
+   An accepted ordinary change returns to Codex directly and may use bounded
+   postflight sync for this already recorded Task; durable accepted work uses
+   `harness:execute` before execution only when its tier boundary applies.

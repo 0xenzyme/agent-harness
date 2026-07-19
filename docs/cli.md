@@ -273,6 +273,15 @@ Completed enforced-DAG runs also require every worker node to be resolved.
 Active `running` nodes block completion; cancellation or supersession is a
 cooperative controller signal, not proof that a worker runtime stopped.
 
+Configured `gates.requiredForCompletion` and `gates.blocking` apply to durable
+Goal/Run completion. They do not require ordinary Codex-direct work or bounded
+postflight-only state updates to create a Run. Once a Run is prepared and
+enforced, postflight wording cannot bypass its DAG, gates, or evidence.
+
+The CLI records durable state; it does not implement Codex runtime Goal or
+Plan. Skills bind long-running controller work to the host's native Goal and
+Plan capabilities when exposed.
+
 For completed runs, `run record` enforces the goal's Target delivery state. If
 the target is `review-open`, `integrated`, or `released/shipped`, pass external
 evidence with `--review-url`, `--integration-ref`, or `--release-ref` after

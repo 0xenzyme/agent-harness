@@ -27,8 +27,10 @@ Use harness:orient to inspect this project.
 
 The four public skills are `harness:orient`, `harness:intake`, `harness:init`,
 and `harness:execute`. Ordinary clear change/build requests use Codex directly;
-execute is for durable recovery, audit, state sync, milestones, DAGs,
-multi-worker work, and high-risk control.
+execute is for durable recovery, audit, persistent state sync, milestones,
+DAGs, multi-worker work, high-risk control, or explicit bounded postflight sync
+to state that already existed. Long-running controller work uses Codex runtime
+Goal and Plan when those capabilities are exposed.
 
 Harness does not install explorer/implementer agents or pin model/effort. The
 optional advanced `harness_reviewer.toml` template is read-only and inherits

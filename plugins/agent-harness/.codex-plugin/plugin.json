@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Reusable Codex harness for workflow-oriented project task control and adapter-driven execution. / 可复用 Codex 项目任务控制与 adapter 执行工作流。",
   "author": {
     "name": "Agent Harness Maintainers"
@@ -9,17 +9,19 @@
   "interface": {
     "displayName": "Agent Harness",
     "shortDescription": "Orient, intake, initialize, and execute adapter-driven project work. / 定位、收集、初始化并执行 adapter 驱动的项目工作。",
-    "longDescription": "Agent Harness provides reusable Codex workflow protocols for fixed-contract and adapter-contract projects: orientation, idea intake, project adapters, configurable artifact paths, goal handoffs, run packets, gates, evidence, and worktree policy guidance. zh-CN fallback: Agent Harness 为 fixed / adapter contract 项目提供可复用 Codex 工作流协议，覆盖只读定位、需求收集、项目 adapter、可配置 artifact paths、goal handoff、run packet、gate、evidence 和 worktree policy guidance。",
+    "longDescription": "Agent Harness bridges Codex-native Goal, Plan, Thread, and subagent execution with durable fixed/adapter project control: repository Goals/Runs/DAGs, postflight state sync, gates, evidence, and Delivery State. zh-CN fallback: Agent Harness 把 Codex 原生 Goal、Plan、Thread 和 subagent 执行连接到持久化 fixed / adapter 项目控制，包括 repository Goal/Run/DAG、postflight 状态同步、gate、evidence 和 Delivery State。",
     "developerName": "Agent Harness Maintainers",
     "category": "Productivity",
     "capabilities": [
       "Project task control",
+      "Codex-native Goal and Plan bridge",
+      "Postflight state sync",
       "Goal handoff",
       "Run preparation",
       "Loop engineering"
     ],
     "defaultPrompt": [
-      "Use harness:orient to inspect this repo, resolve harness contract and adapter paths, and recommend the next confirmed workflow."
+      "Use harness:orient to inspect durable state and choose codex-direct, codex-direct-postflight, or durable-harness. Prefer Codex runtime Goal and Plan for current execution."
     ]
   }
 }

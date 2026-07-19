@@ -1,24 +1,40 @@
 ---
 name: execute
-description: Execute accepted durable Harness Goals and Runs for recovery, audit, milestones, DAGs, multi-worker or high-risk work; ordinary clear changes use Codex directly. / 执行已接受的持久化控制工作。
+description: Execute accepted long-running controller or durable Harness work, or postflight-sync already tracked work; ordinary clear changes use Codex directly. / 执行主控长任务、持久化控制或已有状态同步。
 ---
 
 # Harness Execute
 
-Use this skill only when accepted work needs durable recovery, audit, state
-sync, milestone acceptance, a Run/DAG, multiple workers, or high-risk control.
-A clear ordinary change/build request should be executed directly by Codex.
+Use this skill when accepted work needs durable recovery, audit, milestone
+acceptance, a Run/DAG, multiple workers, persistent state sync, or high-risk
+control, or when already completed simple work needs bounded postflight sync to
+existing Harness state. A clear ordinary change/build request uses Codex
+directly without this skill.
 
 Read [Completion Evidence](references/completion-evidence.md) before accepting
 or recording durable completion.
+Read [Codex-Native Execution Bridge](../../references/codex-native-execution.md)
+before selecting direct, postflight, or durable execution.
 
 ## Workflow
 
-1. Read `AGENTS.md`, inspect `.harness/config.json`, and load the configured
-   adapter, accepted Spec/Goal, active Run, and required gates.
-2. Select `gate-only` or `implementer`. A gate-only lane reviews candidate
-   evidence and accepted state; an implementer edits only its owned scope.
-3. Validate or create the repository Goal, then prepare a Run when durable
+1. Classify the request:
+   - `codex-direct`: stop Harness execution; let Codex execute and verify.
+   - `codex-direct-postflight`: verify completed work and update existing
+     tracked state only; create no lifecycle artifacts and do not apply durable
+     completion gates.
+   - `durable-harness`: continue below.
+   A prepared enforced Run always remains durable.
+2. For durable work, read `AGENTS.md`, inspect `.harness/config.json`, and load
+   the configured adapter, accepted Spec/Goal, active Run, and required gates.
+3. Controller means outcome owner and accepted-state owner. It may implement
+   foreground work. Select `gate-only` only when the user or accepted Goal
+   explicitly says the controller only reviews evidence; otherwise use
+   `implementer` for edits inside accepted scope.
+4. For accepted long-running controller work, establish or reuse a compatible
+   Codex runtime Goal. Use Codex Plan for multi-step work. Do not emulate
+   missing runtime capabilities with extra repository artifacts.
+5. Validate or create the repository Goal, then prepare a Run when durable
    execution is required:
 
 ```bash
@@ -26,21 +42,21 @@ node <plugin-root>/scripts/agent-harness.mjs goal validate --cwd <project> --goa
 node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
 ```
 
-4. Give ready DAG nodes to the Codex runtime. Harness does not start workers,
+6. Give ready DAG nodes to the Codex runtime. Harness does not start workers,
    choose concurrency, cancel runtimes, or pin model/effort by default. Record
    node ownership, verification, and candidate evidence before dependents run.
-5. Verify the accepted scope and required gates. Worker output remains
+7. Verify the accepted scope and durable required gates. Worker output remains
    candidate evidence until the accepted-state owner validates it.
    Before acceptance, challenge scope coverage, stale evidence, missing
    dependencies, path ownership, required checklist items, and whether the
    user's Milestone/Goal objective is larger than the local artifact.
-6. Record run-scoped Delivery State from the Run start snapshot, current delta,
+8. Record run-scoped Delivery State from the Run start snapshot, current delta,
    and explicit evidence. A clean upstream checkout alone is not this Run's
    push evidence.
-7. Synchronize the configured Goal/Task/status/Run state. Keep status bounded.
+9. Synchronize the configured Goal/Task/status/Run state. Keep status bounded.
    Completion evidence must name changed files, commands/results, gate evidence,
    Delivery State, State Sync Notes, remaining work, and any true user decision.
-8. Close with changed output, verification, Delivery State, `Need user`, and
+10. Close with changed output, verification, Delivery State, `Need user`, and
    `Remaining`.
 
 ## Domain Invariants
@@ -63,8 +79,9 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
 - `harness-rule:project-neutral-core`: adapters own downstream paths and facts;
   plugin core stays project-neutral.
 - `harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex
-  directly; durable ceremony is reserved for recovery, audit, milestone/DAG,
-  multi-worker, state-sync, or high-risk control.
+  directly; already tracked simple work may use postflight-only sync; durable
+  ceremony is reserved for recovery, audit, milestone/DAG, multi-worker,
+  persistent state sync, or high-risk control.
 
 ## Boundaries
 
@@ -72,4 +89,6 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
   destructive operations, daemons, release, deploy, publish, commit, or push.
 - Do not mark durable work complete without required verification, gates, DAG
   evidence, and state sync.
+- Do not apply durable gates to direct or postflight-only work, and do not use
+  postflight wording to bypass an existing enforced Run.
 - Preserve fixed and adapter contracts and report in the user's language.

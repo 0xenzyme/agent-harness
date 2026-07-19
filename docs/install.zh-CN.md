@@ -25,9 +25,10 @@ codex plugin marketplace add /path/to/agent-harness
 ```
 
 四个公开 skill 是 `harness:orient`、`harness:intake`、`harness:init` 和
-`harness:execute`。普通、明确的 change/build 请求由 Codex 直接执行；
-execute 只用于 recovery、audit、state sync、milestone、DAG、multi-worker
-和 high-risk durable control。
+`harness:execute`。普通、明确的 change/build 请求由 Codex 直接执行；execute
+用于 recovery、audit、persistent state sync、milestone、DAG、multi-worker、
+high-risk durable control，或对执行前已有状态做显式 bounded postflight sync。
+长时间 controller 工作在 host 暴露能力时使用 Codex runtime Goal 和 Plan。
 
 Harness 不安装 explorer/implementer agent，也不默认固定 model/effort。
 可选高级 `harness_reviewer.toml` 模板是 read-only，并继承 parent model 和

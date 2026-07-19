@@ -54,6 +54,21 @@ If a round of implementation just finished:
 The implementation is done. Use harness to tell me what is next.
 ```
 
+## Ordinary Work And Lightweight State Sync
+
+Give clear, one-off, untracked work directly to Codex:
+
+```text
+Fix this clear small issue, verify it, and report the result.
+```
+
+If Codex completed simple work linked to a Harness Task or status item that
+already existed before execution:
+
+```text
+Use harness for postflight: verify the result and update only the existing Task/status. Do not create a Goal or Run.
+```
+
 ## Record An Idea
 
 When you have a requirement, bug, improvement, or rough idea and only want to put it into the project queue:
@@ -106,11 +121,16 @@ Use harness to check what remains for <milestone id>, then move the next confirm
 
 ## Use The Current Thread As Controller
 
-When you want the current thread to coordinate, break down, dispatch, and accept work without directly editing implementation files:
+When you want the current thread to own the outcome, coordinate, break down,
+dispatch, and accept work:
 
 ```text
 Use the current thread as controller and carry the spec through to completion.
 ```
+
+Controller defaults to outcome owner and accepted-state owner and may implement
+foreground work. For long-running work, Harness should establish or reuse a
+Codex runtime Goal and maintain current steps in Codex Plan.
 
 A more natural variant:
 
@@ -130,7 +150,7 @@ If you want a separate visible controller thread:
 Start a new Thread as controller for this task.
 ```
 
-If you want the current thread to edit code directly, say implementation instead of controller:
+If you only need ordinary implementation without durable control, say so directly:
 
 ```text
 Use harness to implement spec1, verify it, and sync state.
