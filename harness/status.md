@@ -37,8 +37,11 @@ This file is a bounded current-state snapshot. Historical detail belongs in
 
 - Branch: `main`
 - Work mode: `local`
-- Delivery state: `validated-local`
-- Commit and local plugin-cache refresh: authorized and pending
+- Delivery state: `committed`
+- Implementation/release-prep commit: `e38a746`
+- Local plugin cache: refreshed at
+  `/Users/liuyj/.codex/plugins/cache/agent-harness-local/harness/0.9.0`;
+  source/cache are 45/45 files with no `diff -qr` differences
 - Push/review/integration/Git tag/GitHub Release/remote publish: not authorized
 - Production/credentials/paid APIs/destructive Run cleanup: not used
 
@@ -47,6 +50,8 @@ This file is a bounded current-state snapshot. Historical detail belongs in
 - Passed: JavaScript syntax checks, `npm run test:all`, `npm run test:eval`,
   `npm run validate:plugin`, four skill validators, config/Goal validation,
   lifecycle inspect/compact/prune previews, and `git diff --check`.
+- Local deployment passed source validation and smoke again; package/plugin
+  versions are `0.9.0`, and the installed cache matches the plugin source.
 - Final inspect after state sync: status 64/160 lines, ten Done tasks with zero
   lifecycle issues, 23 Runs retained, zero compact candidates, and zero prune
   candidates/deletions.
@@ -56,8 +61,7 @@ This file is a bounded current-state snapshot. Historical detail belongs in
 - Public entry: `harness:orient` for the next read-only project decision.
 - Accepted-state owner: None active.
 - Need user: None.
-- Remaining: Commit `0.9.0`, refresh the local plugin cache, and record actual
-  delivery evidence.
+- Remaining: None for the authorized local commit and plugin-cache deployment.
 
 ## Blockers
 

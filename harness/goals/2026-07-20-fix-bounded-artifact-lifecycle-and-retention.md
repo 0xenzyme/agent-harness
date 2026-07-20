@@ -1,7 +1,7 @@
 # Goal: Fix Bounded Artifact Lifecycle And Retention.
 
 Spec: `harness/specs/2026-07-20-bounded-artifact-lifecycle-and-retention.md`
-Status: Completed at `validated-local`.
+Status: Completed at `committed`.
 
 ## Source Task
 
@@ -176,16 +176,24 @@ project.
   candidates. Prune preview reported zero candidates/deletions. Existing
   tracked references to local-only Runs remain
   visible as an audit warning rather than being silently discarded.
-- Delivery State is `validated-local`; the user authorized a local commit and
-  local plugin-cache refresh after the release gate. Push, review, integration,
-  Git tag, GitHub Release, remote publish, production access, credential use,
-  paid API, and Run deletion remain unauthorized.
+- Delivery State reached `committed`: implementation and the `0.9.0` release
+  surface were committed as `e38a746` (`feat: add bounded artifact lifecycle
+  and release 0.9.0`).
+- `npm run deploy:local-plugin` re-ran plugin validation and smoke checks, then
+  refreshed
+  `/Users/liuyj/.codex/plugins/cache/agent-harness-local/harness/0.9.0`.
+  Source and cache each contained 45 files and `diff -qr` reported no
+  differences; package/plugin versions both reported `0.9.0`.
+- Push, review, integration, Git tag, GitHub Release, remote publish,
+  production access, credential use, paid API, and Run deletion were not
+  authorized or performed.
 
 ## Completion Conditions
 
 - All checklist items and required gates are satisfied with fresh evidence.
 - Core state sync is bounded and verified.
-- Delivery State remains truthful and no unauthorized destructive action occurs.
+- Delivery State is `committed`, the local `0.9.0` plugin cache matches source,
+  and no unauthorized destructive action occurs.
 
 ## Pause Conditions
 

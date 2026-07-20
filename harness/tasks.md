@@ -10,7 +10,7 @@
 
 - [x] P0 Fix bounded artifact lifecycle and retention.
   - Type: development/docs
-  - Status: done (`validated-local`)
+  - Status: done (`committed`)
   - Spec: `harness/specs/2026-07-20-bounded-artifact-lifecycle-and-retention.md`
   - Goal: `harness/goals/2026-07-20-fix-bounded-artifact-lifecycle-and-retention.md`
   - Source: Current user direction to keep this thread as controller and fix
@@ -22,10 +22,11 @@
   - Verification: Syntax checks, `test:all`, deterministic eval, plugin
     validation, four skill validators, config/Goal validation, lifecycle
     previews, and `git diff --check` passed.
-  - Delivery: `validated-local`; local commit and plugin-cache refresh are
-    authorized and pending. Push, review, integration, Git tag, GitHub Release,
-    remote publish, production access, paid API, and Run deletion remain out of
-    scope.
+  - Delivery: implementation and `0.9.0` release prep committed as `e38a746`;
+    local `harness@agent-harness-local` cache refreshed at `0.9.0` with 45/45
+    source/cache files and no differences. Push, review, integration, Git tag,
+    GitHub Release, remote publish, production access, paid API, and Run
+    deletion remain out of scope.
 
 - [x] P0 Integrate Agent Harness with Codex-native Goal and Plan execution.
   - Completed: Added three explicit execution paths: Codex-only direct work,
