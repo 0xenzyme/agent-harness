@@ -3038,6 +3038,7 @@ function maintainTasks(args) {
 }
 
 const terminalArtifactRunPhases = new Set(["completed", "blocked"]);
+const unmanagedArtifactRunPhases = new Set(["legacy-file", "missing-status", "invalid-status", "unknown"]);
 
 function resolvedArtifactPolicy(context) {
   const configured = context.config?.artifactPolicy || {};
@@ -3097,7 +3098,7 @@ function artifactRunState(cwd, runsRelPath, entry) {
   if (statusPath && existsSync(statusPath)) {
     try {
       const status = JSON.parse(readFileSync(statusPath, "utf8"));
-      phase = status.phase || "unknown";
+      phase = status.phase || status.status || "unknown";
       goalPath = status.goalPath || "";
       updatedAt = status.updatedAt || status.createdAt || "";
     } catch (error) {
@@ -3106,11 +3107,15 @@ function artifactRunState(cwd, runsRelPath, entry) {
     }
   }
   const parsedUpdated = Date.parse(updatedAt);
+  const terminal = terminalArtifactRunPhases.has(phase);
+  const unmanaged = unmanagedArtifactRunPhases.has(phase);
   return {
     name: entry.name,
     runDir,
     phase,
-    terminal: terminalArtifactRunPhases.has(phase),
+    classification: terminal ? "terminal" : unmanaged ? "unmanaged" : "active",
+    terminal,
+    unmanaged,
     goalPath,
     updatedAt,
     updatedMs: Number.isFinite(parsedUpdated) ? parsedUpdated : lstatSync(absolute).mtimeMs,
@@ -3218,8 +3223,9 @@ function artifactInspectionPayload(args) {
     runs: {
       exists: Boolean(runsAbs && existsSync(runsAbs)),
       entries: runItems.length,
-      active: runItems.filter((run) => !run.terminal).length,
+      active: runItems.filter((run) => run.classification === "active").length,
       terminal: runItems.filter((run) => run.terminal).length,
+      unmanaged: runItems.filter((run) => run.unmanaged).length,
       totals,
       items: runItems
     },
@@ -3369,7 +3375,7 @@ function printArtifactSummary(payload, action) {
   console.log(`Policy: runs=${payload.policy.runs}; source=${payload.policy.source}`);
   console.log(`Status: ${payload.status.lines}/${payload.status.maxLines} lines${payload.status.overLimit ? " (over limit)" : ""}`);
   console.log(`Tasks: total=${payload.tasks.total}; active=${payload.tasks.active}; done=${payload.tasks.done}; issues=${payload.tasks.issues.length}`);
-  console.log(`Runs: entries=${payload.runs.entries}; files=${payload.runs.totals.files}; bytes=${payload.runs.totals.bytes}; terminal=${payload.runs.terminal}; active/unknown=${payload.runs.active}`);
+  console.log(`Runs: entries=${payload.runs.entries}; files=${payload.runs.totals.files}; bytes=${payload.runs.totals.bytes}; terminal=${payload.runs.terminal}; active=${payload.runs.active}; unmanaged=${payload.runs.unmanaged}`);
   console.log(`Tracked Run references: files=${payload.references.files.length}; unique=${payload.references.references.length}`);
 }
 

@@ -145,7 +145,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/
 ```
 
 只读检查 bounded status、active/Done task、Run 数量/体积/phase，以及 tracked
-文档对 local-only Run 的引用：
+文档对 local-only Run 的引用。Run 统计区分 operational `active`、已知
+`terminal` 和旧格式/无效的 `unmanaged`；三种分类覆盖所有 inspected entry：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs artifacts inspect --cwd /path/to/project --json

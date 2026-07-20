@@ -17,8 +17,14 @@ explicit lifecycle command is used.
 unless `--record` is passed; recording writes exact task blocks to the archive
 before replacing the active index. `artifacts prune` is preview-only unless
 `--apply` is passed; apply is allowed only for `local-only` Runs, skips active
-or unknown Runs, honors retention and `keepLatest`, stays inside `paths.runs`,
+or unmanaged Runs, honors retention and `keepLatest`, stays inside `paths.runs`,
 and requires a Goal that references the Run and contains State Sync Notes.
+
+Inspection classifies every Run entry as operational `active`, known
+`terminal`, or `unmanaged`. Legacy Markdown files, directories without a
+status record, invalid status records, and unknown phases are `unmanaged`; they
+remain preserved but do not inflate the operational active count. A legacy
+`status` field is accepted as a phase fallback for one migration boundary.
 
 A local-only Run path is a locator, not durable evidence by itself. Before
 pruning, tracked state must retain the accepted conclusion, verification

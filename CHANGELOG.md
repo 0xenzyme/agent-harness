@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Separated operational active Runs from unmanaged legacy, missing, invalid,
+  or unknown artifacts in lifecycle inspection, while accepting the legacy
+  `status` field as a migration fallback for known terminal state.
+
 ## 0.9.0 - 2026-07-20
 
 - Added project-neutral `artifactPolicy` configuration for tracked or

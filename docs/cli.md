@@ -147,7 +147,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/
 ```
 
 Inspect bounded status, active/Done task state, Run counts/bytes/phases, and
-tracked references to local-only Runs without writing:
+tracked references to local-only Runs without writing. Run counts distinguish
+operational `active`, known `terminal`, and `unmanaged` legacy/invalid entries;
+the three classifications cover every inspected entry:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs artifacts inspect --cwd /path/to/project --json
