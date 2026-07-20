@@ -14,7 +14,7 @@ symlinks cannot escape. Goal paths stay under `paths.goals`, specs under
 `paths.specs`, Run arguments under `paths.runs`, and DAG artifacts under their
 Run.
 
-Canonical config writes `contract`, canonical `paths`,
+Canonical config writes `contract`, canonical `paths`, `artifactPolicy`,
 `worktree.defaultPolicy`, `gates.requiredForCompletion`, and `gates.blocking`.
 Read legacy aliases for one migration boundary and fail when old and new values
 conflict.
@@ -26,3 +26,8 @@ selection belong to the Codex runtime.
 Runtime Goal owns the active long-running outcome and Codex Plan owns transient
 steps. Postflight sync updates only existing adapter-declared state and creates
 no lifecycle solely for bookkeeping.
+
+Artifact policy distinguishes bounded current state from retained history.
+Status is replaced, active Goal indexes retain only a configured recent-Done
+window, archives preserve displaced task blocks, and local-only Runs may be
+pruned only through an explicit dry-run-first command after durable state sync.

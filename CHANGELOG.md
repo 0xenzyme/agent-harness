@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## 0.9.0 - 2026-07-20
+
+- Added project-neutral `artifactPolicy` configuration for tracked or
+  local-only Runs, durable evidence roots, terminal retention windows,
+  latest-Run protection, bounded status snapshots, and task archives.
+- Added deterministic `artifacts inspect`, `artifacts compact`, and
+  `artifacts prune` commands with read-only previews, archive-first recording,
+  explicit apply semantics, configured-root containment, and durable
+  state-sync evidence checks.
+- Normalized decorated terminal task states while preserving active and
+  unknown Runs and refusing destructive cleanup when evidence is incomplete.
+- Aligned schemas, templates, skills, references, bilingual CLI and contract
+  docs, README guidance, and deterministic regression coverage with the new
+  artifact lifecycle contract.
+- Dogfooded the policy by bounding the repository task index and status
+  snapshot, archiving exact historical task blocks, and retaining every Run.
+
 ## 0.8.0 - 2026-07-19
 
 - Added the Codex-native execution bridge: runtime Goal owns the current

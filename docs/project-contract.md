@@ -69,9 +69,16 @@ not emitted by canonical templates.
 ## State Sync
 
 Durable completion includes verified State Sync Notes. The Goal index records
-durable work state; status is a bounded current snapshot; Goals, Runs, and gate
-records retain detailed evidence. Plugin core stays project-neutral and the
-adapter owns downstream facts.
+actionable work plus a bounded recent-Done window; status is a bounded current
+snapshot; task archives, Goals, milestones, and owning-domain documents retain
+durable conclusions. Runs retain detailed execution evidence according to
+`artifactPolicy`. Plugin core stays project-neutral and the adapter owns
+downstream facts.
+
+Artifact lifecycle commands are deterministic and dry-run-first. Inspection is
+read-only, task compaction requires `--record` and archives before replacement,
+and Run deletion requires `prune --apply`, `local-only` policy, terminal state,
+expired retention, containment, and durable State Sync Notes.
 
 Postflight sync updates existing tracked state only with fresh verification,
 observed outcome, actual Delivery State, and remaining gap. It does not create

@@ -15,6 +15,8 @@ Read [Completion Evidence](references/completion-evidence.md) before accepting
 or recording durable completion.
 Read [Codex-Native Execution Bridge](../../references/codex-native-execution.md)
 before selecting direct, postflight, or durable execution.
+Read [Artifact Lifecycle](../../references/artifact-lifecycle.md) before
+compacting task state or pruning Runs.
 
 ## Workflow
 
@@ -53,7 +55,9 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
 8. Record run-scoped Delivery State from the Run start snapshot, current delta,
    and explicit evidence. A clean upstream checkout alone is not this Run's
    push evidence.
-9. Synchronize the configured Goal/Task/status/Run state. Keep status bounded.
+9. Synchronize the configured Goal/Task/status/Run state. Keep status bounded;
+   preview artifact compaction when configured limits are exceeded. Pruning is
+   a separate explicit destructive action and never follows from state sync.
    Completion evidence must name changed files, commands/results, gate evidence,
    Delivery State, State Sync Notes, remaining work, and any true user decision.
 10. Close with changed output, verification, Delivery State, `Need user`, and

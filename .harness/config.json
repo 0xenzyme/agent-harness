@@ -31,6 +31,26 @@
   "communication": {
     "commentary": "minimal"
   },
+  "artifactPolicy": {
+    "runs": "local-only",
+    "durableEvidence": [
+      "harness/status.md",
+      "harness/goals",
+      "harness/milestones"
+    ],
+    "retention": {
+      "completedDays": 30,
+      "blockedDays": 30,
+      "keepLatest": 20
+    },
+    "status": {
+      "maxLines": 160
+    },
+    "tasks": {
+      "archive": "harness/tasks-archive.md",
+      "keepDone": 10
+    }
+  },
   "worktree": {
     "defaultPolicy": "ask"
   },

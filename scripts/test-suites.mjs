@@ -48,8 +48,9 @@ function protocol() {
   assert(!existsSync(join(repoRoot, "plugins/agent-harness/templates/codex-agents/harness_implementer.toml")), "implementer template must be absent");
   const schema = json("plugins/agent-harness/schemas/config.schema.json");
   assert(schema.properties.gates.properties.requiredForCompletion && schema.properties.gates.properties.blocking, "completion gate fields must remain supported");
+  assert(schema.properties.artifactPolicy.properties.retention && schema.properties.artifactPolicy.properties.tasks, "artifact lifecycle policy must remain supported");
   const adapter = json("plugins/agent-harness/templates/config.adapter.json");
-  assert(adapter.worktree && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must be slim");
+  assert(adapter.worktree && adapter.artifactPolicy && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must be slim and lifecycle-aware");
   console.log(`Protocol checks passed (${invariants.length} domain invariants).`);
 }
 

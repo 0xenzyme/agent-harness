@@ -86,7 +86,19 @@ try {
   const configPath = join(temp, ".harness/config.json");
   const canonicalConfig = json(configPath);
   assert(canonicalConfig.worktree?.defaultPolicy === "ask" && !canonicalConfig.workMode, "canonical config must write worktree, not legacy workMode");
+  assert(canonicalConfig.artifactPolicy?.retention && canonicalConfig.artifactPolicy?.tasks, "canonical config must declare bounded artifact lifecycle defaults");
   assert(!canonicalConfig.loops && !canonicalConfig.lifecycle && !canonicalConfig.gates?.enabled && !canonicalConfig.gates?.optional, "removed config fields must not be emitted");
+
+  const noArtifactPolicy = structuredClone(canonicalConfig);
+  delete noArtifactPolicy.artifactPolicy;
+  writeFileSync(configPath, `${JSON.stringify(noArtifactPolicy, null, 2)}\n`);
+  const legacyArtifactInspection = JSON.parse(run(["artifacts", "inspect", "--cwd", temp, "--json"]));
+  assert(legacyArtifactInspection.policy.source === "default" && legacyArtifactInspection.policy.runs === "tracked" && legacyArtifactInspection.writesFiles === false, "projects without artifactPolicy must retain read-only tracked-compatible defaults");
+  const invalidArtifactPolicy = structuredClone(canonicalConfig);
+  invalidArtifactPolicy.artifactPolicy.retention.completedDays = -1;
+  writeFileSync(configPath, `${JSON.stringify(invalidArtifactPolicy, null, 2)}\n`);
+  assert(/completedDays|minimum|invalid/i.test(fails(["config", "validate", "--cwd", temp, "--json"])), "artifact retention schema must reject negative days");
+  writeFileSync(configPath, `${JSON.stringify(canonicalConfig, null, 2)}\n`);
 
   for (const bad of ["../escape", resolve(outside, "absolute")]) {
     const payload = structuredClone(canonicalConfig);
@@ -133,6 +145,62 @@ try {
     assert(/Harness config is invalid|projectName.*string/i.test(fails(["init", "--cwd", invalidExisting, "--contract", "fixed", "--force"])), "init must fully validate an existing config before writes");
     assert(!existsSync(join(invalidExisting, "harness/tasks.md")) && !existsSync(join(invalidExisting, "harness/status.md")), "invalid existing config must produce zero init writes");
   } finally { rmSync(invalidExisting, { recursive: true, force: true }); }
+
+  const artifactProject = mkdtempSync(join(tmpdir(), "agent-harness-artifacts-"));
+  try {
+    run(["init", "--cwd", artifactProject, "--contract", "fixed"]);
+    const artifactConfigPath = join(artifactProject, ".harness/config.json");
+    const artifactConfig = json(artifactConfigPath);
+    artifactConfig.artifactPolicy = {
+      runs: "local-only",
+      durableEvidence: ["harness/status.md", "harness/goals"],
+      retention: { completedDays: 0, blockedDays: 0, keepLatest: 0 },
+      status: { maxLines: 20 },
+      tasks: { archive: "harness/tasks-archive.md", keepDone: 1 }
+    };
+    writeFileSync(artifactConfigPath, `${JSON.stringify(artifactConfig, null, 2)}\n`);
+    write(join(artifactProject, "harness/tasks.md"), "# Tasks\n\n## Now\n\n- [ ] Active task\n\n- [x] Older done\n  - Status: done\n\n## Done\n\n- [x] Recent done\n  - Status: done\n");
+    write(join(artifactProject, "harness/status.md"), `# Status\n\n${Array.from({ length: 25 }, (_, index) => `line ${index}`).join("\n")}\n`);
+    const completedRun = ".harness/runs/20260101-000000-completed";
+    const activeRun = ".harness/runs/20260102-000000-active";
+    const unsafeRun = ".harness/runs/20260103-000000-missing-durable-sync";
+    const escapedGoalRun = ".harness/runs/20260104-000000-goal-outside-root";
+    write(join(artifactProject, completedRun, "status.json"), `${JSON.stringify({ phase: "completed", goalPath: "harness/goals/completed.md", updatedAt: "2026-01-01T00:00:00.000Z" }, null, 2)}\n`);
+    write(join(artifactProject, completedRun, "proof.txt"), "proof\n");
+    write(join(artifactProject, activeRun, "status.json"), `${JSON.stringify({ phase: "running", goalPath: "harness/goals/active.md", updatedAt: "2026-01-02T00:00:00.000Z" }, null, 2)}\n`);
+    write(join(artifactProject, unsafeRun, "status.json"), `${JSON.stringify({ phase: "completed", goalPath: "harness/goals/unsafe.md", updatedAt: "2026-01-03T00:00:00.000Z" }, null, 2)}\n`);
+    write(join(artifactProject, escapedGoalRun, "status.json"), `${JSON.stringify({ phase: "completed", goalPath: "harness/status.md", updatedAt: "2026-01-04T00:00:00.000Z" }, null, 2)}\n`);
+    write(join(artifactProject, "harness/goals/unsafe.md"), `# Unsafe\n\nRun: \`${unsafeRun}\`\n`);
+    write(join(artifactProject, "harness/goals/completed.md"), `# Completed\n\nRun: \`${completedRun}\`\n\n## State Sync Notes\n\n- Durable conclusion retained.\n`);
+    const inspection = JSON.parse(run(["artifacts", "inspect", "--cwd", artifactProject, "--json"]));
+    assert(inspection.writesFiles === false && inspection.status.overLimit, "artifact inspection must be read-only and report bounded-status overflow");
+    assert(inspection.tasks.issues.some((issue) => issue.kind === "terminal-task-in-active-section"), "artifact inspection must report terminal tasks in active sections");
+    const tasksBefore = readFileSync(join(artifactProject, "harness/tasks.md"), "utf8");
+    const compactPreview = JSON.parse(run(["artifacts", "compact", "--cwd", artifactProject, "--json"]));
+    assert(compactPreview.compact.candidates.length === 1 && !existsSync(join(artifactProject, "harness/tasks-archive.md")), "compact preview must be read-only and retain the configured recent Done window");
+    assert(readFileSync(join(artifactProject, "harness/tasks.md"), "utf8") === tasksBefore, "compact preview must not rewrite the task index");
+    const compactRecord = JSON.parse(run(["artifacts", "compact", "--cwd", artifactProject, "--record", "--json"]));
+    assert(compactRecord.compact.archived === 1 && compactRecord.compact.archiveWritten && compactRecord.compact.taskIndexWritten, "compact record must archive before replacing the active index");
+    assert(readFileSync(join(artifactProject, "harness/tasks-archive.md"), "utf8").includes("Older done"), "task archive must retain the exact displaced record");
+    assert(!readFileSync(join(artifactProject, "harness/tasks.md"), "utf8").includes("Older done"), "active task index must drop archived records");
+    const prunePreview = JSON.parse(run(["artifacts", "prune", "--cwd", artifactProject, "--json"]));
+    assert(prunePreview.prune.mode === "preview" && prunePreview.prune.candidates.some((item) => item.runDir === completedRun), "prune preview must identify evidence-safe terminal Runs");
+    assert(prunePreview.prune.retained.some((item) => item.runDir === unsafeRun && item.reasons.some((reason) => /State Sync Notes/.test(reason))), "prune preview must refuse terminal Runs without durable State Sync Notes");
+    assert(prunePreview.prune.retained.some((item) => item.runDir === escapedGoalRun && item.reasons.some((reason) => /Run Goal path/.test(reason))), "prune preview must reject Goal evidence outside the configured Goals root");
+    assert(existsSync(join(artifactProject, completedRun)), "prune preview must not delete candidates");
+    const trackedPolicy = json(artifactConfigPath);
+    trackedPolicy.artifactPolicy.runs = "tracked";
+    writeFileSync(artifactConfigPath, `${JSON.stringify(trackedPolicy, null, 2)}\n`);
+    assert(/local-only/.test(fails(["artifacts", "prune", "--cwd", artifactProject, "--apply", "--json"])), "prune --apply must refuse tracked Run policy");
+    assert(existsSync(join(artifactProject, completedRun)), "tracked-policy refusal must produce zero deletion");
+    trackedPolicy.artifactPolicy.runs = "local-only";
+    writeFileSync(artifactConfigPath, `${JSON.stringify(trackedPolicy, null, 2)}\n`);
+    const pruneApply = JSON.parse(run(["artifacts", "prune", "--cwd", artifactProject, "--apply", "--json"]));
+    assert(pruneApply.prune.deleted.includes(completedRun) && !existsSync(join(artifactProject, completedRun)), "prune --apply must delete only eligible terminal Runs");
+    assert(existsSync(join(artifactProject, activeRun)), "prune --apply must preserve active Runs");
+    assert(existsSync(join(artifactProject, unsafeRun)), "prune --apply must preserve terminal Runs without durable evidence");
+    assert(existsSync(join(artifactProject, escapedGoalRun)), "prune --apply must preserve Runs whose Goal escapes the configured root");
+  } finally { rmSync(artifactProject, { recursive: true, force: true }); }
 
 } finally {
 }

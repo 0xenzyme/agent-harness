@@ -10,6 +10,13 @@
   "language": {
     "default": "auto"
   },
+  "artifactPolicy": {
+    "runs": "tracked",
+    "durableEvidence": ["harness/status.md", "harness/goals"],
+    "retention": { "completedDays": 30, "blockedDays": 30, "keepLatest": 20 },
+    "status": { "maxLines": 160 },
+    "tasks": { "archive": "harness/tasks-archive.md", "keepDone": 10 }
+  },
   "communication": {
     "commentary": "minimal"
   },

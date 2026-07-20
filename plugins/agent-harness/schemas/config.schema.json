@@ -147,6 +147,46 @@
         }
       }
     },
+    "artifactPolicy": {
+      "description": "Bounded control-state and Run retention policy. Commands remain preview-only unless --record or --apply is explicit.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runs": {
+          "type": "string",
+          "enum": ["tracked", "local-only"]
+        },
+        "durableEvidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "retention": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "completedDays": { "type": "integer", "minimum": 0 },
+            "blockedDays": { "type": "integer", "minimum": 0 },
+            "keepLatest": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "status": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maxLines": { "type": "integer", "minimum": 20 }
+          }
+        },
+        "tasks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "archive": { "type": "string", "minLength": 1 },
+            "keepDone": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
     "worktree": {
       "type": "object",
       "additionalProperties": false,

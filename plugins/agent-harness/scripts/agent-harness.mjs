@@ -2,7 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -162,7 +162,7 @@ function parseArgs(argv) {
     "workMode",
     "work-mode"
   ]);
-  const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "dryRun", "dry-run", "force", "help", "json", "record"]);
+  const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "apply", "dryRun", "dry-run", "force", "help", "json", "record"]);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -299,6 +299,9 @@ const messages = {
   agent-harness orient next [--cwd PATH] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
+  agent-harness artifacts inspect [--cwd PATH] [--json]
+  agent-harness artifacts compact [--cwd PATH] [--record] [--json]
+  agent-harness artifacts prune [--cwd PATH] [--apply] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config validate [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
@@ -341,6 +344,9 @@ const messages = {
   agent-harness orient next [--cwd PATH] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
+  agent-harness artifacts inspect [--cwd PATH] [--json]
+  agent-harness artifacts compact [--cwd PATH] [--record] [--json]
+  agent-harness artifacts prune [--cwd PATH] [--apply] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config validate [--cwd PATH] [--json]
   agent-harness config import [--cwd PATH] [--task-index PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
@@ -1658,6 +1664,14 @@ function taskKind(task) {
   return detailValue(task, "Type").toLowerCase();
 }
 
+function canonicalTaskState(task) {
+  const status = taskStatus(task);
+  for (const state of ["cancelled", "closed", "done", "blocked", "paused", "doing", "review", "triage", "watching", "signal", "todo", "spec-ready", "goal-ready", "spec-draft", "action-needed"]) {
+    if (status === state || status.startsWith(`${state} `) || status.startsWith(`${state}(`) || status.startsWith(`${state}-`)) return state;
+  }
+  return status;
+}
+
 function taskSummary(task) {
   const status = taskStatus(task);
   const kind = taskKind(task);
@@ -1721,7 +1735,7 @@ function shellQuote(value) {
 }
 
 function recommendationForTask(task, context, reason) {
-  const status = taskStatus(task);
+  const status = canonicalTaskState(task);
   const priority = priorityRank(task.priority);
   const specPath = taskSpecPath(task, context.paths);
   const linkedGoalPath = taskGoalPath(task, context.paths);
@@ -1804,17 +1818,17 @@ function recommendationForTask(task, context, reason) {
 }
 
 function isBlockedTask(task) {
-  const status = taskStatus(task);
+  const status = canonicalTaskState(task);
   return ["blocked", "paused", "action-needed"].includes(status);
 }
 
 function isDoneTask(task) {
-  const status = taskStatus(task);
+  const status = canonicalTaskState(task);
   return task.done || ["done", "cancelled", "closed"].includes(status);
 }
 
 function isInProgressTask(task) {
-  const status = taskStatus(task);
+  const status = canonicalTaskState(task);
   return ["doing", "review", "triage", "watching", "signal"].includes(status);
 }
 
@@ -1822,7 +1836,7 @@ function isReadyTask(task) {
   if (isDoneTask(task) || isBlockedTask(task) || isInProgressTask(task)) {
     return false;
   }
-  const status = taskStatus(task);
+  const status = canonicalTaskState(task);
   return !status || ["todo", "spec-ready", "goal-ready", "spec-draft", "action-needed"].includes(status);
 }
 
@@ -3023,6 +3037,364 @@ function maintainTasks(args) {
   }
 }
 
+const terminalArtifactRunPhases = new Set(["completed", "blocked"]);
+
+function resolvedArtifactPolicy(context) {
+  const configured = context.config?.artifactPolicy || {};
+  const retention = configured.retention || {};
+  const status = configured.status || {};
+  const tasks = configured.tasks || {};
+  return {
+    runs: configured.runs || "tracked",
+    durableEvidence: uniqueList(configured.durableEvidence || []),
+    retention: {
+      completedDays: retention.completedDays ?? 30,
+      blockedDays: retention.blockedDays ?? 30,
+      keepLatest: retention.keepLatest ?? 20
+    },
+    status: { maxLines: status.maxLines ?? 160 },
+    tasks: {
+      archive: tasks.archive || "",
+      keepDone: tasks.keepDone ?? 10
+    },
+    source: context.config?.artifactPolicy ? "configured" : "default"
+  };
+}
+
+function recursiveArtifactStats(root) {
+  const result = { files: 0, directories: 0, bytes: 0 };
+  if (!existsSync(root)) return result;
+  const stack = [root];
+  while (stack.length) {
+    const current = stack.pop();
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const path = join(current, entry.name);
+      if (entry.isSymbolicLink()) {
+        result.files += 1;
+      } else if (entry.isDirectory()) {
+        result.directories += 1;
+        stack.push(path);
+      } else if (entry.isFile()) {
+        result.files += 1;
+        result.bytes += statSync(path).size;
+      }
+    }
+  }
+  return result;
+}
+
+function artifactRunState(cwd, runsRelPath, entry) {
+  const runDir = join(runsRelPath, entry.name);
+  const absolute = configuredPath(cwd, runDir, "Run artifact");
+  const stats = entry.isDirectory()
+    ? recursiveArtifactStats(absolute)
+    : { files: entry.isFile() ? 1 : 0, directories: 0, bytes: entry.isFile() ? statSync(absolute).size : 0 };
+  const statusPath = entry.isDirectory() ? join(absolute, "status.json") : "";
+  let phase = entry.isFile() && entry.name.endsWith(".md") ? "legacy-file" : "missing-status";
+  let goalPath = "";
+  let updatedAt = "";
+  let statusError = "";
+  if (statusPath && existsSync(statusPath)) {
+    try {
+      const status = JSON.parse(readFileSync(statusPath, "utf8"));
+      phase = status.phase || "unknown";
+      goalPath = status.goalPath || "";
+      updatedAt = status.updatedAt || status.createdAt || "";
+    } catch (error) {
+      phase = "invalid-status";
+      statusError = error.message;
+    }
+  }
+  const parsedUpdated = Date.parse(updatedAt);
+  return {
+    name: entry.name,
+    runDir,
+    phase,
+    terminal: terminalArtifactRunPhases.has(phase),
+    goalPath,
+    updatedAt,
+    updatedMs: Number.isFinite(parsedUpdated) ? parsedUpdated : lstatSync(absolute).mtimeMs,
+    ...stats,
+    statusError
+  };
+}
+
+function trackedRunReferences(cwd, runsRelPath) {
+  if (!runsRelPath) return { files: [], references: [], error: "Runs path is not configured." };
+  let tracked = [];
+  try {
+    tracked = execFileSync("git", ["ls-files", "-z"], { cwd, encoding: "utf8" }).split("\0").filter(Boolean);
+  } catch {
+    return { files: [], references: [], error: "Git tracked-file inventory unavailable." };
+  }
+  const prefix = `${runsRelPath.replace(/\/+$/g, "")}/`;
+  const pattern = new RegExp(escapeRegExp(prefix) + "[^\\s\\)\\]\\},;:]+", "g");
+  const files = [];
+  const references = new Set();
+  for (const file of tracked) {
+    if (!/\.(?:md|mdx|txt|json|ya?ml)$/i.test(file)) continue;
+    let content = "";
+    try {
+      content = readFileSync(join(cwd, file), "utf8");
+    } catch {
+      continue;
+    }
+    if (!content.includes(prefix)) continue;
+    files.push(file);
+    for (const match of content.matchAll(pattern)) references.add(match[0].replace(/[.`]+$/g, ""));
+  }
+  return { files: files.sort(), references: [...references].sort(), error: "" };
+}
+
+function taskLifecycleIssues(content, tasks) {
+  const issues = [];
+  const sectionCounts = new Map();
+  for (const match of content.matchAll(/^##\s+(.+?)\s*$/gm)) {
+    const key = normalized(match[1]);
+    sectionCounts.set(key, (sectionCounts.get(key) || 0) + 1);
+  }
+  for (const [section, count] of sectionCounts.entries()) {
+    if (["now", "next", "later", "blocked", "done"].includes(section) && count > 1) {
+      issues.push({ kind: "duplicate-section", section, count });
+    }
+  }
+  for (const task of tasks) {
+    const explicit = detailValue(task, "Status").toLowerCase();
+    const canonical = canonicalTaskState(task);
+    const explicitDone = ["done", "cancelled", "closed"].some((value) => explicit === value || explicit.startsWith(`${value} `) || explicit.startsWith(`${value}(`));
+    const explicitBlocked = ["blocked", "paused"].some((value) => explicit === value || explicit.startsWith(`${value}-`) || explicit.startsWith(`${value} `));
+    if (!task.done && explicitDone) issues.push({ kind: "unchecked-terminal-task", line: task.line, title: task.title, status: explicit });
+    if (task.done && ["todo", "spec-draft", "spec-ready", "goal-ready", "doing", "review", "blocked", "paused", "watching", "signal", "triage", "action-needed"].includes(canonical)) {
+      issues.push({ kind: "checked-nonterminal-task", line: task.line, title: task.title, status: explicit });
+    }
+    if (normalized(task.section) === "now" && (task.done || explicitDone)) issues.push({ kind: "terminal-task-in-active-section", line: task.line, title: task.title });
+    if (normalized(task.section) !== "blocked" && explicitBlocked) issues.push({ kind: "blocked-task-outside-blocked-section", line: task.line, title: task.title, section: task.section });
+  }
+  return issues;
+}
+
+function artifactInspectionPayload(args) {
+  const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
+  const policy = resolvedArtifactPolicy(context);
+  const taskIndex = context.paths.taskIndex || context.paths.tasks;
+  const statusPath = context.paths.status;
+  const runsPath = context.paths.runs;
+  const taskAbs = taskIndex ? configuredPath(cwd, taskIndex, "Task index path") : "";
+  const statusAbs = statusPath ? configuredPath(cwd, statusPath, "Status path") : "";
+  const runsAbs = runsPath ? configuredPath(cwd, runsPath, "Runs path") : "";
+  const taskContent = taskAbs && existsSync(taskAbs) ? readFileSync(taskAbs, "utf8") : "";
+  const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
+  const tasks = taskContent ? parseTasks(taskContent) : [];
+  const runItems = runsAbs && existsSync(runsAbs)
+    ? readdirSync(runsAbs, { withFileTypes: true })
+      .filter((entry) => !entry.name.startsWith(".") && !entry.isSymbolicLink())
+      .map((entry) => artifactRunState(cwd, runsPath, entry))
+      .sort((a, b) => b.updatedMs - a.updatedMs || a.name.localeCompare(b.name))
+    : [];
+  const totals = runItems.reduce((total, run) => ({
+    files: total.files + run.files,
+    directories: total.directories + run.directories + 1,
+    bytes: total.bytes + run.bytes
+  }), { files: 0, directories: 0, bytes: 0 });
+  const references = trackedRunReferences(cwd, runsPath);
+  const statusLines = statusContent ? statusContent.split(/\r?\n/).length : 0;
+  return {
+    cwd,
+    contract: context.contract,
+    writesFiles: false,
+    paths: { taskIndex, status: statusPath, goals: context.paths.goals || fixedContract.goals, runs: runsPath },
+    policy,
+    status: { exists: Boolean(statusContent), lines: statusLines, maxLines: policy.status.maxLines, overLimit: statusLines > policy.status.maxLines },
+    tasks: {
+      exists: Boolean(taskContent),
+      total: tasks.length,
+      active: tasks.filter((task) => !isDoneTask(task)).length,
+      done: tasks.filter(isDoneTask).length,
+      keepDone: policy.tasks.keepDone,
+      archive: policy.tasks.archive,
+      issues: taskLifecycleIssues(taskContent, tasks)
+    },
+    runs: {
+      exists: Boolean(runsAbs && existsSync(runsAbs)),
+      entries: runItems.length,
+      active: runItems.filter((run) => !run.terminal).length,
+      terminal: runItems.filter((run) => run.terminal).length,
+      totals,
+      items: runItems
+    },
+    references,
+    warnings: [
+      ...context.warnings,
+      ...(policy.runs === "local-only" && references.files.length ? [`${references.files.length} tracked files reference local-only Run artifacts.`] : []),
+      ...(statusLines > policy.status.maxLines ? [`Status snapshot has ${statusLines} lines; configured maximum is ${policy.status.maxLines}.`] : [])
+    ]
+  };
+}
+
+function taskArchiveCandidates(payload) {
+  if (!payload.tasks.exists || !payload.policy.tasks.archive) return [];
+  const content = readFileSync(configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path"), "utf8");
+  const recency = (task) => {
+    const dates = [...taskSearchText(task).matchAll(/20\d{2}-?\d{2}-?\d{2}/g)]
+      .map((match) => Number(match[0].replace(/-/g, "")))
+      .filter(Number.isFinite);
+    return dates.length ? Math.max(...dates) : 0;
+  };
+  return parseTasks(content)
+    .filter(isDoneTask)
+    .sort((a, b) => recency(b) - recency(a) || b.line - a.line)
+    .slice(payload.policy.tasks.keepDone)
+    .sort((a, b) => a.line - b.line);
+}
+
+function taskBlocksForArchive(content, candidates) {
+  const lines = content.split(/\r?\n/);
+  return candidates.map((task) => {
+    const range = taskBlockRange(lines, task);
+    return { task, range, block: lines.slice(range.start, range.end).join("\n").trimEnd() };
+  });
+}
+
+function removeArchivedTaskBlocks(content, blocks) {
+  const lines = content.split(/\r?\n/);
+  for (const item of [...blocks].sort((a, b) => b.range.start - a.range.start)) lines.splice(item.range.start, item.range.end - item.range.start);
+  return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd()}\n`;
+}
+
+function artifactCompactPayload(args) {
+  const payload = artifactInspectionPayload(args);
+  const taskContent = payload.tasks.exists ? readFileSync(configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path"), "utf8") : "";
+  const candidates = taskArchiveCandidates(payload);
+  return {
+    ...payload,
+    compact: {
+      requested: Boolean(args.record),
+      supported: Boolean(taskContent && payload.policy.tasks.archive && !isTableTaskIndex(taskContent)),
+      archive: payload.policy.tasks.archive,
+      keepDone: payload.policy.tasks.keepDone,
+      candidates: candidates.map(taskSummary),
+      archived: 0,
+      taskIndexWritten: false,
+      archiveWritten: false,
+      refusalReason: ""
+    }
+  };
+}
+
+function recordArtifactCompaction(payload) {
+  if (!payload.compact.supported) {
+    payload.compact.refusalReason = "Task index is missing, table-based, or no archive path is configured.";
+    return;
+  }
+  if (!payload.compact.candidates.length) return;
+  const taskAbs = configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path");
+  const archiveAbs = configuredPath(payload.cwd, payload.compact.archive, "Task archive path");
+  if (taskAbs === archiveAbs) throw new Error("Task archive path must differ from the active task index.");
+  const content = readFileSync(taskAbs, "utf8");
+  const blocks = taskBlocksForArchive(content, taskArchiveCandidates(payload));
+  if (!blocks.length || blocks.some((item) => !item.block.startsWith("- ["))) throw new Error("Refusing compaction because exact task blocks could not be preserved.");
+  const existingArchive = existsSync(archiveAbs) ? readFileSync(archiveAbs, "utf8") : "# Harness Task Archive\n\nCompleted task records moved from the bounded active task index.\n";
+  const uniqueBlocks = blocks.filter((item) => !existingArchive.includes(item.block));
+  const section = uniqueBlocks.length ? `\n\n## Archived ${todayStamp()}\n\n${uniqueBlocks.map((item) => item.block).join("\n\n")}\n` : "";
+  mkdirSync(dirname(archiveAbs), { recursive: true });
+  writeFileSync(archiveAbs, `${existingArchive.trimEnd()}${section || "\n"}`);
+  payload.compact.archiveWritten = true;
+  writeFileSync(taskAbs, removeArchivedTaskBlocks(content, blocks));
+  payload.compact.taskIndexWritten = true;
+  payload.compact.archived = blocks.length;
+  payload.writesFiles = true;
+}
+
+function durableRunEvidence(cwd, run, goalsRelPath) {
+  if (!run.goalPath) return { ok: false, reason: "Run has no goalPath." };
+  let goalAbs = "";
+  try {
+    const goalsRoot = configuredPath(cwd, goalsRelPath, "Goals root");
+    goalAbs = assertContainedPath(goalsRoot, resolve(cwd, run.goalPath), "Run Goal path");
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
+  if (!existsSync(goalAbs)) return { ok: false, reason: `Goal does not exist: ${run.goalPath}` };
+  const goal = readFileSync(goalAbs, "utf8");
+  if (!goal.includes(run.runDir)) return { ok: false, reason: "Goal does not reference this Run." };
+  if (!oneLine(extractSection(goal, "State Sync Notes"))) return { ok: false, reason: "Goal has no non-empty State Sync Notes section." };
+  return { ok: true, reason: "Goal references the Run and contains State Sync Notes." };
+}
+
+function artifactPrunePayload(args) {
+  const payload = artifactInspectionPayload(args);
+  const terminal = payload.runs.items.filter((run) => run.terminal);
+  const retainedLatest = new Set(terminal.slice(0, payload.policy.retention.keepLatest).map((run) => run.runDir));
+  const assessed = payload.runs.items.map((run) => {
+    const ageDays = Math.max(0, (Date.now() - run.updatedMs) / 86400000);
+    const threshold = run.phase === "blocked" ? payload.policy.retention.blockedDays : payload.policy.retention.completedDays;
+    const evidence = durableRunEvidence(payload.cwd, run, payload.paths.goals);
+    const reasons = [];
+    if (payload.policy.runs !== "local-only") reasons.push("Run policy is not local-only.");
+    if (!run.terminal) reasons.push(`Run phase is ${run.phase}, not terminal.`);
+    if (retainedLatest.has(run.runDir)) reasons.push("Protected by keepLatest.");
+    if (ageDays < threshold) reasons.push(`Age ${ageDays.toFixed(1)}d is below ${threshold}d retention.`);
+    if (!evidence.ok) reasons.push(evidence.reason);
+    return { ...run, ageDays: Number(ageDays.toFixed(2)), retentionDays: threshold, durableEvidence: evidence, eligible: reasons.length === 0, reasons };
+  });
+  const candidates = assessed.filter((run) => run.eligible);
+  return {
+    ...payload,
+    prune: {
+      requested: Boolean(args.apply),
+      mode: args.apply ? "apply" : "preview",
+      candidates,
+      retained: assessed.filter((run) => !run.eligible),
+      deleted: [],
+      bytesEligible: candidates.reduce((sum, run) => sum + run.bytes, 0)
+    }
+  };
+}
+
+function applyArtifactPrune(payload) {
+  if (payload.policy.runs !== "local-only") throw new Error("Refusing prune --apply unless artifactPolicy.runs is local-only.");
+  const runsRoot = configuredPath(payload.cwd, payload.paths.runs, "Runs path");
+  for (const run of payload.prune.candidates) {
+    const target = artifactPath(runsRoot, run.name, "Prune candidate");
+    if (dirname(target) !== runsRoot || !existsSync(target)) throw new Error(`Refusing non-child or missing prune candidate: ${run.runDir}`);
+    rmSync(target, { recursive: true, force: false });
+    payload.prune.deleted.push(run.runDir);
+  }
+  payload.writesFiles = payload.prune.deleted.length > 0;
+}
+
+function printArtifactSummary(payload, action) {
+  console.log(`Agent Harness artifact ${action}`);
+  console.log(`Policy: runs=${payload.policy.runs}; source=${payload.policy.source}`);
+  console.log(`Status: ${payload.status.lines}/${payload.status.maxLines} lines${payload.status.overLimit ? " (over limit)" : ""}`);
+  console.log(`Tasks: total=${payload.tasks.total}; active=${payload.tasks.active}; done=${payload.tasks.done}; issues=${payload.tasks.issues.length}`);
+  console.log(`Runs: entries=${payload.runs.entries}; files=${payload.runs.totals.files}; bytes=${payload.runs.totals.bytes}; terminal=${payload.runs.terminal}; active/unknown=${payload.runs.active}`);
+  console.log(`Tracked Run references: files=${payload.references.files.length}; unique=${payload.references.references.length}`);
+}
+
+function artifactsInspect(args) {
+  const payload = artifactInspectionPayload(args);
+  if (args.json) return console.log(JSON.stringify(payload, null, 2));
+  printArtifactSummary(payload, "inspection");
+}
+
+function artifactsCompact(args) {
+  const payload = artifactCompactPayload(args);
+  if (args.record) recordArtifactCompaction(payload);
+  if (args.json) return console.log(JSON.stringify(payload, null, 2));
+  printArtifactSummary(payload, "compaction");
+  console.log(`Compaction: mode=${args.record ? "record" : "preview"}; candidates=${payload.compact.candidates.length}; archived=${payload.compact.archived}`);
+}
+
+function artifactsPrune(args) {
+  const payload = artifactPrunePayload(args);
+  if (args.apply) applyArtifactPrune(payload);
+  if (args.json) return console.log(JSON.stringify(payload, null, 2));
+  printArtifactSummary(payload, "prune");
+  console.log(`Prune: mode=${payload.prune.mode}; eligible=${payload.prune.candidates.length}; deleted=${payload.prune.deleted.length}; bytesEligible=${payload.prune.bytesEligible}`);
+}
+
 function todayStamp(date = new Date()) {
   return [
     date.getFullYear(),
@@ -3189,6 +3561,9 @@ function cleanLinkedTarget(value) {
     return "";
   }
   if (target.startsWith("<") && target.endsWith(">")) {
+    target = target.slice(1, -1).trim();
+  }
+  if (target.startsWith("`") && target.endsWith("`")) {
     target = target.slice(1, -1).trim();
   }
   const titleMatch = target.match(/^(\S+)\s+["'][^"']+["']$/);
@@ -5791,6 +6166,12 @@ function main() {
       intakeIdea(args);
     } else if (command === "maintain" && subcommand === "tasks") {
       maintainTasks(args);
+    } else if (command === "artifacts" && subcommand === "inspect") {
+      artifactsInspect(args);
+    } else if (command === "artifacts" && subcommand === "compact") {
+      artifactsCompact(args);
+    } else if (command === "artifacts" && subcommand === "prune") {
+      artifactsPrune(args);
     } else if (command === "config" && subcommand === "inspect") {
       configInspect(args);
     } else if (command === "config" && subcommand === "validate") {

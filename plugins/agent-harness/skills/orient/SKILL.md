@@ -16,6 +16,9 @@ node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project> --json
 
 2. Read the configured adapter, Goal index, bounded status, and only the
    relevant Spec/Goal/Run evidence.
+   When the question concerns stale or growing artifacts, also run
+   `artifacts inspect --json` and read
+   [Artifact Lifecycle](../../references/artifact-lifecycle.md).
 3. Reconcile those artifacts with newer explicit conversation decisions.
 4. Recommend one execution path before naming a public entry:
    - `codex-direct` for ordinary clear work with no tracked sync obligation;

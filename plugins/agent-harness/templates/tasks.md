@@ -1,5 +1,8 @@
 # Project Goals
 
+Keep this active index bounded. Retain actionable work and only the configured
+recent-Done window; move older terminal records to the configured task archive.
+
 ## Now
 
 - [ ] P1 Define the next concrete Goal

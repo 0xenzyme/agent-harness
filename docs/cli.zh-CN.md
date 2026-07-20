@@ -144,6 +144,30 @@ task 更新：
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
 ```
 
+只读检查 bounded status、active/Done task、Run 数量/体积/phase，以及 tracked
+文档对 local-only Run 的引用：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts inspect --cwd /path/to/project --json
+```
+
+先预览 task compaction；显式 `--record` 后，CLI 会先归档 exact task block，再
+替换 active index：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts compact --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts compact --cwd /path/to/project --record --json
+```
+
+先预览 Run retention candidate。实际删除必须显式使用 `--apply`，并同时满足
+`local-only` policy、terminal state、retention 到期、path containment，以及 Goal
+已经引用该 Run 并保存 State Sync Notes：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts prune --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts prune --cwd /path/to/project --apply --json
+```
+
 推荐当前任务应该继续使用当前 checkout、切到 worktree，还是先询问：
 
 ```bash

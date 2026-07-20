@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.8.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -86,6 +86,8 @@ owns the repeatable execution mechanics inside the project adapter:
 - verify concrete evidence before advancing delivery state;
 - require `State Sync Notes` as part of Goal and Task completion;
 - keep Goal indexes, bounded status snapshots, Goals, Runs, and gates aligned;
+- inspect and archive active control state through a dry-run-first artifact
+  lifecycle, and prune local-only Runs only after durable sync and explicit action;
 - pause for real human gates such as unclear direction, credentials, paid APIs,
   production access, destructive actions, or delivery above policy.
 
@@ -278,7 +280,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.8.0 Release Notes](docs/releases/v0.8.0.md)
+- [v0.9.0 Release Notes](docs/releases/v0.9.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while

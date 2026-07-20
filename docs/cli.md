@@ -146,6 +146,30 @@ task updates when they can be written safely:
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
 ```
 
+Inspect bounded status, active/Done task state, Run counts/bytes/phases, and
+tracked references to local-only Runs without writing:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts inspect --cwd /path/to/project --json
+```
+
+Preview task compaction, then explicitly archive exact completed task blocks
+before replacing the active index:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts compact --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts compact --cwd /path/to/project --record --json
+```
+
+Preview Run retention candidates. Actual deletion requires `--apply`, a
+`local-only` Run policy, terminal state, expired retention, containment, and a
+Goal that references the Run with State Sync Notes:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts prune --cwd /path/to/project --json
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts prune --cwd /path/to/project --apply --json
+```
+
 Recommend whether to use the current checkout, a worktree, or ask first:
 
 ```bash

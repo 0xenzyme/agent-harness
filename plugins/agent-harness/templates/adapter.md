@@ -62,6 +62,16 @@ the Agent Harness plugin references.
 - Boundary: this shapes Harness instructions and generated artifacts; it does
   not filter Codex messages or override host-required updates.
 
+## Artifact Lifecycle Policy
+
+- Machine-readable source: `.harness/config.json` `artifactPolicy`
+- Status is a bounded current snapshot, not append-only history.
+- The active Goal index retains actionable work and a bounded recent-Done
+  window; older terminal records move to the configured archive.
+- Run tracking is `tracked` by default; projects may opt into `local-only`.
+- Lifecycle commands default to preview. Compaction requires `--record`;
+  deletion requires `artifacts prune --apply` and all retention/evidence gates.
+
 ## Idea Inbox Policy
 
 - Capture thread:

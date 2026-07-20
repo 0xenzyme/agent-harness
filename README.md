@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-[![Version](https://img.shields.io/badge/version-0.8.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -83,6 +83,8 @@ Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责
 - 在推进 delivery state 前验证 concrete evidence；
 - 把 `State Sync Notes` 作为 Goal 和 Task completion 的组成部分；
 - 对齐 Goal index、bounded status snapshot、Goal、Run 和 gate；
+- 用 dry-run-first artifact lifecycle 检查/归档 active control state，并只在
+  durable evidence 已同步且显式授权时清理 local-only Run；
 - 只在方向不清、凭证、付费 API、生产访问、破坏性操作或超出 delivery
   policy 时暂停并交还给人。
 
@@ -262,7 +264,7 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.8.0 Release Notes](docs/releases/v0.8.0.md)
+- [v0.9.0 Release Notes](docs/releases/v0.9.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的
