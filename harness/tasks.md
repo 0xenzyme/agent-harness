@@ -8,6 +8,24 @@
 
 ## Done
 
+- [x] P0 Simplify completion and remove Git-derived Delivery State.
+  - Type: development/docs
+  - Status: completed
+  - Spec: `harness/specs/2026-07-21-simplify-completion-and-remove-git-derived-delivery-state.md`
+  - Goal: `harness/goals/2026-07-21-simplify-completion-and-remove-git-derived-delivery-state.md`
+  - Run: `.harness/runs/20260721-110505-simplify-completion-and-remove-git-derived-delivery-state`
+  - Completed: Task/Goal is authoritative with active, completed, or resumable
+    blocked phase; Run stores execution evidence and status is a bounded
+    projection.
+  - Completed: Removed implicit checkout inspection, Git-derived Delivery
+    State, Run start snapshots, delivery gates, and delivery output from the
+    canonical lifecycle.
+  - Compatibility: Existing legacy Goal/Run fields remain readable for one
+    release, are ignored by current behavior, and are removed when an old Run
+    is recorded again.
+  - Verification: JavaScript syntax, protocol, smoke, `test:all`, deterministic
+    eval, and plugin validation passed at `0.10.0`.
+
 - [x] P0 Fix bounded artifact lifecycle and retention.
   - Type: development/docs
   - Status: done (`committed`)

@@ -1,67 +1,61 @@
 # Project Status
 
-This file is a bounded current-state snapshot. Historical detail belongs in
+This file is a bounded current-state projection. Authoritative accepted phase
+belongs to Task/Goal records; historical detail belongs in
 `harness/tasks-archive.md`, Goals, milestones, owning-domain docs, and Runs.
 
 ## Focus
 
 - Current Goal: None active.
-- Recently completed: bounded artifact lifecycle and retention.
-- Spec: `harness/specs/2026-07-20-bounded-artifact-lifecycle-and-retention.md`
-- Goal: `harness/goals/2026-07-20-fix-bounded-artifact-lifecycle-and-retention.md`
-- Run: `.harness/runs/20260720-105524-fix-bounded-artifact-lifecycle-and-retention`
+- Recently completed: Simplify completion and remove Git-derived Delivery State.
+- Phase: completed.
+- Spec: `harness/specs/2026-07-21-simplify-completion-and-remove-git-derived-delivery-state.md`
+- Goal: `harness/goals/2026-07-21-simplify-completion-and-remove-git-derived-delivery-state.md`
+- Run: `.harness/runs/20260721-110505-simplify-completion-and-remove-git-derived-delivery-state`
 
 ## Accepted Result
 
-- `artifactPolicy` configures tracked/local-only Runs, retention windows,
-  latest-Run protection, status line limits, task archive, recent-Done window,
-  and durable evidence roots.
-- `artifacts inspect` audits bounded state, Run count/bytes/phases, lifecycle
-  inconsistencies, and tracked references without writing.
-- `artifacts compact` previews by default and writes exact task blocks to the
-  archive before replacing the active index only with `--record`.
-- `artifacts prune` previews by default. `--apply` requires local-only policy,
-  terminal/expired/unprotected Runs, configured-root containment, and a Goal
-  reference with non-empty State Sync Notes.
-- Active/unknown Runs and Runs without durable evidence remain protected.
+- Task/Goal is the accepted-state authority with `active`, `completed`, or
+  resumable non-complete `blocked` phase.
+- Run records execution, DAG, verification, gate, and candidate/accepted
+  evidence; status is a bounded projection.
+- Completion derives from accepted scope, fresh verification, required durable
+  gates, and synchronized authoritative state.
+- Canonical Goal/Run generation, validation, maintenance, and status output no
+  longer contain Git-derived Delivery State, Run start snapshots, or delivery
+  gates.
+- Legacy Goal and Run fields remain readable for the `0.10.0` compatibility
+  boundary, are ignored by current behavior, and are removed when an old Run is
+  recorded again.
+- Artifact inspection scans configured durable-evidence roots for local Run
+  references; work-mode recommendation follows configured policy.
 
-## Dogfood State
+## Release Surface
 
-- `harness/tasks.md`: bounded to ten recent Done records including this Goal.
-- `harness/tasks-archive.md`: 55 exact historical task blocks retained.
-- `harness/status.md`: bounded below the configured 160-line limit.
-- `.harness/runs/`: 23 Runs inspected; no Run was deleted.
-- Existing tracked local-Run references remain visible as an audit warning.
-
-## Git And Delivery
-
-- Branch: `main`
-- Work mode: `local`
-- Delivery state: `committed`
-- Implementation/release-prep commit: `e38a746`
-- Local plugin cache: refreshed at
-  `/Users/liuyj/.codex/plugins/cache/agent-harness-local/harness/0.9.0`;
-  source/cache are 45/45 files with no `diff -qr` differences
-- Push/review/integration/Git tag/GitHub Release/remote publish: not authorized
-- Production/credentials/paid APIs/destructive Run cleanup: not used
+- Package and plugin versions: `0.10.0`.
+- Release notes: `docs/releases/v0.10.0.md`.
+- Canonical templates, skills, references, bilingual CLI docs, capability
+  matrix, project contract, README, behavior traces, smoke coverage, and social
+  preview are aligned.
 
 ## Verification
 
-- Passed: JavaScript syntax checks, `npm run test:all`, `npm run test:eval`,
-  `npm run validate:plugin`, four skill validators, config/Goal validation,
-  lifecycle inspect/compact/prune previews, and `git diff --check`.
-- Local deployment passed source validation and smoke again; package/plugin
-  versions are `0.9.0`, and the installed cache matches the plugin source.
-- Final inspect after state sync: status 64/160 lines, ten Done tasks with zero
-  lifecycle issues, 23 Runs retained, zero compact candidates, and zero prune
-  candidates/deletions.
+- Passed: `node --check plugins/agent-harness/scripts/agent-harness.mjs`.
+- Passed: `node --check tests/smoke.mjs`.
+- Passed: `node --check scripts/test-suites.mjs`.
+- Passed: `npm run test:protocol` with 8 canonical invariants.
+- Passed: `npm run test:smoke`.
+- Passed: `npm run test:all`.
+- Passed: `npm run test:eval` with 40 trigger cases, 4 task cases, 8 hard CLI
+  checks, and 10 behavior traces.
+- Passed: `npm run validate:plugin`.
 
 ## Route
 
 - Public entry: `harness:orient` for the next read-only project decision.
 - Accepted-state owner: None active.
 - Need user: None.
-- Remaining: None for the authorized local commit and plugin-cache deployment.
+- Remaining: None for the accepted implementation scope.
 
 ## Blockers
 

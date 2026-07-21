@@ -27,5 +27,5 @@ remain preserved but do not inflate the operational active count. A legacy
 `status` field is accepted as a phase fallback for one migration boundary.
 
 A local-only Run path is a locator, not durable evidence by itself. Before
-pruning, tracked state must retain the accepted conclusion, verification
+pruning, configured durable evidence must retain the accepted conclusion, verification
 summary, and any audit reference needed after the raw Run disappears.

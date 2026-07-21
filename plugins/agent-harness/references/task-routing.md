@@ -3,7 +3,7 @@
 Choose the lightest surface that preserves the user's actual objective.
 
 - Ordinary clear question, analysis, review, change, or build with no existing
-  tracked sync obligation: `codex-direct`; use Codex directly.
+  state-sync obligation: `codex-direct`; use Codex directly.
 - Simple completed work linked to existing Task/Goal/status state:
   `codex-direct-postflight`; verify and update existing state only.
 - Harness status, blocker, stale artifact, or next-entry inspection: `harness:orient`.
@@ -23,7 +23,7 @@ downgraded.
 
 For durable work, normalize the target to Roadmap, Milestone, Goal, Task, Run,
 Priority, or Spec. Record `gate-only` or `implementer`, configured roots, the
-accepted-state owner, verification, pause conditions, and Delivery State.
+accepted-state owner, verification, pause conditions, and State Sync Notes.
 Worker selection, model/effort, delegation, concurrency, and cancellation stay
 with the Codex runtime; Harness records DAG dependencies, ready state,
 ownership, verification, and candidate evidence.

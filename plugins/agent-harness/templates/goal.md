@@ -2,7 +2,7 @@
 
 Spec:
 Spec Policy:
-Status: Ready for execution from confirmed spec.
+Status: active.
 
 ## Source Task
 
@@ -52,23 +52,12 @@ Use `current-thread`.
 - Execution slot: `N/A`
 - Remote-control worktree: `no`
 
-## Delivery State
-
-- Delivery intent: `local-validation`
-- Target delivery state: `validated-local`
-- Commit authorized: `no`
-- Push authorized: `no`
-- Review authorized: `no`
-- Integration authorized: `no`
-- Release authorized: `no`
-
 ## Durable Control Invariants
 
 - `harness-rule:path-containment`
 - `harness-rule:run-dag-ownership`
 - `harness-rule:candidate-accepted-evidence`
-- `harness-rule:local-delivery-ceiling`
-- `harness-rule:run-scoped-delivery`
+- `harness-rule:authoritative-completion-state`
 - `harness-rule:state-sync-evidence`
 - `harness-rule:bounded-status-snapshot`
 - `harness-rule:project-neutral-core`
@@ -103,7 +92,7 @@ ordinary direct or postflight-only work outside this durable lifecycle.
 
 ## Non-Goals
 
-- Do not exceed recorded authority or delivery policy.
+- Do not exceed accepted scope or recorded authority.
 
 ## Verification
 
@@ -116,5 +105,5 @@ ordinary direct or postflight-only work outside this durable lifecycle.
 ## Pause Conditions
 
 - Accepted scope conflicts with current repository facts or newer instructions.
-- Credentials, production, destructive work, or unauthorized delivery is needed.
+- Credentials, production, destructive work, or another external side effect is needed.
 - Evidence cannot validate the accepted objective.

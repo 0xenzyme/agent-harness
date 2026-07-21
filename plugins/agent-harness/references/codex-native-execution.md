@@ -28,7 +28,7 @@ as postflight-only to bypass its DAG, checklist, gates, or evidence.
 - Thread/subagent runtime owns execution, delegation, scheduling, concurrency,
   cancellation, and model/effort selection.
 - Repository Goal/Run owns cross-task recovery, durable dependencies and
-  ownership, acceptance evidence, Delivery State, and bounded state sync.
+  ownership, acceptance evidence, and bounded state sync.
 
 Do not duplicate a compatible active runtime Goal. Do not mirror every Plan
 transition into Git. If a native capability is unavailable, continue in the
@@ -44,8 +44,8 @@ or accepts evidence.
 
 ## Postflight Sync
 
-Postflight sync updates existing tracked state only. Record fresh verification,
-the observed result, actual Delivery State, and remaining tracked gap. Do not
+Postflight sync updates existing state only. Record fresh verification, the
+observed result, and remaining gap. Do not
 create a Goal, Run, DAG, gate, or status record solely for bookkeeping.
 Adapter completion gates apply to durable Goal/Run completion, not to ordinary
 direct work or lightweight postflight-only synchronization.

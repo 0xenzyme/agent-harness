@@ -16,9 +16,9 @@ approval messages, safety notices, or progress heartbeats.
   applies, scope, unchanged boundaries, and next action into one short kickoff.
 - Do not narrate routine file reads, searches, tool loading, command execution,
   or other activity already visible in the client UI.
-- Do not repeat unchanged scope, authorization, safety, or delivery boundaries.
+- Do not repeat unchanged scope, authorization, safety, or state boundaries.
 - Always report a new blocker, material risk, failed verification, changed
-  assumption/scope/authorization, required user decision, or delivery-state
+  assumption/scope/authorization, required user decision, or accepted-state
   transition.
 - Obey host-required progress cadence. A heartbeat without a material change
   must be one short sentence and must not restate the plan.
@@ -38,7 +38,7 @@ approval messages, safety notices, or progress heartbeats.
 - Default packet values:
   - `Report cadence: material-transition-or-host-heartbeat`
   - `Notify on: blocker, risk, scope-or-authorization-change, user-decision,
-    failed-verification, delivery-transition`
+    failed-verification, state-transition`
 
 ## `balanced`
 
@@ -56,13 +56,13 @@ approval messages, safety notices, or progress heartbeats.
 
 - Apply all common rules.
 - Permit transcript-quality summaries for gate inputs, decisions, state-sync
-  evidence, and delivery transitions.
+  evidence, and accepted-state transitions.
 - Prefer compact evidence summaries and paths over raw packet dumps or command
   output.
 - Default packet values:
   - `Report cadence: gate-and-decision-transition`
   - `Notify on: balanced-signals, gate-input, gate-decision, state-sync,
-    delivery-transition`
+    state-transition`
 
 ## Precedence
 

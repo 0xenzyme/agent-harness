@@ -27,7 +27,6 @@ function fails(args) {
 function assert(value, message) { if (!value) throw new Error(message); }
 function write(path, content) { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, content); }
 function json(path) { return JSON.parse(readFileSync(path, "utf8")); }
-function git(cwd, args) { return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }); }
 
 const manifest = json(join(repoRoot, "plugins/agent-harness/.codex-plugin/plugin.json"));
 assert(Array.isArray(manifest.interface.defaultPrompt), "interface.defaultPrompt must be a string array");
@@ -76,12 +75,14 @@ try {
   assert(/table-based task index/.test(fails(["intake", "idea", "--cwd", temp, "--idea", "Add import audit", "--record", "--json"])), "unsupported table Goal indexes must refuse automatic intake writes");
   const maintenance = JSON.parse(run(["maintain", "tasks", "--cwd", temp, "--json"]));
   assert(maintenance.writesFiles === false, "maintenance preview must be read-only");
+  assert(!("git" in maintenance), "maintenance must derive state from Harness artifacts without a Git snapshot");
   const orientation = JSON.parse(run(["orient", "next", "--cwd", temp, "--json"]));
   assert(orientation.contract === "adapter", "orientation must preserve adapter contract state");
   const activation = run(["activation", "snippet", "--cwd", temp]);
   assert(activation.includes("Agent Harness"), "activation preview must remain available and read-only");
   const worktree = JSON.parse(run(["worktree", "recommend", "--cwd", temp, "--json"]));
   assert(["local", "worktree", "ask"].includes(worktree.recommendation), "worktree recommendation must return a canonical policy");
+  assert(!("git" in worktree), "worktree recommendation must follow configured policy without checkout-state telemetry");
 
   const configPath = join(temp, ".harness/config.json");
   const canonicalConfig = json(configPath);
@@ -186,6 +187,7 @@ try {
     assert(inspection.runs.items.find((item) => item.runDir === missingStatusRun)?.classification === "unmanaged", "missing-status directories must not inflate operational active counts");
     assert(inspection.runs.items.find((item) => item.runDir === legacyRunFile)?.classification === "unmanaged", "legacy Run files must not inflate operational active counts");
     assert(inspection.tasks.issues.some((issue) => issue.kind === "terminal-task-in-active-section"), "artifact inspection must report terminal tasks in active sections");
+    assert(inspection.references.files.includes("harness/goals/completed.md"), "artifact inspection must scan configured durable evidence roots for Run references");
     const tasksBefore = readFileSync(join(artifactProject, "harness/tasks.md"), "utf8");
     const compactPreview = JSON.parse(run(["artifacts", "compact", "--cwd", artifactProject, "--json"]));
     assert(compactPreview.compact.candidates.length === 1 && !existsSync(join(artifactProject, "harness/tasks-archive.md")), "compact preview must be read-only and retain the configured recent Done window");
@@ -217,19 +219,8 @@ try {
 }
 
 const runProject = mkdtempSync(join(tmpdir(), "agent-harness-run-"));
-const bareRemote = mkdtempSync(join(tmpdir(), "agent-harness-remote-"));
-const branchMismatchProject = mkdtempSync(join(tmpdir(), "agent-harness-branch-mismatch-"));
 const specContainmentProject = mkdtempSync(join(tmpdir(), "agent-harness-spec-containment-"));
 try {
-  git(bareRemote, ["init", "--bare"]);
-  git(runProject, ["init"]);
-  git(runProject, ["config", "user.email", "smoke@example.invalid"]);
-  git(runProject, ["config", "user.name", "Smoke"]);
-  write(join(runProject, "README.md"), "# Smoke\n");
-  git(runProject, ["add", "README.md"]);
-  git(runProject, ["commit", "-m", "initial"]);
-  git(runProject, ["remote", "add", "origin", bareRemote]);
-  git(runProject, ["push", "-u", "origin", "HEAD"]);
   run(["init", "--cwd", runProject, "--contract", "fixed"]);
   write(join(runProject, "harness/tasks.md"), "# Tasks\n\n## Now\n\n- [ ] Smoke durable run\n");
   run(["intake", "idea", "--cwd", runProject, "--idea", "Add fixed intake", "--record", "--json"]);
@@ -241,7 +232,18 @@ try {
   const generatedGoal = readFileSync(generatedGoalPath, "utf8");
   assert(generatedGoal.includes("## Codex-Native Execution"), "generated durable Goals must bind to Codex-native execution");
   assert(generatedGoal.includes("These gates apply only to durable Goal/Run completion"), "generated Goal gates must declare durable-only scope");
-  writeFileSync(generatedGoalPath, generatedGoal.replace(
+  assert(!generatedGoal.includes("## Delivery State"), "generated Goals must use accepted state and evidence without a Delivery State section");
+  const legacyGoal = generatedGoal.replace("## Execution DAG", `## Delivery State
+
+- Delivery intent: \`legacy\`
+- Target delivery state: \`pushed\`
+- Push authorized: \`yes\`
+
+## Execution DAG`);
+  writeFileSync(generatedGoalPath, legacyGoal);
+  const legacyGoalValidation = JSON.parse(run(["goal", "validate", "--cwd", runProject, "--goal", goalRel, "--json"]));
+  assert(legacyGoalValidation.ok && !("deliveryPolicy" in legacyGoalValidation.goal), "legacy Goal delivery sections must remain readable but stay outside current validation output");
+  writeFileSync(generatedGoalPath, legacyGoal.replace(
     /## Scope\r?\n[\s\S]*?\r?\n## Non-Goals/,
     "## Scope\n\n- Implement the accepted behavior.\n- Preserve compatibility.\n- Add regression coverage.\n- Update durable evidence.\n\n## Non-Goals"
   ));
@@ -249,11 +251,25 @@ try {
   const runName = readdirSync(join(runProject, ".harness/runs")).find((name) => !name.startsWith("."));
   const runRel = `.harness/runs/${runName}`;
   const status = json(join(runProject, runRel, "status.json"));
-  for (const field of ["startHead", "startBranch", "startUpstream", "startDirtyState"]) assert(field in status, `Run status must record ${field}`);
-  assert(typeof status.startDirtyState.digest === "string", "startDirtyState must include a comparable digest");
+  for (const field of ["deliveryState", "deliveryPolicy", "startHead", "startBranch", "startUpstream", "startDirtyState"]) {
+    assert(!(field in status), `new Run status must omit legacy field ${field}`);
+  }
   assert(status.executionDag.readyNodes.length > 0, "DAG must record readyNodes");
   assert(JSON.stringify(status.executionDag.parallelLayers) === JSON.stringify([["execution"], ["verification"]]), "medium durable DAG must keep only execution and verification boundaries");
-  let currentRunStatus = status;
+  const runStatusPath = join(runProject, runRel, "status.json");
+  const legacyStatus = {
+    ...status,
+    deliveryState: { state: "pushed", workingTreeDirty: "no", commit: "legacy", push: "origin/main" },
+    deliveryPolicy: { target: "pushed", pushAuthorized: "yes" },
+    startHead: "legacy-head",
+    startBranch: "legacy-branch",
+    startUpstream: "origin/legacy-branch",
+    startDirtyState: { dirty: "no", digest: "legacy-digest" }
+  };
+  writeFileSync(runStatusPath, `${JSON.stringify(legacyStatus, null, 2)}\n`);
+  const legacyRead = JSON.parse(run(["run", "status", "--cwd", runProject, "--run", runRel, "--json"]));
+  assert(!("deliveryState" in legacyRead) && !("deliveryPolicy" in legacyRead), "legacy Run delivery fields must remain readable but stay outside current output");
+  let currentRunStatus = legacyRead;
   while (!currentRunStatus.executionDag.allNodesCompleted) {
     const readyNodes = currentRunStatus.executionDag.readyNodes;
     assert(readyNodes.length > 0, "durable DAG must make progress while incomplete");
@@ -266,10 +282,12 @@ try {
   assert(currentRunStatus.executionDag.nodeStatus.execution.verification === "node check", "normal DAG node recording must retain verification evidence");
 
   const recorded = JSON.parse(run(["run", "record", "--cwd", runProject, "--run", runRel, "--phase", "completed", "--summary", "validated", "--verification", "smoke passed", "--json"]));
-  assert(recorded.deliveryState.state === "validated-local", "clean upstream history must not count as this Run's push");
-  assert(recorded.deliveryState.push === "none" && recorded.deliveryState.commit === "none", "Run-scoped delivery must require a Run delta or explicit evidence");
+  assert(!("deliveryState" in recorded) && !("deliveryPolicy" in recorded), "completed Run output must omit legacy delivery fields");
+  const migratedStatus = json(runStatusPath);
+  for (const field of ["deliveryState", "deliveryPolicy", "startHead", "startBranch", "startUpstream", "startDirtyState"]) {
+    assert(!(field in migratedStatus), `recording a legacy Run must remove ignored field ${field}`);
+  }
 
-  const runStatusPath = join(runProject, runRel, "status.json");
   const originalRunStatus = readFileSync(runStatusPath, "utf8");
   const outsideGoalStatus = JSON.parse(originalRunStatus);
   outsideGoalStatus.goalPath = "README.md";
@@ -297,26 +315,6 @@ try {
   assert(/relative|inside|Artifact|status/i.test(fails(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", dag.nodes[0].id, "--phase", "completed", "--summary", "bad", "--verification", "bad"])), "malicious DAG status path must fail");
   assert(!existsSync(join(runProject, "outside-status.json")), "malicious DAG status must produce zero external writes");
 
-  git(branchMismatchProject, ["init"]);
-  git(branchMismatchProject, ["config", "user.email", "smoke@example.invalid"]);
-  git(branchMismatchProject, ["config", "user.name", "Smoke"]);
-  write(join(branchMismatchProject, "README.md"), "# Branch mismatch\n");
-  git(branchMismatchProject, ["add", "README.md"]);
-  git(branchMismatchProject, ["commit", "-m", "initial"]);
-  run(["init", "--cwd", branchMismatchProject, "--contract", "fixed"]);
-  write(join(branchMismatchProject, "harness/tasks.md"), "# Tasks\n\n## Now\n\n- [ ] Branch delivery guard\n");
-  run(["goal", "create", "--cwd", branchMismatchProject, "--task", "Branch delivery guard", "--allow-no-spec", "--work-mode", "local"]);
-  const mismatchGoal = readdirSync(join(branchMismatchProject, "harness/goals")).find((name) => name.endsWith(".md"));
-  run(["run", "prepare", "--cwd", branchMismatchProject, "--goal", `harness/goals/${mismatchGoal}`]);
-  const mismatchRun = readdirSync(join(branchMismatchProject, ".harness/runs")).find((name) => !name.startsWith("."));
-  git(branchMismatchProject, ["switch", "-c", "other-branch"]);
-  write(join(branchMismatchProject, "branch-change.txt"), "different branch\n");
-  git(branchMismatchProject, ["add", "."]);
-  git(branchMismatchProject, ["commit", "-m", "different branch commit"]);
-  const mismatchRecord = JSON.parse(run(["run", "record", "--cwd", branchMismatchProject, "--run", `.harness/runs/${mismatchRun}`, "--phase", "completed", "--summary", "validated on another branch", "--verification", "smoke passed", "--json"]));
-  assert(mismatchRecord.deliveryState.state === "validated-local" && mismatchRecord.deliveryState.commit === "none" && mismatchRecord.deliveryState.push === "none", "branch mismatch must not promote a Run to committed or pushed");
-  assert(mismatchRecord.deliveryState.runDelta.branchMatches === false, "Run delta must expose branch mismatch evidence");
-
   run(["init", "--cwd", specContainmentProject, "--contract", "adapter"]);
   write(join(specContainmentProject, "harness/tasks.md"), "# Goals\n\n## Now\n\n- [ ] Spec containment guard\n");
   write(join(specContainmentProject, "harness/specs/accepted.md"), "# Spec: Guard\n\nStatus: accepted\n");
@@ -338,6 +336,7 @@ try {
 
   const zhDoctor = run(["doctor", "--cwd", runProject, "--lang", "zh-CN"], { env: { LANG: "zh_CN.UTF-8", LC_ALL: "zh_CN.UTF-8" } });
   assert(zhDoctor.includes("项目") || zhDoctor.includes("状态"), "zh-CN smoke must exercise localized display");
+  assert(!/git status|git root/i.test(zhDoctor), "doctor must report Harness health without checkout-state telemetry");
   JSON.parse(run(["config", "inspect", "--cwd", runProject, "--json"], { env: { LANG: "zh_CN.UTF-8", LC_ALL: "zh_CN.UTF-8" } }));
 
   {
@@ -353,8 +352,6 @@ try {
 } finally {
   rmSync(temp, { recursive: true, force: true });
   rmSync(runProject, { recursive: true, force: true });
-  rmSync(bareRemote, { recursive: true, force: true });
-  rmSync(branchMismatchProject, { recursive: true, force: true });
   rmSync(specContainmentProject, { recursive: true, force: true });
   rmSync(outside, { recursive: true, force: true });
 }

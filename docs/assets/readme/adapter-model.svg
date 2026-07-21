@@ -45,7 +45,7 @@
     <text x="552" y="281" class="card-title-light">Project Adapter</text>
     <text x="552" y="329" class="card-copy-teal">Artifact paths and project boundaries</text>
     <text x="552" y="365" class="card-copy-teal">Verification and state-sync rules</text>
-    <text x="552" y="401" class="card-copy-teal">Work mode and delivery policy</text>
+    <text x="552" y="401" class="card-copy-teal">Work mode and state-sync policy</text>
     <line x1="552" y1="431" x2="888" y2="431" stroke="#5eead4" stroke-opacity="0.5"/>
     <text x="552" y="456" class="card-copy-teal">No project facts leak into plugin core.</text>
   </g>

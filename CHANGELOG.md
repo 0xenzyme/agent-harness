@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.10.0 - 2026-07-21
+
+- Made Task/Goal the authoritative accepted-state record with `active`,
+  `completed`, and resumable non-complete `blocked` phases; Runs retain
+  execution evidence and status remains a bounded projection.
+- Removed Git-derived Delivery State, Run start snapshots, checkout telemetry,
+  delivery gates, and delivery fields from canonical Goal/Run generation,
+  validation, maintenance, and status output.
+- Kept legacy Goal and Run delivery fields readable for one compatibility
+  release while ignoring them in current behavior and removing them when a
+  legacy Run is recorded again.
+- Replaced tracked-file inventory in artifact inspection with configured
+  durable-evidence roots and made work-mode recommendation configuration-led.
+- Aligned CLI, schemas, templates, skills, references, bilingual docs,
+  deterministic behavior traces, smoke coverage, and dogfood state.
+
 - Separated operational active Runs from unmanaged legacy, missing, invalid,
   or unknown artifacts in lifecycle inspection, while accepting the legacy
   `status` field as a migration fallback for known terminal state.

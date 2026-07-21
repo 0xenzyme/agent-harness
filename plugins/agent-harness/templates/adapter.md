@@ -23,7 +23,9 @@ the Agent Harness plugin references.
 
 ## Source Of Truth
 
--
+- Task/Goal records own accepted phase: `active`, `completed`, or `blocked`.
+- Runs retain execution and verification evidence.
+- Status is a bounded projection and does not define completion.
 
 ## Design Principles
 
@@ -106,10 +108,10 @@ the Agent Harness plugin references.
 
 - Runtime Goal owns accepted long-running outcomes.
 - Codex Plan owns transient execution steps.
-- Harness Goal/Run owns durable recovery, evidence, gates, and Delivery State.
+- Harness Goal/Run owns durable recovery, evidence, gates, and state sync.
 - Controller may implement unless explicitly `gate-only` or review-only.
 
-## Commit / PR / Ship Policy
+## External Actions Policy
 
 -
 

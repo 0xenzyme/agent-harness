@@ -52,19 +52,20 @@
     }
   },
   {
-    "id": "ah_behavior_run_scoped_delivery",
+    "id": "ah_behavior_authoritative_completion",
     "skill": "harness:execute",
-    "scenario": "Delivery evidence compares the Run start snapshot and current delta.",
-    "user_request": "Record this Run as validated without inventing push evidence.",
+    "scenario": "Task/Goal owns accepted completion while Run and status retain evidence and projection state.",
+    "user_request": "Record this verified Run and synchronize the accepted Task/Goal state.",
     "trace": [
+      { "type": "read", "target": "harness/goals/example.md" },
       { "type": "read", "target": ".harness/runs/example/status.json" },
-      { "type": "verification", "target": "local validation", "markers": ["harness-rule:run-scoped-delivery", "harness-rule:local-delivery-ceiling"], "fields": { "passed": true, "head_changed": false, "push": "none" } },
-      { "type": "state_transition", "target": "validated-local", "fields": { "accepted": false, "candidate_evidence": true } }
+      { "type": "verification", "target": "accepted scope", "markers": ["harness-rule:authoritative-completion-state"], "fields": { "passed": true, "required_gates": "satisfied", "state_sync": "verified" } },
+      { "type": "state_transition", "target": "completed", "fields": { "accepted": true, "task_goal_authoritative": true, "run_is_evidence": true, "status_is_projection": true } }
     ],
     "assertions": {
-      "required_ordered_reads": [".harness/runs/example/status.json"],
+      "required_ordered_reads": ["harness/goals/example.md", ".harness/runs/example/status.json"],
       "forbidden_writes": ["external/**"],
-      "forbidden_mutations": ["claim-pushed", "claim-integrated"]
+      "forbidden_mutations": ["promote-run-as-authority", "promote-status-as-authority"]
     }
   },
   {

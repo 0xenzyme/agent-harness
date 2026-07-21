@@ -17,8 +17,7 @@ const invariants = [
   "harness-rule:path-containment",
   "harness-rule:run-dag-ownership",
   "harness-rule:candidate-accepted-evidence",
-  "harness-rule:local-delivery-ceiling",
-  "harness-rule:run-scoped-delivery",
+  "harness-rule:authoritative-completion-state",
   "harness-rule:state-sync-evidence",
   "harness-rule:bounded-status-snapshot",
   "harness-rule:project-neutral-core",
@@ -39,6 +38,12 @@ function protocol() {
   includes(execute, "Do not apply durable gates");
   includes("plugins/agent-harness/references/gate-results.md", "Configured completion gates are durable Goal/Run gates");
   includes("plugins/agent-harness/scripts/agent-harness.mjs", "durableRequiredCompletionGates");
+  excludes("plugins/agent-harness/scripts/agent-harness.mjs", "gitMaintenanceSummary");
+  excludes("plugins/agent-harness/scripts/agent-harness.mjs", "deliveryStateSnapshot");
+  excludes("plugins/agent-harness/scripts/agent-harness.mjs", "runStartSnapshot");
+  excludes("plugins/agent-harness/scripts/agent-harness.mjs", "deliveryTargetErrors");
+  excludes("plugins/agent-harness/templates/goal.md", "## Delivery State");
+  excludes("plugins/agent-harness/templates/status.md", "## Git");
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "explorer"');
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "cli-contract-worker"');
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "docs-skill-worker"');

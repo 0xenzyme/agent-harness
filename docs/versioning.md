@@ -45,6 +45,7 @@ Examples:
 0.6.0 -> 0.7.0  refocused Harness on durable control and current Codex runtime boundaries
 0.7.0 -> 0.8.0  integrated runtime Goal/Plan with direct, postflight, and durable paths
 0.8.0 -> 0.9.0  added bounded artifact lifecycle, compaction, and safe Run retention
+0.9.0 -> 0.10.0 simplified authoritative completion and removed Git-derived Delivery State
 0.8.0 -> 0.8.1  fix wording or validation coverage for that blueprint line
 ```
 

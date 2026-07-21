@@ -130,8 +130,8 @@ confirmation:
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
 ```
 
-Preview deterministic Goal/status maintenance from current git state and
-recent run records:
+Preview deterministic Goal/status maintenance from the configured Task/Goal
+state, bounded status, and recent Run records:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
@@ -147,7 +147,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/
 ```
 
 Inspect bounded status, active/Done task state, Run counts/bytes/phases, and
-tracked references to local-only Runs without writing. Run counts distinguish
+configured durable-evidence references to local-only Runs without writing. Run counts distinguish
 operational `active`, known `terminal`, and `unmanaged` legacy/invalid entries;
 the three classifications cover every inspected entry:
 
@@ -239,7 +239,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/
 Without `--allow-no-spec`, adapter goal creation still fails when `--spec` is
 omitted. Spec-less goals must validate the same execution safety fields:
 `Scope`, `Non-Goals`, `Verification`, `Completion Conditions`, `Pause
-Conditions`, `Execution Role`, and `Delivery State`.
+Conditions`, `Execution Role`, and authoritative state/evidence sections.
 
 List, inspect, and validate goals before preparing a run:
 
@@ -259,8 +259,8 @@ Prepared run packets include `dag.json`, `dag.md`, and
 `agents/<node>/prompt.md`. Harness records ready nodes, ownership, verification,
 and candidate evidence; the Codex runtime owns worker selection, delegation,
 concurrency, and cancellation. `run prepare` does not start workers or pin
-model/effort. Run packets also record the start Git snapshot so historical
-upstream state is not confused with this Run's delivery evidence.
+model/effort. Task/Goal remains the accepted-state authority; Run packets store
+execution and verification evidence, while status remains a bounded projection.
 
 Inspect a prepared run:
 
@@ -279,8 +279,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
 ```
 
-Record a run outcome without modifying source files or performing delivery
-steps itself:
+Record a Run outcome without modifying source files or performing external
+actions itself:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
@@ -288,12 +288,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
 ```
 
-`run record` refreshes delivery state in `status.json` and the run log.
-`implemented-local` and `validated-local` prove only working-tree
-implementation or local verification. They satisfy a completed run only when
-the target delivery state is no higher than `validated-local`; otherwise,
-continue the authorized delivery pipeline or record `delivery pending` with the
-missing evidence.
+`run record` refreshes accepted Run evidence in `status.json` and the Run log.
+Completed Runs require verification, resolved DAG nodes, required checklist
+items, durable gates, and synchronized authoritative Task/Goal state.
 
 Completed enforced-DAG runs also require every worker node to be resolved.
 Active `running` nodes block completion; cancellation or supersession is a
@@ -308,8 +305,6 @@ The CLI records durable state; it does not implement Codex runtime Goal or
 Plan. Skills bind long-running controller work to the host's native Goal and
 Plan capabilities when exposed.
 
-For completed runs, `run record` enforces the goal's Target delivery state. If
-the target is `review-open`, `integrated`, or `released/shipped`, pass external
-evidence with `--review-url`, `--integration-ref`, or `--release-ref` after
-performing the authorized delivery step. `--pr-url` and `--merge-sha` remain
-compatibility aliases.
+Legacy Goal and Run delivery fields remain readable for the `0.10.0`
+compatibility boundary, but current validation, completion, maintenance, and
+status output ignore them. New artifacts do not emit those fields.

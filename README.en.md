@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.9.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.10.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -83,17 +83,18 @@ owns the repeatable execution mechanics inside the project adapter:
 - turn a request such as `complete M5` into explicit completion items;
 - prepare Goals and execution DAGs instead of stopping at the next small spec;
 - record worker ownership, DAG state, and candidate evidence while the Codex runtime schedules work;
-- verify concrete evidence before advancing delivery state;
+- verify concrete evidence before accepting Task/Goal completion;
 - require `State Sync Notes` as part of Goal and Task completion;
 - keep Goal indexes, bounded status snapshots, Goals, Runs, and gates aligned;
 - inspect and archive active control state through a dry-run-first artifact
   lifecycle, and prune local-only Runs only after durable sync and explicit action;
 - pause for real human gates such as unclear direction, credentials, paid APIs,
-  production access, destructive actions, or delivery above policy.
+  production access, destructive actions, or external side effects outside
+  accepted scope.
 
 The promise is not merely that agents write files. The promise is that coding
 agents stop losing the plot between roadmap, specification, implementation,
-verification, delivery, and handoff.
+verification, state sync, and handoff.
 
 ## How It Works
 
@@ -128,9 +129,9 @@ Parent milestones stay open until their mapped items are satisfied. Accepting a
 source-spec item such as `M5-S0` cannot silently close the parent `M5` while
 implementation work remains.
 
-Nine domain invariants bound durable control: configured path containment,
-Run/DAG ownership, candidate-versus-accepted evidence, run-scoped delivery,
-and state sync. Ordinary clear change/build uses Codex directly; existing
+Canonical domain invariants bound durable control: configured path containment,
+Run/DAG ownership, candidate-versus-accepted evidence, authoritative
+completion, and state sync. Ordinary clear change/build uses Codex directly; existing
 simple state gets postflight sync only; recovery, audit, milestone/DAG,
 multi-worker, persistent state-sync, or high-risk work crosses the
 `harness-rule:durable-tier-boundary`. See the
@@ -149,7 +150,7 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 - The **plugin** ships workflow skills, protocol references, schemas,
   templates, and deterministic CLI gates.
 - The **project adapter** declares artifact paths, boundaries, verification,
-  state-sync rules, work mode, and delivery policy.
+  state-sync rules, work mode, and external-action policy.
 - The **project artifacts** record the roadmap, milestones, specs, Goals,
   Tasks, Runs, gate results, and evidence.
 
@@ -215,8 +216,8 @@ Key boundaries:
   `gate-only` or review-only.
 - Parallel writers require separate locked worktrees/cwds or recorded proof of
   non-overlapping ownership; the Codex runtime owns scheduling and concurrency.
-- Local verification does not imply commit, push, review, integration, release,
-  or deployment.
+- Task/Goal is the accepted-state authority; Run retains evidence and status
+  remains a bounded projection.
 - `harness-rule:durable-tier-boundary` sends ordinary clear change/build to
   Codex, limits existing simple state to postflight sync, and reserves Harness
   ceremony for persistent control needs.
@@ -280,7 +281,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.9.0 Release Notes](docs/releases/v0.9.0.md)
+- [v0.10.0 Release Notes](docs/releases/v0.10.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while
@@ -291,6 +292,6 @@ keeping its own fixed/adapter contracts and project-neutral core.
 The next direction is an agent-neutral adapter layer that other coding agents
 can implement without weakening Harness contracts. New execution surfaces
 should be added only when they can declare isolation, return inspectable result
-packets, report verification and state-sync evidence, and respect delivery
-boundaries. When those capabilities are missing, Harness should fall back to
+packets, report verification and state-sync evidence, and respect accepted
+scope and external-action boundaries. When those capabilities are missing, Harness should fall back to
 bounded foreground execution rather than pretend parallelism or isolation.

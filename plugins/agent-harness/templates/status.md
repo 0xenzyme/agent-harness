@@ -9,11 +9,11 @@ records.
 
 - Current focus:
 
-## Git
+## State
 
-- Preferred work mode: ask
-- Current branch:
-- Worktree notes:
+- Current phase:
+- Authoritative Task/Goal:
+- Projection updated:
 
 ## Verification
 

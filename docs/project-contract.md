@@ -2,7 +2,8 @@
 
 Agent Harness is the durable project control plane around Codex. It preserves
 configured artifact roots, repository Goals/Runs/DAGs, candidate-versus-
-accepted evidence, controller gates, run-scoped Delivery State, and state sync.
+accepted evidence, controller gates, authoritative completion state, and state
+sync.
 Codex runtime owns ordinary execution, delegation, concurrency, cancellation,
 and model/effort selection.
 
@@ -40,19 +41,17 @@ non-editing. Durable execution roles remain `gate-only` and `implementer`. Worke
 candidate evidence; the accepted-state owner alone records accepted Goal,
 Task, Run, gate, and status state.
 
-## Run And Delivery
+## Completion And Run Evidence
 
-`run prepare` records `startHead`, `startBranch`, `startUpstream`, and a
-comparable `startDirtyState`. A Run records DAG dependencies, ready nodes,
-ownership, verification, and candidate evidence. A clean checkout with an
-upstream is not this Run's push evidence: commit/push claims require a Run HEAD
-delta or explicit delivery evidence.
+Task/Goal is the accepted-state authority and uses `active`, `completed`, or
+`blocked`. `blocked` is resumable and non-complete. A Run records DAG
+dependencies, ready nodes, ownership, verification, gates, and candidate or
+accepted evidence. The configured status file is a bounded projection and does
+not define completion.
 
-Delivery states are `implemented-local`, `validated-local`, `committed`,
-`pushed`, `review-open`, `integrated`, and `released/shipped`. Local evidence
-never implies a higher state. Commit, push, review, integration, release,
-deploy, credentials, paid APIs, production, destructive work, and daemons need
-fresh authority.
+Completion requires accepted scope, fresh verification, required durable
+gates, and synchronized authoritative state. External side effects still need
+fresh authority, but they do not form a Harness completion-state ladder.
 
 ## Configuration
 
@@ -80,6 +79,6 @@ read-only, task compaction requires `--record` and archives before replacement,
 and Run deletion requires `prune --apply`, `local-only` policy, terminal state,
 expired retention, containment, and durable State Sync Notes.
 
-Postflight sync updates existing tracked state only with fresh verification,
-observed outcome, actual Delivery State, and remaining gap. It does not create
+Postflight sync updates existing state only with fresh verification, observed
+outcome, and remaining gap. It does not create
 a Goal, Run, DAG, gate, or status artifact solely for bookkeeping.

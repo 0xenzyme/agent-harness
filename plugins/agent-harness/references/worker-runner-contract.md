@@ -14,8 +14,8 @@ candidate result artifact. Do not launch a dependent node before its recorded
 dependencies complete. Concurrent writers require separate locked worktrees or
 proven non-overlapping ownership.
 
-Workers never update accepted Goal, Task, status, Run, gate, delivery, or
-release state. They return changed files, verification, risks, State Sync
+Workers never update accepted Goal, Task, status, Run, or gate state. They
+return changed files, verification, risks, State Sync
 Notes, and remaining work as candidate evidence. The accepted-state owner
 validates that evidence and records durable state.
 

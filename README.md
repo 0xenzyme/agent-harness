@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-[![Version](https://img.shields.io/badge/version-0.9.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.10.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -80,16 +80,16 @@ Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责
 - 把 `完成 M5` 这样的请求展开成明确的 completion items；
 - 准备 Goal 和 execution DAG，而不是写完下一个小 spec 就停下；
 - 记录 worker ownership、DAG 和 candidate evidence；调度交给 Codex runtime；
-- 在推进 delivery state 前验证 concrete evidence；
+- 在接受 Task/Goal completion 前验证 concrete evidence；
 - 把 `State Sync Notes` 作为 Goal 和 Task completion 的组成部分；
 - 对齐 Goal index、bounded status snapshot、Goal、Run 和 gate；
 - 用 dry-run-first artifact lifecycle 检查/归档 active control state，并只在
   durable evidence 已同步且显式授权时清理 local-only Run；
-- 只在方向不清、凭证、付费 API、生产访问、破坏性操作或超出 delivery
-  policy 时暂停并交还给人。
+- 只在方向不清、凭证、付费 API、生产访问、破坏性操作或超出 accepted
+  scope 的 external side effect 时暂停并交还给人。
 
 核心承诺不只是“agent 会改文件”，而是 coding agent 不会在 roadmap、spec、
-implementation、verification、delivery 和 handoff 之间丢失主线。
+implementation、verification、state sync 和 handoff 之间丢失主线。
 
 ## 工作方式
 
@@ -123,9 +123,9 @@ gate。
 父级 Milestone 必须等 mapped items 满足后才能关闭。接受 `M5-S0` 这样的
 source-spec item，不能在 implementation 尚未完成时静默关闭父级 `M5`。
 
-9 个领域不变量把 durable control 保持在明确边界内：配置路径 containment、
-Run/DAG ownership、candidate/accepted evidence、run-scoped delivery 和 state
-sync。普通 clear change/build 由 Codex 直接执行；已有简单状态只在完成后做
+领域不变量把 durable control 保持在明确边界内：配置路径 containment、
+Run/DAG ownership、candidate/accepted evidence、authoritative completion 和
+state sync。普通 clear change/build 由 Codex 直接执行；已有简单状态只在完成后做
 postflight sync；只有 recovery、audit、milestone/DAG、multi-worker、persistent
 state sync 或 high-risk 工作进入 `harness-rule:durable-tier-boundary`。详见
 [Capability Matrix](docs/HARNESSES.md)。
@@ -143,7 +143,7 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 - **Plugin** 提供 workflow skills、protocol references、schemas、templates
   和 deterministic CLI gates。
 - **Project adapter** 声明 artifact paths、边界、verification、state sync、
-  work mode 和 delivery policy。
+  work mode 和 external-action policy。
 - **Project artifacts** 记录 roadmap、Milestone、Spec、Goal、Task、Run、
   gate result 和 evidence。
 
@@ -203,8 +203,8 @@ evidence，直到 control lane 完成验证。Completion 需要可检查的 evid
   `gate-only` / 只审 evidence 时才禁止 foreground implementation。
 - Parallel writer 需要独立锁定的 worktree/cwd，或记录 non-overlap evidence；
   scheduling 和 concurrency 由 Codex runtime 决定。
-- Local verification 不等于 commit、push、review、integration、release 或
-  deployment。
+- Task/Goal 是 accepted-state authority；Run 保存 evidence，status 保持为
+  bounded projection。
 - `harness-rule:durable-tier-boundary` 让普通 clear change/build 直接使用
   Codex，已有简单状态只做 postflight sync；Harness ceremony 只用于需要持久化控制的工作。
 - Status file 是 bounded current-state snapshot，不是 append-only history。
@@ -264,7 +264,7 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.9.0 Release Notes](docs/releases/v0.9.0.md)
+- [v0.10.0 Release Notes](docs/releases/v0.10.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的
@@ -275,5 +275,5 @@ fixed/adapter contracts 和 project-neutral core。
 下一步方向是让其他 coding agent 也能实现同一套 agent-neutral adapter
 contract，而不削弱 Harness 边界。只有当新的 execution surface 能声明
 isolation、返回 inspectable result packet、报告 verification 和 state-sync
-evidence，并遵守 delivery policy 时，才应该加入。能力不足时，Harness 应
+evidence，并遵守 accepted scope 和 external-action boundaries 时，才应该加入。能力不足时，Harness 应
 fallback 到 bounded foreground execution，而不是假装具备并行或隔离能力。

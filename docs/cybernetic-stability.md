@@ -1,8 +1,9 @@
 # Durable Control Feedback
 
 Agent Harness keeps durable project state aligned with accepted intent through
-fresh verification, candidate-versus-accepted evidence, run-scoped delivery,
-and state sync. This model is expressed through the nine canonical domain
+fresh verification, candidate-versus-accepted evidence, authoritative
+completion state, and state sync. This model is expressed through the
+canonical domain
 invariants in [HARNESSES.md](HARNESSES.md), rather than a separate family of
 micro-rules.
 

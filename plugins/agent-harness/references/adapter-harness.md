@@ -19,7 +19,7 @@ Canonical config writes `contract`, canonical `paths`, `artifactPolicy`,
 Read legacy aliases for one migration boundary and fail when old and new values
 conflict.
 
-Durable Runs record start Git state, DAG ready state, ownership, verification,
+Durable Runs record DAG ready state, ownership, verification,
 candidate evidence, and accepted gate/state-sync results. Scheduling and model
 selection belong to the Codex runtime.
 

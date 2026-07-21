@@ -23,7 +23,7 @@ compacting task state or pruning Runs.
 1. Classify the request:
    - `codex-direct`: stop Harness execution; let Codex execute and verify.
    - `codex-direct-postflight`: verify completed work and update existing
-     tracked state only; create no lifecycle artifacts and do not apply durable
+     state only; create no lifecycle artifacts and do not apply durable
      completion gates.
    - `durable-harness`: continue below.
    A prepared enforced Run always remains durable.
@@ -52,16 +52,16 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
    Before acceptance, challenge scope coverage, stale evidence, missing
    dependencies, path ownership, required checklist items, and whether the
    user's Milestone/Goal objective is larger than the local artifact.
-8. Record run-scoped Delivery State from the Run start snapshot, current delta,
-   and explicit evidence. A clean upstream checkout alone is not this Run's
-   push evidence.
+8. Confirm authoritative Task/Goal phase, verification, required gates, and
+   State Sync Notes. `blocked` is resumable and non-complete; Run state is
+   evidence and status is a bounded projection.
 9. Synchronize the configured Goal/Task/status/Run state. Keep status bounded;
    preview artifact compaction when configured limits are exceeded. Pruning is
    a separate explicit destructive action and never follows from state sync.
    Completion evidence must name changed files, commands/results, gate evidence,
-   Delivery State, State Sync Notes, remaining work, and any true user decision.
-10. Close with changed output, verification, Delivery State, `Need user`, and
-   `Remaining`.
+   State Sync Notes, remaining work, and any true user decision.
+10. Close with changed output, verification, accepted phase, `Need user`, and
+    `Remaining`.
 
 ## Domain Invariants
 
@@ -72,10 +72,9 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
   ownership, verification, and candidate evidence; scheduling belongs to the runtime.
 - `harness-rule:candidate-accepted-evidence`: executors return candidate
   evidence; only the accepted-state owner accepts gates or durable state.
-- `harness-rule:local-delivery-ceiling`: local implementation or validation is
-  not commit, push, review, integration, release, or deploy evidence.
-- `harness-rule:run-scoped-delivery`: delivery claims require this Run's Git
-  delta or explicit evidence relative to its recorded start snapshot.
+- `harness-rule:authoritative-completion-state`: Task/Goal is the accepted-state
+  authority with active, completed, or blocked phase; blocked is resumable and
+  non-complete, Run stores evidence, and status is a bounded projection.
 - `harness-rule:state-sync-evidence`: durable completion includes verified
   State Sync Notes and updates to already configured records.
 - `harness-rule:bounded-status-snapshot`: status is a bounded current snapshot,
@@ -83,14 +82,14 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
 - `harness-rule:project-neutral-core`: adapters own downstream paths and facts;
   plugin core stays project-neutral.
 - `harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex
-  directly; already tracked simple work may use postflight-only sync; durable
+  directly; already recorded simple work may use postflight-only sync; durable
   ceremony is reserved for recovery, audit, milestone/DAG, multi-worker,
   persistent state sync, or high-risk control.
 
 ## Boundaries
 
-- Do not infer delivery authorization, credentials, production access,
-  destructive operations, daemons, release, deploy, publish, commit, or push.
+- Do not infer authorization for credentials, production access, destructive
+  operations, daemons, release, deploy, publish, or other external side effects.
 - Do not mark durable work complete without required verification, gates, DAG
   evidence, and state sync.
 - Do not apply durable gates to direct or postflight-only work, and do not use

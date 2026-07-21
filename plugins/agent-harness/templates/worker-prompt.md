@@ -28,13 +28,13 @@ second repository Goal or mirror every Plan transition.
 - `harness-rule:path-containment`: stay inside the locked cwd and owned roots.
 - `harness-rule:run-dag-ownership`: do not start dependents; record node evidence.
 - `harness-rule:candidate-accepted-evidence`: return candidate evidence only.
-- `harness-rule:local-delivery-ceiling`: do not infer delivery above local state.
-- `harness-rule:run-scoped-delivery`: use this Run's start snapshot and delta.
+- `harness-rule:authoritative-completion-state`: Task/Goal owns accepted state;
+  Run output remains evidence and status remains a projection.
 - `harness-rule:state-sync-evidence`: return concrete State Sync Notes.
 - `harness-rule:bounded-status-snapshot`: do not append history to status.
 - `harness-rule:project-neutral-core`: keep downstream facts in adapters.
 - `harness-rule:durable-tier-boundary`: do not downgrade this durable Run.
 
 Return changed files, summary, validation, known risks, State Sync Notes,
-Delivery State, `Need user`, and `Remaining`. Do not update accepted Goal,
-Task, status, Run, gate, review, integration, release, or deploy state.
+`Need user`, and `Remaining`. Do not update accepted Goal, Task, status, Run,
+or gate state.

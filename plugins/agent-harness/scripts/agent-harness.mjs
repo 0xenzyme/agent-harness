@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -57,8 +55,6 @@ const commonTaskIndexCandidates = [
 
 const validExecutionRoles = new Set(["gate-only", "implementer"]);
 const validConversationRoutes = new Set(["current-thread", "slot-thread", "remote-control-worktree"]);
-const deliveryStateOrder = ["implemented-local", "validated-local", "committed", "pushed", "review-open", "integrated", "released/shipped"];
-const validDeliveryStates = new Set(deliveryStateOrder);
 const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const recordableRunNodePhases = new Set(["running", "completed", "blocked"]);
@@ -66,6 +62,7 @@ const validCommentaryPolicies = new Set(["minimal", "balanced", "audit"]);
 const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
 const contextFocusRoutingGuidance = `\`harness-rule:project-neutral-core\`: Normalize the durable target to ${contextFocusIntentTargets}; adapters own downstream paths and facts while plugin core remains project-neutral.`;
 const executeContextFocusGuidance = "`harness-rule:path-containment`: configured writes, Goal/Spec references, Run arguments, and DAG artifacts stay inside configured roots after lexical and existing-parent realpath checks.";
+const authoritativeCompletionGuidance = "`harness-rule:authoritative-completion-state`: Task/Goal is the accepted-state authority with active, completed, or blocked phase; blocked is resumable and non-complete, Run stores evidence, and status is a bounded projection.";
 const cyberneticStabilityGuidance = "`harness-rule:state-sync-evidence`: durable completion includes verified State Sync Notes and synchronization of the configured Goal, Task, Run, gate, and bounded status records.";
 const degradedExecutionProvenanceGuidance = "`harness-rule:candidate-accepted-evidence`: execution and worker output remains candidate evidence until the accepted-state owner verifies and records it.";
 const controllerCancellationBoundaryGuidance = "`harness-rule:run-dag-ownership`: Harness records ready nodes, dependencies, ownership, verification, and candidate evidence; the Codex runtime owns scheduling, delegation, concurrency, and cancellation.";
@@ -73,8 +70,6 @@ const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: T
 const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex directly; already tracked simple work may use one bounded postflight sync; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, DAGs, multiple workers, or high-risk control.";
 const codexNativeExecutionGuidance = "For accepted long-running controller work, establish or reuse a compatible Codex runtime Goal and use Codex Plan for current multi-step progress. Controller means outcome owner and accepted-state owner; only explicit review-only or gate-only direction prohibits foreground implementation.";
 const postflightSyncGuidance = "Postflight sync verifies completed work and updates existing tracked state only. It creates no Goal, Run, DAG, gate, or status artifact solely for bookkeeping, and durable completion gates do not apply unless a durable Goal/Run is being closed.";
-const localDeliveryCeilingGuidance = "`harness-rule:local-delivery-ceiling`: local implementation or validation is not commit, push, review, integration, release, or deploy evidence.";
-const runScopedDeliveryGuidance = "`harness-rule:run-scoped-delivery`: delivery claims compare this Run's recorded start snapshot, current delta, and explicit evidence.";
 
 function commentaryPolicyDetails(config = {}) {
   const configured = config.communication?.commentary;
@@ -82,7 +77,7 @@ function commentaryPolicyDetails(config = {}) {
   const definitions = {
     minimal: {
       reportCadence: "material-transition-or-host-heartbeat",
-      notifyOn: "blocker, risk, scope-or-authorization-change, user-decision, failed-verification, delivery-transition",
+      notifyOn: "blocker, risk, scope-or-authorization-change, user-decision, failed-verification, state-transition",
       guidance: "Use one short kickoff that combines skill, reason, scope, boundaries, and next action. Do not narrate routine UI-visible tool activity or repeat unchanged boundaries. Later commentary must add a new material fact unless it is a one-sentence host-required heartbeat."
     },
     balanced: {
@@ -92,8 +87,8 @@ function commentaryPolicyDetails(config = {}) {
     },
     audit: {
       reportCadence: "gate-and-decision-transition",
-      notifyOn: "balanced-signals, gate-input, gate-decision, state-sync, delivery-transition",
-      guidance: "Apply signal-only rules and permit compact transcript-quality gate, decision, state-sync, and delivery evidence summaries. Prefer paths and summaries over raw packet dumps."
+      notifyOn: "balanced-signals, gate-input, gate-decision, state-sync, state-transition",
+      guidance: "Apply signal-only rules and permit compact transcript-quality gate, decision, state-sync, and accepted-state evidence summaries. Prefer paths and summaries over raw packet dumps."
     }
   };
 
@@ -1235,18 +1230,6 @@ function configImport(args) {
   }
 }
 
-function git(args, gitArgs) {
-  try {
-    return execFileSync("git", gitArgs, {
-      cwd: targetCwd(args),
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"]
-    }).trim();
-  } catch {
-    return "";
-  }
-}
-
 function doctor(args) {
   const cwd = targetCwd(args);
   const lang = args.language;
@@ -1254,9 +1237,6 @@ function doctor(args) {
   const configValidation = configValidationPayload(cwd);
   const required = context.requiredPaths;
   const missing = required.filter((path) => !existsSync(join(cwd, path)));
-  const gitRoot = git(args, ["rev-parse", "--show-toplevel"]);
-  const status = git(args, ["status", "--short"]);
-  const worktrees = git(args, ["worktree", "list", "--porcelain"]);
 
   console.log(`${t(lang, "doctorProject")}: ${cwd}`);
   console.log(`Harness contract: ${context.contract}`);
@@ -1265,7 +1245,6 @@ function doctor(args) {
   for (const error of configValidation.errors) {
     console.log(`Config schema error: ${error}`);
   }
-  console.log(`${t(lang, "doctorGitRoot")}: ${gitRoot || t(lang, "doctorNoGit")}`);
   console.log(`${t(lang, "doctorHarnessFiles")}: ${missing.length ? t(lang, "doctorMissing", { files: missing.join(", ") }) : t(lang, "doctorOk")}`);
   if (context.optionalPaths.length) {
     const optionalMissing = context.optionalPaths.filter((path) => !existsSync(join(cwd, path)));
@@ -1274,45 +1253,12 @@ function doctor(args) {
   for (const warning of context.warnings) {
     console.log(`Warning: ${warning}`);
   }
-  console.log(`${t(lang, "doctorGitStatus")}: ${status ? t(lang, "doctorDirty") : t(lang, "doctorClean")}`);
-  if (status) {
-    console.log(status);
-  }
-  if (worktrees) {
-    const count = worktrees.split("\n").filter((line) => line.startsWith("worktree ")).length;
-    console.log(`${t(lang, "doctorWorktrees")}: ${count}`);
-  }
   if (!configValidation.ok) {
     process.exitCode = 1;
   }
 }
 
 const validWorkModes = new Set(["local", "worktree", "ask"]);
-
-function countNonEmptyLines(value) {
-  if (!value) {
-    return 0;
-  }
-  return value.split(/\r?\n/).filter((line) => line.trim()).length;
-}
-
-function readGitState(args) {
-  const root = git(args, ["rev-parse", "--show-toplevel"]);
-  const status = root ? git(args, ["status", "--short"]) : "";
-  const worktrees = root ? git(args, ["worktree", "list", "--porcelain"]) : "";
-  const statusCount = countNonEmptyLines(status);
-  const worktreeCount = worktrees
-    ? worktrees.split(/\r?\n/).filter((line) => line.startsWith("worktree ")).length
-    : 0;
-
-  return {
-    isRepo: Boolean(root),
-    root,
-    dirty: statusCount > 0,
-    statusCount,
-    worktreeCount
-  };
-}
 
 function worktreeConfig(cwd) {
   const context = resolveHarnessContext(cwd);
@@ -1328,40 +1274,9 @@ function worktreeConfig(cwd) {
   };
 }
 
-function recommendWorkMode({ cwd, config, gitState }) {
+function recommendWorkMode({ cwd, config }) {
   const reasons = [];
   let matchedRule = "";
-
-  if (!gitState.isRepo) {
-    reasons.push({
-      source: "git",
-      code: "not_git_repo",
-      detail: "not a git repository"
-    });
-    return {
-      contract: config.contract || config.mode || "fixed",
-      cwd,
-      recommendation: "ask",
-      reasons,
-      git: gitState,
-      config: {
-        defaultPolicy: config.defaultPolicy,
-        matchedRule
-      }
-    };
-  }
-
-  reasons.push(gitState.dirty
-    ? {
-      source: "git",
-      code: "dirty_checkout",
-      detail: `${gitState.statusCount} changed paths`
-    }
-    : {
-      source: "git",
-      code: "clean_checkout",
-      detail: "0 changed paths"
-    });
 
   if (validWorkModes.has(config.defaultPolicy)) {
     reasons.push({
@@ -1375,7 +1290,6 @@ function recommendWorkMode({ cwd, config, gitState }) {
       cwd,
       recommendation: config.defaultPolicy,
       reasons,
-      git: gitState,
       config: {
         defaultPolicy: config.defaultPolicy,
         matchedRule
@@ -1395,7 +1309,6 @@ function recommendWorkMode({ cwd, config, gitState }) {
     cwd,
     recommendation: "ask",
     reasons,
-    git: gitState,
     config: {
       defaultPolicy: config.defaultPolicy,
       matchedRule
@@ -1408,15 +1321,6 @@ function formatWorktreeReason(lang, reason) {
   const rule = reason.rule || "(missing)";
   const use = reason.use || "(missing)";
 
-  if (reason.code === "dirty_checkout") {
-    return zh ? `git status: dirty checkout，${reason.detail}` : `git status: dirty checkout with ${reason.detail}`;
-  }
-  if (reason.code === "clean_checkout") {
-    return zh ? "git status: clean checkout" : "git status: clean checkout";
-  }
-  if (reason.code === "not_git_repo") {
-    return zh ? "git: not a Git repository" : "git: not a Git repository";
-  }
   if (reason.code === "auto_rule_matched") {
     return zh ? `config rule: ${rule} -> ${use}` : `config rule: ${rule} -> ${use}`;
   }
@@ -1468,8 +1372,7 @@ function worktreeRecommend(args) {
   const cwd = targetCwd(args);
   const lang = args.language;
   const config = worktreeConfig(cwd);
-  const gitState = readGitState(args);
-  const recommendation = recommendWorkMode({ cwd, config, gitState });
+  const recommendation = recommendWorkMode({ cwd, config });
 
   if (args.json) {
     console.log(JSON.stringify(recommendation, null, 2));
@@ -2343,363 +2246,6 @@ function intakeIdea(args) {
   }
 }
 
-function lines(value) {
-  return String(value || "")
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter(Boolean);
-}
-
-function parseBranchLine(line) {
-  const raw = String(line || "").replace(/^##\s*/, "").trim();
-  const aheadMatch = raw.match(/\bahead\s+(\d+)/i);
-  const behindMatch = raw.match(/\bbehind\s+(\d+)/i);
-  const branchPart = raw.replace(/\s+\[.+?\]\s*$/, "");
-  const [branch, upstream = ""] = branchPart.includes("...")
-    ? branchPart.split("...", 2)
-    : [branchPart.replace(/^No commits yet on\s+/i, ""), ""];
-  return {
-    raw,
-    branch: branch || "",
-    upstream,
-    ahead: aheadMatch ? Number(aheadMatch[1]) : 0,
-    behind: behindMatch ? Number(behindMatch[1]) : 0
-  };
-}
-
-function parseStatusPath(line) {
-  const raw = String(line || "");
-  const match = raw.match(/^(.{1,2})\s+(.+)$/);
-  const pathPart = (match ? match[2] : raw.slice(3)).trim();
-  if (!pathPart) {
-    return "";
-  }
-  if (pathPart.includes(" -> ")) {
-    return pathPart.split(" -> ").at(-1).trim();
-  }
-  return pathPart;
-}
-
-function parseNameStatus(value) {
-  return lines(value).map((line) => {
-    const parts = line.split(/\t+/);
-    const status = parts[0] || "";
-    const path = parts.at(-1) || "";
-    return {
-      status,
-      path
-    };
-  }).filter((entry) => entry.path);
-}
-
-function gitMaintenanceSummary(args) {
-  const root = git(args, ["rev-parse", "--show-toplevel"]);
-  if (!root) {
-    return {
-      isRepo: false,
-      root: "",
-      branch: "",
-      upstream: "",
-      ahead: 0,
-      behind: 0,
-      dirty: false,
-      changedPathCount: 0,
-      changedFiles: [],
-      staged: [],
-      unstaged: [],
-      statusShort: []
-    };
-  }
-
-  const statusWithBranch = git(args, ["status", "--short", "--branch"]);
-  const statusShort = git(args, ["status", "--short"]);
-  const statusLines = lines(statusShort);
-  const branchLine = lines(statusWithBranch).find((line) => line.startsWith("## ")) || "";
-  const branch = parseBranchLine(branchLine);
-  const staged = parseNameStatus(git(args, ["diff", "--cached", "--name-status"]));
-  const unstaged = parseNameStatus(git(args, ["diff", "--name-status"]));
-  const changedFiles = uniqueList(statusLines.map(parseStatusPath));
-
-  return {
-    isRepo: true,
-    root,
-    branch: branch.branch,
-    upstream: branch.upstream,
-    ahead: branch.ahead,
-    behind: branch.behind,
-    dirty: statusLines.length > 0,
-    changedPathCount: changedFiles.length,
-    changedFiles,
-    staged,
-    unstaged,
-    statusShort: statusLines
-  };
-}
-
-function deliveryStateFromGit(gitState, { completed = false } = {}) {
-  if (!gitState.isRepo) {
-    return "unknown";
-  }
-  if (gitState.dirty) {
-    return completed ? "validated-local" : "implemented-local";
-  }
-  if (gitState.ahead > 0) {
-    return "committed";
-  }
-  if (gitState.upstream) {
-    return "pushed";
-  }
-  return completed ? "validated-local" : "implemented-local";
-}
-
-function deliveryStateSnapshot(cwd, { completed = false } = {}) {
-  const gitState = gitMaintenanceSummary({ cwd });
-  const head = gitState.isRepo ? git({ cwd }, ["rev-parse", "--short", "HEAD"]) : "";
-  const pushed = gitState.isRepo && gitState.upstream && gitState.ahead === 0;
-
-  return {
-    state: deliveryStateFromGit(gitState, { completed }),
-    isRepo: gitState.isRepo,
-    root: gitState.root,
-    branch: gitState.branch,
-    upstream: gitState.upstream,
-    ahead: gitState.ahead,
-    behind: gitState.behind,
-    workingTreeDirty: gitState.dirty ? "yes" : "no",
-    changedPathCount: gitState.changedPathCount,
-    commit: gitState.isRepo ? head || "none" : "none",
-    push: pushed ? gitState.upstream : "none",
-    review: "none",
-    pr: "none",
-    integration: "none",
-    merge: "none",
-    release: "none",
-    statusShort: gitState.statusShort
-  };
-}
-
-function runStartSnapshot(cwd) {
-  const state = deliveryStateSnapshot(cwd);
-  const status = Array.isArray(state.statusShort) ? state.statusShort : [];
-  return {
-    startHead: state.isRepo ? git({ cwd }, ["rev-parse", "HEAD"]) || "none" : "none",
-    startBranch: state.branch || "none",
-    startUpstream: state.upstream || "none",
-    startDirtyState: {
-      dirty: state.workingTreeDirty,
-      changedPathCount: state.changedPathCount,
-      statusShort: status,
-      digest: createHash("sha256").update(status.join("\n")).digest("hex")
-    }
-  };
-}
-
-function runScopedDeliveryState(cwd, start, { completed = false } = {}) {
-  const current = deliveryStateSnapshot(cwd, { completed });
-  if (!current.isRepo) return current;
-  const currentHead = git({ cwd }, ["rev-parse", "HEAD"]) || "none";
-  const branchMatches = Boolean(
-    start?.startBranch
-    && start.startBranch !== "none"
-    && current.branch
-    && current.branch !== "none"
-    && current.branch === start.startBranch
-  );
-  const headChanged = Boolean(branchMatches && start?.startHead && start.startHead !== "none" && currentHead !== start.startHead);
-  const upstreamMatches = Boolean(
-    current.upstream
-    && current.upstream !== "none"
-    && (!start?.startUpstream || start.startUpstream === "none" || current.upstream === start.startUpstream)
-  );
-  let state = completed ? "validated-local" : "implemented-local";
-  let push = "none";
-  if (headChanged) {
-    state = "committed";
-    if (upstreamMatches && current.ahead === 0) {
-      state = "pushed";
-      push = current.upstream;
-    }
-  }
-  return {
-    ...current,
-    state,
-    commit: headChanged ? currentHead : "none",
-    push,
-    runDelta: {
-      headChanged,
-      branchMatches,
-      startBranch: start?.startBranch || "none",
-      currentBranch: current.branch || "none",
-      startHead: start?.startHead || "none",
-      currentHead,
-      startDirtyDigest: start?.startDirtyState?.digest || "",
-      currentDirtyDigest: createHash("sha256").update((current.statusShort || []).join("\n")).digest("hex")
-    }
-  };
-}
-
-function normalizeDeliveryState(value) {
-  const normalizedValue = String(cleanMapValue(value) || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_\s]+/g, "-");
-  const normalized = normalizedValue.replace(/^target-/, "");
-  if (!normalized || normalized === "tbd") {
-    return "";
-  }
-  if (["implemented", "implemented-local", "local"].includes(normalized)) {
-    return "implemented-local";
-  }
-  if (["validated", "validated-local", "review", "local-verified", "verified-local"].includes(normalized)) {
-    return "validated-local";
-  }
-  if (["commit", "committed"].includes(normalized)) {
-    return "committed";
-  }
-  if (["push", "pushed"].includes(normalized)) {
-    return "pushed";
-  }
-  if (["review-open", "review-request", "review-requested", "pr", "pr-open", "pull-request", "pull-request-open", "mr", "mr-open", "merge-request", "merge-request-open", "change", "change-open", "patch-series"].includes(normalized)) {
-    return "review-open";
-  }
-  if (["integrate", "integrated", "integration", "merge", "merged"].includes(normalized)) {
-    return "integrated";
-  }
-  if (["release", "released", "ship", "shipped", "released-shipped", "released/shipped"].includes(normalized)) {
-    return "released/shipped";
-  }
-  return cleanMapValue(value);
-}
-
-function deliveryStateRank(state) {
-  const normalized = normalizeDeliveryState(state);
-  return deliveryStateOrder.indexOf(normalized);
-}
-
-function applyDeliveryEvidence(deliveryState, evidence = {}) {
-  const review = evidence.reviewUrl || evidence.prUrl || deliveryState.review || deliveryState.pr || "none";
-  const integration = evidence.integrationRef || evidence.mergeSha || deliveryState.integration || deliveryState.merge || "none";
-  const release = evidence.releaseRef || deliveryState.release || "none";
-  let state = deliveryState.state;
-  if (!missingEvidence(release)) {
-    state = "released/shipped";
-  } else if (!missingEvidence(integration)) {
-    state = "integrated";
-  } else if (!missingEvidence(review)) {
-    state = "review-open";
-  }
-
-  return {
-    ...deliveryState,
-    state,
-    review,
-    pr: review,
-    integration,
-    merge: integration,
-    release
-  };
-}
-
-function deliveryPolicyFromSection(section) {
-  const fields = {};
-  for (const line of section.split(/\r?\n/)) {
-    const match = line.match(/^-\s+([^:]+):\s*(.*?)\s*$/);
-    if (match) {
-      fields[match[1].trim().toLowerCase()] = cleanMapValue(match[2]);
-    }
-  }
-  const target = normalizeDeliveryState(fields["target delivery state"] || "validated-local") || "validated-local";
-  const reviewAuthorized = fields["review authorized"] || fields["pr authorized"] || "no";
-  const integrationAuthorized = fields["integration authorized"] || fields["merge authorized"] || "no";
-  return {
-    section,
-    deliveryIntent: fields["delivery intent"] || "local-validation",
-    target,
-    commitAuthorized: fields["commit authorized"] || "no",
-    pushAuthorized: fields["push authorized"] || "no",
-    reviewAuthorized,
-    prAuthorized: reviewAuthorized,
-    integrationAuthorized,
-    mergeAuthorized: integrationAuthorized,
-    releaseAuthorized: fields["release authorized"] || "no"
-  };
-}
-
-function deliveryPolicyDetails(goalContent) {
-  const section = extractSection(goalContent, "Delivery State");
-  return deliveryPolicyFromSection(section);
-}
-
-function deliveryAuthValue(value) {
-  return yesNoValue(value);
-}
-
-function requiredDeliveryAuthorizations(target) {
-  const rank = deliveryStateRank(target);
-  const requirements = [];
-  if (rank >= deliveryStateRank("committed")) {
-    requirements.push(["Commit authorized", "commitAuthorized"]);
-  }
-  if (rank >= deliveryStateRank("pushed")) {
-    requirements.push(["Push authorized", "pushAuthorized"]);
-  }
-  if (normalizeDeliveryState(target) === "review-open") {
-    requirements.push(["Review authorized", "reviewAuthorized"]);
-  }
-  if (rank >= deliveryStateRank("integrated")) {
-    requirements.push(["Integration authorized", "integrationAuthorized"]);
-  }
-  if (rank >= deliveryStateRank("released/shipped")) {
-    requirements.push(["Release authorized", "releaseAuthorized"]);
-  }
-  return requirements;
-}
-
-function deliveryPolicyValidationErrors(policy) {
-  const errors = [];
-  if (!validDeliveryStates.has(policy.target)) {
-    errors.push(`Delivery State target must use one of ${deliveryStateOrder.join(", ")}; found ${policy.target || "(missing)"}.`);
-  }
-  for (const [label, value] of [
-    ["Commit authorized", policy.commitAuthorized],
-    ["Push authorized", policy.pushAuthorized],
-    ["Review authorized", policy.reviewAuthorized],
-    ["Integration authorized", policy.integrationAuthorized],
-    ["Release authorized", policy.releaseAuthorized]
-  ]) {
-    if (value && !deliveryAuthValue(value)) {
-      errors.push(`Delivery State ${label} must be yes or no.`);
-    }
-  }
-  for (const [label, key] of requiredDeliveryAuthorizations(policy.target)) {
-    if (deliveryAuthValue(policy[key]) !== "yes") {
-      errors.push(`Delivery State target ${policy.target} requires ${label}: yes.`);
-    }
-  }
-  return errors;
-}
-
-function deliveryTargetErrors(policy, deliveryState) {
-  const errors = [];
-  const targetRank = deliveryStateRank(policy.target);
-  const actualRank = deliveryStateRank(deliveryState.state);
-  if (targetRank < 0) {
-    errors.push(`Unknown delivery target: ${policy.target || "(missing)"}.`);
-    return errors;
-  }
-  if (!deliveryState.isRepo && targetRank <= deliveryStateRank("validated-local")) {
-    return errors;
-  }
-  if (actualRank < targetRank) {
-    errors.push(`Delivery target not reached: target ${policy.target}, actual ${deliveryState.state || "unknown"}.`);
-    const auth = requiredDeliveryAuthorizations(policy.target)
-      .map(([label, key]) => `${label}: ${policy[key] || "no"}`)
-      .join(", ");
-    errors.push(`After gates pass, continue the delivery pipeline (${auth || "no extra authorization required"}) and rerun run record with review / integration / release evidence when applicable.`);
-  }
-  return errors;
-}
-
 function readRecentRuns(cwd, runsRelPath, limit = 5) {
   const runsAbs = runsRelPath ? join(cwd, runsRelPath) : "";
   if (!runsAbs || !existsSync(runsAbs)) {
@@ -2746,6 +2292,21 @@ function readRecentRuns(cwd, runsRelPath, limit = 5) {
         };
       }
     });
+}
+
+function withoutLegacyDeliveryFields(status) {
+  const current = { ...status };
+  for (const field of [
+    "deliveryState",
+    "deliveryPolicy",
+    "startHead",
+    "startBranch",
+    "startUpstream",
+    "startDirtyState"
+  ]) {
+    delete current[field];
+  }
+  return current;
 }
 
 function stripTaskPriority(value) {
@@ -2819,14 +2380,13 @@ function maintenancePayload(args) {
   const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
   const tasks = taskIndexContent ? parseTasks(taskIndexContent) : [];
   const recentRuns = readRecentRuns(cwd, runsPath);
-  const gitSummary = gitMaintenanceSummary(args);
   const completionActions = taskCompletionActions(cwd, tasks, recentRuns, taskIndexContent);
   const actions = [
     {
       kind: "status-snapshot",
       action: "update-status",
       title: "Record maintenance snapshot in configured status file",
-      evidence: "task index, current git state, and recent run records",
+      evidence: "task index, bounded status, and recent run records",
       canRecord: Boolean(statusPath)
     },
     ...completionActions
@@ -2841,7 +2401,6 @@ function maintenancePayload(args) {
       status: statusPath,
       runs: runsPath
     },
-    git: gitSummary,
     tasks: {
       exists: Boolean(taskIndexContent),
       tableBased: Boolean(taskIndexContent && isTableTaskIndex(taskIndexContent)),
@@ -2883,12 +2442,6 @@ function formatRunSummary(run) {
 }
 
 function maintenanceSnapshot(payload) {
-  const gitSummary = payload.git.isRepo
-    ? `${payload.git.branch || "(detached)"}${payload.git.upstream ? `...${payload.git.upstream}` : ""}; ahead=${payload.git.ahead}; behind=${payload.git.behind}; dirty=${payload.git.dirty ? "yes" : "no"}; changedPaths=${payload.git.changedPathCount}`
-    : "not a git repository";
-  const changedFiles = payload.git.changedFiles.length
-    ? payload.git.changedFiles.slice(0, 12).map((file) => `  - ${file}`).join("\n")
-    : "  - none detected";
   const runs = payload.runs.recent.length
     ? payload.runs.recent.slice(0, 5).map((run) => `  - ${formatRunSummary(run)}`).join("\n")
     : "  - none detected";
@@ -2900,12 +2453,9 @@ function maintenanceSnapshot(payload) {
 - Task index: \`${payload.paths.taskIndex || "not configured"}\`
 - Status file: \`${payload.paths.status || "not configured"}\`
 - Runs: \`${payload.paths.runs || "not configured"}\`
-- Git: ${gitSummary}
 - Ready tasks: ${payload.tasks.ready.length}
 - In-progress tasks: ${payload.tasks.inProgress.length}
 - Blocked tasks: ${payload.tasks.blocked.length}
-- Recent changed files:
-${changedFiles}
 - Recent runs:
 ${runs}
 - Proposed sync actions:
@@ -3124,28 +2674,42 @@ function artifactRunState(cwd, runsRelPath, entry) {
   };
 }
 
-function trackedRunReferences(cwd, runsRelPath) {
-  if (!runsRelPath) return { files: [], references: [], error: "Runs path is not configured." };
-  let tracked = [];
-  try {
-    tracked = execFileSync("git", ["ls-files", "-z"], { cwd, encoding: "utf8" }).split("\0").filter(Boolean);
-  } catch {
-    return { files: [], references: [], error: "Git tracked-file inventory unavailable." };
+function durableEvidenceFiles(cwd, evidencePaths) {
+  const files = [];
+  const visit = (absolute) => {
+    if (!existsSync(absolute)) return;
+    const stat = lstatSync(absolute);
+    if (stat.isSymbolicLink()) return;
+    if (stat.isFile()) {
+      if (/\.(?:md|mdx|txt|json|ya?ml)$/i.test(absolute)) files.push(absolute);
+      return;
+    }
+    if (!stat.isDirectory()) return;
+    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+      if (!entry.isSymbolicLink()) visit(join(absolute, entry.name));
+    }
+  };
+  for (const relPath of evidencePaths || []) {
+    visit(configuredPath(cwd, relPath, "Durable evidence path"));
   }
+  return uniqueList(files);
+}
+
+function durableEvidenceRunReferences(cwd, evidencePaths, runsRelPath) {
+  if (!runsRelPath) return { files: [], references: [], error: "Runs path is not configured." };
   const prefix = `${runsRelPath.replace(/\/+$/g, "")}/`;
   const pattern = new RegExp(escapeRegExp(prefix) + "[^\\s\\)\\]\\},;:]+", "g");
   const files = [];
   const references = new Set();
-  for (const file of tracked) {
-    if (!/\.(?:md|mdx|txt|json|ya?ml)$/i.test(file)) continue;
+  for (const absolute of durableEvidenceFiles(cwd, evidencePaths)) {
     let content = "";
     try {
-      content = readFileSync(join(cwd, file), "utf8");
+      content = readFileSync(absolute, "utf8");
     } catch {
       continue;
     }
     if (!content.includes(prefix)) continue;
-    files.push(file);
+    files.push(displayPath(cwd, absolute));
     for (const match of content.matchAll(pattern)) references.add(match[0].replace(/[.`]+$/g, ""));
   }
   return { files: files.sort(), references: [...references].sort(), error: "" };
@@ -3202,7 +2766,7 @@ function artifactInspectionPayload(args) {
     directories: total.directories + run.directories + 1,
     bytes: total.bytes + run.bytes
   }), { files: 0, directories: 0, bytes: 0 });
-  const references = trackedRunReferences(cwd, runsPath);
+  const references = durableEvidenceRunReferences(cwd, policy.durableEvidence, runsPath);
   const statusLines = statusContent ? statusContent.split(/\r?\n/).length : 0;
   return {
     cwd,
@@ -3232,7 +2796,7 @@ function artifactInspectionPayload(args) {
     references,
     warnings: [
       ...context.warnings,
-      ...(policy.runs === "local-only" && references.files.length ? [`${references.files.length} tracked files reference local-only Run artifacts.`] : []),
+      ...(policy.runs === "local-only" && references.files.length ? [`${references.files.length} durable evidence files reference local-only Run artifacts.`] : []),
       ...(statusLines > policy.status.maxLines ? [`Status snapshot has ${statusLines} lines; configured maximum is ${policy.status.maxLines}.`] : [])
     ]
   };
@@ -3376,7 +2940,7 @@ function printArtifactSummary(payload, action) {
   console.log(`Status: ${payload.status.lines}/${payload.status.maxLines} lines${payload.status.overLimit ? " (over limit)" : ""}`);
   console.log(`Tasks: total=${payload.tasks.total}; active=${payload.tasks.active}; done=${payload.tasks.done}; issues=${payload.tasks.issues.length}`);
   console.log(`Runs: entries=${payload.runs.entries}; files=${payload.runs.totals.files}; bytes=${payload.runs.totals.bytes}; terminal=${payload.runs.terminal}; active=${payload.runs.active}; unmanaged=${payload.runs.unmanaged}`);
-  console.log(`Tracked Run references: files=${payload.references.files.length}; unique=${payload.references.references.length}`);
+  console.log(`Durable evidence Run references: files=${payload.references.files.length}; unique=${payload.references.references.length}`);
 }
 
 function artifactsInspect(args) {
@@ -3724,15 +3288,12 @@ function buildGoalContent({ task, context, specPath, workMode, allowNoSpec = fal
   const spec = specPath || detailValue(task, "Spec") || "TBD";
   const hasConfirmedSpec = !missingSpecValue(spec);
   const specPolicyLine = !hasConfirmedSpec && allowNoSpec ? "Spec Policy: allow-no-spec\n" : "";
-  const statusLine = hasConfirmedSpec
-    ? "Ready for execution from confirmed spec."
-    : allowNoSpec
-      ? "Ready for execution from accepted scope without a separate spec."
-      : "Draft goal handoff; execute only after the spec is confirmed by the user.";
+  const statusLine = hasConfirmedSpec || allowNoSpec
+    ? "active."
+    : "blocked pending an accepted spec.";
   const docValue = detailValue(task, "Doc");
   const linkedDocs = extractLinkedDocPaths(docValue);
   const selectedWorkMode = workMode || "ask";
-  const currentDeliveryState = deliveryStateSnapshot(context.cwd);
   const stateSyncPathList = stateSyncPaths(context);
   const readFirst = uniqueList([
     "AGENTS.md",
@@ -3806,7 +3367,7 @@ Use \`implementer\`.
 - ${codexNativeExecutionGuidance}
 - Runtime Goal owns the current outcome and continuation; Codex Plan owns transient steps.
 - Codex runtime owns Thread/subagent scheduling, concurrency, cancellation, and model/effort selection.
-- Repository Goal/Run owns cross-task recovery, durable dependencies, evidence, gates, Delivery State, and state sync.
+- Repository Goal/Run owns cross-task recovery, durable dependencies, evidence, gates, and state sync.
 - If native Goal or Plan is unavailable, continue in the current thread and record degraded provenance only when this durable Run requires it. Never invent runtime identifiers.
 
 ## Conversation Route
@@ -3822,27 +3383,9 @@ Use \`current-thread\`.
 - Conversation lane: \`current-thread\`
 - Controller thread: \`current-thread\`
 - Execution cwd: \`${context.cwd}\`
-- Execution branch: \`${currentDeliveryState.branch || "TBD"}\`
+- Execution branch: \`TBD\`
 - Execution slot: \`N/A\`
 - Remote-control worktree: \`no\`
-
-## Delivery State
-
-- Delivery intent: \`local-validation\`
-- Target delivery state: \`validated-local\`
-- Commit authorized: \`no\`
-- Push authorized: \`no\`
-- Review authorized: \`no\`
-- Integration authorized: \`no\`
-- Release authorized: \`no\`
-
-Generated Goals are local-only by default. Commit, push, review, integration,
-release, and ship targets require fresh explicit authorization in the current
-conversation or accepted source spec; never infer them from stale status text.
-
-The locked Execution branch records where implementation happens. It is not
-automatically the integration target, and Harness core does not assume a branch
-named \`main\`.
 
 ## Execution DAG
 
@@ -3878,8 +3421,7 @@ ${requiredGateLines}
 
 ## Non-Goals
 
-- Do not release, deploy, publish, or launch workers outside the run packet DAG unless separately requested.
-- Do not execute delivery steps above the Delivery State policy.
+- Do not launch workers or perform external side effects outside the accepted scope unless separately requested.
 - Do not make destructive changes without explicit user approval.
 - Do not add project-specific assumptions to the core harness contract.
 
@@ -3906,7 +3448,7 @@ If no deterministic command exists, document the manual verification evidence be
 
 - The referenced spec or accepted scope is missing, unconfirmed, or conflicts with code, production constraints, or newer user instructions.
 - The measurement snapshot cannot identify a reliable observed state, feedback quality is insufficient for completion, or the remaining gap is not shrinking.
-- The work requires credentials, paid APIs, production access, destructive commands, release, or a delivery step above the Delivery State policy.
+- The work requires credentials, paid APIs, production access, destructive commands, release, or another external side effect outside accepted scope.
 - Product direction, file ownership, or worktree policy is unclear.
 - User gives new instructions that conflict with this goal.
 `;
@@ -4521,7 +4063,6 @@ function goalMetadata(cwd, goalPath) {
   const executionRole = extractGoalExecutionRoleRaw(content);
   const conversationRoute = extractConversationRouteRaw(content);
   const executionContextLock = executionContextLockDetails(content);
-  const deliveryPolicy = deliveryPolicyDetails(content);
   const acceptanceMap = acceptanceMapDetails(content, specContent);
   const stageCompletionMap = stageCompletionMapDetails(content, specContent);
   const specChecklist = specAcceptanceChecklistDetails(content, specContent);
@@ -4540,7 +4081,6 @@ function goalMetadata(cwd, goalPath) {
     executionRole,
     conversationRoute,
     executionContextLock,
-    deliveryPolicy,
     acceptanceMap: {
       required: acceptanceMap.required,
       source: acceptanceMap.source,
@@ -4578,7 +4118,6 @@ function goalMetadata(cwd, goalPath) {
       executionRole: Boolean(extractSection(content, "Execution Role")),
       conversationRoute: Boolean(extractSection(content, "Conversation Route")),
       executionContextLock: Boolean(extractSection(content, "Execution Context Lock")),
-      deliveryState: Boolean(extractSection(content, "Delivery State")),
       sourceTaskAcceptanceMap: Boolean(extractSection(content, "Source Task Acceptance Map")),
       milestoneCompletionMap: Boolean(extractSection(content, "Milestone Completion Map")),
       stageCompletionMap: Boolean(extractSection(content, "Milestone Completion Map") || extractSection(content, "Stage Completion Map")),
@@ -4637,7 +4176,6 @@ function validateGoal(cwd, goalPath) {
     ["Read First", "readFirst"],
     ["Work Mode Recommendation", "workModeRecommendation"],
     ["Execution Role", "executionRole"],
-    ["Delivery State", "deliveryState"],
     ["Scope", "scope"],
     ["Non-Goals", "nonGoals"],
     ["Verification", "verification"],
@@ -4667,8 +4205,6 @@ function validateGoal(cwd, goalPath) {
     conversationRoute: metadata.conversationRoute,
     executionContextLock: metadata.executionContextLock
   }));
-  errors.push(...deliveryPolicyValidationErrors(metadata.deliveryPolicy));
-
   const verification = extractSection(content, "Verification");
   const verificationCommands = extractVerificationCommands(verification);
   if (!verificationCommands.length && !sectionHasManualVerification(verification)) {
@@ -5238,6 +4774,7 @@ ${node.stopConditions}
 
 - ${contextFocusRoutingGuidance}
 - ${executeContextFocusGuidance}
+- ${authoritativeCompletionGuidance}
 
 ## Runtime Policy
 
@@ -5250,10 +4787,10 @@ ${node.stopConditions}
 - ${controllerCancellationBoundaryGuidance}
 - ${boundedStatusSnapshotGuidance}
 - Do not launch dependent nodes yourself.
-- Do not update accepted Goal, Task, status, run, gate, integration, release, or ship state.
+- Do not update accepted Goal, Task, status, Run, or gate state.
 - Do not mark work complete; return candidate evidence for controller acceptance.
 - Return State Sync Notes as part of Goal/Task Done: name the Goal, Task, status, or run records that should change, the suggested state, and the evidence. These notes remain candidate evidence until the accepted-state owner records them.
-- Do not release, deploy, publish, start a daemon, use credentials, use paid APIs, touch production, perform destructive operations, or execute delivery steps above the Delivery State policy unless the goal and controller explicitly authorize it.
+- Do not deploy, publish, start a daemon, use credentials, use paid APIs, touch production, or perform destructive operations unless the accepted scope and controller explicitly authorize it.
 
 ## Return Contract
 
@@ -5275,19 +4812,8 @@ State Sync Notes:
 Need user:
 Remaining:
 Needs review:
-Commit:
-Delivery state:
-Target delivery state:
-Working tree dirty:
-Push:
-Review:
-Integration:
-Release:
 Controller notified:
 Worktree:
-Base commit:
-Head commit:
-Commit status:
 Actual model:
 Actual reasoning effort:
 Degraded provenance:
@@ -5364,12 +4890,6 @@ function buildRunMarkdown({
   executionRole,
   conversationRoute,
   executionContextLock,
-  deliveryState,
-  startHead,
-  startBranch,
-  startUpstream,
-  startDirtyState,
-  deliveryPolicy,
   acceptanceMap,
   stageCompletionMap,
   specChecklist,
@@ -5415,28 +4935,10 @@ Conversation route: \`${conversationRoute || "not-recorded"}\`
 Conversation lane: \`${executionContextLock.conversationLane || "not-recorded"}\`
 Controller thread: \`${executionContextLock.controllerThread || "not-recorded"}\`
 Execution cwd: \`${executionContextLock.executionCwd || cwd}\`
-Execution branch: \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`
+Execution branch: \`${executionContextLock.executionBranch || "not-recorded"}\`
 Execution slot: \`${executionContextLock.executionSlot || "not-recorded"}\`
 Remote-control worktree: \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`
 Task size: \`${taskSize}\`
-Delivery state: \`${deliveryState.state}\`
-Start HEAD: \`${startHead || "none"}\`
-Start branch: \`${startBranch || "none"}\`
-Start upstream: \`${startUpstream || "none"}\`
-Start dirty digest: \`${startDirtyState?.digest || "none"}\`
-Working tree dirty: \`${deliveryState.workingTreeDirty}\`
-Commit: \`${deliveryState.commit}\`
-Push: \`${deliveryState.push}\`
-Review: \`${deliveryState.review || deliveryState.pr}\`
-Integration: \`${deliveryState.integration || deliveryState.merge}\`
-Release: \`${deliveryState.release}\`
-Delivery intent: \`${deliveryPolicy.deliveryIntent}\`
-Target delivery state: \`${deliveryPolicy.target}\`
-Commit authorized: \`${deliveryPolicy.commitAuthorized}\`
-Push authorized: \`${deliveryPolicy.pushAuthorized}\`
-Review authorized: \`${deliveryPolicy.reviewAuthorized}\`
-Integration authorized: \`${deliveryPolicy.integrationAuthorized}\`
-Release authorized: \`${deliveryPolicy.releaseAuthorized}\`
 Acceptance map required: \`${acceptanceMap.required ? "yes" : "no"}\`
 Acceptance map items: \`${acceptanceMap.items.length}\`
 Milestone completion map required: \`${stageCompletionMap.required ? "yes" : "no"}\`
@@ -5460,23 +4962,21 @@ ${sourceTask}
 6. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 7. Apply the configured Commentary Policy: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
 8. ${cyberneticStabilityGuidance}
-9. ${degradedExecutionProvenanceGuidance}
-10. ${controllerCancellationBoundaryGuidance}
-11. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
-12. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
-13. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-14. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-15. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
-16. Adapter completion gates are durable-only. For this prepared Run, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording completion.
-17. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; parallel workers require recorded isolation evidence.
-18. Give ready node packets to the Codex runtime and record ownership, verification, and candidate evidence.
-19. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
-20. Run the verification commands from the goal.
-21. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
-22. ${boundedStatusSnapshotGuidance}
-23. Record delivery state before closeout. If actual delivery state is below target, continue the authorized delivery pipeline instead of closing the run.
-    ${localDeliveryCeilingGuidance}
-    ${runScopedDeliveryGuidance}
+9. ${authoritativeCompletionGuidance}
+10. ${degradedExecutionProvenanceGuidance}
+11. ${controllerCancellationBoundaryGuidance}
+12. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
+13. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
+14. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+15. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
+16. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
+17. Adapter completion gates are durable-only. For this prepared Run, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording completion.
+18. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; parallel workers require recorded isolation evidence.
+19. Give ready node packets to the Codex runtime and record ownership, verification, and candidate evidence.
+20. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
+21. Run the verification commands from the goal.
+22. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
+23. ${boundedStatusSnapshotGuidance}
 24. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
 25. Record any command output summaries or follow-ups under this run directory.
 26. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
@@ -5488,11 +4988,9 @@ ${verification}
 
 ## Boundaries
 
-- This prepared run packet does not start Codex, create a daemon, push, deploy, publish, open a review request, or integrate changes by itself.
-- Completion wording must not imply pushed, review-open, integrated, released, shipped, or deployed unless the delivery state records that evidence.
-- A completed run must reach its target delivery state. Use review / integration / release evidence fields when Git alone cannot prove the target.
+- This prepared run packet does not start Codex, create a daemon, deploy, publish, or perform external side effects by itself.
 - ${postflightSyncGuidance} This prepared enforced Run is not postflight-only and remains authoritative.
-- Direct execution can skip spec/goal/run/worker ceremony for ordinary clear local work when no existing Harness Goal/Run or tracked sync obligation applies; verification, Delivery State, \`Need user\`, and \`Remaining\` still apply.
+- Direct execution can skip spec/goal/run/worker ceremony for ordinary clear local work when no existing Harness Goal/Run or tracked sync obligation applies; verification, \`Need user\`, and \`Remaining\` still apply.
 - ${boundedDirectExecutionGuidance} This prepared Run remains authoritative.
 - Cybernetic stability closeout must identify the target, observed state, gap closed, remaining gap, feedback quality, and any stability/saturation pause trigger.
 - The packet provides dependencies and evidence boundaries, not a scheduler or worker-selection policy.
@@ -5512,8 +5010,6 @@ function buildPromptMarkdown({ context, cwd, goalPath, goalContent }) {
   const executionRole = extractGoalExecutionRoleRaw(goalContent) || "missing";
   const conversationRoute = extractConversationRouteRaw(goalContent) || "not-recorded";
   const executionContextLock = executionContextLockDetails(goalContent);
-  const deliveryPolicy = deliveryPolicyDetails(goalContent);
-  const deliveryState = deliveryStateSnapshot(cwd);
 
   return `# Goal Execution Prompt
 
@@ -5534,24 +5030,18 @@ Requirements:
 - Runtime Goal owns the current outcome and continuation; Codex Plan owns transient steps. Reuse compatible active state and never invent runtime ids.
 - ${boundedDirectExecutionGuidance} The supplied Goal/Run remains authoritative and must not be downgraded.
 - ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
+- ${authoritativeCompletionGuidance}
 - ${cyberneticStabilityGuidance}
 - ${degradedExecutionProvenanceGuidance}
 - ${controllerCancellationBoundaryGuidance}
 - Follow the goal's Conversation Route: \`${conversationRoute}\`.
-- Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || deliveryState.branch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
-- Current Delivery State: \`${deliveryState.state}\`; dirty working tree: \`${deliveryState.workingTreeDirty}\`; commit \`${deliveryState.commit}\`; push \`${deliveryState.push}\`; review \`${deliveryState.review || deliveryState.pr}\`; integration \`${deliveryState.integration || deliveryState.merge}\`; release \`${deliveryState.release}\`.
-- ${localDeliveryCeilingGuidance}
-- ${runScopedDeliveryGuidance}
-- Target Delivery State: \`${deliveryPolicy.target}\`; delivery intent \`${deliveryPolicy.deliveryIntent}\`; commit authorized \`${deliveryPolicy.commitAuthorized}\`; push authorized \`${deliveryPolicy.pushAuthorized}\`; review authorized \`${deliveryPolicy.reviewAuthorized}\`; integration authorized \`${deliveryPolicy.integrationAuthorized}\`; release authorized \`${deliveryPolicy.releaseAuthorized}\`.
+- Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
 - Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
 - Treat State Sync Notes as part of Goal/Task Done. Executors must provide them; the accepted-state owner verifies them before recording accepted Goal, Task, status, run, or gate state.
 - ${boundedStatusSnapshotGuidance}
-- If actual delivery state is below target after gates pass, continue the authorized commit / push / review / integration / release pipeline before closeout.
-- Do not call local verification "integrated", "shipped", or "complete on the integration line" unless commit / push / review / integration / release evidence is recorded.
 - Do not close if feedback quality is weak, stale, delayed, or advisory; verify, re-orient, ask, or pause when the remaining gap is not shrinking or the loop is saturated.
 - Final user-facing closeout must include explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` for routine closeouts with no true pause trigger or follow-up instead of asking broad confirmation questions.
-- Do not release, deploy, publish, start a daemon, or automatically launch additional Codex sessions unless the Delivery State policy and controller explicitly authorize it.
-- If the checkout is dirty with unrelated work, use the worktree policy from the goal and project docs.
+- Do not deploy, publish, start a daemon, or automatically launch additional Codex sessions unless the accepted scope and controller explicitly authorize it.
 - After implementation, run the goal's verification commands, produce State Sync Notes, and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync. Status-file updates must replace bounded snapshot sections instead of appending historical focus logs.
 
 ## Goal Content
@@ -5632,9 +5122,6 @@ function runPrepare(args) {
   const executionRole = extractGoalExecutionRoleRaw(goalContent);
   const conversationRoute = extractConversationRouteRaw(goalContent);
   const executionContextLock = executionContextLockDetails(goalContent);
-  const deliveryState = deliveryStateSnapshot(cwd);
-  const startSnapshot = runStartSnapshot(cwd);
-  const deliveryPolicy = deliveryPolicyDetails(goalContent);
   const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
   const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
   const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
@@ -5670,9 +5157,6 @@ function runPrepare(args) {
     communication: context.communication,
     conversationRoute,
     executionContextLock,
-    deliveryState,
-    ...startSnapshot,
-    deliveryPolicy,
     acceptanceMap,
     stageCompletionMap,
     specChecklist,
@@ -5698,13 +5182,10 @@ function runPrepare(args) {
       conversationLane: executionContextLock.conversationLane,
       controllerThread: executionContextLock.controllerThread,
       executionCwd: executionContextLock.executionCwd || cwd,
-      executionBranch: executionContextLock.executionBranch || deliveryState.branch,
+      executionBranch: executionContextLock.executionBranch,
       executionSlot: executionContextLock.executionSlot,
       remoteControlWorktree: executionContextLock.remoteControlWorktree
     },
-    deliveryState,
-    ...startSnapshot,
-    deliveryPolicy,
     acceptanceMapRequired: acceptanceMap.required,
     acceptanceMapSource: acceptanceMap.source,
     acceptanceMapItemCount: acceptanceMap.items.length,
@@ -5884,11 +5365,6 @@ function runRecord(args) {
   const now = new Date().toISOString();
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
   const executionRole = status.executionRole || "unknown";
-  let deliveryState = applyDeliveryEvidence(runScopedDeliveryState(cwd, status, { completed: args.phase === "completed" }), {
-    reviewUrl: args.reviewUrl || args.prUrl || status.deliveryState?.review || status.deliveryState?.pr,
-    integrationRef: args.integrationRef || args.mergeSha || status.deliveryState?.integration || status.deliveryState?.merge,
-    releaseRef: args.releaseRef || status.deliveryState?.release
-  });
   if (args.phase === "completed" && !args.verification) {
     throw new Error("Completed runs require --verification evidence.");
   }
@@ -5914,11 +5390,6 @@ function runRecord(args) {
     ? assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Goal Spec path")
     : "";
   const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
-  const deliveryPolicy = status.deliveryPolicy || deliveryPolicyDetails(goalContent);
-  const deliveryPolicyErrors = deliveryPolicyValidationErrors(deliveryPolicy);
-  if (deliveryPolicyErrors.length) {
-    throw new Error(`Delivery State policy validation failed:\n${deliveryPolicyErrors.map((error) => `- ${error}`).join("\n")}`);
-  }
   if (args.phase === "completed") {
     if (status.acceptanceMapRequired && (!goalPath || !existsSync(goalPath))) {
       throw new Error("Completed batch runs require a readable goal with Source Task Acceptance Map evidence.");
@@ -5964,20 +5435,14 @@ function runRecord(args) {
         throw new Error(`Required Gate Evidence validation failed:\n${gateErrors.map((error) => `- ${error}`).join("\n")}`);
       }
     }
-    const deliveryTargetFailures = deliveryTargetErrors(deliveryPolicy, deliveryState);
-    if (deliveryTargetFailures.length) {
-      throw new Error(`Delivery target gate failed:\n${deliveryTargetFailures.map((error) => `- ${error}`).join("\n")}`);
-    }
   }
   const nextStatus = {
-    ...status,
+    ...withoutLegacyDeliveryFields(status),
     phase: args.phase,
     updatedAt: now,
     summary: args.summary,
     verificationSummary: args.verification || status.verificationSummary || "",
     gateEvidence: args.gateEvidence || status.gateEvidence || "",
-    deliveryState,
-    deliveryPolicy,
     executionDag: dagState || status.executionDag
   };
   const logsDir = artifactPath(runDir, "logs", "Run logs path");
@@ -6001,25 +5466,11 @@ ${args.verification || "Not recorded."}
 
 ${args.gateEvidence || "Not recorded."}
 
-## Delivery State
+## Acceptance
 
-- State: \`${deliveryState.state}\`
-- Target: \`${deliveryPolicy.target}\`
-- Delivery intent: \`${deliveryPolicy.deliveryIntent}\`
-- Working tree dirty: \`${deliveryState.workingTreeDirty}\`
-- Branch: \`${deliveryState.branch || "none"}\`
-- Commit: \`${deliveryState.commit}\`
-- Push: \`${deliveryState.push}\`
-- Review: \`${deliveryState.review || deliveryState.pr}\`
-- Integration: \`${deliveryState.integration || deliveryState.merge}\`
-- Release: \`${deliveryState.release}\`
-- Commit authorized: \`${deliveryPolicy.commitAuthorized}\`
-- Push authorized: \`${deliveryPolicy.pushAuthorized}\`
-- Review authorized: \`${deliveryPolicy.reviewAuthorized}\`
-- Integration authorized: \`${deliveryPolicy.integrationAuthorized}\`
-- Release authorized: \`${deliveryPolicy.releaseAuthorized}\`
-
-A completed run must reach Target delivery state. If actual state is below target after gates pass, continue the authorized delivery pipeline and rerun \`run record\` with review / integration / release evidence when applicable.
+- Phase: \`${args.phase}\`
+- Verification evidence: \`${args.verification ? "recorded" : "not recorded"}\`
+- Gate evidence: \`${args.gateEvidence ? "recorded" : "not recorded"}\`
 `;
 
   writeFileSync(statusPath, `${JSON.stringify(nextStatus, null, 2)}\n`);
@@ -6032,9 +5483,7 @@ A completed run must reach Target delivery state. If actual state is below targe
     phase: args.phase,
     summary: args.summary,
     verificationSummary: nextStatus.verificationSummary,
-    gateEvidence: nextStatus.gateEvidence,
-    deliveryState,
-    deliveryPolicy
+    gateEvidence: nextStatus.gateEvidence
   };
 
   if (args.json) {
@@ -6045,7 +5494,6 @@ A completed run must reach Target delivery state. If actual state is below targe
   console.log(`Recorded run ${args.phase}: ${displayPath(cwd, runDir)}`);
   console.log(`Status: ${displayPath(cwd, statusPath)}`);
   console.log(`Log: ${displayPath(cwd, logPath)}`);
-  console.log(`Delivery state: ${deliveryState.state}`);
 }
 
 function runStatus(args) {
@@ -6075,8 +5523,6 @@ function runStatus(args) {
     executionRole: status.executionRole || "unknown",
     conversationRoute: status.conversationRoute || "unknown",
     executionContextLock: status.executionContextLock || null,
-    deliveryState: status.deliveryState || null,
-    deliveryPolicy: status.deliveryPolicy || null,
     milestoneCompletionMap: {
       required: Boolean(status.milestoneCompletionMapRequired || status.stageCompletionMapRequired),
       source: status.milestoneCompletionMapSource || status.stageCompletionMapSource || "",
@@ -6113,24 +5559,6 @@ function runStatus(args) {
     console.log(`Execution cwd: ${status.executionContextLock.executionCwd || "unknown"}`);
     console.log(`Execution branch: ${status.executionContextLock.executionBranch || "unknown"}`);
     console.log(`Conversation lane: ${status.executionContextLock.conversationLane || "unknown"}`);
-  }
-  if (status.deliveryState) {
-    console.log(`Delivery state: ${status.deliveryState.state || "unknown"}`);
-    console.log(`Working tree dirty: ${status.deliveryState.workingTreeDirty || "unknown"}`);
-    console.log(`Commit: ${status.deliveryState.commit || "none"}`);
-    console.log(`Push: ${status.deliveryState.push || "none"}`);
-    console.log(`Review: ${status.deliveryState.review || status.deliveryState.pr || "none"}`);
-    console.log(`Integration: ${status.deliveryState.integration || status.deliveryState.merge || "none"}`);
-    console.log(`Release: ${status.deliveryState.release || "none"}`);
-  }
-  if (status.deliveryPolicy) {
-    console.log(`Delivery intent: ${status.deliveryPolicy.deliveryIntent || "unknown"}`);
-    console.log(`Target delivery state: ${status.deliveryPolicy.target || "unknown"}`);
-    console.log(`Commit authorized: ${status.deliveryPolicy.commitAuthorized || "unknown"}`);
-    console.log(`Push authorized: ${status.deliveryPolicy.pushAuthorized || "unknown"}`);
-    console.log(`Review authorized: ${status.deliveryPolicy.reviewAuthorized || status.deliveryPolicy.prAuthorized || "unknown"}`);
-    console.log(`Integration authorized: ${status.deliveryPolicy.integrationAuthorized || status.deliveryPolicy.mergeAuthorized || "unknown"}`);
-    console.log(`Release authorized: ${status.deliveryPolicy.releaseAuthorized || "unknown"}`);
   }
   console.log(`Task size: ${status.taskSize || "unknown"}`);
   console.log(`Updated: ${status.updatedAt || "unknown"}`);

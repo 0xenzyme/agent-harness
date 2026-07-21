@@ -129,7 +129,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
 ```
 
-从当前 git state 和 recent run records 预览确定性的 Goal/status maintenance：
+从配置的 Task/Goal state、bounded status 和 recent Run records 预览确定性的
+Goal/status maintenance：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
@@ -144,8 +145,8 @@ task 更新：
 node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
 ```
 
-只读检查 bounded status、active/Done task、Run 数量/体积/phase，以及 tracked
-文档对 local-only Run 的引用。Run 统计区分 operational `active`、已知
+只读检查 bounded status、active/Done task、Run 数量/体积/phase，以及配置的
+durable-evidence 文档对 local-only Run 的引用。Run 统计区分 operational `active`、已知
 `terminal` 和旧格式/无效的 `unmanaged`；三种分类覆盖所有 inspected entry：
 
 ```bash
@@ -235,7 +236,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/
 不带 `--allow-no-spec` 时，adapter `goal create` 省略 `--spec` 仍会失败。
 Spec-less goal 不能降低安全要求：仍必须验证 `Scope`、`Non-Goals`、
 `Verification`、`Completion Conditions`、`Pause Conditions`、`Execution Role`
-和 `Delivery State`。
+和 authoritative state/evidence sections。
 
 准备 run 之前，列出、查看并验证 goals：
 
@@ -255,8 +256,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 `agents/<node>/prompt.md`。Harness 记录 ready nodes、ownership、verification
 和 candidate evidence；Codex runtime 负责 worker selection、delegation、
 concurrency 与 cancellation。`run prepare` 不启动 worker，也不固定 model/
-effort。Run packet 还记录 Git 起点，避免把历史 upstream 状态误认为本 Run 的
-delivery evidence。
+effort。Task/Goal 保持为 accepted-state authority；Run packet 保存 execution 和
+verification evidence，status 保持为 bounded projection。
 
 查看已准备的 run：
 
@@ -275,7 +276,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
 ```
 
-记录 run 结果；`run record` 本身不修改源码，也不执行 delivery step：
+记录 Run 结果；`run record` 本身不修改源码，也不执行 external action：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
@@ -283,11 +284,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
 ```
 
-`run record` 会刷新 `status.json` 和 run log 里的 delivery state。
-`implemented-local` 和 `validated-local` 只证明 working-tree implementation 或
-local verification。只有当 target delivery state 不高于 `validated-local` 时，
-它们才足以支撑 completed run；否则应继续已授权的 delivery pipeline，或记录缺
-少的 evidence 为 `delivery pending`。
+`run record` 会刷新 `status.json` 和 Run log 中的 accepted Run evidence。
+completed Run 要求 verification、已收口 DAG nodes、required checklist items、
+durable gates，以及同步后的 authoritative Task/Goal state。
 
 completed enforced-DAG run 还要求所有 worker node 已收口。active `running`
 node 会阻止 completion；cancellation 或 supersession 是 cooperative
@@ -301,7 +300,6 @@ gate 或 evidence。
 CLI 记录 durable state，不实现 Codex runtime Goal 或 Plan。Skill 在 host 暴露
 原生能力时，把长时间 controller 工作绑定到 runtime Goal 和 Plan。
 
-对 completed run，`run record` 会强制检查 goal 的 Target delivery state。
-如果目标是 `review-open`、`integrated` 或 `released/shipped`，在完成已授权的
-交付步骤后，用 `--review-url`、`--integration-ref` 或 `--release-ref` 传入
-外部证据。`--pr-url` 和 `--merge-sha` 仍作为兼容别名保留。
+旧 Goal 和 Run 中的 delivery 字段在 `0.10.0` compatibility boundary 内仍可
+读取，但 current validation、completion、maintenance 和 status output 会忽略
+它们；新 artifact 不再生成这些字段。

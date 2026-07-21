@@ -20,8 +20,7 @@ Status: draft
 - `harness-rule:path-containment`
 - `harness-rule:run-dag-ownership`
 - `harness-rule:candidate-accepted-evidence`
-- `harness-rule:local-delivery-ceiling`
-- `harness-rule:run-scoped-delivery`
+- `harness-rule:authoritative-completion-state`
 - `harness-rule:state-sync-evidence`
 - `harness-rule:bounded-status-snapshot`
 - `harness-rule:project-neutral-core`
@@ -66,5 +65,5 @@ Status: draft
 ## Pause Conditions
 
 - Conflicting accepted direction or repository constraints.
-- Missing authority for credentials, production, destructive work, or delivery.
+- Missing authority for credentials, production, destructive work, or another external side effect.
 - Evidence is insufficient to validate the accepted objective.

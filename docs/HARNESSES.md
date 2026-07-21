@@ -1,16 +1,16 @@
 # Agent Harness Capability Matrix
 
 Agent Harness supplies durable project control that the Codex runtime does not:
-configured artifact roots, repository Goals/Runs/DAGs, run-scoped delivery
-evidence, candidate-versus-accepted evidence, controller gates, and state sync.
+configured artifact roots, repository Goals/Runs/DAGs, authoritative completion
+state, candidate-versus-accepted evidence, controller gates, and state sync.
 
 ## Codex-Native Integration
 
 | Execution path | Runtime behavior | Harness behavior |
 | --- | --- | --- |
 | `codex-direct` | Codex Goal/Plan/Thread as needed | No Harness execution or lifecycle creation. |
-| `codex-direct-postflight` | Codex completes and verifies simple work | Update only existing tracked state in one bounded closeout. |
-| `durable-harness` | Runtime Goal owns outcome; Plan owns current steps; runtime owns delegation | Repository Goal/Run owns recovery, dependencies, evidence, gates, Delivery State, and state sync. |
+| `codex-direct-postflight` | Codex completes and verifies simple work | Update only existing state in one bounded closeout. |
+| `durable-harness` | Runtime Goal owns outcome; Plan owns current steps; runtime owns delegation | Repository Goal/Run owns recovery, dependencies, evidence, gates, and state sync. |
 
 Controller means outcome owner and accepted-state owner. Only explicit
 `gate-only` or review-only direction forbids foreground implementation.
@@ -22,8 +22,7 @@ ordinary direct or postflight-only work into a Run.
 | `harness-rule:path-containment` | All writes and artifact references remain inside configured roots after lexical and realpath checks. |
 | `harness-rule:run-dag-ownership` | Runs record dependencies, ready state, ownership, verification, and candidate evidence. |
 | `harness-rule:candidate-accepted-evidence` | Worker output stays candidate evidence until the accepted-state owner validates it. |
-| `harness-rule:local-delivery-ceiling` | Local work does not imply commit, push, review, integration, release, or deploy. |
-| `harness-rule:run-scoped-delivery` | Delivery claims compare this Run's start snapshot, delta, and explicit evidence. |
+| `harness-rule:authoritative-completion-state` | Task/Goal is authoritative with active, completed, or blocked phase; blocked is resumable and non-complete, Run stores evidence, and status is a projection. |
 | `harness-rule:state-sync-evidence` | Durable completion includes verified State Sync Notes. |
 | `harness-rule:bounded-status-snapshot` | Status is current and bounded; Runs and Goals retain history. |
 | `harness-rule:project-neutral-core` | Adapters own downstream facts and paths. |
