@@ -16,6 +16,7 @@ function excludes(path, needle) { assert(!read(path).includes(needle), `${path} 
 const invariants = [
   "harness-rule:path-containment",
   "harness-rule:run-dag-ownership",
+  "harness-rule:pre-delegation-work-mode",
   "harness-rule:candidate-accepted-evidence",
   "harness-rule:authoritative-completion-state",
   "harness-rule:state-sync-evidence",
@@ -35,7 +36,13 @@ function protocol() {
   includes("plugins/agent-harness/references/codex-native-execution.md", "create_goal");
   includes("plugins/agent-harness/references/codex-native-execution.md", "update_plan");
   includes(execute, "Controller means outcome owner and accepted-state owner");
+  includes(execute, "Authorization to create a thread is not authorization to create a worktree");
+  includes(execute, "Do not pass `startingState` unless the current user explicitly requests");
+  includes(execute, "Workers return candidate evidence and State Sync Notes; only the controller");
+  includes(execute, "writes accepted Goal, Task, status, Run, or gate state");
   includes(execute, "Do not apply durable gates");
+  includes("plugins/agent-harness/templates/worker-prompt.md", "only the controller records accepted state");
+  includes("plugins/agent-harness/templates/worker-prompt.md", "recorded dependencies are incomplete");
   includes("plugins/agent-harness/references/gate-results.md", "Configured completion gates are durable Goal/Run gates");
   includes("plugins/agent-harness/scripts/agent-harness.mjs", "durableRequiredCompletionGates");
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", "gitMaintenanceSummary");

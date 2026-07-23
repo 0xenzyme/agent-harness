@@ -37,4 +37,5 @@ second repository Goal or mirror every Plan transition.
 
 Return changed files, summary, validation, known risks, State Sync Notes,
 `Need user`, and `Remaining`. Do not update accepted Goal, Task, status, Run,
-or gate state.
+or gate state; only the controller records accepted state. Do not start when
+this node's recorded dependencies are incomplete.
