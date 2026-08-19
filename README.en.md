@@ -56,7 +56,7 @@ Use the current thread as controller and carry the accepted spec through to comp
 | --- | --- |
 | Adopt Harness, import an existing Goal index, run doctor, or preview activation. | `harness:init` |
 | Inspect status, blockers, stale artifacts, or the next route without mutation. | `harness:orient` |
-| Capture or triage an idea, requirement, bug, or inbox note. | `harness:intake` |
+| Capture or triage an idea, requirement, bug, or inbox note; adapters can record unaccepted candidates through `paths.ideaInbox`. | `harness:intake` |
 | Control durable work, or sync existing Harness state after Codex completes simple work. | `harness:execute` |
 
 Ordinary clear change/build requests use Codex directly. Clarifying scope,

@@ -11,6 +11,7 @@ the Agent Harness plugin references.
   - Compatibility note: the storage filename and config key remain
     `tasks` / `taskIndex`; user-facing project state should treat top-level
     entries as Goals.
+- Idea inbox: `harness/intake.md`
 - Status file: `harness/status.md`
 - Specs: `harness/specs/`
 - Goals: `harness/goals/`
@@ -76,9 +77,12 @@ the Agent Harness plugin references.
 
 ## Idea Inbox Policy
 
-- Capture thread:
-- Promotion rule:
-- Non-execution boundary:
+- Capture thread: `harness:intake` records raw, unaccepted candidates in the
+  configured idea inbox.
+- Promotion rule: promote only after objective, constraints, non-goals,
+  verification, and pause conditions are accepted.
+- Non-execution boundary: inbox entries do not create accepted Goals, Specs,
+  Runs, or implementation.
 
 ## Optional Competition Policy
 

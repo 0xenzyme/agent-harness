@@ -116,15 +116,18 @@ accepted scope instead of printing an unusable `goal create` command.
 
 ## Intake And Maintenance
 
-Preview a new idea or requirement before modifying the Goal index:
+Preview a new idea or requirement before recording it. Preview is read-only;
+when the adapter declares an idea inbox, recording writes the unaccepted
+candidate there and leaves the Goal index unchanged:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
 ```
 
-Append the candidate to a supported markdown Goal index only after explicit
-confirmation:
+Record the candidate only after explicit confirmation. Adapter projects with a
+configured idea inbox use that inbox; projects without one fall back to a
+supported markdown Goal index:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next

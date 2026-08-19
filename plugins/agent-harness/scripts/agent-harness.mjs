@@ -27,6 +27,7 @@ const fixedContract = {
 const adapterContract = {
   contract: "adapter",
   taskIndex: "harness/tasks.md",
+  ideaInbox: "harness/intake.md",
   config: configRelPath,
   adapterDocs: "harness/README.md",
   status: "harness/status.md",
@@ -145,6 +146,8 @@ function parseArgs(argv) {
     "status",
     "specs",
     "goals",
+    "ideaInbox",
+    "idea-inbox",
     "milestones",
     "runs",
     "surface",
@@ -287,7 +290,7 @@ function buildConfigPayload(projectName, mode = "fixed") {
 const messages = {
   en: {
     usage: `Usage:
-  agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--project-name NAME] [--force] [--lang CODE]
+  agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--idea-inbox PATH] [--project-name NAME] [--force] [--lang CODE]
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
@@ -299,7 +302,7 @@ const messages = {
   agent-harness artifacts prune [--cwd PATH] [--apply] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config validate [--cwd PATH] [--json]
-  agent-harness config import [--cwd PATH] [--task-index PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
+  agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
   agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run] [--force]
@@ -332,7 +335,7 @@ const messages = {
   },
   "zh-CN": {
     usage: `用法:
-  agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--project-name NAME] [--force] [--lang CODE]
+  agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--idea-inbox PATH] [--project-name NAME] [--force] [--lang CODE]
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
@@ -344,7 +347,7 @@ const messages = {
   agent-harness artifacts prune [--cwd PATH] [--apply] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config validate [--cwd PATH] [--json]
-  agent-harness config import [--cwd PATH] [--task-index PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
+  agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
   agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run] [--force]
@@ -620,6 +623,7 @@ function validateConfiguredPaths(config, contract) {
   const pathKeys = [
     "tasks",
     "taskIndex",
+    "ideaInbox",
     "status",
     "specs",
     "goals",
@@ -774,6 +778,7 @@ function discoverAdapterProject(cwd, options = {}) {
     adapterDocs,
     taskIndex,
     status: options.status || "",
+    ideaInbox: options.ideaInbox || "",
     specs,
     goals,
     milestones,
@@ -794,6 +799,7 @@ function buildAdapterConfigPayload(projectName, discovery = {}) {
   payload.adapter.docs = discovery.adapterDocs || payload.adapter.docs || adapterContract.adapterDocs;
   payload.adapter.machineReadable = configRelPath;
   payload.paths.taskIndex = discovery.taskIndex || payload.paths.taskIndex || adapterContract.taskIndex;
+  payload.paths.ideaInbox = discovery.ideaInbox || payload.paths.ideaInbox || adapterContract.ideaInbox;
   payload.paths.status = discovery.status || payload.paths.status || adapterContract.status;
   payload.paths.specs = discovery.specs || payload.paths.specs || adapterContract.specs;
   payload.paths.goals = discovery.goals || payload.paths.goals || adapterContract.goals;
@@ -845,6 +851,7 @@ function resolvedAdapterPaths(config, activeConfigRelPath = configRelPath) {
   return {
     taskIndex: paths.taskIndex || paths.tasks || adapterContract.taskIndex,
     tasks: paths.taskIndex || paths.tasks || adapterContract.taskIndex,
+    ideaInbox: paths.ideaInbox || "",
     config: adapter.machineReadable || activeConfigRelPath || configRelPath,
     adapterDocs: adapter.docs || adapterContract.adapterDocs,
     status: paths.status || adapterContract.status,
@@ -909,13 +916,15 @@ function resolveHarnessContext(cwd) {
         resolvedPaths.gateRecords,
         resolvedPaths.deferredRegister,
         resolvedPaths.mentalModels,
-        resolvedPaths.mentalModelIndex
+        resolvedPaths.mentalModelIndex,
+        resolvedPaths.ideaInbox
       ]
       : [
         resolvedPaths.gateRecords,
         resolvedPaths.deferredRegister,
         resolvedPaths.mentalModels,
-        resolvedPaths.mentalModelIndex
+        resolvedPaths.mentalModelIndex,
+        resolvedPaths.ideaInbox
       ]);
 
     return {
@@ -935,6 +944,7 @@ function resolveHarnessContext(cwd) {
   const resolvedPaths = {
     taskIndex: paths.tasks || paths.taskIndex || fixedContract.taskIndex,
     tasks: paths.tasks || paths.taskIndex || fixedContract.taskIndex,
+    ideaInbox: paths.ideaInbox || "",
     config: activeConfigRelPath || configRelPath,
     status: paths.status || fixedContract.status,
     goals: paths.goals || fixedContract.goals,
@@ -957,7 +967,7 @@ function resolveHarnessContext(cwd) {
       resolvedPaths.goals,
       resolvedPaths.runs
     ]),
-    optionalPaths: []
+    optionalPaths: uniqueList([resolvedPaths.ideaInbox])
   };
 }
 
@@ -968,6 +978,7 @@ function fixedPathsFromConfig(config, activeConfigRelPath = configRelPath) {
   }
   return {
     taskIndex: paths.tasks || paths.taskIndex || fixedContract.taskIndex,
+    ideaInbox: paths.ideaInbox || "",
     config: activeConfigRelPath,
     status: paths.status || fixedContract.status,
     goals: paths.goals || fixedContract.goals,
@@ -982,6 +993,7 @@ function configExists(cwd) {
 function renderAdapterTemplate(paths) {
   return readTemplate("adapter.md")
     .replace("- Goal index: `harness/tasks.md`", `- Goal index: \`${paths.taskIndex}\``)
+    .replace("- Idea inbox: `harness/intake.md`", `- Idea inbox: \`${paths.ideaInbox || "not configured"}\``)
     .replace("- Status file: `harness/status.md`", `- Status file: \`${paths.status}\``)
     .replace("- Specs: `harness/specs/`", `- Specs: \`${paths.specs}/\``)
     .replace("- Goals: `harness/goals/`", `- Goals: \`${paths.goals}/\``)
@@ -1033,6 +1045,9 @@ function ensureImportSupportArtifacts(cwd, paths, created) {
   if (writeIfMissing(configuredPath(cwd, paths.status, "Status path"), readTemplate("status.md"))) {
     created.push(paths.status);
   }
+  if (paths.ideaInbox && writeIfMissing(configuredPath(cwd, paths.ideaInbox, "Idea inbox path"), readTemplate("intake.md"))) {
+    created.push(paths.ideaInbox);
+  }
   for (const dir of [paths.specs, paths.goals, paths.milestones, paths.runs, paths.mentalModels]) {
     ensureDir(cwd, dir, created);
   }
@@ -1066,7 +1081,8 @@ function initPlan(args, cwd, projectName) {
   const discovery = mode === "adapter"
     ? discoverAdapterProject(cwd, {
       taskIndex: args.taskIndex,
-      adapterDocs: args.adapterDocs
+      adapterDocs: args.adapterDocs,
+      ideaInbox: args.ideaInbox
     })
     : {};
   const configPayload = mode === "adapter"
@@ -1087,7 +1103,7 @@ function validateWritablePlan(cwd, mode, paths) {
   const files = [paths.taskIndex, paths.config, paths.status];
   const dirs = [paths.goals, paths.runs];
   if (mode === "adapter") {
-    files.push(paths.adapterDocs, paths.mentalModelIndex);
+    files.push(paths.adapterDocs, paths.mentalModelIndex, paths.ideaInbox);
     dirs.push(paths.specs, paths.milestones, paths.gateRecords, paths.deferredRegister, paths.mentalModels);
   }
   for (const path of uniqueList(files.filter(Boolean))) configuredPath(cwd, path, "Writable file path");
@@ -1128,6 +1144,12 @@ function init(args) {
     if (writeIfMissing(adapterPath, renderAdapterTemplate(paths), args.force)) {
       created.push(paths.adapterDocs);
     }
+    if (paths.ideaInbox) {
+      const ideaInboxPath = configuredPath(cwd, paths.ideaInbox, "Idea inbox path");
+      if (writeIfMissing(ideaInboxPath, readTemplate("intake.md"), args.force)) {
+        created.push(paths.ideaInbox);
+      }
+    }
   }
 
   const dirs = mode === "adapter"
@@ -1152,6 +1174,7 @@ function configImport(args) {
   const activeConfigRelPath = findConfigRelPath(cwd);
   const discovery = discoverAdapterProject(cwd, {
     taskIndex: args.taskIndex,
+    ideaInbox: args.ideaInbox,
     adapterDocs: args.adapterDocs,
     status: args.status,
     specs: args.specs,
@@ -1198,6 +1221,7 @@ function configImport(args) {
       paths.milestones,
       paths.runs,
       paths.mentalModels,
+      paths.ideaInbox,
       ...mentalModelArtifactPaths(paths)
     ].filter((relPath) => relPath && !existsSync(join(cwd, relPath))),
     created: [],
@@ -1492,6 +1516,7 @@ function activationSnippet(context) {
   const paths = context.paths;
   const configPath = paths.config || configRelPath;
   const taskIndex = paths.taskIndex || paths.tasks || fixedContract.taskIndex;
+  const ideaInbox = paths.ideaInbox || "";
   const statusPath = paths.status || fixedContract.status;
   const adapterPath = context.contract === "adapter" ? paths.adapterDocs : "";
   const specsPath = paths.specs || "";
@@ -1503,6 +1528,7 @@ If \`${configPath}\` exists, read it before substantial project work.
 
 - Resolve the harness contract and artifact paths with \`agent-harness config inspect --cwd .\` when the project state is unclear.
 ${adapterPath ? `- For \`contract: "adapter"\`, read the project adapter at \`${adapterPath}\` before goal, run, or implementation work.\n` : ""}- Read the configured task index at \`${taskIndex}\` and status file at \`${statusPath}\` before choosing or executing tasks.
+${ideaInbox ? `- For intake capture, use the configured idea inbox at \`${ideaInbox}\`; inbox entries are unaccepted candidates.\n` : ""}
 ${specsPath ? `- Read relevant specs under \`${specsPath}\` and goals under \`${goalsPath}\` before implementation.\n` : `- Read relevant goals under \`${goalsPath}\` before implementation.\n`}- For orientation or next-action requests, summarize current status and task state first; do not start implementation unless the user asks.
 - Use \`agent-harness doctor --cwd .\`, \`agent-harness orient next --cwd .\`, \`agent-harness goal create --cwd . --task "<task>"\`, and \`agent-harness run prepare --cwd . --goal <goal-file>\` when they fit the task.
 - Preserve existing project instructions. Pause before product-direction decisions, \`AGENTS.md\` changes, credentials, paid APIs, production access, destructive operations, branch/worktree changes, delivery steps above the active goal policy, deploy, release, daemons, watchers, or background automation.
@@ -1953,7 +1979,7 @@ function taskSearchText(task) {
   ].filter(Boolean).join(" ");
 }
 
-function intakeTaskMatches(tasks, idea) {
+function intakeTaskMatches(tasks, idea, source = "task-index") {
   const ideaText = normalized(idea);
   return tasks
     .filter((task) => !isDoneTask(task))
@@ -1964,6 +1990,7 @@ function intakeTaskMatches(tasks, idea) {
       const exact = Boolean(ideaText && (taskTitle.includes(ideaText) || ideaText.includes(taskTitle)));
       return {
         task: taskSummary(task),
+        source,
         score: exact ? 1 : score,
         kind: exact ? "duplicate" : score >= 0.35 ? "related" : ""
       };
@@ -2104,20 +2131,33 @@ function intakePayload(args) {
 
   const context = resolveHarnessContext(cwd);
   const taskIndex = context.paths.taskIndex || context.paths.tasks;
+  const ideaInbox = context.paths.ideaInbox || "";
   const statusPath = context.paths.status;
-  const taskIndexAbs = taskIndex ? join(cwd, taskIndex) : "";
-  const statusAbs = statusPath ? join(cwd, statusPath) : "";
+  const taskIndexAbs = taskIndex ? configuredPath(cwd, taskIndex, "Task index path") : "";
+  const ideaInboxAbs = ideaInbox ? configuredPath(cwd, ideaInbox, "Idea inbox path") : "";
+  const statusAbs = statusPath ? configuredPath(cwd, statusPath, "Status path") : "";
   const taskContent = taskIndexAbs && existsSync(taskIndexAbs) ? readFileSync(taskIndexAbs, "utf8") : "";
+  const ideaInboxContent = ideaInboxAbs && existsSync(ideaInboxAbs) ? readFileSync(ideaInboxAbs, "utf8") : "";
   const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
   const tasks = taskContent ? parseTasks(taskContent) : [];
-  const taskMatches = intakeTaskMatches(tasks, idea);
+  const inboxTasks = ideaInboxContent ? parseTasks(ideaInboxContent) : [];
+  const taskMatches = [
+    ...intakeTaskMatches(tasks, idea, "task-index"),
+    ...intakeTaskMatches(inboxTasks, idea, "idea-inbox")
+  ]
+    .sort((a, b) => b.score - a.score || a.task.line - b.task.line)
+    .slice(0, 5);
   const artifacts = artifactMatches(cwd, context.paths, idea);
   const classification = classifyIntakeIdea({ idea, taskMatches });
   const needsSpec = intakeNeedsSpec(classification);
   const title = sentenceTitle(idea);
+  const recordTarget = ideaInbox ? "idea-inbox" : "task-index";
+  const recordPath = ideaInbox || taskIndex;
+  const recordContent = ideaInbox ? ideaInboxContent : taskContent;
+  const recordTargetLabel = ideaInbox ? "idea inbox" : "task index";
   const confirmationNeeded = args.record
     ? "record flag supplied; no implementation will start"
-    : "pass --record to append this candidate to the configured task index";
+    : `pass --record to append this candidate to the configured ${recordTargetLabel}`;
 
   return {
     cwd,
@@ -2125,6 +2165,7 @@ function intakePayload(args) {
     writesFiles: false,
     idea,
     taskIndex,
+    ideaInbox,
     status: {
       path: statusPath,
       focus: statusFocus(statusContent)
@@ -2138,12 +2179,12 @@ function intakePayload(args) {
       acceptance: intakeAcceptance(classification),
       needsSpec,
       dependencies: [
-        ...taskMatches.map((match) => `Related task: ${match.task.title}`),
+        ...taskMatches.map((match) => `${match.source === "idea-inbox" ? "Related inbox candidate" : "Related task"}: ${match.task.title}`),
         ...artifacts.map((match) => `Related artifact: ${match.path}`)
       ],
       risks: needsSpec
         ? ["Scope or product direction may be ambiguous."]
-        : ["Confirm this belongs in the task index before recording."],
+        : [`Confirm this belongs in the configured ${recordTargetLabel} before recording.`],
       validationQuestions: [
         `Is ${priority} the right priority?`,
         `Should this be recorded under ${section}?`,
@@ -2159,8 +2200,9 @@ function intakePayload(args) {
     },
     record: {
       requested: Boolean(args.record),
-      supported: Boolean(taskContent && !isTableTaskIndex(taskContent)),
-      path: taskIndex,
+      supported: Boolean(recordContent && !isTableTaskIndex(recordContent)),
+      target: recordTarget,
+      path: recordPath,
       section
     },
     warnings: context.warnings
@@ -2196,16 +2238,19 @@ function appendTaskToSection(content, section, entry) {
 }
 
 function recordIntake(payload) {
-  const taskIndexAbs = configuredPath(payload.cwd, payload.taskIndex, "Task index path");
-  if (!existsSync(taskIndexAbs)) {
-    throw new Error(`Task index not found: ${payload.taskIndex}`);
+  const recordPath = payload.record.path;
+  const recordLabel = payload.record.target === "idea-inbox" ? "Idea inbox path" : "Task index path";
+  const recordAbs = configuredPath(payload.cwd, recordPath, recordLabel);
+  if (!existsSync(recordAbs)) {
+    throw new Error(`${recordLabel} not found: ${recordPath}`);
   }
-  const content = readFileSync(taskIndexAbs, "utf8");
+  const content = readFileSync(recordAbs, "utf8");
   if (isTableTaskIndex(content)) {
-    throw new Error(`Refusing to record into table-based task index: ${payload.taskIndex}`);
+    const kind = payload.record.target === "idea-inbox" ? "idea inbox" : "task index";
+    throw new Error(`Refusing to record into table-based ${kind}: ${recordPath}`);
   }
   const nextContent = appendTaskToSection(content, payload.suggested.section, intakeTaskEntry(payload));
-  writeFileSync(taskIndexAbs, nextContent);
+  writeFileSync(recordAbs, nextContent);
   payload.writesFiles = true;
   payload.record.written = true;
   payload.record.entry = intakeTaskEntry(payload).trimEnd();
@@ -2224,6 +2269,9 @@ function intakeIdea(args) {
 
   console.log("Agent Harness intake");
   console.log(`Task index: ${payload.taskIndex || "not configured"}`);
+  if (payload.ideaInbox) {
+    console.log(`Idea inbox: ${payload.ideaInbox}`);
+  }
   console.log(`Writes files: ${payload.writesFiles ? "yes" : "no"}`);
   console.log("");
   console.log("Suggested classification:");
@@ -2887,7 +2935,9 @@ function durableRunEvidence(cwd, run, goalsRelPath) {
   }
   if (!existsSync(goalAbs)) return { ok: false, reason: `Goal does not exist: ${run.goalPath}` };
   const goal = readFileSync(goalAbs, "utf8");
-  if (!goal.includes(run.runDir)) return { ok: false, reason: "Goal does not reference this Run." };
+  const normalizedGoal = goal.replaceAll("\\", "/");
+  const normalizedRunDir = run.runDir.replaceAll("\\", "/");
+  if (!normalizedGoal.includes(normalizedRunDir)) return { ok: false, reason: "Goal does not reference this Run." };
   if (!oneLine(extractSection(goal, "State Sync Notes"))) return { ok: false, reason: "Goal has no non-empty State Sync Notes section." };
   return { ok: true, reason: "Goal references the Run and contains State Sync Notes." };
 }

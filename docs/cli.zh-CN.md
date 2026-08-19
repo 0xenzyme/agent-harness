@@ -116,14 +116,16 @@ priority，不是 Goal、Task 或 milestone 标识。`P0` / `P1` 的 `todo` 或
 
 ## Intake And Maintenance
 
-预览一个新想法或新需求，不修改 Goal index：
+预览一个新想法或新需求。预览只读；adapter 配置了 idea inbox 时，记录会写入
+未确认候选 inbox，不会修改 Goal index：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
 ```
 
-用户明确确认后，才把候选项追加到支持的 markdown Goal index：
+用户明确确认后，才记录候选项。配置了 idea inbox 的 adapter 会写入该 inbox；未配置
+时才回退到支持的 markdown Goal index：
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next

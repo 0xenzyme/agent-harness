@@ -9,6 +9,7 @@
   },
   "paths": {
     "taskIndex": "harness/tasks.md",
+    "ideaInbox": "harness/intake.md",
     "status": "harness/status.md",
     "specs": "harness/specs",
     "goals": "harness/goals",

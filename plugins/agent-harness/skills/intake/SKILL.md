@@ -11,7 +11,8 @@ an explicit user request.
 Read [Capture And Promotion](references/capture-promotion.md) before recording
 or promoting an intake candidate.
 
-1. Read repo instructions and inspect the configured Goal-index path.
+1. Read repo instructions and inspect the configured Goal-index and idea-inbox
+   paths.
 2. Preserve the raw idea, detect duplicates/dependencies, and propose a concise
    title, priority, section, acceptance hint, and likely spec need.
 3. Preview first:
@@ -26,7 +27,9 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea "<idea>" --record --priority P2 --section Next
 ```
 
-5. Refuse unsupported table writes without changing the file. Do not promote a
+5. When an idea inbox is configured, `--record` appends the candidate there and
+   leaves the accepted Goal index unchanged. Without an idea inbox, refuse
+   unsupported table writes without changing the file. Do not promote a
    candidate to accepted scope, create Spec/Goal/Run artifacts, or implement it.
    An accepted ordinary change returns to Codex directly and may use bounded
    postflight sync for this already recorded Task; durable accepted work uses

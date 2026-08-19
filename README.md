@@ -55,7 +55,7 @@ Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
 | --- | --- |
 | 接入 Harness、导入已有 Goal index、运行 doctor，或预览 activation。 | `harness:init` |
 | 只读检查状态、blocker、stale artifact 或下一条 route。 | `harness:orient` |
-| 收集或 triage 想法、需求、bug 或 inbox note。 | `harness:intake` |
+| 收集或 triage 想法、需求、bug 或 inbox note；adapter 可把未确认候选写入 `paths.ideaInbox`。 | `harness:intake` |
 | 控制 durable work，或在 Codex 完成简单任务后同步已有 Harness 状态。 | `harness:execute` |
 
 普通、明确的 change/build 请求由 Codex 直接执行。澄清 scope、提问和创建 repository Goal

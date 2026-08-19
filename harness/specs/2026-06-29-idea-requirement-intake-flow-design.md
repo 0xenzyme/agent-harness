@@ -13,7 +13,7 @@ should turn it into harness-shaped project state before implementation.
 
 The mental model says intake is not execution. It starts from external intent,
 compares that intent with current harness state, proposes a candidate task or
-spec direction, and asks before mutating the task index.
+spec direction, and asks before mutating the configured record target.
 
 ## Goal
 
@@ -27,7 +27,8 @@ Implement a conservative idea / requirement intake flow:
 - output a candidate harness entry with title, priority, acceptance, risks,
   dependencies, validation questions, and confirmation needed;
 - support a read-only preview by default;
-- support explicit task-index append only when the user passes a write flag.
+- support explicit candidate recording only when the user passes a write flag;
+  adapter projects may route that write to a configured idea inbox.
 
 ## Scope
 
@@ -42,7 +43,8 @@ agent-harness intake idea --cwd <project> --idea <text> [--json] [--record] [--p
 Behavior:
 
 - default mode is preview only and must not edit files;
-- `--record` appends a candidate task to the configured task index;
+- `--record` appends a candidate to the configured idea inbox when present, or
+  to the configured task index when no inbox is declared;
 - `--priority` defaults to `P2`;
 - `--section` defaults to `Next`;
 - `--json` exposes stable machine-readable output;
@@ -78,8 +80,8 @@ Preview output should include:
 
 ### Recording
 
-When `--record` is present, append a task to the configured task index using
-the current fixed markdown task format:
+When `--record` is present, append a candidate to the configured idea inbox or
+task index using the current fixed markdown task format:
 
 ```md
 - [ ] P2 Suggested title
@@ -88,15 +90,18 @@ the current fixed markdown task format:
   - Notes: Classification=...; Needs spec=...
 ```
 
-For table-based downstream task indexes, the first implementation may refuse to
-write and ask the user to record manually. It must not corrupt unknown formats.
+For table-based downstream task indexes, recording remains safe when the
+adapter provides a list-form idea inbox: the candidate is written to the inbox
+and the table stays unchanged. Without an inbox, the command refuses to write
+and must not corrupt the unknown format.
 
 ## Non-Goals
 
 - Do not implement the idea itself.
 - Do not automatically create specs, goals, runs, branches, PRs, deployments,
   daemons, or background automation.
-- Do not silently modify the task index; writes require `--record`.
+- Do not silently modify the task index or idea inbox; writes require
+  `--record`.
 - Do not rewrite existing tasks or delete duplicates.
 - Do not require a new roadmap artifact.
 - Do not use network calls or paid APIs.
@@ -105,12 +110,13 @@ write and ask the user to record manually. It must not corrupt unknown formats.
 
 - Intake is a shaping workflow, not an execution workflow.
 - Preview is the default and must be read-only.
-- Recording writes only the configured task index and only when `--record` is
-  explicit.
+- Recording writes only the configured idea inbox or task index and only when
+  `--record` is explicit. Inbox entries remain unaccepted candidates.
 - The first classification engine is deterministic and conservative; richer
   semantic matching can be a future enhancement.
-- Table-based task indexes are preview-only for now; automatic recording
-  refuses them until a safe table writer exists.
+- Table-based task indexes remain preview-only when no idea inbox is configured;
+  an inbox provides a safe list-form recording target without changing the
+  table.
 
 ## Verification
 
@@ -127,13 +133,15 @@ Temporary-project checks should cover:
 - `--record` appends to `Next` by default;
 - duplicate-ish ideas are classified as related or duplicate;
 - explicit priority / section are honored;
-- table-based task index refuses record safely.
+- table-based task index refuses record safely when no idea inbox is configured;
+  a configured inbox records without changing the table.
 
 ## Completion Conditions
 
 - CLI supports preview and explicit record for idea intake.
 - README, Chinese README, relevant skills, and tests describe the workflow.
-- `harness/tasks.md` and `harness/status.md` are updated.
+- adapter templates/configuration, the idea inbox path, and `harness/status.md`
+  document the workflow without turning candidates into accepted Goals.
 - Validation passes.
 
 ## Pause Conditions

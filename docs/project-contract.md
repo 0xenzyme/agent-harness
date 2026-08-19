@@ -15,8 +15,9 @@ at durable boundaries or in one bounded postflight closeout.
 
 - `fixed`: `harness/tasks.md`, `.harness/config.json`, `harness/status.md`,
   `harness/goals/`, and `.harness/runs/`.
-- `adapter`: `.harness/config.json` plus adapter-declared Goal index, status,
-  specs, goals, milestones, runs, gate records, and deferred-register paths.
+- `adapter`: `.harness/config.json` plus adapter-declared Goal index, optional
+  idea inbox, status, specs, goals, milestones, runs, gate records, and
+  deferred-register paths.
 
 All configured writes and Goal/Spec/Run/DAG references must stay inside their
 configured project roots after lexical and existing-parent realpath checks.
@@ -55,7 +56,8 @@ fresh authority, but they do not form a Harness completion-state ladder.
 
 ## Configuration
 
-Canonical behavior fields include adapter/configured paths,
+Canonical behavior fields include adapter/configured paths (an adapter may
+declare `paths.ideaInbox` for unaccepted intake candidates),
 `worktree.defaultPolicy`, `gates.requiredForCompletion`, and `gates.blocking`.
 These configured gates apply to durable Goal/Run completion. They do not apply
 to `codex-direct` or postflight-only synchronization, and postflight cannot

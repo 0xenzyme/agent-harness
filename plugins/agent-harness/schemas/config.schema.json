@@ -76,6 +76,11 @@
           "type": "string",
           "minLength": 1
         },
+        "ideaInbox": {
+          "description": "Optional repo-relative Markdown inbox for unaccepted intake candidates.",
+          "type": "string",
+          "minLength": 1
+        },
         "status": {
           "type": "string",
           "minLength": 1

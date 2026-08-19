@@ -25,6 +25,9 @@ function fails(args) {
 }
 
 function assert(value, message) { if (!value) throw new Error(message); }
+function samePath(actual, expected) {
+  return String(actual || "").replaceAll("\\", "/") === String(expected || "").replaceAll("\\", "/");
+}
 function write(path, content) { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, content); }
 function json(path) { return JSON.parse(readFileSync(path, "utf8")); }
 
@@ -68,11 +71,28 @@ try {
   run(["init", "--cwd", temp, "--contract", "adapter"]);
   const inspect = JSON.parse(run(["config", "inspect", "--cwd", temp, "--json"]));
   assert(inspect.paths.runs === ".harness/runs", "adapter paths must resolve canonically");
+  assert(inspect.paths.ideaInbox === "harness/intake.md", "adapter init must configure an idea inbox");
+  assert(existsSync(join(temp, "harness/intake.md")), "adapter init must create the configured idea inbox");
+  const configPath = join(temp, ".harness/config.json");
+  const canonicalConfig = json(configPath);
   const validation = JSON.parse(run(["config", "validate", "--cwd", temp, "--json"]));
   assert(validation.ok, "canonical adapter config must validate");
   const intakePreview = JSON.parse(run(["intake", "idea", "--cwd", temp, "--idea", "Add import audit", "--json"]));
   assert(intakePreview.writesFiles === false, "intake preview must be read-only");
-  assert(/table-based task index/.test(fails(["intake", "idea", "--cwd", temp, "--idea", "Add import audit", "--record", "--json"])), "unsupported table Goal indexes must refuse automatic intake writes");
+  assert(intakePreview.record.target === "idea-inbox" && intakePreview.record.path === "harness/intake.md", "adapter intake must select the configured idea inbox");
+  assert(intakePreview.record.supported, "the generated idea inbox must be recordable");
+  const taskIndexBeforeIntake = readFileSync(join(temp, "harness/tasks.md"), "utf8");
+  const intakeRecord = JSON.parse(run(["intake", "idea", "--cwd", temp, "--idea", "Add import audit", "--record", "--json"]));
+  assert(intakeRecord.writesFiles && intakeRecord.record.written, "explicit intake record must write the idea inbox");
+  assert(readFileSync(join(temp, "harness/intake.md"), "utf8").includes("Add import audit"), "recorded intake must preserve the raw idea in the inbox");
+  assert(readFileSync(join(temp, "harness/tasks.md"), "utf8") === taskIndexBeforeIntake, "idea inbox recording must leave the Goal index unchanged");
+
+  const tableFallbackConfig = structuredClone(canonicalConfig);
+  delete tableFallbackConfig.paths.ideaInbox;
+  writeFileSync(configPath, `${JSON.stringify(tableFallbackConfig, null, 2)}\n`);
+  assert(/table-based task index/.test(fails(["intake", "idea", "--cwd", temp, "--idea", "Add table fallback", "--record", "--json"])), "table Goal indexes must still refuse automatic writes without an idea inbox");
+  writeFileSync(configPath, `${JSON.stringify(canonicalConfig, null, 2)}\n`);
+  write(join(temp, "harness/intake.md"), "# Intake Inbox\n\n## Now\n\n## Next\n\n## Later\n");
   const maintenance = JSON.parse(run(["maintain", "tasks", "--cwd", temp, "--json"]));
   assert(maintenance.writesFiles === false, "maintenance preview must be read-only");
   assert(!("git" in maintenance), "maintenance must derive state from Harness artifacts without a Git snapshot");
@@ -84,8 +104,6 @@ try {
   assert(["local", "worktree", "ask"].includes(worktree.recommendation), "worktree recommendation must return a canonical policy");
   assert(!("git" in worktree), "worktree recommendation must follow configured policy without checkout-state telemetry");
 
-  const configPath = join(temp, ".harness/config.json");
-  const canonicalConfig = json(configPath);
   assert(canonicalConfig.worktree?.defaultPolicy === "ask" && !canonicalConfig.workMode, "canonical config must write worktree, not legacy workMode");
   assert(canonicalConfig.artifactPolicy?.retention && canonicalConfig.artifactPolicy?.tasks, "canonical config must declare bounded artifact lifecycle defaults");
   assert(!canonicalConfig.loops && !canonicalConfig.lifecycle && !canonicalConfig.gates?.enabled && !canonicalConfig.gates?.optional, "removed config fields must not be emitted");
@@ -110,6 +128,12 @@ try {
     assert(!existsSync(join(outside, "absolute")), "absolute-path rejection must produce zero external writes");
   }
 
+  const unsafeInbox = structuredClone(canonicalConfig);
+  unsafeInbox.paths.ideaInbox = "../escape-inbox";
+  writeFileSync(configPath, `${JSON.stringify(unsafeInbox, null, 2)}\n`);
+  assert(/relative|inside|path|\.\./i.test(fails(["config", "validate", "--cwd", temp, "--json"])), "unsafe idea inbox path must fail validation");
+  writeFileSync(configPath, `${JSON.stringify(canonicalConfig, null, 2)}\n`);
+
   const conflict = structuredClone(canonicalConfig);
   conflict.workMode = { defaultPolicy: "local" };
   conflict.worktree = { defaultPolicy: "worktree" };
@@ -128,7 +152,9 @@ try {
     const importPreview = JSON.parse(run(["config", "import", "--cwd", legacy, "--task-index", "todolist.md", "--dry-run", "--json"]));
     assert(importPreview.paths.taskIndex === "todolist.md" && !existsSync(join(legacy, ".harness/config.json")), "config import dry-run must preserve an existing Goal index without writes");
     run(["config", "import", "--cwd", legacy, "--task-index", "todolist.md", "--json"]);
-    assert(json(join(legacy, ".harness/config.json")).paths.taskIndex === "todolist.md", "config import must write canonical adapter paths");
+    const importedConfig = json(join(legacy, ".harness/config.json"));
+    assert(importedConfig.paths.taskIndex === "todolist.md" && importedConfig.paths.ideaInbox === "harness/intake.md", "config import must write canonical adapter paths including the idea inbox");
+    assert(existsSync(join(legacy, "harness/intake.md")), "config import must create the configured idea inbox");
   } finally { rmSync(legacy, { recursive: true, force: true }); }
 
   const invalidExisting = mkdtempSync(join(tmpdir(), "agent-harness-invalid-config-"));
@@ -183,11 +209,11 @@ try {
     assert(inspection.writesFiles === false && inspection.status.overLimit, "artifact inspection must be read-only and report bounded-status overflow");
     assert(inspection.runs.active === 1 && inspection.runs.terminal === 4 && inspection.runs.unmanaged === 2, "artifact inspection must separate operational active, terminal, and unmanaged Runs");
     assert(inspection.runs.active + inspection.runs.terminal + inspection.runs.unmanaged === inspection.runs.entries, "Run lifecycle classifications must cover every inspected entry exactly once");
-    assert(inspection.runs.items.find((item) => item.runDir === legacyBlockedRun)?.classification === "terminal", "legacy status fields must preserve a known terminal Run state");
-    assert(inspection.runs.items.find((item) => item.runDir === missingStatusRun)?.classification === "unmanaged", "missing-status directories must not inflate operational active counts");
-    assert(inspection.runs.items.find((item) => item.runDir === legacyRunFile)?.classification === "unmanaged", "legacy Run files must not inflate operational active counts");
+    assert(inspection.runs.items.find((item) => samePath(item.runDir, legacyBlockedRun))?.classification === "terminal", "legacy status fields must preserve a known terminal Run state");
+    assert(inspection.runs.items.find((item) => samePath(item.runDir, missingStatusRun))?.classification === "unmanaged", "missing-status directories must not inflate operational active counts");
+    assert(inspection.runs.items.find((item) => samePath(item.runDir, legacyRunFile))?.classification === "unmanaged", "legacy Run files must not inflate operational active counts");
     assert(inspection.tasks.issues.some((issue) => issue.kind === "terminal-task-in-active-section"), "artifact inspection must report terminal tasks in active sections");
-    assert(inspection.references.files.includes("harness/goals/completed.md"), "artifact inspection must scan configured durable evidence roots for Run references");
+    assert(inspection.references.files.some((file) => samePath(file, "harness/goals/completed.md")), "artifact inspection must scan configured durable evidence roots for Run references");
     const tasksBefore = readFileSync(join(artifactProject, "harness/tasks.md"), "utf8");
     const compactPreview = JSON.parse(run(["artifacts", "compact", "--cwd", artifactProject, "--json"]));
     assert(compactPreview.compact.candidates.length === 1 && !existsSync(join(artifactProject, "harness/tasks-archive.md")), "compact preview must be read-only and retain the configured recent Done window");
@@ -197,9 +223,9 @@ try {
     assert(readFileSync(join(artifactProject, "harness/tasks-archive.md"), "utf8").includes("Older done"), "task archive must retain the exact displaced record");
     assert(!readFileSync(join(artifactProject, "harness/tasks.md"), "utf8").includes("Older done"), "active task index must drop archived records");
     const prunePreview = JSON.parse(run(["artifacts", "prune", "--cwd", artifactProject, "--json"]));
-    assert(prunePreview.prune.mode === "preview" && prunePreview.prune.candidates.some((item) => item.runDir === completedRun), "prune preview must identify evidence-safe terminal Runs");
-    assert(prunePreview.prune.retained.some((item) => item.runDir === unsafeRun && item.reasons.some((reason) => /State Sync Notes/.test(reason))), "prune preview must refuse terminal Runs without durable State Sync Notes");
-    assert(prunePreview.prune.retained.some((item) => item.runDir === escapedGoalRun && item.reasons.some((reason) => /Run Goal path/.test(reason))), "prune preview must reject Goal evidence outside the configured Goals root");
+    assert(prunePreview.prune.mode === "preview" && prunePreview.prune.candidates.some((item) => samePath(item.runDir, completedRun)), "prune preview must identify evidence-safe terminal Runs");
+    assert(prunePreview.prune.retained.some((item) => samePath(item.runDir, unsafeRun) && item.reasons.some((reason) => /State Sync Notes/.test(reason))), "prune preview must refuse terminal Runs without durable State Sync Notes");
+    assert(prunePreview.prune.retained.some((item) => samePath(item.runDir, escapedGoalRun) && item.reasons.some((reason) => /Run Goal path/.test(reason))), "prune preview must reject Goal evidence outside the configured Goals root");
     assert(existsSync(join(artifactProject, completedRun)), "prune preview must not delete candidates");
     const trackedPolicy = json(artifactConfigPath);
     trackedPolicy.artifactPolicy.runs = "tracked";
@@ -209,7 +235,7 @@ try {
     trackedPolicy.artifactPolicy.runs = "local-only";
     writeFileSync(artifactConfigPath, `${JSON.stringify(trackedPolicy, null, 2)}\n`);
     const pruneApply = JSON.parse(run(["artifacts", "prune", "--cwd", artifactProject, "--apply", "--json"]));
-    assert(pruneApply.prune.deleted.includes(completedRun) && !existsSync(join(artifactProject, completedRun)), "prune --apply must delete only eligible terminal Runs");
+    assert(pruneApply.prune.deleted.some((runDir) => samePath(runDir, completedRun)) && !existsSync(join(artifactProject, completedRun)), "prune --apply must delete only eligible terminal Runs");
     assert(existsSync(join(artifactProject, activeRun)), "prune --apply must preserve active Runs");
     assert(existsSync(join(artifactProject, unsafeRun)), "prune --apply must preserve terminal Runs without durable evidence");
     assert(existsSync(join(artifactProject, escapedGoalRun)), "prune --apply must preserve Runs whose Goal escapes the configured root");

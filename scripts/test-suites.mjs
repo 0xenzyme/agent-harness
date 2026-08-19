@@ -62,7 +62,7 @@ function protocol() {
   assert(schema.properties.gates.properties.requiredForCompletion && schema.properties.gates.properties.blocking, "completion gate fields must remain supported");
   assert(schema.properties.artifactPolicy.properties.retention && schema.properties.artifactPolicy.properties.tasks, "artifact lifecycle policy must remain supported");
   const adapter = json("plugins/agent-harness/templates/config.adapter.json");
-  assert(adapter.worktree && adapter.artifactPolicy && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must be slim and lifecycle-aware");
+  assert(adapter.worktree && adapter.artifactPolicy && adapter.paths.ideaInbox === "harness/intake.md" && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must include the idea inbox and remain slim and lifecycle-aware");
   console.log(`Protocol checks passed (${invariants.length} domain invariants).`);
 }
 
