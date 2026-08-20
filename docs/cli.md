@@ -49,6 +49,14 @@ Initialize an adapter-contract downstream project:
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
 ```
 
+The same `init` options work for a fixed contract. `--task-index` sets the
+configured task file and `--idea-inbox` creates an optional Markdown inbox;
+the paths are written to `.harness/config.json` and are checked for containment.
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract fixed --task-index docs/tasks.md --idea-inbox docs/intake.md
+```
+
 Import an existing adapter project that already has an adapter and a Goal index
 stored in a task-index-compatible file, without creating a second Goal index:
 
@@ -272,14 +280,16 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
 ```
 
-Record a node start before launch, then record its result. A second concurrent
-writer requires `--isolation-evidence`:
+Record a node start before launch, then record its result. Node IDs are generated
+per task size; inspect `run status --json` (or `dag.json`) before copying a command.
+For the current default medium/large DAG, the IDs are `execution` and
+`verification`; a second concurrent writer requires `--isolation-evidence`:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase running --summary "Launching read-only explorer"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase completed --summary "Mapped implementation ownership" --verification "Read-only review completed"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker-b --phase running --summary "Launching isolated writer" --isolation-evidence "separate locked worktree /tmp/worker-b"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase running --summary "Starting accepted implementation"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase completed --summary "Implementation evidence recorded" --verification "Focused checks passed"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node verification --phase running --summary "Starting verification"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node verification --phase blocked --summary "Blocked by a failed verification command"
 ```
 
 Record a Run outcome without modifying source files or performing external
@@ -292,17 +302,17 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 ```
 
 `run record` refreshes accepted Run evidence in `status.json` and the Run log.
-Completed Runs require verification, resolved DAG nodes, required checklist
-items, durable gates, and synchronized authoritative Task/Goal state.
+Completed Runs require verification, every generated DAG node to be completed
+(including advisory/small DAGs), required checklist items, durable gates, and
+synchronized authoritative Task/Goal state with concrete State Sync Notes.
 
-Completed enforced-DAG runs also require every worker node to be resolved.
-Active `running` nodes block completion; cancellation or supersession is a
+Active `running` or `blocked` nodes block completion; cancellation or supersession is a
 cooperative controller signal, not proof that a worker runtime stopped.
 
 Configured `gates.requiredForCompletion` and `gates.blocking` apply to durable
 Goal/Run completion. They do not require ordinary Codex-direct work or bounded
-postflight-only state updates to create a Run. Once a Run is prepared and
-enforced, postflight wording cannot bypass its DAG, gates, or evidence.
+postflight-only state updates to create a Run. Once a Run is prepared,
+postflight wording cannot bypass its DAG, gates, or evidence.
 
 The CLI records durable state; it does not implement Codex runtime Goal or
 Plan. Skills bind long-running controller work to the host's native Goal and

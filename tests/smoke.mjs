@@ -96,6 +96,10 @@ try {
   const maintenance = JSON.parse(run(["maintain", "tasks", "--cwd", temp, "--json"]));
   assert(maintenance.writesFiles === false, "maintenance preview must be read-only");
   assert(!("git" in maintenance), "maintenance must derive state from Harness artifacts without a Git snapshot");
+  const maintenanceText = run(["maintain", "tasks", "--cwd", temp]);
+  assert(maintenanceText.includes("Harness state:") && !maintenanceText.includes("Git:"), "text maintenance must render without a Git payload");
+  const maintenanceRecordText = run(["maintain", "tasks", "--cwd", temp, "--record"]);
+  assert(maintenanceRecordText.includes("Record:") && maintenanceRecordText.includes("statusWritten=yes"), "recorded text maintenance must complete after writing the bounded snapshot");
   const orientation = JSON.parse(run(["orient", "next", "--cwd", temp, "--json"]));
   assert(orientation.contract === "adapter", "orientation must preserve adapter contract state");
   const activation = run(["activation", "snippet", "--cwd", temp]);
@@ -156,6 +160,14 @@ try {
     assert(importedConfig.paths.taskIndex === "todolist.md" && importedConfig.paths.ideaInbox === "harness/intake.md", "config import must write canonical adapter paths including the idea inbox");
     assert(existsSync(join(legacy, "harness/intake.md")), "config import must create the configured idea inbox");
   } finally { rmSync(legacy, { recursive: true, force: true }); }
+
+  const fixedOptions = mkdtempSync(join(tmpdir(), "agent-harness-fixed-options-"));
+  try {
+    run(["init", "--cwd", fixedOptions, "--contract", "fixed", "--task-index", "docs/tasks.md", "--idea-inbox", "docs/intake.md"]);
+    const fixedOptionsConfig = JSON.parse(run(["config", "inspect", "--cwd", fixedOptions, "--json"]));
+    assert(fixedOptionsConfig.paths.taskIndex === "docs/tasks.md" && fixedOptionsConfig.paths.ideaInbox === "docs/intake.md", "fixed init must persist task-index and idea-inbox overrides");
+    assert(existsSync(join(fixedOptions, "docs/tasks.md")) && existsSync(join(fixedOptions, "docs/intake.md")), "fixed init must create overridden task and inbox files");
+  } finally { rmSync(fixedOptions, { recursive: true, force: true }); }
 
   const invalidExisting = mkdtempSync(join(tmpdir(), "agent-harness-invalid-config-"));
   try {
@@ -222,10 +234,14 @@ try {
     assert(compactRecord.compact.archived === 1 && compactRecord.compact.archiveWritten && compactRecord.compact.taskIndexWritten, "compact record must archive before replacing the active index");
     assert(readFileSync(join(artifactProject, "harness/tasks-archive.md"), "utf8").includes("Older done"), "task archive must retain the exact displaced record");
     assert(!readFileSync(join(artifactProject, "harness/tasks.md"), "utf8").includes("Older done"), "active task index must drop archived records");
+    const prefixRun = ".harness/runs/20260107-000000-completed-a";
+    write(join(artifactProject, prefixRun, "status.json"), `${JSON.stringify({ phase: "completed", goalPath: "harness/goals/prefix.md", updatedAt: "2026-01-07T00:00:00.000Z" }, null, 2)}\n`);
+    write(join(artifactProject, "harness/goals/prefix.md"), "# Prefix\n\nRun: `.harness/runs/20260107-000000-completed-ab`\n\n## State Sync Notes\n\n- Evidence: retained for review.\n");
     const prunePreview = JSON.parse(run(["artifacts", "prune", "--cwd", artifactProject, "--json"]));
     assert(prunePreview.prune.mode === "preview" && prunePreview.prune.candidates.some((item) => samePath(item.runDir, completedRun)), "prune preview must identify evidence-safe terminal Runs");
     assert(prunePreview.prune.retained.some((item) => samePath(item.runDir, unsafeRun) && item.reasons.some((reason) => /State Sync Notes/.test(reason))), "prune preview must refuse terminal Runs without durable State Sync Notes");
     assert(prunePreview.prune.retained.some((item) => samePath(item.runDir, escapedGoalRun) && item.reasons.some((reason) => /Run Goal path/.test(reason))), "prune preview must reject Goal evidence outside the configured Goals root");
+    assert(prunePreview.prune.retained.some((item) => samePath(item.runDir, prefixRun) && item.reasons.some((reason) => /does not reference this Run/.test(reason))), "prune must compare exact Run references instead of path prefixes");
     assert(existsSync(join(artifactProject, completedRun)), "prune preview must not delete candidates");
     const trackedPolicy = json(artifactConfigPath);
     trackedPolicy.artifactPolicy.runs = "tracked";
@@ -239,6 +255,7 @@ try {
     assert(existsSync(join(artifactProject, activeRun)), "prune --apply must preserve active Runs");
     assert(existsSync(join(artifactProject, unsafeRun)), "prune --apply must preserve terminal Runs without durable evidence");
     assert(existsSync(join(artifactProject, escapedGoalRun)), "prune --apply must preserve Runs whose Goal escapes the configured root");
+    assert(existsSync(join(artifactProject, prefixRun)), "prune --apply must preserve a Run whose Goal only references a longer path prefix");
   } finally { rmSync(artifactProject, { recursive: true, force: true }); }
 
 } finally {
@@ -258,6 +275,10 @@ try {
   const generatedGoal = readFileSync(generatedGoalPath, "utf8");
   assert(generatedGoal.includes("## Codex-Native Execution"), "generated durable Goals must bind to Codex-native execution");
   assert(generatedGoal.includes("These gates apply only to durable Goal/Run completion"), "generated Goal gates must declare durable-only scope");
+  assert(generatedGoal.includes("## State Sync Notes") && generatedGoal.includes("Accepted-state records: `TBD`"), "generated Goals must include an explicit State Sync Notes contract");
+  writeFileSync(generatedGoalPath, generatedGoal.replace(/## State Sync Notes[\s\S]*?## Spec Acceptance Checklist/, "## Spec Acceptance Checklist"));
+  assert(/State Sync Notes|required section/i.test(fails(["goal", "validate", "--cwd", runProject, "--goal", goalRel, "--json"])), "goal validation must require the State Sync Notes section");
+  writeFileSync(generatedGoalPath, generatedGoal);
   assert(!generatedGoal.includes("## Delivery State"), "generated Goals must use accepted state and evidence without a Delivery State section");
   const legacyGoal = generatedGoal.replace("## Execution DAG", `## Delivery State
 
@@ -307,6 +328,11 @@ try {
   }
   assert(currentRunStatus.executionDag.nodeStatus.execution.verification === "node check", "normal DAG node recording must retain verification evidence");
 
+  const syncReadyGoal = readFileSync(generatedGoalPath, "utf8")
+    .replace("- Accepted-state records: `TBD`", "- Accepted-state records: `harness/tasks.md` and this Goal were synchronized.")
+    .replace("- Run evidence: `TBD`", `- Run evidence: \`${runRel}\` records the completed DAG and verification.`)
+    .replace("- Bounded status update: `TBD`", "- Bounded status update: `harness/status.md` reflects the accepted result.");
+  writeFileSync(generatedGoalPath, syncReadyGoal);
   const recorded = JSON.parse(run(["run", "record", "--cwd", runProject, "--run", runRel, "--phase", "completed", "--summary", "validated", "--verification", "smoke passed", "--json"]));
   assert(!("deliveryState" in recorded) && !("deliveryPolicy" in recorded), "completed Run output must omit legacy delivery fields");
   const migratedStatus = json(runStatusPath);
@@ -320,7 +346,7 @@ try {
   const tamperedGoalStatus = `${JSON.stringify(outsideGoalStatus, null, 2)}\n`;
   writeFileSync(runStatusPath, tamperedGoalStatus);
   const goalLogsBefore = readdirSync(join(runProject, runRel, "logs")).length;
-  assert(/Run Goal path.*inside|Run Goal path/i.test(fails(["run", "record", "--cwd", runProject, "--run", runRel, "--phase", "blocked", "--summary", "tampered goal"])), "run record must reject a project-internal Goal outside configured goals root");
+  assert(/Run Goal path.*inside|Run Goal path|Completed Runs cannot move back/i.test(fails(["run", "record", "--cwd", runProject, "--run", runRel, "--phase", "blocked", "--summary", "tampered goal"])), "run record must reject a completed Run transition and preserve its Goal boundary");
   assert(readFileSync(runStatusPath, "utf8") === tamperedGoalStatus && readdirSync(join(runProject, runRel, "logs")).length === goalLogsBefore, "rejected Run Goal containment must produce zero command writes");
   writeFileSync(runStatusPath, originalRunStatus);
 
@@ -350,6 +376,14 @@ try {
   run(["run", "prepare", "--cwd", specContainmentProject, "--goal", specGoalRel]);
   const specRunName = readdirSync(join(specContainmentProject, ".harness/runs")).find((name) => !name.startsWith("."));
   const specRunRel = `.harness/runs/${specRunName}`;
+  write(join(specContainmentProject, "harness/tasks.md"), "# Goals\n\n## Now\n\n- [ ] Spec containment guard\n- [ ] Adapter no spec prepare\n");
+  run(["goal", "create", "--cwd", specContainmentProject, "--task", "Adapter no spec prepare", "--allow-no-spec", "--work-mode", "local"]);
+  const noSpecGoalName = readdirSync(join(specContainmentProject, "harness/goals")).find((name) => name.includes("adapter-no-spec-prepare"));
+  assert(noSpecGoalName, "adapter --allow-no-spec must create a Goal");
+  const noSpecGoalRel = `harness/goals/${noSpecGoalName}`;
+  run(["run", "prepare", "--cwd", specContainmentProject, "--goal", noSpecGoalRel]);
+  const noSpecRunName = readdirSync(join(specContainmentProject, ".harness/runs")).find((name) => name !== specRunName && !name.startsWith("."));
+  assert(noSpecRunName, "adapter --allow-no-spec Goal must prepare a Run without a spec path error");
   const specGoalPath = join(specContainmentProject, specGoalRel);
   const validSpecGoal = readFileSync(specGoalPath, "utf8");
   write(join(specContainmentProject, "other/spec.md"), "# Spec: Outside configured root\n\nStatus: accepted\n");
@@ -359,6 +393,63 @@ try {
   const specLogsBefore = readdirSync(join(specContainmentProject, specRunRel, "logs")).length;
   assert(/Goal Spec path.*inside|Goal Spec path/i.test(fails(["run", "record", "--cwd", specContainmentProject, "--run", specRunRel, "--phase", "blocked", "--summary", "tampered spec"])), "run record must reject a project-internal Spec outside configured specs root");
   assert(readFileSync(specStatusPath, "utf8") === specStatusBefore && readdirSync(join(specContainmentProject, specRunRel, "logs")).length === specLogsBefore, "rejected Goal Spec containment must produce zero Run writes");
+
+  const guardProject = mkdtempSync(join(tmpdir(), "agent-harness-completion-guards-"));
+  try {
+    run(["init", "--cwd", guardProject, "--contract", "fixed"]);
+    write(join(guardProject, "harness/tasks.md"), "# Tasks\n\n## Now\n\n- [ ] Completion guard\n");
+    run(["goal", "create", "--cwd", guardProject, "--task", "Completion guard", "--allow-no-spec", "--work-mode", "local"]);
+    const guardGoalName = readdirSync(join(guardProject, "harness/goals")).find((name) => name.endsWith(".md"));
+    const guardGoalRel = `harness/goals/${guardGoalName}`;
+    run(["run", "prepare", "--cwd", guardProject, "--goal", guardGoalRel]);
+    const guardRunName = readdirSync(join(guardProject, ".harness/runs")).find((name) => !name.startsWith("."));
+    const guardRunRel = `.harness/runs/${guardRunName}`;
+    const guardRunDir = join(guardProject, guardRunRel);
+    const guardStatusPath = join(guardRunDir, "status.json");
+    const guardDagPath = join(guardRunDir, "dag.json");
+    const guardGoalPath = join(guardProject, guardGoalRel);
+    const guardStatusBefore = readFileSync(guardStatusPath, "utf8");
+    const guardDagBefore = readFileSync(guardDagPath, "utf8");
+    const guardGoalBefore = readFileSync(guardGoalPath, "utf8");
+    const guardLogsDir = join(guardRunDir, "logs");
+    rmSync(guardDagPath);
+    assert(/execution DAG|dag.json/i.test(fails(["run", "record", "--cwd", guardProject, "--run", guardRunRel, "--phase", "completed", "--summary", "missing dag", "--verification", "guard"])), "completed Run must fail closed when dag.json is missing");
+    assert(readFileSync(guardStatusPath, "utf8") === guardStatusBefore && readdirSync(guardLogsDir).length === 0, "missing DAG completion rejection must produce zero writes");
+    writeFileSync(guardDagPath, guardDagBefore);
+    let guardProgress = JSON.parse(run(["run", "status", "--cwd", guardProject, "--run", guardRunRel, "--json"]));
+    while (!guardProgress.executionDag.allNodesCompleted) {
+      const ready = guardProgress.executionDag.readyNodes;
+      assert(ready.length > 0, "completion guard DAG must expose a ready node while completing the fixture");
+      for (const nodeId of ready) {
+        run(["run", "node", "record", "--cwd", guardProject, "--run", guardRunRel, "--node", nodeId, "--phase", "completed", "--summary", "fixture node", "--verification", "fixture verification"]);
+      }
+      guardProgress = JSON.parse(run(["run", "status", "--cwd", guardProject, "--run", guardRunRel, "--json"]));
+    }
+    const guardCompletedStatusBefore = readFileSync(guardStatusPath, "utf8");
+    rmSync(guardGoalPath);
+    assert(/readable Goal|Goal/i.test(fails(["run", "record", "--cwd", guardProject, "--run", guardRunRel, "--phase", "completed", "--summary", "missing goal", "--verification", "guard"])), "completed Run must fail closed when its Goal is missing");
+    assert(readFileSync(guardStatusPath, "utf8") === guardCompletedStatusBefore && readdirSync(guardLogsDir).length === 0, "missing Goal completion rejection must produce zero writes");
+    writeFileSync(guardGoalPath, guardGoalBefore);
+
+    run(["run", "prepare", "--cwd", guardProject, "--goal", guardGoalRel]);
+    const blockedRunName = readdirSync(join(guardProject, ".harness/runs")).find((name) => name !== guardRunName && !name.startsWith("."));
+    const blockedRunRel = `.harness/runs/${blockedRunName}`;
+    const blockedRunDir = join(guardProject, blockedRunRel);
+    const blockedDag = json(join(blockedRunDir, "dag.json"));
+    const firstGuardNode = blockedDag.nodes[0];
+    const blockedStatus = json(join(blockedRunDir, "status.json"));
+    assert(blockedStatus.executionDag.enforced === false || blockedStatus.executionDag.enforced === true, "completion guard Run must expose DAG enforcement state");
+    run(["run", "node", "record", "--cwd", guardProject, "--run", blockedRunRel, "--node", firstGuardNode.id, "--phase", "blocked", "--summary", "blocked node"]);
+    const blockedLogOne = JSON.parse(run(["run", "record", "--cwd", guardProject, "--run", blockedRunRel, "--phase", "blocked", "--summary", "blocked one", "--json"]));
+    const blockedLogTwo = JSON.parse(run(["run", "record", "--cwd", guardProject, "--run", blockedRunRel, "--phase", "blocked", "--summary", "blocked two", "--json"]));
+    assert(blockedLogOne.log !== blockedLogTwo.log && existsSync(join(guardProject, blockedLogOne.log)) && existsSync(join(guardProject, blockedLogTwo.log)), "same-second Run records must use unique log paths");
+    assert(/every execution DAG node|blocked/i.test(fails(["run", "record", "--cwd", guardProject, "--run", blockedRunRel, "--phase", "completed", "--summary", "blocked dag", "--verification", "guard"])), "completed Run must reject blocked nodes even for advisory DAGs");
+    run(["run", "node", "record", "--cwd", guardProject, "--run", blockedRunRel, "--node", firstGuardNode.id, "--phase", "completed", "--summary", "unblocked node", "--verification", "node guard"]);
+    const nodeStatusPath = join(blockedRunDir, firstGuardNode.status);
+    const nodeStatusBefore = readFileSync(nodeStatusPath, "utf8");
+    assert(/Completed DAG node|completed Run/i.test(fails(["run", "node", "record", "--cwd", guardProject, "--run", blockedRunRel, "--node", firstGuardNode.id, "--phase", "blocked", "--summary", "regression"])), "completed DAG nodes must not transition back to blocked");
+    assert(readFileSync(nodeStatusPath, "utf8") === nodeStatusBefore, "terminal DAG transition rejection must produce zero node writes");
+  } finally { rmSync(guardProject, { recursive: true, force: true }); }
 
   const zhDoctor = run(["doctor", "--cwd", runProject, "--lang", "zh-CN"], { env: { LANG: "zh_CN.UTF-8", LC_ALL: "zh_CN.UTF-8" } });
   assert(zhDoctor.includes("项目") || zhDoctor.includes("状态"), "zh-CN smoke must exercise localized display");
@@ -373,6 +464,20 @@ try {
       write(join(symlinkProject, ".harness/config.json"), `${JSON.stringify({ contract: "fixed", paths: { tasks: "harness/tasks.md", status: "escape/status.md", goals: "harness/goals", runs: ".harness/runs" } }, null, 2)}\n`);
       assert(/symlink|outside|escape/i.test(fails(["init", "--cwd", symlinkProject, "--contract", "fixed"])), "existing-parent symlink escape must fail");
       assert(!existsSync(join(outside, "status.md")), "symlink rejection must produce zero external writes");
+      const danglingTarget = join(outside, "dangling-target");
+      mkdirSync(danglingTarget, { recursive: true });
+      symlinkSync(danglingTarget, join(symlinkProject, "dangling"), process.platform === "win32" ? "junction" : "dir");
+      rmSync(danglingTarget, { recursive: true, force: true });
+      write(join(symlinkProject, ".harness/config.json"), `${JSON.stringify({ contract: "fixed", paths: { tasks: "harness/tasks.md", status: "dangling/status.md", goals: "harness/goals", runs: ".harness/runs" } }, null, 2)}\n`);
+      assert(/symlink|unresolved|outside/i.test(fails(["init", "--cwd", symlinkProject, "--contract", "fixed"])), "dangling symlink paths must fail containment before writes");
+      write(join(outside, "tasks.md"), "# External task content\n\n## Now\n\n- [ ] Must not leak\n");
+      write(join(symlinkProject, "harness/status.md"), "# Status\n");
+      write(join(symlinkProject, "harness/goals/.keep"), "");
+      write(join(symlinkProject, ".harness/config.json"), `${JSON.stringify({ contract: "fixed", paths: { tasks: "escape/tasks.md", status: "harness/status.md", goals: "harness/goals", runs: ".harness/runs" } }, null, 2)}\n`);
+      const symlinkConfigValidation = JSON.parse(run(["config", "validate", "--cwd", symlinkProject, "--json"]));
+      assert(symlinkConfigValidation.ok, "schema-only config validation should remain independent from filesystem containment");
+      assert(/symlink|outside|escapes|inside/i.test(fails(["orient", "next", "--cwd", symlinkProject, "--json"])), "orientation must reject configured read paths that resolve through an existing symlink");
+      assert(/symlink|outside|escapes|inside/i.test(fails(["maintain", "tasks", "--cwd", symlinkProject, "--json"])), "maintenance must reject configured read paths that resolve through an existing symlink");
     } finally { rmSync(symlinkProject, { recursive: true, force: true }); }
   }
 } finally {

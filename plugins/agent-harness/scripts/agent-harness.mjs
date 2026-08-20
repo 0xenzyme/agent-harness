@@ -201,12 +201,19 @@ function isPathInside(root, candidate) {
 
 function existingAncestor(path) {
   let cursor = resolve(path);
-  while (!existsSync(cursor)) {
+  while (true) {
+    try {
+      lstatSync(cursor);
+      return cursor;
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        throw error;
+      }
+    }
     const parent = dirname(cursor);
-    if (parent === cursor) break;
+    if (parent === cursor) return cursor;
     cursor = parent;
   }
-  return cursor;
 }
 
 function assertContainedPath(root, candidate, label = "Path") {
@@ -215,10 +222,34 @@ function assertContainedPath(root, candidate, label = "Path") {
   if (!isPathInside(absoluteRoot, absoluteCandidate)) {
     throw new Error(`${label} must stay inside ${absoluteRoot}: ${candidate}`);
   }
-  const rootAnchor = realpathSync(existingAncestor(absoluteRoot));
-  const candidateAnchor = realpathSync(existingAncestor(absoluteCandidate));
+  let rootAnchor = "";
+  let candidateAnchor = "";
+  try {
+    rootAnchor = realpathSync(existingAncestor(absoluteRoot));
+    candidateAnchor = realpathSync(existingAncestor(absoluteCandidate));
+  } catch {
+    throw new Error(`${label} uses an unresolved symlink: ${candidate}`);
+  }
   if (!isPathInside(rootAnchor, candidateAnchor)) {
     throw new Error(`${label} escapes ${absoluteRoot} through an existing symlink: ${candidate}`);
+  }
+  try {
+    const candidateStat = lstatSync(absoluteCandidate);
+    if (candidateStat.isSymbolicLink()) {
+      let candidateReal = "";
+      try {
+        candidateReal = realpathSync(absoluteCandidate);
+      } catch {
+        throw new Error(`${label} uses an unresolved symlink: ${candidate}`);
+      }
+      if (!isPathInside(rootAnchor, candidateReal)) {
+        throw new Error(`${label} resolves outside ${absoluteRoot}: ${candidate}`);
+      }
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
   }
   if (existsSync(absoluteCandidate)) {
     const candidateReal = realpathSync(absoluteCandidate);
@@ -234,6 +265,10 @@ function configuredPath(cwd, relPath, label = "Configured path") {
     throw new Error(`${label} must be a non-empty project-relative path without '..': ${relPath}`);
   }
   return assertContainedPath(cwd, resolve(cwd, relPath), label);
+}
+
+function configuredOptionalPath(cwd, relPath, label = "Configured path") {
+  return relPath ? configuredPath(cwd, relPath, label) : "";
 }
 
 function artifactPath(root, relPath, label = "Artifact path") {
@@ -1067,12 +1102,22 @@ function initPlan(args, cwd, projectName) {
         );
       }
     }
+    const existingPaths = existingMode === "adapter"
+      ? resolvedAdapterPaths(config, activeConfigRelPath)
+      : fixedPathsFromConfig(config, activeConfigRelPath);
+    const requestedPaths = [
+      ["task index", args.taskIndex, existingPaths.taskIndex],
+      ["idea inbox", args.ideaInbox, existingPaths.ideaInbox]
+    ];
+    for (const [label, requested, existing] of requestedPaths) {
+      if (requested && normalizePathReference(requested) !== normalizePathReference(existing)) {
+        throw new Error(`Existing ${activeConfigRelPath} already configures the ${label} as ${existing || "(not configured)"}; init does not migrate paths.`);
+      }
+    }
     return {
       mode: existingMode,
       configPayload: config,
-      paths: existingMode === "adapter"
-        ? resolvedAdapterPaths(config, activeConfigRelPath)
-        : fixedPathsFromConfig(config, activeConfigRelPath),
+      paths: existingPaths,
       writeConfig: false
     };
   }
@@ -1088,6 +1133,15 @@ function initPlan(args, cwd, projectName) {
   const configPayload = mode === "adapter"
     ? buildAdapterConfigPayload(projectName, discovery)
     : buildConfigPayload(projectName, "fixed");
+  if (mode === "fixed") {
+    if (args.taskIndex) {
+      configPayload.paths.tasks = args.taskIndex;
+      delete configPayload.paths.taskIndex;
+    }
+    if (args.ideaInbox) {
+      configPayload.paths.ideaInbox = args.ideaInbox;
+    }
+  }
 
   return {
     mode,
@@ -1100,7 +1154,7 @@ function initPlan(args, cwd, projectName) {
 }
 
 function validateWritablePlan(cwd, mode, paths) {
-  const files = [paths.taskIndex, paths.config, paths.status];
+  const files = [paths.taskIndex, paths.config, paths.status, paths.ideaInbox];
   const dirs = [paths.goals, paths.runs];
   if (mode === "adapter") {
     files.push(paths.adapterDocs, paths.mentalModelIndex, paths.ideaInbox);
@@ -1149,6 +1203,11 @@ function init(args) {
       if (writeIfMissing(ideaInboxPath, readTemplate("intake.md"), args.force)) {
         created.push(paths.ideaInbox);
       }
+    }
+  } else if (paths.ideaInbox) {
+    const ideaInboxPath = configuredPath(cwd, paths.ideaInbox, "Idea inbox path");
+    if (writeIfMissing(ideaInboxPath, readTemplate("intake.md"), args.force)) {
+      created.push(paths.ideaInbox);
     }
   }
 
@@ -1795,8 +1854,8 @@ function orientationPayload(args) {
   const context = resolveHarnessContext(cwd);
   const taskIndex = context.paths.taskIndex || context.paths.tasks;
   const statusPath = context.paths.status;
-  const taskIndexAbs = taskIndex ? join(cwd, taskIndex) : "";
-  const statusAbs = statusPath ? join(cwd, statusPath) : "";
+  const taskIndexAbs = configuredOptionalPath(cwd, taskIndex, "Task index path");
+  const statusAbs = configuredOptionalPath(cwd, statusPath, "Status path");
   const taskContent = taskIndexAbs && existsSync(taskIndexAbs) ? readFileSync(taskIndexAbs, "utf8") : "";
   const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
   const tasks = taskContent ? parseTasks(taskContent) : [];
@@ -1934,6 +1993,27 @@ function oneLine(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function normalizePathReference(value) {
+  return String(value || "")
+    .replaceAll("\\", "/")
+    .replace(/^\.\/+/, "")
+    .replace(/\/{2,}/g, "/")
+    .replace(/\/$/, "");
+}
+
+function containsExactPathReference(content, reference) {
+  const normalizedReference = normalizePathReference(reference);
+  if (!normalizedReference) return false;
+  const haystack = normalizePathReference(content);
+  const comparison = process.platform === "win32" ? haystack.toLowerCase() : haystack;
+  const candidates = uniqueList([normalizedReference, `./${normalizedReference}`])
+    .map((candidate) => process.platform === "win32" ? candidate.toLowerCase() : candidate);
+  return candidates.some((candidate) => {
+    const pattern = new RegExp(`(^|[^A-Za-z0-9._/-])${escapeRegExp(candidate)}(?=$|[^A-Za-z0-9._/-])`);
+    return pattern.test(comparison);
+  });
+}
+
 function sentenceTitle(value) {
   const cleaned = oneLine(value)
     .replace(/^["'`]+|["'`]+$/g, "")
@@ -2001,7 +2081,7 @@ function intakeTaskMatches(tasks, idea, source = "task-index") {
 }
 
 function collectMarkdownFiles(cwd, relPath, limit = 80) {
-  const root = relPath ? join(cwd, relPath) : "";
+  const root = configuredOptionalPath(cwd, relPath, "Artifact root");
   if (!root || !existsSync(root)) {
     return [];
   }
@@ -2010,6 +2090,9 @@ function collectMarkdownFiles(cwd, relPath, limit = 80) {
   while (stack.length && files.length < limit) {
     const current = stack.pop();
     for (const entry of readdirSync(current, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) {
+        continue;
+      }
       const absPath = join(current, entry.name);
       if (entry.isDirectory()) {
         stack.push(absPath);
@@ -2028,7 +2111,8 @@ function artifactMatches(cwd, paths, idea) {
   ];
   return files
     .map((file) => {
-      const content = readFileIfExists(join(cwd, file));
+      const fileAbs = assertContainedPath(cwd, resolve(cwd, file), "Artifact match path");
+      const content = readFileIfExists(fileAbs);
       const title = goalTitle(content, file);
       const score = Math.max(overlapScore(idea, file), overlapScore(idea, title));
       return {
@@ -2295,20 +2379,21 @@ function intakeIdea(args) {
 }
 
 function readRecentRuns(cwd, runsRelPath, limit = 5) {
-  const runsAbs = runsRelPath ? join(cwd, runsRelPath) : "";
+  const runsAbs = configuredOptionalPath(cwd, runsRelPath, "Runs path");
   if (!runsAbs || !existsSync(runsAbs)) {
     return [];
   }
 
   return readdirSync(runsAbs, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
     .map((entry) => entry.name)
     .sort()
     .reverse()
     .slice(0, limit)
     .map((name) => {
-      const runDir = join(runsRelPath, name);
-      const statusPath = join(cwd, runDir, "status.json");
+      const runAbs = assertContainedPath(runsAbs, join(runsAbs, name), "Run artifact path");
+      const runDir = displayPath(cwd, runAbs);
+      const statusPath = artifactPath(runAbs, "status.json", "Run status path");
       if (!existsSync(statusPath)) {
         return {
           runDir,
@@ -2422,8 +2507,8 @@ function maintenancePayload(args) {
   const taskIndex = context.paths.taskIndex || context.paths.tasks;
   const statusPath = context.paths.status;
   const runsPath = context.paths.runs;
-  const taskIndexAbs = taskIndex ? join(cwd, taskIndex) : "";
-  const statusAbs = statusPath ? join(cwd, statusPath) : "";
+  const taskIndexAbs = configuredOptionalPath(cwd, taskIndex, "Task index path");
+  const statusAbs = configuredOptionalPath(cwd, statusPath, "Status path");
   const taskIndexContent = taskIndexAbs && existsSync(taskIndexAbs) ? readFileSync(taskIndexAbs, "utf8") : "";
   const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
   const tasks = taskIndexContent ? parseTasks(taskIndexContent) : [];
@@ -2463,7 +2548,7 @@ function maintenancePayload(args) {
       focus: statusFocus(statusContent)
     },
     runs: {
-      exists: Boolean(runsPath && existsSync(join(cwd, runsPath))),
+      exists: Boolean(runsPath && existsSync(configuredOptionalPath(cwd, runsPath, "Runs path"))),
       recent: recentRuns
     },
     proposed: {
@@ -2610,12 +2695,8 @@ function maintainTasks(args) {
   console.log(`Runs: ${payload.paths.runs || "not configured"}`);
   console.log(`Writes files: ${payload.writesFiles ? "yes" : "no"}`);
   console.log("");
-  console.log("Git:");
-  if (payload.git.isRepo) {
-    console.log(`- ${payload.git.branch || "(detached)"}${payload.git.upstream ? `...${payload.git.upstream}` : ""}; ahead=${payload.git.ahead}; behind=${payload.git.behind}; dirty=${payload.git.dirty ? "yes" : "no"}; changed paths=${payload.git.changedPathCount}`);
-  } else {
-    console.log("- not a git repository");
-  }
+  console.log("Harness state:");
+  console.log(`- source=task index, status snapshot, and configured Run artifacts`);
   console.log("Recent runs:");
   if (payload.runs.recent.length) {
     console.log(payload.runs.recent.map((run) => `- ${formatRunSummary(run)}`).join("\n"));
@@ -2935,10 +3016,9 @@ function durableRunEvidence(cwd, run, goalsRelPath) {
   }
   if (!existsSync(goalAbs)) return { ok: false, reason: `Goal does not exist: ${run.goalPath}` };
   const goal = readFileSync(goalAbs, "utf8");
-  const normalizedGoal = goal.replaceAll("\\", "/");
-  const normalizedRunDir = run.runDir.replaceAll("\\", "/");
-  if (!normalizedGoal.includes(normalizedRunDir)) return { ok: false, reason: "Goal does not reference this Run." };
-  if (!oneLine(extractSection(goal, "State Sync Notes"))) return { ok: false, reason: "Goal has no non-empty State Sync Notes section." };
+  if (!containsExactPathReference(goal, run.runDir)) return { ok: false, reason: "Goal does not reference this Run." };
+  const stateSyncErrors = stateSyncNotesValidationErrors(stateSyncNotesDetails(goal), { completed: true });
+  if (stateSyncErrors.length) return { ok: false, reason: stateSyncErrors[0] };
   return { ok: true, reason: "Goal references the Run and contains State Sync Notes." };
 }
 
@@ -3033,6 +3113,17 @@ function runTimestamp(date = new Date()) {
     String(date.getMinutes()).padStart(2, "0"),
     String(date.getSeconds()).padStart(2, "0")
   ].join("");
+}
+
+function uniqueRunLogPath(logsDir, phase) {
+  const stem = `${runTimestamp()}-${phase}`;
+  let candidate = join(logsDir, `${stem}.md`);
+  let suffix = 2;
+  while (existsSync(candidate)) {
+    candidate = join(logsDir, `${stem}-${suffix}.md`);
+    suffix += 1;
+  }
+  return candidate;
 }
 
 function slugify(value) {
@@ -3452,6 +3543,15 @@ ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 ${cyberneticStabilityGuidance}
 
 ${stageCompletionMapSection}
+## State Sync Notes
+
+Record concrete accepted-state updates, Run evidence, and bounded status
+synchronization before marking this Goal/Run completed.
+
+- Accepted-state records: \`TBD\`
+- Run evidence: \`TBD\`
+- Bounded status update: \`TBD\`
+
 ## Spec Acceptance Checklist
 
 Add checklist items here when the referenced spec has concrete acceptance
@@ -3944,6 +4044,35 @@ function missingEvidence(value) {
   return !value || /^(tbd|n\/a|none|not recorded|-|\.\.\.)$/i.test(String(value).trim());
 }
 
+function stateSyncNotesDetails(content) {
+  const section = extractSection(content, "State Sync Notes");
+  return {
+    section,
+    text: oneLine(section)
+  };
+}
+
+function stateSyncNotesValidationErrors(details, { completed = false } = {}) {
+  const errors = [];
+  if (!details.section) {
+    errors.push("Goal must include a State Sync Notes section.");
+    return errors;
+  }
+  if (!completed) return errors;
+
+  const hasPlaceholderLine = details.section
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*]\s*/, "").trim())
+    .filter(Boolean)
+    .some((line) => missingEvidence(line) || /:\s*`?(?:tbd|n\/a|none|not recorded|pending)`?\s*\.?$/i.test(line));
+  if (missingEvidence(details.text)) {
+    errors.push("Completed runs require concrete State Sync Notes.");
+  } else if (hasPlaceholderLine || /`(?:tbd|n\/a|none|not recorded|pending)`/i.test(details.text)) {
+    errors.push("Completed runs require concrete State Sync Notes instead of placeholders.");
+  }
+  return errors;
+}
+
 function yesNoValue(value) {
   const normalizedValue = String(value || "").trim().toLowerCase();
   if (["yes", "true", "1"].includes(normalizedValue)) {
@@ -4117,6 +4246,7 @@ function goalMetadata(cwd, goalPath) {
   const stageCompletionMap = stageCompletionMapDetails(content, specContent);
   const specChecklist = specAcceptanceChecklistDetails(content, specContent);
   const gateEvidence = gateEvidenceDetails(content, specContent);
+  const stateSyncNotes = stateSyncNotesDetails(content);
 
   return {
     path: displayPath(cwd, goalPath),
@@ -4161,6 +4291,10 @@ function goalMetadata(cwd, goalPath) {
       itemCount: gateEvidence.items.length,
       items: gateEvidence.items
     },
+    stateSyncNotes: {
+      section: Boolean(stateSyncNotes.section),
+      text: stateSyncNotes.text
+    },
     sections: {
       sourceTask: Boolean(extractSection(content, "Source Task")),
       readFirst: Boolean(extractSection(content, "Read First")),
@@ -4177,6 +4311,7 @@ function goalMetadata(cwd, goalPath) {
       nonGoals: Boolean(extractSection(content, "Non-Goals")),
       verification: Boolean(extractSection(content, "Verification")),
       completionConditions: Boolean(extractSection(content, "Completion Conditions")),
+      stateSyncNotes: Boolean(extractSection(content, "State Sync Notes")),
       pauseConditions: Boolean(extractSection(content, "Pause Conditions"))
     }
   };
@@ -4230,6 +4365,7 @@ function validateGoal(cwd, goalPath) {
     ["Non-Goals", "nonGoals"],
     ["Verification", "verification"],
     ["Completion Conditions", "completionConditions"],
+    ["State Sync Notes", "stateSyncNotes"],
     ["Pause Conditions", "pauseConditions"]
   ];
   for (const [title, key] of requiredSections) {
@@ -4283,6 +4419,8 @@ function validateGoal(cwd, goalPath) {
       requiredLabels: requiredGates
     }));
   }
+
+  errors.push(...stateSyncNotesValidationErrors(stateSyncNotesDetails(content)));
 
   const pauseConditions = extractSection(content, "Pause Conditions");
   const pauseLower = pauseConditions.toLowerCase();
@@ -5165,7 +5303,9 @@ function runPrepare(args) {
   const goalContent = readFileSync(goalPath, "utf8");
   const specRel = extractInlinePath(goalContent, "Spec");
   const specsRoot = paths.specs ? configuredPath(cwd, paths.specs, "Specs root") : cwd;
-  const specAbs = specRel ? assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Spec path") : "";
+  const specAbs = missingSpecValue(specRel)
+    ? ""
+    : assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Spec path");
   const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
   const createdAt = new Date().toISOString();
   const workMode = extractWorkMode(goalContent, cwd);
@@ -5318,8 +5458,16 @@ function runNodeRecord(args) {
     throw new Error(`Starting DAG node '${node.id}' while ${before.runningNodes.join(", ")} is running requires --isolation-evidence <separate-worktree-or-non-overlap-proof>.`);
   }
 
+  const runStatus = JSON.parse(readFileSync(runStatusPath, "utf8"));
   const now = new Date().toISOString();
   const previousNodeStatus = readNodeStatus(runDir, node);
+  const currentRunPhase = runStatus.phase || runStatus.status || "";
+  if (currentRunPhase === "completed") {
+    throw new Error("Completed Runs cannot record additional DAG node transitions.");
+  }
+  if (previousNodeStatus.phase === "completed" && args.phase !== "completed") {
+    throw new Error(`Completed DAG node '${node.id}' cannot move back to ${args.phase}.`);
+  }
   const nodeStatus = {
     ...previousNodeStatus,
     node: node.id,
@@ -5356,7 +5504,6 @@ ${args.verification || "Not recorded."}
   writeFileSync(resultPath, resultContent);
 
   const nextDagState = executionDagSnapshot(dag, runDir);
-  const runStatus = JSON.parse(readFileSync(runStatusPath, "utf8"));
   const runPhase = nextDagState.blockedNodes.length
     ? "blocked"
     : nextDagState.allNodesCompleted
@@ -5415,6 +5562,10 @@ function runRecord(args) {
   const now = new Date().toISOString();
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
   const executionRole = status.executionRole || "unknown";
+  const currentRunPhase = status.phase || status.status || "";
+  if (currentRunPhase === "completed" && args.phase !== "completed") {
+    throw new Error("Completed Runs cannot move back to blocked or another non-complete phase.");
+  }
   if (args.phase === "completed" && !args.verification) {
     throw new Error("Completed runs require --verification evidence.");
   }
@@ -5423,22 +5574,45 @@ function runRecord(args) {
   }
   const dag = readExecutionDag(runDir);
   const dagState = dag ? executionDagSnapshot(dag, runDir) : null;
-  if (args.phase === "completed" && dagState?.runningNodes?.length) {
-    throw new Error(`Completed DAG runs require active worker nodes to be resolved before acceptance; running: ${dagState.runningNodes.join(", ")}.`);
-  }
-  if (args.phase === "completed" && dagState?.enforced && !dagState.allNodesCompleted) {
-    throw new Error(`Completed DAG runs require every execution DAG node to be completed; ready: ${dagState.readyNodes.join(", ") || "none"}, waiting: ${dagState.waitingNodes.join(", ") || "none"}.`);
+  if (args.phase === "completed") {
+    if (!dag || !dagState) {
+      throw new Error("Completed Runs require a readable execution DAG (dag.json).");
+    }
+    if (!dag.nodes.length) {
+      throw new Error("Completed Runs require an execution DAG with at least one node.");
+    }
+    if (dagState.runningNodes.length || dagState.blockedNodes.length || !dagState.allNodesCompleted) {
+      throw new Error(`Completed Runs require every execution DAG node to be completed; running: ${dagState.runningNodes.join(", ") || "none"}, blocked: ${dagState.blockedNodes.join(", ") || "none"}, ready: ${dagState.readyNodes.join(", ") || "none"}, waiting: ${dagState.waitingNodes.join(", ") || "none"}.`);
+    }
+    const incompleteEvidenceNodes = dag.nodes.filter((node) => {
+      const nodeStatus = readNodeStatus(runDir, node);
+      return nodeStatus.phase === "completed"
+        && (missingEvidence(nodeStatus.verificationSummary) || !existsSync(nodeStatusPath(runDir, node)) || !existsSync(artifactPath(runDir, node.result, `DAG node '${node.id}' result`)));
+    });
+    if (incompleteEvidenceNodes.length) {
+      throw new Error(`Completed Runs require verification and result evidence for every completed DAG node; missing: ${incompleteEvidenceNodes.map((node) => node.id).join(", ")}.`);
+    }
+    if (dag.goalPath && normalizePathReference(dag.goalPath) !== normalizePathReference(status.goalPath)) {
+      throw new Error("Completed Runs require dag.json and status.json to reference the same Goal.");
+    }
   }
   const goalsRoot = configuredPath(cwd, context.paths.goals || fixedContract.goals, "Goals root");
   const goalPath = status.goalPath
     ? assertContainedPath(goalsRoot, resolveProjectPath(cwd, status.goalPath), "Run Goal path")
     : "";
   const goalContent = goalPath && existsSync(goalPath) ? readFileSync(goalPath, "utf8") : "";
+  if (args.phase === "completed" && (!goalPath || !goalContent)) {
+    throw new Error("Completed Runs require a readable Goal referenced by status.json.");
+  }
+  const goalExecutionRole = goalContent ? extractGoalExecutionRoleRaw(goalContent) : "";
+  if (args.phase === "completed" && (executionRole === "gate-only" || goalExecutionRole === "gate-only") && !args.gateEvidence) {
+    throw new Error("Completed gate-only runs require --gate-evidence describing implementer output and acceptance evidence.");
+  }
   const specRel = goalContent ? extractInlinePath(goalContent, "Spec") : "";
   const specsRoot = context.paths.specs ? configuredPath(cwd, context.paths.specs, "Specs root") : cwd;
-  const specAbs = specRel
-    ? assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Goal Spec path")
-    : "";
+  const specAbs = missingSpecValue(specRel)
+    ? ""
+    : assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Goal Spec path");
   const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
   if (args.phase === "completed") {
     if (status.acceptanceMapRequired && (!goalPath || !existsSync(goalPath))) {
@@ -5448,42 +5622,47 @@ function runRecord(args) {
     if (milestoneCompletionRequired && (!goalPath || !existsSync(goalPath))) {
       throw new Error("Completed milestone runs require a readable goal with Milestone Completion Map evidence.");
     }
-    if (goalContent) {
-      const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
-      const acceptanceMapErrors = acceptanceMapValidationErrors(acceptanceMap, { completed: true });
-      if (acceptanceMapErrors.length) {
-        throw new Error(`Source Task Acceptance Map validation failed:\n${acceptanceMapErrors.map((error) => `- ${error}`).join("\n")}`);
-      }
-      const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
-      const stageCompletionMapErrors = stageCompletionMapValidationErrors(stageCompletionMap, { completed: true });
-      if (stageCompletionMapErrors.length) {
-        throw new Error(`Milestone Completion Map validation failed:\n${stageCompletionMapErrors.map((error) => `- ${error}`).join("\n")}`);
-      }
-      const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
-      const checklistErrors = evidenceItemValidationErrors(specChecklist, {
-        sectionTitle: "Spec Acceptance Checklist",
-        itemTitle: "Item",
-        requireAcceptance: true,
-        completed: true,
-        requiredLabels: specChecklist.items.map((item) => item.label)
-      });
-      if (checklistErrors.length) {
-        throw new Error(`Spec Acceptance Checklist validation failed:\n${checklistErrors.map((error) => `- ${error}`).join("\n")}`);
-      }
-      const requiredGates = Array.isArray(status.requiredGates) ? status.requiredGates : [];
-      const gateEvidence = gateEvidenceDetails(goalContent, specContent);
-      if (requiredGates.length && !gateEvidence.section) {
-        throw new Error(`Required Gate Evidence must include durable adapter-required gate(s): ${requiredGates.join(", ")}.`);
-      }
-      const gateErrors = evidenceItemValidationErrors(gateEvidence, {
-        sectionTitle: "Required Gate Evidence",
-        itemTitle: "Gate",
-        completed: true,
-        requiredLabels: requiredGates
-      });
-      if (gateErrors.length) {
-        throw new Error(`Required Gate Evidence validation failed:\n${gateErrors.map((error) => `- ${error}`).join("\n")}`);
-      }
+    const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
+    const acceptanceMapErrors = acceptanceMapValidationErrors(acceptanceMap, { completed: true });
+    if (acceptanceMapErrors.length) {
+      throw new Error(`Source Task Acceptance Map validation failed:\n${acceptanceMapErrors.map((error) => `- ${error}`).join("\n")}`);
+    }
+    const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
+    const stageCompletionMapErrors = stageCompletionMapValidationErrors(stageCompletionMap, { completed: true });
+    if (stageCompletionMapErrors.length) {
+      throw new Error(`Milestone Completion Map validation failed:\n${stageCompletionMapErrors.map((error) => `- ${error}`).join("\n")}`);
+    }
+    const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
+    const checklistErrors = evidenceItemValidationErrors(specChecklist, {
+      sectionTitle: "Spec Acceptance Checklist",
+      itemTitle: "Item",
+      requireAcceptance: true,
+      completed: true,
+      requiredLabels: specChecklist.items.map((item) => item.label)
+    });
+    if (checklistErrors.length) {
+      throw new Error(`Spec Acceptance Checklist validation failed:\n${checklistErrors.map((error) => `- ${error}`).join("\n")}`);
+    }
+    const requiredGates = uniqueList([
+      ...durableRequiredCompletionGates(context),
+      ...(Array.isArray(status.requiredGates) ? status.requiredGates : [])
+    ]);
+    const gateEvidence = gateEvidenceDetails(goalContent, specContent);
+    if (requiredGates.length && !gateEvidence.section) {
+      throw new Error(`Required Gate Evidence must include durable adapter-required gate(s): ${requiredGates.join(", ")}.`);
+    }
+    const gateErrors = evidenceItemValidationErrors(gateEvidence, {
+      sectionTitle: "Required Gate Evidence",
+      itemTitle: "Gate",
+      completed: true,
+      requiredLabels: requiredGates
+    });
+    if (gateErrors.length) {
+      throw new Error(`Required Gate Evidence validation failed:\n${gateErrors.map((error) => `- ${error}`).join("\n")}`);
+    }
+    const stateSyncErrors = stateSyncNotesValidationErrors(stateSyncNotesDetails(goalContent), { completed: true });
+    if (stateSyncErrors.length) {
+      throw new Error(`State Sync Notes validation failed:\n${stateSyncErrors.map((error) => `- ${error}`).join("\n")}`);
     }
   }
   const nextStatus = {
@@ -5497,7 +5676,7 @@ function runRecord(args) {
   };
   const logsDir = artifactPath(runDir, "logs", "Run logs path");
   mkdirSync(logsDir, { recursive: true });
-  const logPath = join(logsDir, `${runTimestamp()}-${args.phase}.md`);
+  const logPath = uniqueRunLogPath(logsDir, args.phase);
   const logContent = `# Run ${titleCase(args.phase)} Summary
 
 Updated: ${now}

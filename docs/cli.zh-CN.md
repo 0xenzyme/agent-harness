@@ -52,6 +52,14 @@ AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-5.6 --reasoning-
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
 ```
 
+固定契约也支持同样的 `init` 选项：`--task-index` 设置任务文件，
+`--idea-inbox` 创建可选的 Markdown inbox；路径会写入 `.harness/config.json`
+并经过 containment 校验。
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract fixed --task-index docs/tasks.md --idea-inbox docs/intake.md
+```
+
 导入已经有 adapter 和 Goal index 的 adapter 项目，不创建第二个 Goal index：
 
 ```bash
@@ -268,14 +276,16 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
 ```
 
-启动前先记录 node `running`，再记录结果。第二个并发 writer 必须提供
+启动前先记录 node `running`，再记录结果。Node ID 按 task size 生成；先查看
+`run status --json`（或 `dag.json`）。当前默认 medium/large DAG 使用
+`execution` 和 `verification`，第二个并发 writer 必须提供
 `--isolation-evidence`：
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase running --summary "Launching read-only explorer"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node explorer --phase completed --summary "Mapped implementation ownership" --verification "Read-only review completed"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker-b --phase running --summary "Launching isolated writer" --isolation-evidence "separate locked worktree /tmp/worker-b"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node worker --phase blocked --summary "Blocked by overlapping file ownership"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase running --summary "Starting accepted implementation"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase completed --summary "Implementation evidence recorded" --verification "Focused checks passed"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node verification --phase running --summary "Starting verification"
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node verification --phase blocked --summary "Blocked by a failed verification command"
 ```
 
 记录 Run 结果；`run record` 本身不修改源码，也不执行 external action：
@@ -287,17 +297,17 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 ```
 
 `run record` 会刷新 `status.json` 和 Run log 中的 accepted Run evidence。
-completed Run 要求 verification、已收口 DAG nodes、required checklist items、
-durable gates，以及同步后的 authoritative Task/Goal state。
+completed Run 要求 verification、所有生成的 DAG node（包括 advisory/small
+DAG）均为 completed、required checklist items、durable gates，以及带有具体
+State Sync Notes 的 authoritative Task/Goal state。
 
-completed enforced-DAG run 还要求所有 worker node 已收口。active `running`
-node 会阻止 completion；cancellation 或 supersession 是 cooperative
+active `running` 或 `blocked` node 会阻止 completion；cancellation 或 supersession 是 cooperative
 controller signal，不是 worker runtime 已停止的证明。
 
 配置的 `gates.requiredForCompletion` 和 `gates.blocking` 只约束 durable
 Goal/Run completion。普通 Codex-direct 工作和轻量 postflight-only 状态更新不需要
-因此创建 Run。一旦 Run 已 prepared 且 enforced，不能用 postflight 表述绕过 DAG、
-gate 或 evidence。
+因此创建 Run。一旦 Run 已 prepared，不能用 postflight 表述绕过 DAG、gate 或
+evidence。
 
 CLI 记录 durable state，不实现 Codex runtime Goal 或 Plan。Skill 在 host 暴露
 原生能力时，把长时间 controller 工作绑定到 runtime Goal 和 Plan。

@@ -43,7 +43,7 @@ belongs to Task/Goal records; historical detail belongs in
 - Passed: `node --check plugins/agent-harness/scripts/agent-harness.mjs`.
 - Passed: `node --check tests/smoke.mjs`.
 - Passed: `node --check scripts/test-suites.mjs`.
-- Passed: `npm run test:protocol` with 8 canonical invariants.
+- Passed: `npm run test:protocol` with 9 canonical invariants.
 - Passed: `npm run test:smoke`.
 - Passed: `npm run test:all`.
 - Passed: `npm run test:eval` with 40 trigger cases, 4 task cases, 8 hard CLI
