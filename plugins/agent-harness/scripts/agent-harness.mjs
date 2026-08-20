@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,6 +59,8 @@ const validExecutionRoles = new Set(["gate-only", "implementer"]);
 const validConversationRoutes = new Set(["current-thread", "slot-thread", "remote-control-worktree"]);
 const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
+const validGoalStatuses = new Set(["active", "completed", "blocked"]);
+const placeholderEvidenceValues = new Set(["tbd", "n/a", "none", "not recorded", "pending", "-", "..."]);
 const recordableRunNodePhases = new Set(["running", "completed", "blocked"]);
 const validCommentaryPolicies = new Set(["minimal", "balanced", "audit"]);
 const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
@@ -272,10 +275,117 @@ function configuredOptionalPath(cwd, relPath, label = "Configured path") {
 }
 
 function artifactPath(root, relPath, label = "Artifact path") {
-  if (!isRelativeHarnessPath(relPath)) {
+  const normalized = normalizePathReference(relPath);
+  if (!isRelativeHarnessPath(relPath) || !normalized || normalized === ".") {
     throw new Error(`${label} must be relative and must not contain '..': ${relPath}`);
   }
   return assertContainedPath(root, resolve(root, relPath), label);
+}
+
+function sleepSync(milliseconds) {
+  if (milliseconds <= 0) return;
+  const buffer = new SharedArrayBuffer(4);
+  Atomics.wait(new Int32Array(buffer), 0, 0, milliseconds);
+}
+
+function lockPathFor(runDir) {
+  return artifactPath(runDir, ".harness-record.lock", "Run record lock path");
+}
+
+function withRunLock(runDir, callback) {
+  const lockPath = lockPathFor(runDir);
+  const startedAt = Date.now();
+  const timeoutMs = 30_000;
+  let acquired = false;
+  while (!acquired) {
+    try {
+      let existing = null;
+      try { existing = lstatSync(lockPath); } catch (error) { if (error?.code !== "ENOENT") throw error; }
+      if (existing) {
+        if (!existing.isDirectory()) {
+          throw new Error(`Run record lock is not a directory: ${lockPath}`);
+        }
+        if (Date.now() - existing.mtimeMs > timeoutMs) {
+          rmSync(lockPath, { recursive: true, force: true });
+          continue;
+        }
+      }
+      mkdirSync(lockPath);
+      acquired = true;
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      if (Date.now() - startedAt > timeoutMs) {
+        throw new Error(`Timed out waiting for Run record lock: ${displayPath(process.cwd(), runDir)}`);
+      }
+      sleepSync(10);
+    }
+  }
+
+  try {
+    return callback();
+  } finally {
+    rmSync(lockPath, { recursive: true, force: true });
+  }
+}
+
+function temporarySiblingPath(path) {
+  return `${path}.tmp-${process.pid}-${Date.now()}-${randomBytes(5).toString("hex")}`;
+}
+
+function atomicWriteFile(path, content) {
+  mkdirSync(dirname(path), { recursive: true });
+  try {
+    if (lstatSync(path).isSymbolicLink()) {
+      throw new Error(`Refusing to replace a symbolic link: ${path}`);
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  const temporaryPath = temporarySiblingPath(path);
+  let fd = null;
+  try {
+    fd = openSync(temporaryPath, "wx");
+    writeFileSync(fd, content, "utf8");
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = null;
+    try {
+      renameSync(temporaryPath, path);
+    } catch (error) {
+      // Windows cannot replace an existing file with renameSync. The caller
+      // holds the Run lock for mutable Run artifacts, so this fallback is safe.
+      if (!(["EEXIST", "EPERM", "ENOTEMPTY"].includes(error?.code)) || !existsSync(path)) {
+        throw error;
+      }
+      const targetStat = lstatSync(path);
+      if (targetStat.isSymbolicLink()) {
+        throw new Error(`Refusing to replace a symbolic link: ${path}`);
+      }
+      unlinkSync(path);
+      renameSync(temporaryPath, path);
+    }
+  } finally {
+    if (fd !== null) closeSync(fd);
+    if (existsSync(temporaryPath)) unlinkSync(temporaryPath);
+  }
+}
+
+function writeExclusiveFile(path, content) {
+  mkdirSync(dirname(path), { recursive: true });
+  const targetStat = (() => {
+    try { return lstatSync(path); } catch (error) { if (error?.code === "ENOENT") return null; throw error; }
+  })();
+  if (targetStat?.isSymbolicLink()) {
+    throw new Error(`Refusing to write through a symbolic link: ${path}`);
+  }
+  let fd = null;
+  try {
+    fd = openSync(path, "wx");
+    writeFileSync(fd, content, "utf8");
+    fsyncSync(fd);
+  } finally {
+    if (fd !== null) closeSync(fd);
+  }
 }
 
 function readTemplate(name) {
@@ -286,8 +396,16 @@ function writeIfMissing(path, content, force = false) {
   if (existsSync(path) && !force) {
     return false;
   }
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, content);
+  if (force) {
+    atomicWriteFile(path, content);
+  } else {
+    try {
+      writeExclusiveFile(path, content);
+    } catch (error) {
+      if (error?.code === "EEXIST") return false;
+      throw error;
+    }
+  }
   return true;
 }
 
@@ -632,7 +750,9 @@ function isRelativeHarnessPath(value) {
   return typeof value === "string"
     && value.trim()
     && !value.startsWith("/")
-    && !/^[A-Za-z]:[\\/]/.test(value)
+    && !value.startsWith("\\")
+    && !/^[A-Za-z]:/.test(value)
+    && !/^[\\/]{2}/.test(value)
     && !value.split(/[\\/]+/).includes("..");
 }
 
@@ -674,6 +794,21 @@ function validateConfiguredPaths(config, contract) {
     if (paths[key] !== undefined && !isRelativeHarnessPath(paths[key])) {
       errors.push(`$.paths.${key} must be a non-empty repo-relative path without '..'.`);
     }
+  }
+
+  const artifactPolicy = config.artifactPolicy || {};
+  for (const [index, value] of (Array.isArray(artifactPolicy.durableEvidence) ? artifactPolicy.durableEvidence : []).entries()) {
+    if (!isRelativeHarnessPath(value)) {
+      errors.push(`$.artifactPolicy.durableEvidence[${index}] must be a non-empty repo-relative path without '..'.`);
+    }
+  }
+  if (artifactPolicy.tasks?.archive !== undefined && !isRelativeHarnessPath(artifactPolicy.tasks.archive)) {
+    errors.push("$.artifactPolicy.tasks.archive must be a non-empty repo-relative path without '..'.");
+  }
+  const configuredTaskIndex = paths.taskIndex || paths.tasks;
+  if (configuredTaskIndex && artifactPolicy.tasks?.archive
+      && normalizePathReference(configuredTaskIndex) === normalizePathReference(artifactPolicy.tasks.archive)) {
+    errors.push("$.artifactPolicy.tasks.archive must differ from the active task index.");
   }
 
   if (config.adapter?.docs !== undefined && !isRelativeHarnessPath(config.adapter.docs)) {
@@ -1336,7 +1471,7 @@ function doctor(args) {
   for (const warning of context.warnings) {
     console.log(`Warning: ${warning}`);
   }
-  if (!configValidation.ok) {
+  if (!configValidation.ok || missing.length) {
     process.exitCode = 1;
   }
 }
@@ -1710,7 +1845,11 @@ function taskGoalPath(task, paths) {
 function existingGoalForTask(cwd, paths, task) {
   const goalsPath = paths.goals || fixedContract.goals;
   for (const goalPath of goalFiles(cwd, goalsPath)) {
-    const source = goalSourceTask(readFileSync(goalPath, "utf8"));
+    const goalContent = readFileSync(goalPath, "utf8");
+    if (canonicalGoalStatus(extractStatusLine(goalContent)) === "blocked") {
+      continue;
+    }
+    const source = goalSourceTask(goalContent);
     if (source.title && normalizedTaskTitle(source.title) === normalizedTaskTitle(task.title)) {
       return displayPath(cwd, goalPath);
     }
@@ -2378,7 +2517,7 @@ function intakeIdea(args) {
   }
 }
 
-function readRecentRuns(cwd, runsRelPath, limit = 5) {
+function readRecentRuns(cwd, runsRelPath, limit = Number.POSITIVE_INFINITY) {
   const runsAbs = configuredOptionalPath(cwd, runsRelPath, "Runs path");
   if (!runsAbs || !existsSync(runsAbs)) {
     return [];
@@ -2401,7 +2540,8 @@ function readRecentRuns(cwd, runsRelPath, limit = 5) {
           goalPath: "",
           updatedAt: "",
           summary: "",
-          verificationSummary: ""
+          verificationSummary: "",
+          managed: false
         };
       }
       try {
@@ -2412,7 +2552,8 @@ function readRecentRuns(cwd, runsRelPath, limit = 5) {
           goalPath: status.goalPath || "",
           updatedAt: status.updatedAt || status.createdAt || "",
           summary: status.summary || "",
-          verificationSummary: status.verificationSummary || ""
+          verificationSummary: status.verificationSummary || "",
+          managed: runManifestState(runAbs, status).managed
         };
       } catch (error) {
         return {
@@ -2421,7 +2562,8 @@ function readRecentRuns(cwd, runsRelPath, limit = 5) {
           goalPath: "",
           updatedAt: "",
           summary: `Could not parse status.json: ${error.message}`,
-          verificationSummary: ""
+          verificationSummary: "",
+          managed: false
         };
       }
     });
@@ -2465,7 +2607,7 @@ function goalSourceTask(content) {
   };
 }
 
-function taskCompletionActions(cwd, tasks, runs, taskIndexContent) {
+function taskCompletionActions(cwd, tasks, runs, taskIndexContent, goalsRelPath, runsRelPath) {
   if (!taskIndexContent) {
     return [];
   }
@@ -2474,10 +2616,19 @@ function taskCompletionActions(cwd, tasks, runs, taskIndexContent) {
   const activeTasks = tasks.filter((task) => !isDoneTask(task));
   const actions = [];
   for (const run of runs) {
-    if (run.phase !== "completed" || !run.goalPath) {
+    if (run.phase !== "completed" || !run.goalPath || !run.managed) {
       continue;
     }
-    const goalPath = resolveProjectPath(cwd, run.goalPath);
+    if (!managedRunEvidence(cwd, run, runsRelPath || fixedContract.runs, { requireCompletedDag: true }).ok) {
+      continue;
+    }
+    let goalPath = "";
+    try {
+      const goalsRoot = configuredPath(cwd, goalsRelPath || fixedContract.goals, "Goals root");
+      goalPath = assertContainedPath(goalsRoot, resolveProjectPath(cwd, run.goalPath), "Run Goal path");
+    } catch {
+      continue;
+    }
     if (!goalPath || !existsSync(goalPath)) {
       continue;
     }
@@ -2513,7 +2664,7 @@ function maintenancePayload(args) {
   const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
   const tasks = taskIndexContent ? parseTasks(taskIndexContent) : [];
   const recentRuns = readRecentRuns(cwd, runsPath);
-  const completionActions = taskCompletionActions(cwd, tasks, recentRuns, taskIndexContent);
+  const completionActions = taskCompletionActions(cwd, tasks, recentRuns, taskIndexContent, context.paths.goals, runsPath);
   const actions = [
     {
       kind: "status-snapshot",
@@ -2664,10 +2815,12 @@ function recordMaintenance(payload) {
     } else if (payload.paths.taskIndex) {
       const taskIndexAbs = configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path");
       let taskContent = readFileSync(taskIndexAbs, "utf8");
-      for (const action of taskCompletions) {
+      // Move lower lines first. Removing a task block shifts only lines below
+      // it, so every prepared line reference remains valid for this pass.
+      for (const action of [...taskCompletions].sort((a, b) => b.task.line - a.task.line)) {
         taskContent = moveTaskToDone(taskContent, action.task);
       }
-      writeFileSync(taskIndexAbs, taskContent);
+      atomicWriteFile(taskIndexAbs, taskContent);
       payload.record.taskIndexWritten = true;
       payload.writesFiles = true;
     }
@@ -2675,7 +2828,7 @@ function recordMaintenance(payload) {
 
   payload.record.statusWritten = true;
   payload.writesFiles = true;
-  writeFileSync(statusAbs, replaceMarkdownSection(statusContent, "Maintenance Snapshot", maintenanceSnapshot(payload)));
+  atomicWriteFile(statusAbs, replaceMarkdownSection(statusContent, "Maintenance Snapshot", maintenanceSnapshot(payload)));
 }
 
 function maintainTasks(args) {
@@ -2774,12 +2927,17 @@ function artifactRunState(cwd, runsRelPath, entry) {
   let goalPath = "";
   let updatedAt = "";
   let statusError = "";
+  let managed = false;
+  let manifestError = "";
   if (statusPath && existsSync(statusPath)) {
     try {
       const status = JSON.parse(readFileSync(statusPath, "utf8"));
       phase = status.phase || status.status || "unknown";
       goalPath = status.goalPath || "";
       updatedAt = status.updatedAt || status.createdAt || "";
+      const manifestState = runManifestState(absolute, status);
+      managed = manifestState.managed;
+      manifestError = manifestState.error;
     } catch (error) {
       phase = "invalid-status";
       statusError = error.message;
@@ -2795,11 +2953,13 @@ function artifactRunState(cwd, runsRelPath, entry) {
     classification: terminal ? "terminal" : unmanaged ? "unmanaged" : "active",
     terminal,
     unmanaged,
+    managed,
     goalPath,
     updatedAt,
     updatedMs: Number.isFinite(parsedUpdated) ? parsedUpdated : lstatSync(absolute).mtimeMs,
     ...stats,
-    statusError
+    statusError,
+    manifestError
   };
 }
 
@@ -2826,7 +2986,8 @@ function durableEvidenceFiles(cwd, evidencePaths) {
 
 function durableEvidenceRunReferences(cwd, evidencePaths, runsRelPath) {
   if (!runsRelPath) return { files: [], references: [], error: "Runs path is not configured." };
-  const prefix = `${runsRelPath.replace(/\/+$/g, "")}/`;
+  const normalizedRunsPath = normalizePathReference(runsRelPath);
+  const prefix = `${normalizedRunsPath.replace(/\/+$/g, "")}/`;
   const pattern = new RegExp(escapeRegExp(prefix) + "[^\\s\\)\\]\\},;:]+", "g");
   const files = [];
   const references = new Set();
@@ -2837,9 +2998,10 @@ function durableEvidenceRunReferences(cwd, evidencePaths, runsRelPath) {
     } catch {
       continue;
     }
-    if (!content.includes(prefix)) continue;
+    const normalizedContent = normalizePathReference(content);
+    if (!normalizedContent.includes(prefix)) continue;
     files.push(displayPath(cwd, absolute));
-    for (const match of content.matchAll(pattern)) references.add(match[0].replace(/[.`]+$/g, ""));
+    for (const match of normalizedContent.matchAll(pattern)) references.add(match[0].replace(/[.`]+$/g, ""));
   }
   return { files: files.sort(), references: [...references].sort(), error: "" };
 }
@@ -2919,6 +3081,7 @@ function artifactInspectionPayload(args) {
       active: runItems.filter((run) => run.classification === "active").length,
       terminal: runItems.filter((run) => run.terminal).length,
       unmanaged: runItems.filter((run) => run.unmanaged).length,
+      managed: runItems.filter((run) => run.managed).length,
       totals,
       items: runItems
     },
@@ -2997,15 +3160,19 @@ function recordArtifactCompaction(payload) {
   const uniqueBlocks = blocks.filter((item) => !existingArchive.includes(item.block));
   const section = uniqueBlocks.length ? `\n\n## Archived ${todayStamp()}\n\n${uniqueBlocks.map((item) => item.block).join("\n\n")}\n` : "";
   mkdirSync(dirname(archiveAbs), { recursive: true });
-  writeFileSync(archiveAbs, `${existingArchive.trimEnd()}${section || "\n"}`);
+  atomicWriteFile(archiveAbs, `${existingArchive.trimEnd()}${section || "\n"}`);
   payload.compact.archiveWritten = true;
-  writeFileSync(taskAbs, removeArchivedTaskBlocks(content, blocks));
+  atomicWriteFile(taskAbs, removeArchivedTaskBlocks(content, blocks));
   payload.compact.taskIndexWritten = true;
   payload.compact.archived = blocks.length;
   payload.writesFiles = true;
 }
 
-function durableRunEvidence(cwd, run, goalsRelPath) {
+function durableRunEvidence(cwd, run, goalsRelPath, runsRelPath) {
+  const executionEvidence = managedRunEvidence(cwd, run, runsRelPath || fixedContract.runs, {
+    requireCompletedDag: run.phase === "completed"
+  });
+  if (!executionEvidence.ok) return executionEvidence;
   if (!run.goalPath) return { ok: false, reason: "Run has no goalPath." };
   let goalAbs = "";
   try {
@@ -3016,6 +3183,9 @@ function durableRunEvidence(cwd, run, goalsRelPath) {
   }
   if (!existsSync(goalAbs)) return { ok: false, reason: `Goal does not exist: ${run.goalPath}` };
   const goal = readFileSync(goalAbs, "utf8");
+  if (canonicalGoalStatus(extractStatusLine(goal)) === "blocked") {
+    return { ok: false, reason: "Goal is blocked and cannot be treated as completed Run evidence." };
+  }
   if (!containsExactPathReference(goal, run.runDir)) return { ok: false, reason: "Goal does not reference this Run." };
   const stateSyncErrors = stateSyncNotesValidationErrors(stateSyncNotesDetails(goal), { completed: true });
   if (stateSyncErrors.length) return { ok: false, reason: stateSyncErrors[0] };
@@ -3029,10 +3199,11 @@ function artifactPrunePayload(args) {
   const assessed = payload.runs.items.map((run) => {
     const ageDays = Math.max(0, (Date.now() - run.updatedMs) / 86400000);
     const threshold = run.phase === "blocked" ? payload.policy.retention.blockedDays : payload.policy.retention.completedDays;
-    const evidence = durableRunEvidence(payload.cwd, run, payload.paths.goals);
+    const evidence = durableRunEvidence(payload.cwd, run, payload.paths.goals, payload.paths.runs);
     const reasons = [];
     if (payload.policy.runs !== "local-only") reasons.push("Run policy is not local-only.");
     if (!run.terminal) reasons.push(`Run phase is ${run.phase}, not terminal.`);
+    if (!run.managed) reasons.push("Run lacks a prepared manifest and is unmanaged.");
     if (retainedLatest.has(run.runDir)) reasons.push("Protected by keepLatest.");
     if (ageDays < threshold) reasons.push(`Age ${ageDays.toFixed(1)}d is below ${threshold}d retention.`);
     if (!evidence.ok) reasons.push(evidence.reason);
@@ -3069,7 +3240,7 @@ function printArtifactSummary(payload, action) {
   console.log(`Policy: runs=${payload.policy.runs}; source=${payload.policy.source}`);
   console.log(`Status: ${payload.status.lines}/${payload.status.maxLines} lines${payload.status.overLimit ? " (over limit)" : ""}`);
   console.log(`Tasks: total=${payload.tasks.total}; active=${payload.tasks.active}; done=${payload.tasks.done}; issues=${payload.tasks.issues.length}`);
-  console.log(`Runs: entries=${payload.runs.entries}; files=${payload.runs.totals.files}; bytes=${payload.runs.totals.bytes}; terminal=${payload.runs.terminal}; active=${payload.runs.active}; unmanaged=${payload.runs.unmanaged}`);
+  console.log(`Runs: entries=${payload.runs.entries}; files=${payload.runs.totals.files}; bytes=${payload.runs.totals.bytes}; terminal=${payload.runs.terminal}; active=${payload.runs.active}; managed=${payload.runs.managed}; unmanaged=${payload.runs.unmanaged}`);
   console.log(`Durable evidence Run references: files=${payload.references.files.length}; unique=${payload.references.references.length}`);
 }
 
@@ -3115,15 +3286,25 @@ function runTimestamp(date = new Date()) {
   ].join("");
 }
 
-function uniqueRunLogPath(logsDir, phase) {
+function writeUniqueRunLog(logsDir, phase, content) {
   const stem = `${runTimestamp()}-${phase}`;
-  let candidate = join(logsDir, `${stem}.md`);
-  let suffix = 2;
-  while (existsSync(candidate)) {
-    candidate = join(logsDir, `${stem}-${suffix}.md`);
-    suffix += 1;
+  for (let suffix = 1; suffix < 10_000; suffix += 1) {
+    const name = `${stem}${suffix === 1 ? "" : `-${suffix}`}.md`;
+    const candidate = artifactPath(logsDir, name, "Run log path");
+    let existing = null;
+    try { existing = lstatSync(candidate); } catch (error) { if (error?.code !== "ENOENT") throw error; }
+    if (existing?.isSymbolicLink()) {
+      throw new Error(`Refusing to write a Run log through a symbolic link: ${candidate}`);
+    }
+    try {
+      writeExclusiveFile(candidate, content);
+      return candidate;
+    } catch (error) {
+      if (error?.code === "EEXIST") continue;
+      throw error;
+    }
   }
-  return candidate;
+  throw new Error(`Could not allocate a unique Run log path in ${logsDir}`);
 }
 
 function slugify(value) {
@@ -3669,6 +3850,15 @@ function extractStatusLine(content) {
   return match ? match[1].trim() : "";
 }
 
+function canonicalGoalStatus(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^[`"']+|[`"']+$/g, "")
+    .replace(/[.!?。！？]+$/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 function extractSpecPolicyRaw(content) {
   const match = content.match(/^Spec Policy:\s+`?([^\n`]+)`?\s*$/m);
   return match ? match[1].trim().toLowerCase() : "";
@@ -4041,7 +4231,15 @@ function evidenceItemValidationErrors(details, {
 }
 
 function missingEvidence(value) {
-  return !value || /^(tbd|n\/a|none|not recorded|-|\.\.\.)$/i.test(String(value).trim());
+  const raw = String(value ?? "").trim();
+  if (!raw) return true;
+  const normalizedValue = raw
+    .replace(/^[`"'\s]+|[`"'\s]+$/g, "")
+    .replace(/[.!?,;:。！？、]+$/g, "")
+    .trim()
+    .toLowerCase();
+  if (!normalizedValue || !/[a-z0-9\u4e00-\u9fff]/i.test(normalizedValue)) return true;
+  return placeholderEvidenceValues.has(normalizedValue);
 }
 
 function stateSyncNotesDetails(content) {
@@ -4335,6 +4533,10 @@ function validateGoal(cwd, goalPath) {
   }
 
   const metadata = goalMetadata(cwd, goalPath);
+  const canonicalStatus = canonicalGoalStatus(metadata.status);
+  if (!canonicalStatus || !validGoalStatuses.has(canonicalStatus)) {
+    errors.push(`Status must use active, completed, or blocked; found ${metadata.status || "(missing)"}.`);
+  }
   const spec = metadata.spec;
   const allowNoSpec = metadata.specPolicy === "allow-no-spec";
   if (metadata.specPolicy && !allowNoSpec) {
@@ -4781,8 +4983,89 @@ function readNodeStatus(runDir, node) {
   return JSON.parse(readFileSync(statusPath, "utf8"));
 }
 
+const validRunNodePhases = new Set(["prepared", "running", "completed", "blocked"]);
+const reservedRunArtifactPaths = new Set([
+  "run.md",
+  "prompt.md",
+  "subagents.md",
+  "dag.md",
+  "dag.json",
+  "manifest.json",
+  "status.json",
+  "logs",
+  "agents"
+]);
+
+function normalizedArtifactReference(value) {
+  return normalizePathReference(value).toLowerCase();
+}
+
+function validateExecutionDagDefinition(runDir, dag) {
+  if (!dag || typeof dag !== "object" || Array.isArray(dag)) {
+    throw new Error("DAG must be an object.");
+  }
+  if (!Array.isArray(dag.nodes)) throw new Error("DAG nodes must be an array.");
+  const ids = new Set();
+  const paths = new Map();
+  const nodeById = new Map();
+  for (const node of dag.nodes) {
+    if (!node || typeof node.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(node.id)) {
+      throw new Error("Every DAG node requires a unique safe id.");
+    }
+    if (ids.has(node.id)) throw new Error(`DAG contains duplicate node id: ${node.id}`);
+    ids.add(node.id);
+    nodeById.set(node.id, node);
+    if (!Array.isArray(node.dependencies) || new Set(node.dependencies).size !== node.dependencies.length) {
+      throw new Error(`DAG node '${node.id}' dependencies must be a unique array.`);
+    }
+    for (const dependency of node.dependencies) {
+      if (typeof dependency !== "string" || !ids.has(dependency)) {
+        // Dependency may refer to a node listed later; defer the existence check.
+        if (typeof dependency !== "string") throw new Error(`DAG node '${node.id}' has an invalid dependency.`);
+      }
+    }
+    for (const key of ["prompt", "status", "result"]) {
+      if (typeof node[key] !== "string" || !node[key].trim()) {
+        throw new Error(`DAG node '${node.id}' requires a ${key} path.`);
+      }
+      const absolute = artifactPath(runDir, node[key], `DAG node '${node.id}' ${key}`);
+      const reference = normalizedArtifactReference(node[key]);
+      if (reservedRunArtifactPaths.has(reference) || reference.startsWith("logs/")) {
+        throw new Error(`DAG node '${node.id}' ${key} collides with a reserved Run artifact: ${node[key]}`);
+      }
+      const existing = paths.get(reference);
+      if (existing && existing !== `${node.id}:${key}`) {
+        throw new Error(`DAG artifact path is reused by ${existing} and ${node.id}:${key}: ${node[key]}`);
+      }
+      paths.set(reference, `${node.id}:${key}`);
+      // Resolve now so an existing symlink or parent escape fails before any write.
+      void absolute;
+    }
+  }
+
+  for (const node of dag.nodes) {
+    for (const dependency of node.dependencies) {
+      if (!nodeById.has(dependency)) {
+        throw new Error(`DAG node '${node.id}' depends on unknown node '${dependency}'.`);
+      }
+    }
+  }
+
+  const visiting = new Set();
+  const visited = new Set();
+  const visit = (id) => {
+    if (visiting.has(id)) throw new Error(`DAG dependency cycle detected at '${id}'.`);
+    if (visited.has(id)) return;
+    visiting.add(id);
+    for (const dependency of nodeById.get(id).dependencies) visit(dependency);
+    visiting.delete(id);
+    visited.add(id);
+  };
+  for (const id of ids) visit(id);
+}
+
 function executionDagSnapshot(dag, runDir) {
-  const nodeStatuses = {};
+  const nodeStatuses = Object.create(null);
   const completed = [];
   const blocked = [];
   const running = [];
@@ -4792,6 +5075,12 @@ function executionDagSnapshot(dag, runDir) {
   for (const node of dag.nodes) {
     const status = readNodeStatus(runDir, node);
     const phase = status.phase || "prepared";
+    if (!validRunNodePhases.has(phase)) {
+      throw new Error(`DAG node '${node.id}' has invalid phase: ${phase}.`);
+    }
+    if (status.node && status.node !== node.id) {
+      throw new Error(`DAG node status mismatch: expected '${node.id}', found '${status.node}'.`);
+    }
     nodeStatuses[node.id] = {
       phase,
       ownership: node.ownership || "",
@@ -4857,14 +5146,260 @@ function readExecutionDag(runDir) {
     return null;
   }
   const dag = JSON.parse(readFileSync(dagPath, "utf8"));
-  if (!Array.isArray(dag.nodes)) throw new Error("DAG nodes must be an array.");
-  for (const node of dag.nodes) {
-    if (!node || typeof node.id !== "string" || !node.id) throw new Error("Every DAG node requires an id.");
-    artifactPath(runDir, node.prompt, `DAG node '${node.id}' prompt`);
-    artifactPath(runDir, node.status, `DAG node '${node.id}' status`);
-    artifactPath(runDir, node.result, `DAG node '${node.id}' result`);
-  }
+  validateExecutionDagDefinition(runDir, dag);
   return dag;
+}
+
+const runManifestVersion = 1;
+
+function hashText(value) {
+  return createHash("sha256").update(String(value), "utf8").digest("hex");
+}
+
+function contractText(value) {
+  return oneLine(value);
+}
+
+function immutableEvidenceItems(details, key) {
+  return details.items.map((item) => {
+    const label = key === "task" ? item.task : item.label;
+    return {
+      label: contractText(label),
+      acceptance: contractText(item.acceptance),
+      required: contractText(item.required)
+    };
+  });
+}
+
+function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context) {
+  const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
+  const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
+  const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
+  const gateEvidence = gateEvidenceDetails(goalContent, specContent);
+  const sourceTask = goalSourceTask(goalContent);
+  const executionContextLock = executionContextLockDetails(goalContent);
+  const immutableSections = [
+    "Source Task",
+    "Read First",
+    "Work Mode Recommendation",
+    "Execution Role",
+    "Conversation Route",
+    "Scope",
+    "Non-Goals",
+    "Verification",
+    "Completion Conditions",
+    "Pause Conditions"
+  ];
+  return {
+    version: runManifestVersion,
+    goalPath: normalizePathReference(displayPath(cwd, goalPath)),
+    title: contractText(goalTitle(goalContent, goalPath)),
+    spec: normalizePathReference(specRel),
+    specHash: specContent ? hashText(specContent) : "",
+    sourceTask: {
+      path: normalizePathReference(sourceTask.path),
+      title: contractText(sourceTask.title)
+    },
+    values: {
+      workMode: extractGoalWorkModeRaw(goalContent),
+      executionRole: extractGoalExecutionRoleRaw(goalContent),
+      conversationRoute: extractConversationRouteRaw(goalContent),
+      executionContextLock: {
+        conversationLane: contractText(executionContextLock.conversationLane),
+        controllerThread: contractText(executionContextLock.controllerThread),
+        executionCwd: contractText(executionContextLock.executionCwd),
+        executionBranch: contractText(executionContextLock.executionBranch),
+        executionSlot: contractText(executionContextLock.executionSlot),
+        remoteControlWorktree: contractText(executionContextLock.remoteControlWorktree)
+      },
+      sections: Object.fromEntries(immutableSections.map((title) => [title, contractText(extractSection(goalContent, title))]))
+    },
+    acceptanceMap: {
+      required: acceptanceMap.required,
+      items: immutableEvidenceItems(acceptanceMap, "task")
+    },
+    milestoneCompletionMap: {
+      required: stageCompletionMap.required,
+      requiredLabels: stageCompletionMap.requiredLabels.map(contractText),
+      items: immutableEvidenceItems(stageCompletionMap, "label")
+    },
+    specAcceptanceChecklist: {
+      source: specChecklist.source,
+      items: immutableEvidenceItems(specChecklist, "label")
+    },
+    requiredGateEvidence: {
+      source: gateEvidence.source,
+      items: immutableEvidenceItems(gateEvidence, "label")
+    },
+    requiredGates: durableRequiredCompletionGates(context)
+  };
+}
+
+function dagManifestProjection(dag) {
+  return {
+    version: dag.version,
+    goalPath: normalizePathReference(dag.goalPath),
+    taskSize: dag.taskSize,
+    workMode: dag.workMode,
+    executionRole: dag.executionRole,
+    enforcement: dag.enforcement,
+    launchPolicy: dag.launchPolicy,
+    nodes: dag.nodes.map((node) => ({
+      id: node.id,
+      label: node.label,
+      mode: node.mode,
+      dependencies: node.dependencies,
+      prompt: normalizePathReference(node.prompt),
+      status: normalizePathReference(node.status),
+      result: normalizePathReference(node.result)
+    }))
+  };
+}
+
+function buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specContent, context, dag, createdAt }) {
+  const dagText = readFileSync(artifactPath(runDir, "dag.json", "DAG path"), "utf8");
+  const goalContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context);
+  return {
+    manifestVersion: runManifestVersion,
+    createdAt,
+    runDir: normalizePathReference(displayPath(cwd, runDir)),
+    goalPath: normalizePathReference(displayPath(cwd, goalPath)),
+    goalContractHash: hashText(JSON.stringify(goalContract)),
+    goalContract,
+    dag: {
+      path: "dag.json",
+      sha256: hashText(dagText),
+      projection: dagManifestProjection(dag)
+    }
+  };
+}
+
+function runManifestState(runDir, status = {}) {
+  const manifestPath = artifactPath(runDir, "manifest.json", "Run manifest path");
+  if (!existsSync(manifestPath)) {
+    return { managed: false, manifest: null, error: "Run manifest is missing." };
+  }
+  try {
+    const manifestText = readFileSync(manifestPath, "utf8");
+    const manifest = JSON.parse(manifestText);
+    if (manifest.manifestVersion !== runManifestVersion) {
+      return { managed: false, manifest, error: "Run manifest version is unsupported." };
+    }
+    if (status.manifest !== "manifest.json" || status.manifestVersion !== runManifestVersion) {
+      return { managed: false, manifest, error: "status.json is not bound to manifest.json." };
+    }
+    if (normalizePathReference(manifest.goalPath) !== normalizePathReference(status.goalPath)) {
+      return { managed: false, manifest, error: "Run manifest and status.json reference different Goals." };
+    }
+    if (normalizePathReference(manifest.runDir) !== normalizePathReference(status.runDir)) {
+      return { managed: false, manifest, error: "Run manifest and status.json reference different Runs." };
+    }
+    if (status.manifestSha256 && hashText(manifestText) !== status.manifestSha256) {
+      return { managed: false, manifest, error: "manifest.json does not match status.json binding." };
+    }
+    if (!manifest.goalContractHash || !manifest.dag?.sha256 || !manifest.dag?.projection) {
+      return { managed: false, manifest, error: "Run manifest is incomplete." };
+    }
+    if (manifest.goalContract && hashText(JSON.stringify(manifest.goalContract)) !== manifest.goalContractHash) {
+      return { managed: false, manifest, error: "Run manifest Goal contract hash is invalid." };
+    }
+    if (Array.isArray(status.files) && status.files.includes("dag.json")) {
+      const dagPath = artifactPath(runDir, "dag.json", "DAG path");
+      if (!existsSync(dagPath) || hashText(readFileSync(dagPath, "utf8")) !== manifest.dag.sha256) {
+        return { managed: false, manifest, error: "Run manifest does not match dag.json." };
+      }
+    }
+    return { managed: true, manifest, error: "" };
+  } catch (error) {
+    return { managed: false, manifest: null, error: `Could not parse manifest.json: ${error.message}` };
+  }
+}
+
+function managedRunEvidence(cwd, run, runsRelPath, { requireCompletedDag = false } = {}) {
+  if (!run.managed) return { ok: false, reason: "Run lacks a prepared manifest and is unmanaged." };
+  let runAbs = "";
+  try {
+    const runsRoot = configuredPath(cwd, runsRelPath, "Runs root");
+    runAbs = assertContainedPath(runsRoot, resolve(cwd, run.runDir), "Run artifact path");
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
+  const statusPath = artifactPath(runAbs, "status.json", "Run status path");
+  if (!existsSync(statusPath)) return { ok: false, reason: "Run status.json is missing." };
+  let status = null;
+  try {
+    status = JSON.parse(readFileSync(statusPath, "utf8"));
+  } catch (error) {
+    return { ok: false, reason: `Could not parse Run status.json: ${error.message}` };
+  }
+  if ((status.phase || status.status || "") !== run.phase) {
+    return { ok: false, reason: "Run status phase changed after inspection." };
+  }
+  const manifestState = runManifestState(runAbs, status);
+  if (!manifestState.managed) return { ok: false, reason: manifestState.error };
+  if (!Array.isArray(status.files) || !status.files.includes("dag.json")) {
+    return { ok: true, reason: "Managed migration Run has a bound manifest." };
+  }
+  let dag = null;
+  try {
+    dag = readExecutionDag(runAbs);
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
+  if (!dag) return { ok: false, reason: "Managed Run is missing dag.json." };
+  let dagState = null;
+  try {
+    dagState = executionDagSnapshot(dag, runAbs);
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
+  if (requireCompletedDag) {
+    if (!dagState.allNodesCompleted || dagState.runningNodes.length || dagState.blockedNodes.length) {
+      return { ok: false, reason: "Run DAG is not fully completed." };
+    }
+    for (const node of dag.nodes) {
+      const nodeStatus = readNodeStatus(runAbs, node);
+      if (nodeStatus.phase !== "completed" || missingEvidence(nodeStatus.verificationSummary)) {
+        return { ok: false, reason: `Run DAG node '${node.id}' lacks completed verification evidence.` };
+      }
+      if (!existsSync(artifactPath(runAbs, node.result, `DAG node '${node.id}' result`))) {
+        return { ok: false, reason: `Run DAG node '${node.id}' result evidence is missing.` };
+      }
+    }
+    if (missingEvidence(status.verificationSummary)) {
+      return { ok: false, reason: "Completed Run verification evidence is missing." };
+    }
+  }
+  return { ok: true, reason: "Managed Run manifest and execution evidence are valid." };
+}
+
+function assertPreparedRunContract({ cwd, context, runDir, status, goalPath, goalContent, specRel, specContent, dag }) {
+  if (!dag) {
+    throw new Error("Completed Runs require a readable execution DAG (dag.json).");
+  }
+  const state = runManifestState(runDir, status);
+  if (!state.managed) {
+    throw new Error(`Run is not a managed prepared Run: ${state.error}`);
+  }
+  const manifest = state.manifest;
+  if (normalizePathReference(status.runDir) !== normalizePathReference(displayPath(cwd, runDir))) {
+    throw new Error("status.json runDir does not match the requested Run directory.");
+  }
+  if (normalizePathReference(manifest.goalPath) !== normalizePathReference(displayPath(cwd, goalPath))) {
+    throw new Error("Run manifest and current Goal path do not match.");
+  }
+  const currentContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context);
+  if (hashText(JSON.stringify(currentContract)) !== manifest.goalContractHash) {
+    throw new Error("Goal or Spec execution contract changed after Run preparation; prepare a new Run.");
+  }
+  const dagText = readFileSync(artifactPath(runDir, "dag.json", "DAG path"), "utf8");
+  if (hashText(dagText) !== manifest.dag.sha256) {
+    throw new Error("dag.json changed after Run preparation; prepare a new Run.");
+  }
+  if (hashText(JSON.stringify(dagManifestProjection(dag))) !== hashText(JSON.stringify(manifest.dag.projection))) {
+    throw new Error("DAG execution contract changed after Run preparation; prepare a new Run.");
+  }
+  return manifest;
 }
 
 function formatNodeList(values) {
@@ -5012,14 +5547,14 @@ Deferred items:
 }
 
 function writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag, createdAt }) {
-  writeFileSync(artifactPath(runDir, "dag.json", "DAG path"), `${JSON.stringify(dag, null, 2)}\n`);
-  writeFileSync(artifactPath(runDir, "dag.md", "DAG documentation path"), buildDagMarkdown({ cwd, runDir, dag }));
+  atomicWriteFile(artifactPath(runDir, "dag.json", "DAG path"), `${JSON.stringify(dag, null, 2)}\n`);
+  atomicWriteFile(artifactPath(runDir, "dag.md", "DAG documentation path"), buildDagMarkdown({ cwd, runDir, dag }));
 
   for (const node of dag.nodes) {
     const agentDir = artifactPath(runDir, join("agents", node.id), `DAG node '${node.id}' directory`);
     mkdirSync(agentDir, { recursive: true });
-    writeFileSync(artifactPath(runDir, node.prompt, `DAG node '${node.id}' prompt`), buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }));
-    writeFileSync(nodeStatusPath(runDir, node), `${JSON.stringify({
+    atomicWriteFile(artifactPath(runDir, node.prompt, `DAG node '${node.id}' prompt`), buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }));
+    atomicWriteFile(nodeStatusPath(runDir, node), `${JSON.stringify({
       node: node.id,
       label: node.label,
       phase: "prepared",
@@ -5051,19 +5586,18 @@ function runSlugFromGoal(goalPath) {
   return slugify(base.replace(/^\d{4}-\d{2}-\d{2}-/, ""));
 }
 
-function nextAvailableRunDir(basePath) {
-  if (!existsSync(basePath)) {
-    return basePath;
-  }
-
-  for (let index = 2; index < 100; index += 1) {
-    const candidate = `${basePath}-${index}`;
-    if (!existsSync(candidate)) {
+function createRunDirectory(runsRoot, basePath) {
+  mkdirSync(runsRoot, { recursive: true });
+  for (let index = 1; index < 100; index += 1) {
+    const candidate = index === 1 ? basePath : `${basePath}-${index}`;
+    try {
+      mkdirSync(candidate);
       return candidate;
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
     }
   }
-
-  throw new Error(`Could not find an available run directory for ${basePath}`);
+  throw new Error(`Could not create an available Run directory for ${basePath}`);
 }
 
 function buildRunMarkdown({
@@ -5113,6 +5647,7 @@ Phase: prepared
 Goal: \`${relGoal}\`
 Spec: \`${specDisplay}\`
 Run directory: \`${relRunDir}\`
+Prepared contract: \`manifest.json\` binds this Goal/Spec and DAG; changes after preparation require a new Run.
 Harness contract: \`${context.contract}\`
 Commentary policy: \`${context.communication.commentary}\` (\`${context.communication.source}\`)
 Report cadence: \`${context.communication.reportCadence}\`
@@ -5164,10 +5699,11 @@ ${sourceTask}
 20. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
 21. Run the verification commands from the goal.
 22. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
-23. ${boundedStatusSnapshotGuidance}
-24. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
-25. Record any command output summaries or follow-ups under this run directory.
-26. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
+23. Completed State Sync Notes must reference this exact Run path: \`${relRunDir}\`.
+24. ${boundedStatusSnapshotGuidance}
+25. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
+26. Record any command output summaries or follow-ups under this run directory.
+27. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
 
 ${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
 ## Verification
@@ -5328,13 +5864,14 @@ function runPrepare(args) {
   });
   const runSlug = runSlugFromGoal(goalPath);
   const runsRoot = configuredPath(cwd, paths.runs, "Runs root");
-  const runDir = assertContainedPath(runsRoot, nextAvailableRunDir(join(runsRoot, `${runTimestamp()}-${runSlug}`)), "Run directory");
-  const files = ["run.md", "prompt.md", "subagents.md", "dag.md", "dag.json", "agents", "status.json"];
+  const baseRunPath = assertContainedPath(runsRoot, join(runsRoot, `${runTimestamp()}-${runSlug}`), "Run directory");
+  const runDir = createRunDirectory(runsRoot, baseRunPath);
+  const files = ["run.md", "prompt.md", "subagents.md", "dag.md", "dag.json", "manifest.json", "agents", "status.json"];
   const logsDir = artifactPath(runDir, "logs", "Run logs path");
 
   mkdirSync(logsDir, { recursive: true });
   writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag: executionDag, createdAt });
-  writeFileSync(artifactPath(runDir, "run.md", "Run document path"), buildRunMarkdown({
+  atomicWriteFile(artifactPath(runDir, "run.md", "Run document path"), buildRunMarkdown({
     context,
     createdAt,
     cwd,
@@ -5353,10 +5890,13 @@ function runPrepare(args) {
     gateEvidence,
     requiredGates
   }));
-  writeFileSync(artifactPath(runDir, "prompt.md", "Run prompt path"), buildPromptMarkdown({ context, cwd, goalPath, goalContent }));
-  writeFileSync(artifactPath(runDir, "subagents.md", "Run guidance path"), buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }));
+  atomicWriteFile(artifactPath(runDir, "prompt.md", "Run prompt path"), buildPromptMarkdown({ context, cwd, goalPath, goalContent }));
+  atomicWriteFile(artifactPath(runDir, "subagents.md", "Run guidance path"), buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }));
+  const manifest = buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specContent, context, dag: executionDag, createdAt });
+  const manifestText = `${JSON.stringify(manifest, null, 2)}\n`;
+  atomicWriteFile(artifactPath(runDir, "manifest.json", "Run manifest path"), manifestText);
   const executionDagState = executionDagSnapshot(executionDag, runDir);
-  writeFileSync(artifactPath(runDir, "status.json", "Run status path"), `${JSON.stringify({
+  atomicWriteFile(artifactPath(runDir, "status.json", "Run status path"), `${JSON.stringify({
     harnessContract: context.contract,
     phase: "prepared",
     createdAt,
@@ -5394,6 +5934,9 @@ function runPrepare(args) {
     requiredGateEvidenceItemCount: gateEvidence.items.length,
     taskSize,
     files,
+    manifest: "manifest.json",
+    manifestVersion: runManifestVersion,
+    manifestSha256: hashText(manifestText),
     logs: "logs/",
     executionDag: executionDagState,
     verificationCommands: extractVerificationCommands(extractSection(goalContent, "Verification"))
@@ -5415,6 +5958,24 @@ function configuredRunDir(cwd, context, value) {
   return runDir;
 }
 
+function runGoalContext(cwd, context, status, { requireGoal = true } = {}) {
+  const goalsRoot = configuredPath(cwd, context.paths.goals || fixedContract.goals, "Goals root");
+  const goalPath = status.goalPath
+    ? assertContainedPath(goalsRoot, resolveProjectPath(cwd, status.goalPath), "Run Goal path")
+    : "";
+  const goalContent = goalPath && existsSync(goalPath) ? readFileSync(goalPath, "utf8") : "";
+  if (requireGoal && (!goalPath || !goalContent)) {
+    throw new Error("Run requires a readable Goal referenced by status.json.");
+  }
+  const specRel = goalContent ? extractInlinePath(goalContent, "Spec") : "";
+  const specsRoot = context.paths.specs ? configuredPath(cwd, context.paths.specs, "Specs root") : cwd;
+  const specAbs = missingSpecValue(specRel)
+    ? ""
+    : assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Goal Spec path");
+  const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
+  return { goalPath, goalContent, specRel, specAbs, specContent };
+}
+
 function runNodeRecord(args) {
   const cwd = targetCwd(args);
   const context = resolveHarnessContext(cwd);
@@ -5424,14 +5985,17 @@ function runNodeRecord(args) {
   if (!recordableRunNodePhases.has(args.phase)) {
     throw new Error(`Invalid --phase: ${args.phase || "(missing)"}`);
   }
-  if (!args.summary) {
+  if (missingEvidence(args.summary)) {
     throw new Error("Missing --summary <text>");
   }
-  if (args.phase === "completed" && !args.verification) {
+  if (args.phase === "completed" && missingEvidence(args.verification)) {
     throw new Error("Completed DAG nodes require --verification evidence.");
   }
 
   const runDir = configuredRunDir(cwd, context, args.run);
+  if (!args._runLockHeld) {
+    return withRunLock(runDir, () => runNodeRecord({ ...args, _runLockHeld: true }));
+  }
   const runStatusPath = artifactPath(runDir, "status.json", "Run status path");
   if (!existsSync(runStatusPath)) {
     throw new Error(`Missing ${displayPath(cwd, runStatusPath)}`);
@@ -5454,11 +6018,23 @@ function runNodeRecord(args) {
   if (args.phase === "running" && !before.readyNodes.includes(node.id)) {
     throw new Error(`Execution DAG node '${node.id}' is not ready to start.`);
   }
-  if (args.phase === "running" && before.runningNodes.length && !args.isolationEvidence) {
+  if (args.phase === "running" && before.runningNodes.length && missingEvidence(args.isolationEvidence)) {
     throw new Error(`Starting DAG node '${node.id}' while ${before.runningNodes.join(", ")} is running requires --isolation-evidence <separate-worktree-or-non-overlap-proof>.`);
   }
 
   const runStatus = JSON.parse(readFileSync(runStatusPath, "utf8"));
+  const goalContext = runGoalContext(cwd, context, runStatus);
+  assertPreparedRunContract({
+    cwd,
+    context,
+    runDir,
+    status: runStatus,
+    goalPath: goalContext.goalPath,
+    goalContent: goalContext.goalContent,
+    specRel: goalContext.specRel,
+    specContent: goalContext.specContent,
+    dag
+  });
   const now = new Date().toISOString();
   const previousNodeStatus = readNodeStatus(runDir, node);
   const currentRunPhase = runStatus.phase || runStatus.status || "";
@@ -5500,8 +6076,8 @@ ${args.summary}
 ${args.verification || "Not recorded."}
 `;
 
-  writeFileSync(nodeStatusPath(runDir, node), `${JSON.stringify(nodeStatus, null, 2)}\n`);
-  writeFileSync(resultPath, resultContent);
+  atomicWriteFile(nodeStatusPath(runDir, node), `${JSON.stringify(nodeStatus, null, 2)}\n`);
+  atomicWriteFile(resultPath, resultContent);
 
   const nextDagState = executionDagSnapshot(dag, runDir);
   const runPhase = nextDagState.blockedNodes.length
@@ -5515,7 +6091,7 @@ ${args.verification || "Not recorded."}
     updatedAt: now,
     executionDag: nextDagState
   };
-  writeFileSync(runStatusPath, `${JSON.stringify(nextRunStatus, null, 2)}\n`);
+  atomicWriteFile(runStatusPath, `${JSON.stringify(nextRunStatus, null, 2)}\n`);
 
   const payload = {
     run: displayPath(cwd, runDir),
@@ -5549,11 +6125,14 @@ function runRecord(args) {
   if (!recordableRunPhases.has(args.phase)) {
     throw new Error(`Invalid --phase: ${args.phase || "(missing)"}`);
   }
-  if (!args.summary) {
+  if (missingEvidence(args.summary)) {
     throw new Error("Missing --summary <text>");
   }
 
   const runDir = configuredRunDir(cwd, context, args.run);
+  if (!args._runLockHeld) {
+    return withRunLock(runDir, () => runRecord({ ...args, _runLockHeld: true }));
+  }
   const statusPath = artifactPath(runDir, "status.json", "Run status path");
   if (!existsSync(statusPath)) {
     throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
@@ -5566,14 +6145,36 @@ function runRecord(args) {
   if (currentRunPhase === "completed" && args.phase !== "completed") {
     throw new Error("Completed Runs cannot move back to blocked or another non-complete phase.");
   }
-  if (args.phase === "completed" && !args.verification) {
+  if (args.phase === "completed" && missingEvidence(args.verification)) {
     throw new Error("Completed runs require --verification evidence.");
   }
-  if (args.phase === "completed" && executionRole === "gate-only" && !args.gateEvidence) {
+  if (args.phase === "completed" && executionRole === "gate-only" && missingEvidence(args.gateEvidence)) {
     throw new Error("Completed gate-only runs require --gate-evidence describing implementer output and acceptance evidence.");
   }
   const dag = readExecutionDag(runDir);
   const dagState = dag ? executionDagSnapshot(dag, runDir) : null;
+  const statusGoalContext = runGoalContext(cwd, context, status, { requireGoal: args.phase === "completed" });
+  const { goalPath, goalContent, specRel, specContent } = statusGoalContext;
+  if (args.phase === "completed") {
+    assertPreparedRunContract({
+      cwd,
+      context,
+      runDir,
+      status,
+      goalPath,
+      goalContent,
+      specRel,
+      specContent,
+      dag
+    });
+    const goalStatus = canonicalGoalStatus(extractStatusLine(goalContent));
+    if (goalStatus === "blocked") {
+      throw new Error("Blocked Goals cannot complete a Run; update the accepted Goal state first.");
+    }
+    if (!validGoalStatuses.has(goalStatus)) {
+      throw new Error(`Completed Runs require a valid Goal Status; found ${extractStatusLine(goalContent) || "(missing)"}.`);
+    }
+  }
   if (args.phase === "completed") {
     if (!dag || !dagState) {
       throw new Error("Completed Runs require a readable execution DAG (dag.json).");
@@ -5596,24 +6197,13 @@ function runRecord(args) {
       throw new Error("Completed Runs require dag.json and status.json to reference the same Goal.");
     }
   }
-  const goalsRoot = configuredPath(cwd, context.paths.goals || fixedContract.goals, "Goals root");
-  const goalPath = status.goalPath
-    ? assertContainedPath(goalsRoot, resolveProjectPath(cwd, status.goalPath), "Run Goal path")
-    : "";
-  const goalContent = goalPath && existsSync(goalPath) ? readFileSync(goalPath, "utf8") : "";
   if (args.phase === "completed" && (!goalPath || !goalContent)) {
     throw new Error("Completed Runs require a readable Goal referenced by status.json.");
   }
   const goalExecutionRole = goalContent ? extractGoalExecutionRoleRaw(goalContent) : "";
-  if (args.phase === "completed" && (executionRole === "gate-only" || goalExecutionRole === "gate-only") && !args.gateEvidence) {
+  if (args.phase === "completed" && (executionRole === "gate-only" || goalExecutionRole === "gate-only") && missingEvidence(args.gateEvidence)) {
     throw new Error("Completed gate-only runs require --gate-evidence describing implementer output and acceptance evidence.");
   }
-  const specRel = goalContent ? extractInlinePath(goalContent, "Spec") : "";
-  const specsRoot = context.paths.specs ? configuredPath(cwd, context.paths.specs, "Specs root") : cwd;
-  const specAbs = missingSpecValue(specRel)
-    ? ""
-    : assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Goal Spec path");
-  const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
   if (args.phase === "completed") {
     if (status.acceptanceMapRequired && (!goalPath || !existsSync(goalPath))) {
       throw new Error("Completed batch runs require a readable goal with Source Task Acceptance Map evidence.");
@@ -5664,6 +6254,9 @@ function runRecord(args) {
     if (stateSyncErrors.length) {
       throw new Error(`State Sync Notes validation failed:\n${stateSyncErrors.map((error) => `- ${error}`).join("\n")}`);
     }
+    if (!containsExactPathReference(goalContent, displayPath(cwd, runDir))) {
+      throw new Error(`State Sync Notes validation failed: Goal must reference this Run exactly: ${displayPath(cwd, runDir)}.`);
+    }
   }
   const nextStatus = {
     ...withoutLegacyDeliveryFields(status),
@@ -5674,9 +6267,13 @@ function runRecord(args) {
     gateEvidence: args.gateEvidence || status.gateEvidence || "",
     executionDag: dagState || status.executionDag
   };
+  for (const field of ["reviewUrl", "integrationRef", "prUrl", "mergeSha", "releaseRef"]) {
+    if (args[field] || status[field]) {
+      nextStatus[field] = args[field] || status[field];
+    }
+  }
   const logsDir = artifactPath(runDir, "logs", "Run logs path");
   mkdirSync(logsDir, { recursive: true });
-  const logPath = uniqueRunLogPath(logsDir, args.phase);
   const logContent = `# Run ${titleCase(args.phase)} Summary
 
 Updated: ${now}
@@ -5695,6 +6292,14 @@ ${args.verification || "Not recorded."}
 
 ${args.gateEvidence || "Not recorded."}
 
+## Delivery References
+
+- Review URL: ${nextStatus.reviewUrl || "Not recorded."}
+- Integration reference: ${nextStatus.integrationRef || "Not recorded."}
+- Pull request: ${nextStatus.prUrl || "Not recorded."}
+- Merge SHA: ${nextStatus.mergeSha || "Not recorded."}
+- Release reference: ${nextStatus.releaseRef || "Not recorded."}
+
 ## Acceptance
 
 - Phase: \`${args.phase}\`
@@ -5702,8 +6307,8 @@ ${args.gateEvidence || "Not recorded."}
 - Gate evidence: \`${args.gateEvidence ? "recorded" : "not recorded"}\`
 `;
 
-  writeFileSync(statusPath, `${JSON.stringify(nextStatus, null, 2)}\n`);
-  writeFileSync(logPath, logContent);
+  const logPath = writeUniqueRunLog(logsDir, args.phase, logContent);
+  atomicWriteFile(statusPath, `${JSON.stringify(nextStatus, null, 2)}\n`);
 
   const payload = {
     run: displayPath(cwd, runDir),
@@ -5741,6 +6346,7 @@ function runStatus(args) {
   const status = JSON.parse(readFileSync(statusPath, "utf8"));
   const expectedFiles = status.files || ["run.md", "prompt.md", "subagents.md", "status.json"];
   const missing = expectedFiles.filter((file) => !existsSync(artifactPath(runDir, file, "Run artifact path")));
+  const manifestState = runManifestState(runDir, status);
   const dag = readExecutionDag(runDir);
   const dagState = dag ? executionDagSnapshot(dag, runDir) : status.executionDag || null;
 
@@ -5766,9 +6372,20 @@ function runStatus(args) {
     },
     taskSize: status.taskSize || "unknown",
     updatedAt: status.updatedAt || "unknown",
+    references: {
+      reviewUrl: status.reviewUrl || "",
+      integrationRef: status.integrationRef || "",
+      prUrl: status.prUrl || "",
+      mergeSha: status.mergeSha || "",
+      releaseRef: status.releaseRef || ""
+    },
     files: {
       expected: expectedFiles,
       missing
+    },
+    manifest: {
+      managed: manifestState.managed,
+      error: manifestState.error
     },
     executionDag: dagState
   };

@@ -259,7 +259,7 @@ function assertGateOnlyAcceptanceEvidence(trace, expectedEvidence, caseId) {
   }
 }
 
-function runHarness(args, projectDir) {
+function runHarness(args, projectDir, { allowFailure = false } = {}) {
   const expandedArgs = args.map((arg) => (arg === "$PROJECT" ? projectDir : arg));
   try {
     return execFileSync(process.execPath, [cli, ...expandedArgs], {
@@ -268,6 +268,9 @@ function runHarness(args, projectDir) {
       stdio: ["ignore", "pipe", "pipe"]
     });
   } catch (error) {
+    if (allowFailure) {
+      return `${error.stdout || ""}${error.stderr || ""}`;
+    }
     throw new Error(
       `Command failed: agent-harness ${expandedArgs.join(" ")}\n${error.stdout || ""}${error.stderr || ""}`
     );
@@ -471,7 +474,7 @@ function runTaskCase(testCase) {
 
     for (const check of testCase.hard_checks) {
       assert(Array.isArray(check.command), `${testCase.id}: hard check command must be an array`);
-      const output = runHarness(check.command, projectDir);
+      const output = runHarness(check.command, projectDir, { allowFailure: Boolean(check.allow_failure) });
       commandCount += 1;
 
       if (check.stdout_includes) {

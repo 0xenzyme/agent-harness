@@ -81,6 +81,13 @@ read-only, task compaction requires `--record` and archives before replacement,
 and Run deletion requires `prune --apply`, `local-only` policy, terminal state,
 expired retention, containment, and durable State Sync Notes.
 
+Prepared Runs include a manifest that binds the Goal/Spec execution contract and
+DAG shape at preparation time. Node and Run mutation is lock-protected and
+atomically written. Status-only legacy Run directories remain inspectable but
+are `unmanaged`: they cannot drive automatic Task completion or pruning.
+Completed Run evidence must reference the exact Run path from the Goal, and a
+blocked Goal is never a completed Run.
+
 Postflight sync updates existing state only with fresh verification, observed
 outcome, and remaining gap. It does not create
 a Goal, Run, DAG, gate, or status artifact solely for bookkeeping.

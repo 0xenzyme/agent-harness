@@ -18,6 +18,7 @@
     "test:presentation": "node scripts/test-suites.mjs presentation",
     "test:protocol": "node scripts/test-suites.mjs protocol",
     "test:smoke": "node tests/smoke.mjs",
+    "test:regressions": "node tests/regressions.mjs",
     "validate:plugin": "node tools/validate-plugin.mjs"
   },
   "license": "MIT"

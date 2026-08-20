@@ -95,9 +95,15 @@ function smoke() {
   execFileSync(process.execPath, ["tests/smoke.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
 }
 
+function regressions() {
+  execFileSync(process.execPath, ["tests/regressions.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
+}
+
 const mode = process.argv[2] || "list";
 if (mode === "protocol") protocol();
 else if (mode === "presentation") presentation();
-else if (mode === "all") { presentation(); protocol(); smoke(); }
-else if (mode === "list" || mode === "--list") console.log("presentation, protocol, all");
+else if (mode === "all") { presentation(); protocol(); smoke(); regressions(); }
+else if (mode === "smoke") smoke();
+else if (mode === "regressions") regressions();
+else if (mode === "list" || mode === "--list") console.log("presentation, protocol, smoke, regressions, all");
 else throw new Error(`Unknown suite mode: ${mode}`);

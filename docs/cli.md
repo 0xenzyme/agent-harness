@@ -266,8 +266,10 @@ Prepare a run packet from a goal:
 node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
 ```
 
-Prepared run packets include `dag.json`, `dag.md`, and
-`agents/<node>/prompt.md`. Harness records ready nodes, ownership, verification,
+Prepared run packets include `manifest.json`, `dag.json`, `dag.md`, and
+`agents/<node>/prompt.md`. `manifest.json` binds the prepared Goal/Spec
+execution contract and DAG shape; changing those inputs after preparation is
+rejected and requires a new Run. Harness records ready nodes, ownership, verification,
 and candidate evidence; the Codex runtime owns worker selection, delegation,
 concurrency, and cancellation. `run prepare` does not start workers or pin
 model/effort. Task/Goal remains the accepted-state authority; Run packets store
@@ -302,9 +304,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 ```
 
 `run record` refreshes accepted Run evidence in `status.json` and the Run log.
+Node and Run records use an exclusive Run lock and atomic artifact writes, so
+concurrent record commands cannot produce partial JSON or overwrite a log.
 Completed Runs require verification, every generated DAG node to be completed
 (including advisory/small DAGs), required checklist items, durable gates, and
-synchronized authoritative Task/Goal state with concrete State Sync Notes.
+synchronized authoritative Task/Goal state with concrete State Sync Notes. The
+Goal must reference the exact Run path; a blocked Goal cannot complete a Run.
 
 Active `running` or `blocked` nodes block completion; cancellation or supersession is a
 cooperative controller signal, not proof that a worker runtime stopped.
@@ -321,3 +326,9 @@ Plan capabilities when exposed.
 Legacy Goal and Run delivery fields remain readable for the `0.10.0`
 compatibility boundary, but current validation, completion, maintenance, and
 status output ignore them. New artifacts do not emit those fields.
+
+Status-only or otherwise unprepared legacy Run directories remain inspectable
+for migration, but are marked `unmanaged` and cannot automatically move Tasks
+to Done or qualify for `artifacts prune --apply`. Configured artifact-policy
+paths must be repo-relative; `doctor` exits non-zero when required Harness paths
+are missing.

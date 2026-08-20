@@ -30,6 +30,21 @@ function samePath(actual, expected) {
 }
 function write(path, content) { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, content); }
 function json(path) { return JSON.parse(readFileSync(path, "utf8")); }
+function markManagedRun(project, runRel, goalPath) {
+  const statusPath = join(project, runRel, "status.json");
+  const status = json(statusPath);
+  status.runDir = runRel;
+  status.manifest = "manifest.json";
+  status.manifestVersion = 1;
+  writeFileSync(statusPath, JSON.stringify(status, null, 2) + "\n");
+  write(join(project, runRel, "manifest.json"), JSON.stringify({
+    manifestVersion: 1,
+    runDir: runRel,
+    goalPath,
+    goalContractHash: "fixture-goal-contract",
+    dag: { sha256: "fixture-dag", projection: {} }
+  }, null, 2) + "\n");
+}
 
 const manifest = json(join(repoRoot, "plugins/agent-harness/.codex-plugin/plugin.json"));
 assert(Array.isArray(manifest.interface.defaultPrompt), "interface.defaultPrompt must be a string array");
@@ -217,6 +232,9 @@ try {
     write(join(artifactProject, legacyRunFile), "# Legacy Run\n");
     write(join(artifactProject, "harness/goals/unsafe.md"), `# Unsafe\n\nRun: \`${unsafeRun}\`\n`);
     write(join(artifactProject, "harness/goals/completed.md"), `# Completed\n\nRun: \`${completedRun}\`\n\n## State Sync Notes\n\n- Durable conclusion retained.\n`);
+    markManagedRun(artifactProject, completedRun, "harness/goals/completed.md");
+    markManagedRun(artifactProject, unsafeRun, "harness/goals/unsafe.md");
+    markManagedRun(artifactProject, escapedGoalRun, "harness/status.md");
     const inspection = JSON.parse(run(["artifacts", "inspect", "--cwd", artifactProject, "--json"]));
     assert(inspection.writesFiles === false && inspection.status.overLimit, "artifact inspection must be read-only and report bounded-status overflow");
     assert(inspection.runs.active === 1 && inspection.runs.terminal === 4 && inspection.runs.unmanaged === 2, "artifact inspection must separate operational active, terminal, and unmanaged Runs");
@@ -237,6 +255,7 @@ try {
     const prefixRun = ".harness/runs/20260107-000000-completed-a";
     write(join(artifactProject, prefixRun, "status.json"), `${JSON.stringify({ phase: "completed", goalPath: "harness/goals/prefix.md", updatedAt: "2026-01-07T00:00:00.000Z" }, null, 2)}\n`);
     write(join(artifactProject, "harness/goals/prefix.md"), "# Prefix\n\nRun: `.harness/runs/20260107-000000-completed-ab`\n\n## State Sync Notes\n\n- Evidence: retained for review.\n");
+    markManagedRun(artifactProject, prefixRun, "harness/goals/prefix.md");
     const prunePreview = JSON.parse(run(["artifacts", "prune", "--cwd", artifactProject, "--json"]));
     assert(prunePreview.prune.mode === "preview" && prunePreview.prune.candidates.some((item) => samePath(item.runDir, completedRun)), "prune preview must identify evidence-safe terminal Runs");
     assert(prunePreview.prune.retained.some((item) => samePath(item.runDir, unsafeRun) && item.reasons.some((reason) => /State Sync Notes/.test(reason))), "prune preview must refuse terminal Runs without durable State Sync Notes");

@@ -262,8 +262,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/t
 node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
 ```
 
-准备好的 run packet 会包含 `dag.json`、`dag.md` 和
-`agents/<node>/prompt.md`。Harness 记录 ready nodes、ownership、verification
+准备好的 run packet 会包含 `manifest.json`、`dag.json`、`dag.md` 和
+`agents/<node>/prompt.md`。`manifest.json` 绑定准备时的 Goal/Spec 执行合同与
+DAG 形状；准备后修改这些输入会被拒绝，必须重新准备 Run。Harness 记录 ready nodes、ownership、verification
 和 candidate evidence；Codex runtime 负责 worker selection、delegation、
 concurrency 与 cancellation。`run prepare` 不启动 worker，也不固定 model/
 effort。Task/Goal 保持为 accepted-state authority；Run packet 保存 execution 和
@@ -297,9 +298,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 ```
 
 `run record` 会刷新 `status.json` 和 Run log 中的 accepted Run evidence。
+Node 和 Run 记录使用排他的 Run lock 与原子 artifact 写入，并发记录不会产生
+半截 JSON 或覆盖同一个 log。
 completed Run 要求 verification、所有生成的 DAG node（包括 advisory/small
 DAG）均为 completed、required checklist items、durable gates，以及带有具体
-State Sync Notes 的 authoritative Task/Goal state。
+State Sync Notes 的 authoritative Task/Goal state。Goal 必须引用精确的 Run
+路径；blocked Goal 不能完成 Run。
 
 active `running` 或 `blocked` node 会阻止 completion；cancellation 或 supersession 是 cooperative
 controller signal，不是 worker runtime 已停止的证明。
@@ -315,3 +319,7 @@ CLI 记录 durable state，不实现 Codex runtime Goal 或 Plan。Skill 在 hos
 旧 Goal 和 Run 中的 delivery 字段在 `0.10.0` compatibility boundary 内仍可
 读取，但 current validation、completion、maintenance 和 status output 会忽略
 它们；新 artifact 不再生成这些字段。
+
+只有 `status.json` 的旧 Run 目录仍可被 inspect，但会标记为 `unmanaged`，不会
+自动把 Task 移到 Done，也不能通过 `artifacts prune --apply`。artifact policy 中的
+路径必须是仓库相对路径；required Harness 路径缺失时，`doctor` 返回非零退出码。

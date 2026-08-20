@@ -83,6 +83,7 @@ owns the repeatable execution mechanics inside the project adapter:
 - turn a request such as `complete M5` into explicit completion items;
 - prepare Goals and execution DAGs instead of stopping at the next small spec;
 - record worker ownership, DAG state, and candidate evidence while the Codex runtime schedules work;
+- bind prepared Runs to a Goal/Spec/DAG manifest and protect state with atomic concurrent recording;
 - verify concrete evidence before accepting Task/Goal completion;
 - require `State Sync Notes` as part of Goal and Task completion;
 - keep Goal indexes, bounded status snapshots, Goals, Runs, and gates aligned;
@@ -91,6 +92,8 @@ owns the repeatable execution mechanics inside the project adapter:
 - pause for real human gates such as unclear direction, credentials, paid APIs,
   production access, destructive actions, or external side effects outside
   accepted scope.
+- keep status-only legacy Runs inspectable but `unmanaged`, so they cannot
+  automatically complete Tasks or be pruned.
 
 The promise is not merely that agents write files. The promise is that coding
 agents stop losing the plot between roadmap, specification, implementation,

@@ -80,6 +80,7 @@ Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责
 - 把 `完成 M5` 这样的请求展开成明确的 completion items；
 - 准备 Goal 和 execution DAG，而不是写完下一个小 spec 就停下；
 - 记录 worker ownership、DAG 和 candidate evidence；调度交给 Codex runtime；
+- 用 prepared Run manifest 绑定 Goal/Spec/DAG 合同，并在并发记录时保护原子状态；
 - 在接受 Task/Goal completion 前验证 concrete evidence；
 - 把 `State Sync Notes` 作为 Goal 和 Task completion 的组成部分；
 - 对齐 Goal index、bounded status snapshot、Goal、Run 和 gate；
@@ -87,6 +88,7 @@ Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责
   durable evidence 已同步且显式授权时清理 local-only Run；
 - 只在方向不清、凭证、付费 API、生产访问、破坏性操作或超出 accepted
   scope 的 external side effect 时暂停并交还给人。
+- 旧的 status-only Run 仍可检查，但标记为 unmanaged，不会自动推动 Task 完成或清理。
 
 核心承诺不只是“agent 会改文件”，而是 coding agent 不会在 roadmap、spec、
 implementation、verification、state sync 和 handoff 之间丢失主线。
