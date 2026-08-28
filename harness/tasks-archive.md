@@ -854,3 +854,52 @@ Completed task records moved from the bounded active task index.
   - Delivery: `validated-local`; no commit, push, review, integration, publish,
     release, deploy, production access, daemon, watcher, paid API, credential,
     or destructive operation was performed.
+
+## Archived 2026-08-28
+
+- [x] Align current project adapter and storage artifacts with Goal-first terminology.
+  - Completed: Updated `harness/README.md` to define the project adapter
+    terminology contract as `Roadmap -> Milestone -> Goal -> Task -> Run`,
+    including intent normalization and the compatibility boundary for the
+    existing `harness/tasks.md` / `taskIndex` storage path.
+  - Completed: Updated `harness/mental-models/` so project storage and usage
+    models describe Goal state, Goal index storage, Goal-internal Tasks, Runs
+    as execution attempts, and Milestones as roadmap outcomes.
+  - Completed: Updated current project status and completed Goal records to use
+    `Milestone Completion Map` as the formal term, leaving `Stage Completion
+    Map` only where documenting legacy compatibility.
+  - Source: User asked on 2026-07-04 to update the current project's adapter
+    and storage files to the new terminology.
+  - Verification: `git diff --check` and terminology scans over
+    `harness/README.md`, `harness/tasks.md`, `harness/status.md`, and
+    `harness/mental-models/`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.
+
+- [x] Refresh Agent Harness README diagrams for terminology hierarchy.
+  - Completed: Added maintained SVG sources for
+    `docs/assets/readme/adapter-model.png` and
+    `docs/assets/readme/adapter-execution-model.png`, then regenerated both
+    PNGs with `sips` at 1672x941.
+  - Completed: Updated diagram content to present
+    `Roadmap -> Milestone -> Goal -> Task -> Run`, with `Goal` as the main
+    work unit, `Task` as internal breakdown, and `Run` as evidence attempt.
+  - Completed: Inspected `docs/assets/readme/adapter-artifact-map.png` and left
+    it unchanged because it already uses `Milestones` and no `Stage` term.
+  - Completed: Extended presentation/smoke checks to protect README diagram
+    links, SVG terminology, and the removal of the old task-first phrase.
+  - Source: User agreed on 2026-07-04 that this Controller thread should finish
+    the docs improvement task after inspecting whether diagrams need to be
+    redone.
+  - Spec: `harness/specs/2026-07-04-agent-harness-readme-diagram-refresh.md`
+  - Goal: `harness/goals/2026-07-04-refresh-agent-harness-readme-diagrams-for-terminology-hierarchy.md`
+  - Run: `.harness/runs/20260704-160154-refresh-agent-harness-readme-diagrams-for-terminology-hierarchy/`
+  - Verification: `sips -g pixelWidth -g pixelHeight`, `node --check
+    scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
+    `npm run test:presentation`, `npm run test:protocol`,
+    `npm run test:smoke`, `npm run validate:plugin`, and
+    `git diff --check`.
+  - Delivery: `validated-local`; no commit, push, review, integration, publish,
+    release, deploy, production access, daemon, watcher, paid API, credential,
+    or destructive operation was performed.

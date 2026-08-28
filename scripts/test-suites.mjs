@@ -27,7 +27,10 @@ const invariants = [
 
 function protocol() {
   const execute = "plugins/agent-harness/skills/execute/SKILL.md";
-  for (const invariant of invariants) includes(execute, invariant);
+  for (const invariant of invariants) {
+    includes(execute, invariant);
+    includes("docs/HARNESSES.md", invariant);
+  }
   excludes(execute, "`mixed`");
   includes("plugins/agent-harness/references/route-entry-mapping.md", "Ordinary clear change/build requests use Codex directly");
   includes("plugins/agent-harness/references/model-routing.md", "not pin either by default");
@@ -82,7 +85,9 @@ function presentation() {
     includes(file, `(docs/releases/v${version}.md)`);
     includes(file, "Plugins Directory");
     includes(file, "marketplace");
+    includes(file, "npm run test:all");
   }
+  for (const file of ["docs/cli.md", "docs/cli.zh-CN.md"]) includes(file, "npm run test:regressions");
   includes("docs/github-presentation.md", `release surface for \`${version}\``);
   includes("docs/github-presentation.md", `docs/releases/v${version}.md`);
   includes("docs/assets/github/social-preview.svg", `v${version}`);

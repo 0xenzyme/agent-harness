@@ -2,7 +2,18 @@
 
 ## Unreleased
 
-## 0.10.0 - 2026-07-21
+- Required work-mode resolution before creating or handing off a thread or
+  delegating a worker; unresolved `ask` results and conflicting authority now
+  pause before runtime delegation.
+- Added adapter `paths.ideaInbox` support so explicitly recorded, unaccepted
+  intake candidates can stay outside the authoritative Goal index.
+- Hardened completion and configured-path validation so malformed or
+  out-of-root Goal, Spec, Run, and artifact references fail before mutation.
+- Bound prepared Runs to their Goal/Spec/DAG contract, protected concurrent
+  Run recording with exclusive locks and atomic writes, and added a dedicated
+  regression suite to `npm run test:all`.
+
+## 0.10.0 - 2026-07-21 (release preparation)
 
 - Made Task/Goal the authoritative accepted-state record with `active`,
   `completed`, and resumable non-complete `blocked` phases; Runs retain

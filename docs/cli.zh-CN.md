@@ -33,7 +33,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/t
 如果修改了 README、GitHub presentation、social preview、changelog 或
 release notes，运行 `npm run test:presentation`。如果修改了 eval
 documentation 或 eval fixtures，运行 `npm run test:eval`。如果需要同时跑
-presentation、protocol 和 smoke coverage，运行 `npm run test:all`。
+presentation、protocol、smoke 和 regression coverage，运行
+`npm run test:all`；只跑 CLI hardening suite 时使用
+`npm run test:regressions`。
 
 `npm run test:eval` 是 deterministic eval，不测真实模型 activation。需要
 显式批准模型/成本后才能运行 live check：

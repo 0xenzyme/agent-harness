@@ -21,6 +21,7 @@ ordinary direct or postflight-only work into a Run.
 | --- | --- |
 | `harness-rule:path-containment` | All writes and artifact references remain inside configured roots after lexical and realpath checks. |
 | `harness-rule:run-dag-ownership` | Runs record dependencies, ready state, ownership, verification, and candidate evidence. |
+| `harness-rule:pre-delegation-work-mode` | Resolve `local`, `worktree`, or `ask` before runtime delegation; unresolved `ask` or conflicting authority pauses for the user. |
 | `harness-rule:candidate-accepted-evidence` | Worker output stays candidate evidence until the accepted-state owner validates it. |
 | `harness-rule:authoritative-completion-state` | Task/Goal is authoritative with active, completed, or blocked phase; blocked is resumable and non-complete, Run stores evidence, and status is a projection. |
 | `harness-rule:state-sync-evidence` | Durable completion includes verified State Sync Notes. |
@@ -33,5 +34,5 @@ model/effort. Harness never starts workers, pins those settings, or expands
 generic explorer/implementer workers by default.
 
 Suite routing: `npm run test:presentation`, `npm run test:protocol`,
-`npm run test:smoke`, `npm run test:routing-classification`, and
-`npm run test:all`.
+`npm run test:smoke`, `npm run test:regressions`,
+`npm run test:routing-classification`, and `npm run test:all`.

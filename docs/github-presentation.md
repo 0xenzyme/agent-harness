@@ -64,12 +64,12 @@ the Settings -> General -> Social preview control.
 
 ## Release Surface
 
-The release surface for `0.10.0` is:
+The release surface for `0.10.0` is currently release preparation:
 
 - `CHANGELOG.md`
 - `docs/releases/v0.10.0.md`
-- Git tag `v0.10.0`
-- GitHub Release `v0.10.0`
+- Planned Git tag `v0.10.0`
+- Planned GitHub Release `v0.10.0`
 
 Do not claim a Git tag or GitHub Release exists unless `gh release view
 v0.10.0` succeeds. Until the release step is explicitly authorized and

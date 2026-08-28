@@ -93,7 +93,7 @@ Intent normalization for this repository:
 
 ```bash
 npm run validate:plugin
-npm run test:smoke
+npm run test:all
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd .
 ```
 

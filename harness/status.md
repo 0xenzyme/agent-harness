@@ -7,48 +7,49 @@ belongs to Task/Goal records; historical detail belongs in
 ## Focus
 
 - Current Goal: None active.
-- Recently completed: Simplify completion and remove Git-derived Delivery State.
+- Recently completed: Refresh stale documentation and project state after
+  post-0.10 hardening.
 - Phase: completed.
-- Spec: `harness/specs/2026-07-21-simplify-completion-and-remove-git-derived-delivery-state.md`
-- Goal: `harness/goals/2026-07-21-simplify-completion-and-remove-git-derived-delivery-state.md`
-- Run: `.harness/runs/20260721-110505-simplify-completion-and-remove-git-derived-delivery-state`
+- Source: User-requested documentation audit and follow-up repair on 2026-08-28.
+- Execution path: `codex-direct`; no repository Goal or Run was created for
+  this bounded documentation maintenance.
 
 ## Accepted Result
 
-- Task/Goal is the accepted-state authority with `active`, `completed`, or
-  resumable non-complete `blocked` phase.
-- Run records execution, DAG, verification, gate, and candidate/accepted
-  evidence; status is a bounded projection.
-- Completion derives from accepted scope, fresh verification, required durable
-  gates, and synchronized authoritative state.
-- Canonical Goal/Run generation, validation, maintenance, and status output no
-  longer contain Git-derived Delivery State, Run start snapshots, or delivery
-  gates.
-- Legacy Goal and Run fields remain readable for the `0.10.0` compatibility
-  boundary, are ignored by current behavior, and are removed when an old Run is
-  recorded again.
-- Artifact inspection scans configured durable-evidence roots for local Run
-  references; work-mode recommendation follows configured policy.
+- `0.10.0` is described consistently as release preparation rather than a
+  published Git tag or GitHub Release; July/August hardening remains under
+  `Unreleased` until a separately authorized release assigns a version.
+- The capability matrix and public guidance now include
+  `harness-rule:pre-delegation-work-mode`, including thread, worktree, conflict,
+  `ask`, and `startingState` boundaries.
+- Validation guidance now includes the regression suite and accurately states
+  that `npm run test:all` runs presentation, protocol, smoke, and regressions.
+- Deterministic checks now require every canonical invariant in the capability
+  matrix and protect the documented `test:all` / `test:regressions` commands.
+- The Goal index is bounded at 10 completed items; two older completed records
+  moved intact to `harness/tasks-archive.md` under `Archived 2026-08-28`.
 
 ## Release Surface
 
 - Package and plugin versions: `0.10.0`.
-- Release notes: `docs/releases/v0.10.0.md`.
-- Canonical templates, skills, references, bilingual CLI docs, capability
-  matrix, project contract, README, behavior traces, smoke coverage, and social
-  preview are aligned.
+- Release preparation notes: `docs/releases/v0.10.0.md`.
+- Remote verification on 2026-08-28 found no `v0.10.0` Git tag or GitHub
+  Release; publishing remains outside this task.
+- `CHANGELOG.md`, bilingual README/usage/CLI guidance, capability matrix,
+  worktree policy, project contract, and durable project state are aligned.
 
 ## Verification
 
-- Passed: `node --check plugins/agent-harness/scripts/agent-harness.mjs`.
-- Passed: `node --check tests/smoke.mjs`.
-- Passed: `node --check scripts/test-suites.mjs`.
-- Passed: `npm run test:protocol` with 9 canonical invariants.
-- Passed: `npm run test:smoke`.
-- Passed: `npm run test:all`.
+- Passed: `git diff --check`.
+- Passed: Markdown local-link validation across 148 files.
+- Passed: `npm run test:all` with presentation, 9 protocol invariants, smoke,
+  and regression coverage.
 - Passed: `npm run test:eval` with 40 trigger cases, 4 task cases, 8 hard CLI
   checks, and 10 behavior traces.
 - Passed: `npm run validate:plugin`.
+- Passed: project `doctor` and config validation.
+- Passed: artifact-compaction preview with 10/10 retained Done items, no
+  remaining candidates, and status below its 160-line limit.
 
 ## Route
 

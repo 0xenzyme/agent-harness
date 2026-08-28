@@ -150,6 +150,12 @@ If you want a separate visible controller thread:
 Start a new Thread as controller for this task.
 ```
 
+Before Harness creates or hands off that thread, it resolves whether execution
+should remain local, use a worktree, or ask. If repository instructions, the
+accepted Spec/Goal, config, and current user direction conflict—or the result
+is still `ask`—Harness pauses for your decision. Asking for a Thread does not
+by itself authorize a worktree or reuse of a specific existing runtime state.
+
 If you only need ordinary implementation without durable control, say so directly:
 
 ```text

@@ -30,7 +30,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/t
 Run `npm run test:presentation` when README, GitHub presentation, social
 preview, changelog, or release-note surfaces change. Run `npm run test:eval`
 when eval documentation or eval fixtures change. Run `npm run test:all` when
-presentation, protocol, and smoke coverage should all run.
+presentation, protocol, smoke, and regression coverage should all run. Use
+`npm run test:regressions` for the focused CLI hardening suite.
 
 `npm run test:eval` is deterministic and does not measure model activation.
 An opt-in live check requires explicit model/cost authorization:

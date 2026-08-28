@@ -217,6 +217,9 @@ Key boundaries:
 - A controller is the outcome owner and accepted-state owner. Foreground
   implementation is prohibited only when the user or Goal explicitly says
   `gate-only` or review-only.
+- Resolve work mode before thread creation, handoff, or delegation. An
+  unresolved `ask` result or authority conflict pauses for the user; thread
+  authority alone does not authorize a worktree.
 - Parallel writers require separate locked worktrees/cwds or recorded proof of
   non-overlapping ownership; the Codex runtime owns scheduling and concurrency.
 - Task/Goal is the accepted-state authority; Run retains evidence and status
@@ -255,9 +258,7 @@ For README, documentation, or plugin-surface changes, run:
 
 ```bash
 git diff --check
-npm run test:presentation
-npm run test:protocol
-npm run test:smoke
+npm run test:all
 npm run validate:plugin
 ```
 
@@ -284,7 +285,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.10.0 Release Notes](docs/releases/v0.10.0.md)
+- [v0.10.0 Release Preparation Notes](docs/releases/v0.10.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while

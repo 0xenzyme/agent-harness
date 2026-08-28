@@ -203,6 +203,8 @@ evidence，直到 control lane 完成验证。Completion 需要可检查的 evid
 
 - Controller 是 outcome owner 和 accepted-state owner；只有用户或 Goal 明确要求
   `gate-only` / 只审 evidence 时才禁止 foreground implementation。
+- 创建、handoff thread 或 delegation 前必须解析 work mode；`ask` 未解决或
+  authority 冲突时先交还用户，thread 授权本身不等于 worktree 授权。
 - Parallel writer 需要独立锁定的 worktree/cwd，或记录 non-overlap evidence；
   scheduling 和 concurrency 由 Codex runtime 决定。
 - Task/Goal 是 accepted-state authority；Run 保存 evidence，status 保持为
@@ -237,9 +239,7 @@ README、文档或 plugin surface 发生变化时，运行：
 
 ```bash
 git diff --check
-npm run test:presentation
-npm run test:protocol
-npm run test:smoke
+npm run test:all
 npm run validate:plugin
 ```
 
@@ -266,7 +266,7 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.10.0 Release Notes](docs/releases/v0.10.0.md)
+- [v0.10.0 Release Preparation Notes](docs/releases/v0.10.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的

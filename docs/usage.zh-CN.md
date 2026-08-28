@@ -148,6 +148,11 @@ work。对长任务，Harness 应建立或复用 Codex runtime Goal，并用 Cod
 启动一个新 Thread 作为主控执行这项任务。
 ```
 
+Harness 在创建或 handoff 这个 thread 前，会先解析应该使用当前 checkout、
+worktree，还是询问用户。如果 repository instructions、accepted Spec/Goal、
+config 与当前用户指令冲突，或结果仍是 `ask`，Harness 会先暂停确认。要求新建
+Thread 本身不授权创建 worktree，也不授权复用特定的已有 runtime state。
+
 如果你只需要普通实现而不需要 durable control，直接说实现：
 
 ```text

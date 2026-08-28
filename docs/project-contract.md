@@ -42,6 +42,12 @@ non-editing. Durable execution roles remain `gate-only` and `implementer`. Worke
 candidate evidence; the accepted-state owner alone records accepted Goal,
 Task, Run, gate, and status state.
 
+Before thread creation, handoff, or worker delegation, durable execution
+resolves work mode from current user direction, repository instructions,
+accepted Spec/Goal state, and config. An unresolved `ask` result or conflict
+pauses before the runtime call; thread authority alone does not authorize a
+worktree or an existing `startingState`.
+
 ## Completion And Run Evidence
 
 Task/Goal is the accepted-state authority and uses `active`, `completed`, or
