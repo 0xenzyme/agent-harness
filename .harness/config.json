@@ -26,7 +26,7 @@
     "mentalModelIndex": "harness/mental-models/README.md"
   },
   "language": {
-    "default": "auto"
+    "default": "zh-CN"
   },
   "communication": {
     "commentary": "minimal"
