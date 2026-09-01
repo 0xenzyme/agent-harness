@@ -34,6 +34,9 @@ second repository Goal or mirror every Plan transition.
 - `harness-rule:bounded-status-snapshot`: do not append history to status.
 - `harness-rule:project-neutral-core`: keep downstream facts in adapters.
 - `harness-rule:durable-tier-boundary`: do not downgrade this durable Run.
+- `harness-rule:checkpoint-recovery`: when the manifest enforces a checkpoint,
+  act only from its current revision/next action and never retry a prohibited
+  action or bypass reconciliation/replan state.
 
 Return changed files, summary, validation, known risks, State Sync Notes,
 `Need user`, and `Remaining`. Do not update accepted Goal, Task, status, Run,

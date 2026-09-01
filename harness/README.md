@@ -85,6 +85,18 @@ Intent normalization for this repository:
 - Keep docs, skills, templates, CLI help, and tests aligned when changing the
   public command surface.
 
+## Checkpoint Recovery Policy
+
+- `.harness/config.json` keeps `checkpoint.defaultPolicy` at `disabled` unless
+  an accepted Goal explicitly needs durable recovery.
+- Optional finite `checkpoint.stages` is copied into the Goal and manifest;
+  checkpoint stage labels must remain inside that accepted vocabulary.
+- Enforced managed Runs use an independent revision-safe `checkpoint.json`;
+  adapters may declare finite business dimensions, but core remains
+  project-neutral and stores no credentials or production payloads.
+- Contract drift uses replan/replacement/supersede. Uncertain external state
+  uses reconciliation and authoritative inspection before retry.
+
 ## Commit / PR / Ship Policy
 
 - Do not commit, push, open PRs, publish, or release unless explicitly asked.

@@ -2,6 +2,8 @@
 
 Spec:
 Spec Policy:
+Checkpoint Policy: disabled
+Checkpoint Stages: []
 Status: active.
 
 ## Source Task

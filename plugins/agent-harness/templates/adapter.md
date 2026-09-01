@@ -75,6 +75,18 @@ the Agent Harness plugin references.
 - Lifecycle commands default to preview. Compaction requires `--record`;
   deletion requires `artifacts prune --apply` and all retention/evidence gates.
 
+## Checkpoint Recovery Policy
+
+- Machine-readable source: `.harness/config.json` `checkpoint`.
+- Default policy: `disabled`; explicitly enforced Goals persist
+  `Checkpoint Policy: enforced` and prepared Runs bind `checkpoint.json`.
+- Optional `checkpoint.stages` is copied into `Checkpoint Stages` on each new
+  Goal and bound by the Run manifest; undeclared stage labels fail validation.
+- Adapter dimensions must declare finite non-sensitive value domains; core
+  rejects undeclared, secret-like, or oversized inline values.
+- `reconciliation-required` permits authoritative inspection only; contract
+  drift creates a replacement Run and never rebinds an old manifest.
+
 ## Idea Inbox Policy
 
 - Capture thread: `harness:intake` records raw, unaccepted candidates in the

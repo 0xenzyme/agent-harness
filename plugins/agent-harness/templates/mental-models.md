@@ -31,6 +31,8 @@ adapter contract = task with status + spec + DAG + goal + gate
 - Explain route and work-mode choices briefly when they affect execution.
 - Treat subagent, automation, inbox, and competition output as candidate
   evidence until the control lane validates it.
+- Treat an enforced Run checkpoint as revision-safe recovery state, never as
+  Task/Goal completion or external authoritative evidence.
 - Keep plugin-facing examples project-neutral; put local facts in adapter
   artifacts.
 

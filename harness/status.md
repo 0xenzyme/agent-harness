@@ -6,56 +6,40 @@ belongs to Task/Goal records; historical detail belongs in
 
 ## Focus
 
-- Current Goal: None active.
-- Recently completed: Refresh stale documentation and project state after
-  post-0.10 hardening.
-- Phase: completed.
-- Source: User-requested documentation audit and follow-up repair on 2026-08-28.
-- Execution path: `codex-direct`; no repository Goal or Run was created for
-  this bounded documentation maintenance.
+- Current Goal: Implement Run Checkpoint and Recovery Protocol.
+- Goal: `harness/goals/2026-09-01-implement-run-checkpoint-and-recovery-protocol.md`.
+- Spec: `harness/specs/2026-09-01-run-checkpoint-and-recovery-protocol.md` (`accepted`).
+- Run: `.harness/runs/20260901-164310-implement-run-checkpoint-and-recovery-protocol`.
+- Phase: completed; implementation and verification evidence are recorded in
+  the durable Run.
+- Execution path: `durable-harness`, `current-thread`, `local`, `implementer`.
 
 ## Accepted Result
 
-- `0.10.0` is described consistently as release preparation rather than a
-  published Git tag or GitHub Release; July/August hardening remains under
-  `Unreleased` until a separately authorized release assigns a version.
-- The capability matrix and public guidance now include
-  `harness-rule:pre-delegation-work-mode`, including thread, worktree, conflict,
-  `ask`, and `startingState` boundaries.
-- Validation guidance now includes the regression suite and accurately states
-  that `npm run test:all` runs presentation, protocol, smoke, and regressions.
-- Deterministic checks now require every canonical invariant in the capability
-  matrix and protect the documented `test:all` / `test:regressions` commands.
-- The Goal index is bounded at 10 completed items; two older completed records
-  moved intact to `harness/tasks-archive.md` under `Archived 2026-08-28`.
-
-## Release Surface
-
-- Package and plugin versions: `0.10.0`.
-- Release preparation notes: `docs/releases/v0.10.0.md`.
-- Remote verification on 2026-08-28 found no `v0.10.0` Git tag or GitHub
-  Release; publishing remains outside this task.
-- `CHANGELOG.md`, bilingual README/usage/CLI guidance, capability matrix,
-  worktree policy, project contract, and durable project state are aligned.
+- Managed prepared Runs can explicitly enforce an independent, schema-bound
+  `checkpoint.json` with lock/atomic/CAS mutation, finite control/stage state,
+  drift/replacement recovery, reconciliation evidence, and L0/L1 orientation.
+- Checkpoint-disabled Runs, Codex fast paths, v1 manifests, and legacy Runs
+  remain compatible; nonterminal recovery state remains prune-protected.
+- Core CLI, config/schema/templates, skills, references, bilingual docs,
+  capability matrix, CHANGELOG, tests, evals, and project state are aligned.
+- Checkpoint/Run completion does not complete Goal authority. RC-D1 through
+  RC-D6 remain deferred and were not silently absorbed.
 
 ## Verification
 
-- Passed: `git diff --check`.
-- Passed: Markdown local-link validation across 148 files.
-- Passed: `npm run test:all` with presentation, 9 protocol invariants, smoke,
-  and regression coverage.
-- Passed: `npm run test:eval` with 40 trigger cases, 4 task cases, 8 hard CLI
-  checks, and 10 behavior traces.
-- Passed: `npm run validate:plugin`.
-- Passed: project `doctor` and config validation.
-- Passed: artifact-compaction preview with 10/10 retained Done items, no
-  remaining candidates, and status below its 160-line limit.
+- Passed: JavaScript syntax, focused protocol/regression coverage,
+  `npm run test:all`, `npm run test:eval`, and `npm run validate:plugin`.
+- Passed: config, Goal, and Run validation; project doctor; artifact inspect,
+  compact, and prune previews; final `git diff --check`.
 
 ## Route
 
-- Public entry: `harness:orient` for the next read-only project decision.
-- Accepted-state owner: None active.
+- Public next entry: `harness:orient` for a new project decision.
+- Accepted-state owner: none active after this completed Run.
 - Need user: None.
+- Delivery ceiling: validated local changes only; no version bump, commit,
+  push, publish, release, deploy, or production operation is authorized.
 - Remaining: None for the accepted implementation scope.
 
 ## Blockers

@@ -64,7 +64,10 @@ fresh authority, but they do not form a Harness completion-state ladder.
 
 Canonical behavior fields include adapter/configured paths (an adapter may
 declare `paths.ideaInbox` for unaccepted intake candidates),
-`worktree.defaultPolicy`, `gates.requiredForCompletion`, and `gates.blocking`.
+`worktree.defaultPolicy`, `checkpoint.defaultPolicy`, optional finite
+`checkpoint.stages` and `checkpoint.adapterDimensions`,
+`gates.requiredForCompletion`, and
+`gates.blocking`.
 These configured gates apply to durable Goal/Run completion. They do not apply
 to `codex-direct` or postflight-only synchronization, and postflight cannot
 bypass an existing enforced Run.
@@ -93,6 +96,19 @@ atomically written. Status-only legacy Run directories remain inspectable but
 are `unmanaged`: they cannot drive automatic Task completion or pruning.
 Completed Run evidence must reference the exact Run path from the Goal, and a
 blocked Goal is never a completed Run.
+
+Goals persist a resolved `Checkpoint Policy: disabled|enforced`; omission on
+legacy Goals resolves to `disabled`. New Goals also persist a finite
+`Checkpoint Stages` vocabulary; stage labels are nullable and manifest-bound.
+Enforced managed Runs bind an independent
+`checkpoint.json` from the manifest and reference it from status without
+duplicating checkpoint revision/control state. Checkpoint mutation holds the
+Run lock, writes atomically, and requires `expectedRevision`. Contract drift
+quarantines the old Run as `replan-required`, then a validated replacement may
+make it `superseded`; the immutable manifest is never rebound. When an external
+effect may have occurred, `reconciliation-required` permits authoritative
+inspection only and prohibits blind retry. Checkpoint/Run completion remains
+evidence and never replaces authoritative Task/Goal completion.
 
 Postflight sync updates existing state only with fresh verification, observed
 outcome, and remaining gap. It does not create

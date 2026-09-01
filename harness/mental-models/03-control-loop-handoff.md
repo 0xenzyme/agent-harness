@@ -55,3 +55,9 @@ literal paths.
 The first run implementation is intentionally manual. `agent-harness run
 prepare` creates a packet with a ready prompt and subagent guidance, but it does
 not start Codex or launch background sessions.
+
+When a Goal explicitly enables checkpoint recovery, `run prepare` also creates
+an independent `checkpoint.json`. It records the current control state and sole
+next action, not accepted completion. Mutation is revision-safe. Contract drift
+creates a replacement Run without rebinding the old manifest; uncertain
+external effects require authoritative reconciliation before retry.

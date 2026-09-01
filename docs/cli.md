@@ -283,6 +283,62 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
 ```
 
+### Run checkpoint and recovery
+
+Checkpointing is default-disabled and does not affect ordinary managed Runs or
+Codex fast paths. An adapter may provide the default for new Goals, while each
+Goal persists the resolved policy:
+
+```json
+{
+  "checkpoint": {
+    "defaultPolicy": "disabled",
+    "stages": ["diagnosis", "delivery"],
+    "adapterDimensions": {
+      "deliveryReadiness": ["pending", "ready"]
+    }
+  }
+}
+```
+
+Enable it explicitly when creating a Goal:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/accepted.md --checkpoint-policy enforced
+```
+
+`Checkpoint Stages` is copied from config into each new Goal and bound by the
+immutable manifest. `currentStage` and `lastCompletedStage` must be `null` or
+belong to that finite vocabulary, so they remain recovery labels instead of an
+undeclared second stage state machine.
+
+An enforced `run prepare` creates an independent `checkpoint.json`. The
+manifest binds only its path, schema version, and resolved policy; it does not
+hash mutable checkpoint content. `status.json` holds a reference without
+copying revision/control state. Inspect and validate with:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run validate --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint show --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint validate --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+```
+
+Every mutation supplies the freshly read `--expected-revision` and uses the
+Run lock plus atomic write. When an external effect is uncertain, enter
+reconciliation and prohibit blind retry:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint update --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --expected-revision 0 --control-state reconciliation-required --next-action "inspect authoritative deployment state" --pause-reason "deployment may have completed before state sync failed" --required-evidence '["authoritative deployment status"]' --prohibited-actions '["retry deployment"]' --reconciliation-required true --json
+```
+
+Clearing reconciliation also requires `--evidence-reference`, `--observed-at`,
+and `--observed-source`. Goal/Spec contract drift only permits the old Run to
+enter `replan-required`; after a replacement Run is prepared and validated it
+may become `superseded`. Never rebind the old manifest. A `completed`
+checkpoint requires a terminal DAG but does not complete the Goal. Multiple
+active checkpoints make `orient next` pause until `--run` selects one.
+
 Record a node start before launch, then record its result. Node IDs are generated
 per task size; inspect `run status --json` (or `dag.json`) before copying a command.
 For the current default medium/large DAG, the IDs are `execution` and

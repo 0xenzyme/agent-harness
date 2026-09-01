@@ -279,6 +279,57 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
 ```
 
+### Run checkpoint 与 recovery
+
+Checkpoint 默认关闭，不影响普通 managed Run 或 Codex fast path。Adapter 可以
+为新 Goal 提供默认值，Goal 仍会持久化最终 policy：
+
+```json
+{
+  "checkpoint": {
+    "defaultPolicy": "disabled",
+    "stages": ["diagnosis", "delivery"],
+    "adapterDimensions": {
+      "deliveryReadiness": ["pending", "ready"]
+    }
+  }
+}
+```
+
+也可以在创建 Goal 时显式启用：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/accepted.md --checkpoint-policy enforced
+```
+
+`Checkpoint Stages` 会从 config 复制到新 Goal 并绑定进 immutable manifest；
+`currentStage` 与 `lastCompletedStage` 必须为 `null` 或属于该有限 vocabulary，
+因此它们只是 recovery labels，不会形成一套未声明的 stage 状态机。
+
+Enforced `run prepare` 会生成独立 `checkpoint.json`，manifest 只绑定 path、
+schema version 和 resolved policy，不 hash 可变 checkpoint 内容；`status.json`
+只保存 reference，不复制 revision/control state。查看和验证：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run validate --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint show --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint validate --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
+```
+
+Mutation 必须带刚读取的 `--expected-revision`，并在 Run lock 下 atomic write。
+示例：外部动作结果不确定时先进入 reconciliation，禁止 blind retry：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint update --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --expected-revision 0 --control-state reconciliation-required --next-action "inspect authoritative deployment state" --pause-reason "deployment may have completed before state sync failed" --required-evidence '["authoritative deployment status"]' --prohibited-actions '["retry deployment"]' --reconciliation-required true --json
+```
+
+清除 reconciliation 必须同时提供 `--evidence-reference`、`--observed-at` 和
+`--observed-source`。Goal/Spec contract drift 时，旧 Run 只允许进入
+`replan-required`，准备并验证 replacement Run 后再写 `superseded`；不得重绑旧
+manifest。`completed` checkpoint 要求 DAG 已 terminal，但不会自动完成 Goal。
+多个 active checkpoint 会使 `orient next` 暂停选择，必须显式 `--run`。
+
 启动前先记录 node `running`，再记录结果。Node ID 按 task size 生成；先查看
 `run status --json`（或 `dag.json`）。当前默认 medium/large DAG 使用
 `execution` 和 `verification`，第二个并发 writer 必须提供

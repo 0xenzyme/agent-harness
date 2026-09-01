@@ -153,6 +153,39 @@
         }
       }
     },
+    "checkpoint": {
+      "description": "Default policy and adapter-owned finite value domains for managed Run checkpoints. Goals persist the resolved policy; omission remains disabled.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "defaultPolicy": {
+          "type": "string",
+          "enum": ["disabled", "enforced"]
+        },
+        "stages": {
+          "description": "Optional project-neutral finite stage vocabulary copied into new Goals and bound by prepared manifests.",
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "adapterDimensions": {
+          "description": "Project-neutral dimension names mapped to finite allowed primitive values.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": ["string", "number", "boolean"]
+            }
+          }
+        }
+      }
+    },
     "artifactPolicy": {
       "description": "Bounded control-state and Run retention policy. Commands remain preview-only unless --record or --apply is explicit.",
       "type": "object",

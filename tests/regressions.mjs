@@ -172,6 +172,138 @@ try {
   assert(!forgedMaintenance.proposed.actions.some((action) => action.kind === "task-completion"), "forged completed status must not drive Task completion without DAG evidence");
   writeFileSync(join(runDir, "status.json"), statusBefore);
 
+  const checkpointProject = createProject("agent-harness-checkpoint", ["Checkpoint recovery"]);
+  projects.push(checkpointProject);
+  const checkpointConfigPath = join(checkpointProject, ".harness/config.json");
+  const checkpointConfig = json(checkpointConfigPath);
+  checkpointConfig.checkpoint = {
+    defaultPolicy: "enforced",
+    stages: ["diagnosis", "delivery"],
+    adapterDimensions: { deployment: ["pending", "verified"] }
+  };
+  checkpointConfig.artifactPolicy.runs = "local-only";
+  checkpointConfig.artifactPolicy.retention.blockedDays = 0;
+  checkpointConfig.artifactPolicy.retention.keepLatest = 0;
+  writeFileSync(checkpointConfigPath, `${JSON.stringify(checkpointConfig, null, 2)}\n`);
+  const secretDimensionConfig = structuredClone(checkpointConfig);
+  secretDimensionConfig.checkpoint.adapterDimensions.apiToken = ["forbidden"];
+  writeFileSync(checkpointConfigPath, `${JSON.stringify(secretDimensionConfig, null, 2)}\n`);
+  assert(/secret-like|apiToken/i.test(fails(["config", "validate", "--cwd", checkpointProject, "--json"], checkpointProject)), "checkpoint config must reject secret-like adapter dimension keys");
+  writeFileSync(checkpointConfigPath, `${JSON.stringify(checkpointConfig, null, 2)}\n`);
+  const checkpointGoal = createGoal(checkpointProject, "Checkpoint recovery");
+  assert(readFileSync(join(checkpointProject, checkpointGoal), "utf8").includes("Checkpoint Policy: enforced"), "goal create must persist the resolved enforced checkpoint policy");
+  const checkpointRun = prepare(checkpointProject, checkpointGoal);
+  const checkpointRunDir = join(checkpointProject, checkpointRun);
+  const initialCheckpoint = json(join(checkpointRunDir, "checkpoint.json"));
+  const checkpointManifest = json(join(checkpointRunDir, "manifest.json"));
+  const checkpointStatus = json(join(checkpointRunDir, "status.json"));
+  const checkpointNodeId = json(join(checkpointRunDir, "dag.json")).nodes[0].id;
+  assert(initialCheckpoint.revision === 0 && initialCheckpoint.controlState === "active", "enforced prepare must create an active revision-zero checkpoint");
+  assert(checkpointManifest.checkpoint.policy === "enforced" && checkpointManifest.checkpoint.path === "checkpoint.json"
+    && checkpointManifest.checkpoint.stages.join(",") === "diagnosis,delivery", "manifest must bind checkpoint policy/path/stage vocabulary without hashing mutable content");
+  assert(checkpointStatus.checkpoint === "checkpoint.json" && checkpointStatus.files.includes("checkpoint.json"), "status must reference the independent checkpoint artifact");
+  assert(JSON.parse(run(["run", "validate", "--cwd", checkpointProject, "--run", checkpointRun, "--json"], checkpointProject)).ok, "fresh enforced Run must validate across Goal/manifest/status/DAG/checkpoint");
+
+  run([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--expected-revision", "0", "--control-state", "reconciliation-required",
+    "--next-action", "inspect authoritative deployment state",
+    "--pause-reason", "deployment may have completed before state sync failed",
+    "--current-stage", "diagnosis",
+    "--required-evidence", "[\"authoritative deployment status\"]",
+    "--prohibited-actions", "[\"retry deployment\"]",
+    "--adapter-dimensions", "{\"deployment\":\"pending\"}",
+    "--reconciliation-required", "true", "--json"
+  ], checkpointProject);
+  const reconcileCheckpoint = json(join(checkpointRunDir, "checkpoint.json"));
+  assert(reconcileCheckpoint.revision === 1 && reconcileCheckpoint.reconciliationRequired, "reconciliation transition must atomically increment revision");
+  const staleBefore = readFileSync(join(checkpointRunDir, "checkpoint.json"), "utf8");
+  assert(/Stale checkpoint revision/i.test(fails([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--expected-revision", "0", "--next-action", "stale overwrite"
+  ], checkpointProject)), "stale checkpoint CAS must fail closed");
+  assert(readFileSync(join(checkpointRunDir, "checkpoint.json"), "utf8") === staleBefore, "stale checkpoint rejection must leave zero writes");
+  const blockedRestartError = fails([
+    "run", "node", "record", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--node", checkpointNodeId, "--phase", "running", "--summary", "unsafe retry"
+  ], checkpointProject);
+  assert(/checkpoint|reconcil|control.?state/i.test(blockedRestartError), `reconciliation-required must prohibit execution restart: ${blockedRestartError}`);
+  const recoveryOrient = JSON.parse(run(["orient", "next", "--cwd", checkpointProject, "--run", checkpointRun, "--json"], checkpointProject));
+  assert(recoveryOrient.checkpointRecovery.active.controlState === "reconciliation-required"
+    && recoveryOrient.checkpointRecovery.active.prohibitedActions.includes("retry deployment"), "orient must emit compaction-safe recovery and prohibited actions");
+
+  run([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--expected-revision", "1", "--control-state", "active",
+    "--next-action", "execute ready DAG node: execution", "--pause-reason", "null",
+    "--current-stage", "delivery", "--last-completed-stage", "diagnosis",
+    "--prohibited-actions", "[]", "--reconciliation-required", "false",
+    "--evidence-reference", "evidence/deployment-readback.json",
+    "--observed-at", "2026-09-01T00:00:00.000Z", "--observed-source", "authoritative deployment API",
+    "--adapter-dimensions", "{\"deployment\":\"verified\"}", "--json"
+  ], checkpointProject);
+  const clearedCheckpoint = json(join(checkpointRunDir, "checkpoint.json"));
+  assert(clearedCheckpoint.revision === 2 && !clearedCheckpoint.reconciliationRequired
+    && clearedCheckpoint.requiredEvidence.some((item) => item.reference === "evidence/deployment-readback.json"), "clearing reconciliation must retain fresh observation evidence");
+  assert(/stage vocabulary/i.test(fails([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--expected-revision", "2", "--current-stage", "undeclared-stage"
+  ], checkpointProject)), "checkpoint stages must stay inside the manifest-bound Goal/adapter vocabulary");
+  assert(/value domain/i.test(fails([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--expected-revision", "2", "--adapter-dimensions", "{\"deployment\":\"unknown\"}"
+  ], checkpointProject)), "adapter dimensions must reject undeclared values");
+  const checkpointCas = await Promise.all(["controller-a", "controller-b"].map((name) => runAsync([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--expected-revision", "2", "--next-action", `continue from ${name}`, "--json"
+  ], checkpointProject)));
+  assert(checkpointCas.filter((result) => result.code === 0).length === 1
+    && checkpointCas.filter((result) => result.code !== 0).every((result) => /Stale checkpoint revision/i.test(result.stderr)), "same-revision concurrent checkpoint writers must yield exactly one CAS winner");
+  assert(json(join(checkpointRunDir, "checkpoint.json")).revision === 3, "concurrent CAS must advance revision exactly once");
+
+  const checkpointGoalPath = join(checkpointProject, checkpointGoal);
+  writeFileSync(checkpointGoalPath, readFileSync(checkpointGoalPath, "utf8").replace("## Non-Goals", "- Accepted contract revision: replacement required.\n\n## Non-Goals"));
+  assert(/execution contract changed/i.test(fails(["run", "validate", "--cwd", checkpointProject, "--run", checkpointRun, "--json"], checkpointProject)), "changed Goal contract must fail closed");
+  run([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--expected-revision", "3", "--control-state", "replan-required",
+    "--next-action", "prepare a replacement Run from the accepted Goal contract",
+    "--pause-reason", "accepted Goal execution scope changed after Run preparation", "--json"
+  ], checkpointProject);
+  run(["run", "record", "--cwd", checkpointProject, "--run", checkpointRun, "--phase", "blocked", "--summary", "old Run paused for replacement"], checkpointProject);
+  const recoveryInspection = JSON.parse(run(["artifacts", "inspect", "--cwd", checkpointProject, "--json"], checkpointProject));
+  assert(recoveryInspection.runs.items.find((item) => item.runDir.replaceAll("\\", "/") === checkpointRun)?.classification === "active", "blocked Run with replan-required checkpoint must remain prune-protected");
+  const replacementRun = prepare(checkpointProject, checkpointGoal);
+  assert(/completed checkpoint requires/i.test(fails([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", replacementRun,
+    "--expected-revision", "0", "--control-state", "completed", "--next-action", "close Run"
+  ], checkpointProject)), "checkpoint completion must require terminal DAG evidence");
+  run([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
+    "--expected-revision", "4", "--control-state", "superseded",
+    "--next-action", `continue only in replacement Run ${replacementRun}`,
+    "--replacement-run", replacementRun, "--pause-reason", "null", "--json"
+  ], checkpointProject);
+  const supersededCheckpoint = json(join(checkpointRunDir, "checkpoint.json"));
+  assert(supersededCheckpoint.controlState === "superseded" && supersededCheckpoint.replacementRun === replacementRun, "validated replacement must monotonically supersede the old Run");
+  const supersededValidation = JSON.parse(run(["run", "validate", "--cwd", checkpointProject, "--run", checkpointRun, "--json"], checkpointProject));
+  assert(supersededValidation.ok && supersededValidation.contract.expectedDrift, "superseded Run validation must accept recorded contract drift only while the replacement remains valid");
+  writeFileSync(join(checkpointProject, "harness/tasks.md"), `${readFileSync(join(checkpointProject, "harness/tasks.md"), "utf8").trimEnd()}\n\n- [ ] Second checkpoint\n`);
+  const secondCheckpointGoal = createGoal(checkpointProject, "Second checkpoint");
+  const secondCheckpointRun = prepare(checkpointProject, secondCheckpointGoal);
+  const ambiguousOrient = JSON.parse(run(["orient", "next", "--cwd", checkpointProject, "--json"], checkpointProject));
+  assert(ambiguousOrient.checkpointRecovery.ambiguous && ambiguousOrient.checkpointRecovery.candidateCount === 2
+    && ambiguousOrient.recommendation.route === "checkpoint-ambiguity", "orient must refuse silent selection when multiple enforced checkpoints are active");
+  recordReadyNodes(checkpointProject, secondCheckpointRun);
+  run([
+    "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", secondCheckpointRun,
+    "--expected-revision", "0", "--control-state", "completed",
+    "--next-action", "synchronize Goal and bounded project state", "--json"
+  ], checkpointProject);
+  synchronizeGoal(checkpointProject, secondCheckpointGoal, secondCheckpointRun);
+  run(["run", "record", "--cwd", checkpointProject, "--run", secondCheckpointRun, "--phase", "completed", "--summary", "checkpointed Run complete", "--verification", "fresh regression verification"], checkpointProject);
+  assert(/^Status: active\.$/m.test(readFileSync(join(checkpointProject, secondCheckpointGoal), "utf8")), "checkpoint and Run completion must not automatically complete the Goal authority");
+
   const evidenceProject = createProject("agent-harness-evidence");
   projects.push(evidenceProject);
   const evidenceGoal = createGoal(evidenceProject, "Regression task");

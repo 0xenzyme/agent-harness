@@ -28,6 +28,7 @@ ordinary direct or postflight-only work into a Run.
 | `harness-rule:bounded-status-snapshot` | Status is current and bounded; Runs and Goals retain history. |
 | `harness-rule:project-neutral-core` | Adapters own downstream facts and paths. |
 | `harness-rule:durable-tier-boundary` | Ordinary clear change/build uses Codex directly. |
+| `harness-rule:checkpoint-recovery` | Explicitly enforced managed Runs use an independent revision-safe checkpoint; contract drift and uncertain external state fail closed without changing disabled or legacy paths. |
 
 Codex runtime owns worker selection, delegation, concurrency, cancellation, and
 model/effort. Harness never starts workers, pins those settings, or expands

@@ -11,6 +11,7 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 
 - plugin core:
 - project adapter:
+- checkpoint core fields vs adapter dimension domains:
 - artifacts:
 - control lane acceptance:
 - candidate evidence sources:

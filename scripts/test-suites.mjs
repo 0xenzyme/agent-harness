@@ -22,7 +22,8 @@ const invariants = [
   "harness-rule:state-sync-evidence",
   "harness-rule:bounded-status-snapshot",
   "harness-rule:project-neutral-core",
-  "harness-rule:durable-tier-boundary"
+  "harness-rule:durable-tier-boundary",
+  "harness-rule:checkpoint-recovery"
 ];
 
 function protocol() {
@@ -38,6 +39,10 @@ function protocol() {
   includes("plugins/agent-harness/references/codex-native-execution.md", "codex-direct-postflight");
   includes("plugins/agent-harness/references/codex-native-execution.md", "create_goal");
   includes("plugins/agent-harness/references/codex-native-execution.md", "update_plan");
+  includes("plugins/agent-harness/references/artifact-lifecycle.md", "reconciliation-required");
+  includes("plugins/agent-harness/templates/goal.md", "Checkpoint Policy: disabled");
+  includes("docs/cli.md", "run checkpoint update");
+  includes("docs/cli.zh-CN.md", "run checkpoint update");
   includes(execute, "Controller means outcome owner and accepted-state owner");
   includes(execute, "Authorization to create a thread is not authorization to create a worktree");
   includes(execute, "Do not pass `startingState` unless the current user explicitly requests");
@@ -64,8 +69,9 @@ function protocol() {
   const schema = json("plugins/agent-harness/schemas/config.schema.json");
   assert(schema.properties.gates.properties.requiredForCompletion && schema.properties.gates.properties.blocking, "completion gate fields must remain supported");
   assert(schema.properties.artifactPolicy.properties.retention && schema.properties.artifactPolicy.properties.tasks, "artifact lifecycle policy must remain supported");
+  assert(schema.properties.checkpoint.properties.defaultPolicy && schema.properties.checkpoint.properties.stages && schema.properties.checkpoint.properties.adapterDimensions, "checkpoint policy, stage vocabulary, and adapter dimensions must remain supported");
   const adapter = json("plugins/agent-harness/templates/config.adapter.json");
-  assert(adapter.worktree && adapter.artifactPolicy && adapter.paths.ideaInbox === "harness/intake.md" && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must include the idea inbox and remain slim and lifecycle-aware");
+  assert(adapter.worktree && adapter.artifactPolicy && adapter.checkpoint?.defaultPolicy === "disabled" && adapter.paths.ideaInbox === "harness/intake.md" && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must include the idea inbox and explicit default-disabled checkpoint policy while remaining slim and lifecycle-aware");
   console.log(`Protocol checks passed (${invariants.length} domain invariants).`);
 }
 

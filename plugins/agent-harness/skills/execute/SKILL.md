@@ -31,6 +31,9 @@ delegating any DAG node or worker.
    A prepared enforced Run always remains durable.
 2. For durable work, read `AGENTS.md`, inspect `.harness/config.json`, and load
    the configured adapter, accepted Spec/Goal, active Run, and required gates.
+   If the manifest enforces a checkpoint, run `run validate` and
+   `run checkpoint show` before any project action; follow its sole next action
+   and prohibited-action list.
 3. Before creating, forking, or handing off a project thread, or delegating a
    worker, resolve work mode from the current user instruction, `AGENTS.md`,
    the accepted Spec/Goal, and `.harness/config.json`. Run `worktree recommend`
@@ -61,6 +64,9 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
    Do not launch a dependent node before its recorded dependencies complete.
    Workers return candidate evidence and State Sync Notes; only the controller
    writes accepted Goal, Task, status, Run, or gate state.
+   A `reconciliation-required` checkpoint permits authoritative inspection
+   only. Contract drift moves the old Run through `replan-required` to a
+   validated replacement and `superseded`; never rebind its manifest.
 8. Verify the accepted scope and durable required gates. Worker output remains
    candidate evidence until the accepted-state owner validates it.
    Before acceptance, challenge scope coverage, stale evidence, missing
@@ -101,6 +107,9 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
   directly; already recorded simple work may use postflight-only sync; durable
   ceremony is reserved for recovery, audit, milestone/DAG, multi-worker,
   persistent state sync, or high-risk control.
+- `harness-rule:checkpoint-recovery`: explicitly enforced managed Runs use an
+  independent revision-safe checkpoint; uncertain external state and contract
+  drift fail closed, while disabled and legacy paths keep existing behavior.
 
 ## Boundaries
 

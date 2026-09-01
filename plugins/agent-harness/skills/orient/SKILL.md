@@ -14,6 +14,11 @@ node <plugin-root>/scripts/agent-harness.mjs config inspect --cwd <project> --js
 node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project> --json
 ```
 
+`orient next` prioritizes one nonterminal enforced checkpoint and emits its
+revision, control state, sole next action, pause reason, and prohibited actions.
+When multiple active checkpoints exist, select one explicitly with
+`--run <run-dir>`; never choose by timestamp or chat memory.
+
 2. Read the configured adapter, Goal index, bounded status, and only the
    relevant Spec/Goal/Run evidence.
    When the question concerns stale or growing artifacts, also run

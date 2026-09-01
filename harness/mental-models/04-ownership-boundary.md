@@ -12,13 +12,19 @@ Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
 - plugin core owns generic protocol, deterministic file generation,
   validation, references, skills, and templates
 - project adapter owns artifact paths, source-of-truth rules, hard boundaries,
-  validation commands, enabled gates, and release policy
+  validation commands, enabled gates, finite checkpoint business dimensions,
+  and release policy
 - artifacts record Goal state, decisions, evidence, status, handoffs, and
   durable project facts
 
 Plugin core must not absorb downstream-specific product names, database rules,
 provider policies, route lists, ports, credentials, production procedures, or
 release rules.
+
+Plugin core owns checkpoint schema, control states, revision-safe mutation,
+manifest binding, and fail-closed recovery. Adapter dimensions may record
+bounded non-sensitive business facts, but they cannot override core fields or
+external authoritative systems.
 
 ## Precedence
 

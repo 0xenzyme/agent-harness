@@ -13,6 +13,7 @@ records.
 
 - Current phase:
 - Authoritative Task/Goal:
+- Active Run checkpoint reference (if enforced; do not duplicate revision/control state):
 - Projection updated:
 
 ## Verification

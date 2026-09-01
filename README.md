@@ -81,6 +81,9 @@ Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责
 - 准备 Goal 和 execution DAG，而不是写完下一个小 spec 就停下；
 - 记录 worker ownership、DAG 和 candidate evidence；调度交给 Codex runtime；
 - 用 prepared Run manifest 绑定 Goal/Spec/DAG 合同，并在并发记录时保护原子状态；
+- 对显式 `enforced` 的 managed Run 生成独立、revision-safe 的
+  `checkpoint.json`；contract drift 或 external state 不确定时 fail closed，
+  默认 `disabled` 的 Run 与 fast path 不增加 ceremony；
 - 在接受 Task/Goal completion 前验证 concrete evidence；
 - 把 `State Sync Notes` 作为 Goal 和 Task completion 的组成部分；
 - 对齐 Goal index、bounded status snapshot、Goal、Run 和 gate；

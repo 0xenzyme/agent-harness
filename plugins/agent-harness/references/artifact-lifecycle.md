@@ -26,6 +26,12 @@ status record, invalid status records, and unknown phases are `unmanaged`; they
 remain preserved but do not inflate the operational active count. A legacy
 `status` field is accepted as a phase fallback for one migration boundary.
 
+For checkpoint-enforced Runs, `replan-required`, `reconciliation-required`,
+and every other nonterminal or invalid checkpoint remain operational `active`
+for retention purposes even when legacy Run phase says `blocked`. Pruning
+requires a structurally valid terminal checkpoint (`completed` or
+`superseded`) plus the existing terminal/evidence/containment gates.
+
 A local-only Run path is a locator, not durable evidence by itself. Before
 pruning, configured durable evidence must retain the accepted conclusion, verification
 summary, and any audit reference needed after the raw Run disappears.

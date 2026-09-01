@@ -199,5 +199,60 @@
       "forbidden_writes": [],
       "forbidden_mutations": ["downgrade-to-postflight", "skip-dag", "skip-gates"]
     }
+  },
+  {
+    "id": "ah_behavior_checkpoint_reconciliation_blocks_retry",
+    "skill": "harness:execute",
+    "scenario": "An enforced checkpoint with uncertain external state permits authoritative inspection but not blind retry.",
+    "user_request": "恢复这个中断的部署 Run；上次命令可能成功，但 state sync 失败了。",
+    "trace": [
+      { "type": "read", "target": ".harness/runs/example/manifest.json" },
+      { "type": "read", "target": ".harness/runs/example/checkpoint.json" },
+      { "type": "status_snapshot", "target": "reconciliation-required", "markers": ["harness-rule:checkpoint-recovery"], "fields": { "revision": 4, "sole_next_action": "inspect authoritative deployment state", "retry_permitted": false } },
+      { "type": "verification", "target": "authoritative deployment read-back", "fields": { "passed": true, "fresh": true, "observed_source": "deployment API" } },
+      { "type": "state_transition", "target": "checkpoint revision 5", "fields": { "expected_revision": 4, "atomic": true, "observation_recorded": true } }
+    ],
+    "assertions": {
+      "required_ordered_reads": [".harness/runs/example/manifest.json", ".harness/runs/example/checkpoint.json"],
+      "required_ordered_events": [
+        { "type": "status_snapshot", "target": "reconciliation-required" },
+        { "type": "verification", "target": "authoritative deployment read-back" },
+        { "type": "state_transition", "target": "checkpoint revision 5" }
+      ],
+      "required_event_fields": [
+        { "type": "status_snapshot", "target": "reconciliation-required", "fields": { "revision": 4, "retry_permitted": false } },
+        { "type": "state_transition", "target": "checkpoint revision 5", "fields": { "expected_revision": 4, "atomic": true, "observation_recorded": true } }
+      ],
+      "forbidden_writes": ["external/deploy/**"],
+      "forbidden_mutations": ["retry-deploy-before-readback", "clear-reconciliation-without-evidence", "overwrite-stale-revision"]
+    }
+  },
+  {
+    "id": "ah_behavior_checkpoint_contract_drift_replaces_run",
+    "skill": "harness:execute",
+    "scenario": "Goal contract drift quarantines the old Run and continues only through a validated replacement.",
+    "user_request": "需求合同已经接受修改，继续这个 prepared Run。",
+    "trace": [
+      { "type": "read", "target": ".harness/runs/old/manifest.json" },
+      { "type": "verification", "target": "Goal/Spec contract hash mismatch", "markers": ["harness-rule:checkpoint-recovery"], "fields": { "passed": true, "old_manifest_rebind_allowed": false } },
+      { "type": "state_transition", "target": "old checkpoint replan-required", "fields": { "fail_closed": true } },
+      { "type": "read", "target": ".harness/runs/replacement/manifest.json" },
+      { "type": "verification", "target": "replacement Run contract", "fields": { "passed": true, "same_accepted_outcome": true } },
+      { "type": "state_transition", "target": "old checkpoint superseded", "fields": { "replacement_run": ".harness/runs/replacement", "historical_evidence_preserved": true } }
+    ],
+    "assertions": {
+      "required_ordered_reads": [".harness/runs/old/manifest.json", ".harness/runs/replacement/manifest.json"],
+      "required_ordered_events": [
+        { "type": "state_transition", "target": "old checkpoint replan-required" },
+        { "type": "verification", "target": "replacement Run contract" },
+        { "type": "state_transition", "target": "old checkpoint superseded" }
+      ],
+      "required_event_fields": [
+        { "type": "verification", "target": "Goal/Spec contract hash mismatch", "fields": { "old_manifest_rebind_allowed": false } },
+        { "type": "state_transition", "target": "old checkpoint superseded", "fields": { "replacement_run": ".harness/runs/replacement", "historical_evidence_preserved": true } }
+      ],
+      "forbidden_writes": [".harness/runs/old/manifest.json"],
+      "forbidden_mutations": ["manifest-rebind", "resume-old-run", "delete-old-evidence"]
+    }
   }
 ]

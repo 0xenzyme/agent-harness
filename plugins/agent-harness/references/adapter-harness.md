@@ -15,13 +15,21 @@ symlinks cannot escape. Goal paths stay under `paths.goals`, specs under
 Run.
 
 Canonical config writes `contract`, canonical `paths`, `artifactPolicy`,
-`worktree.defaultPolicy`, `gates.requiredForCompletion`, and `gates.blocking`.
+`worktree.defaultPolicy`, default-disabled `checkpoint.defaultPolicy`, optional
+finite `checkpoint.stages` and `checkpoint.adapterDimensions`,
+`gates.requiredForCompletion`, and
+`gates.blocking`.
 Read legacy aliases for one migration boundary and fail when old and new values
 conflict.
 
 Durable Runs record DAG ready state, ownership, verification,
 candidate evidence, and accepted gate/state-sync results. Scheduling and model
 selection belong to the Codex runtime.
+
+An adapter may default selected new Goals to enforced checkpoints, but the Goal
+must persist the resolved policy. Core validates the checkpoint protocol and
+finite adapter dimension domains; adapters own the dimension names/values and
+must not store credentials, payloads, or downstream product rules in core.
 
 Runtime Goal owns the active long-running outcome and Codex Plan owns transient
 steps. Postflight sync updates only existing adapter-declared state and creates

@@ -65,7 +65,8 @@ Skill-level cases live under `skills/agent-harness/`:
 - `behavior_trace_cases.yaml`: deterministic tool-call trace cases for
   read/event order, runtime Goal/Plan binding, direct and postflight paths,
   forbidden mutation, worker evidence, degraded provenance, enforced-Run
-  protection, and gate-only acceptance behavior.
+  protection, gate-only acceptance behavior, checkpoint reconciliation, and
+  contract-drift replacement without manifest rebinding.
 - `transcript_rubric.md`: 0-2 human/model scoring rubric for agent
   transcripts after deterministic checks pass.
 

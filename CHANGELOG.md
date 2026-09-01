@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Added explicit default-disabled managed Run checkpoints with independent
+  `checkpoint.json`, manifest/status binding, lock-protected expected-revision
+  mutation, contract-drift replacement, reconciliation-only recovery,
+  checkpoint-aware orientation, and nonterminal prune protection.
+- Added `run validate` and `run checkpoint show|validate|update`, adapter-owned
+  finite checkpoint dimensions, v1/legacy compatibility, and deterministic
+  recovery/CAS/replacement regressions without changing ordinary fast paths.
+
 - Required work-mode resolution before creating or handing off a thread or
   delegating a worker; unresolved `ask` results and conflicting authority now
   pause before runtime delegation.

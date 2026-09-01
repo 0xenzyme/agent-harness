@@ -63,6 +63,19 @@ const validGoalStatuses = new Set(["active", "completed", "blocked"]);
 const placeholderEvidenceValues = new Set(["tbd", "n/a", "none", "not recorded", "pending", "-", "..."]);
 const recordableRunNodePhases = new Set(["running", "completed", "blocked"]);
 const validCommentaryPolicies = new Set(["minimal", "balanced", "audit"]);
+const validCheckpointPolicies = new Set(["disabled", "enforced"]);
+const checkpointSchemaVersion = 1;
+const validCheckpointControlStates = new Set([
+  "active",
+  "waiting",
+  "blocked",
+  "replan-required",
+  "reconciliation-required",
+  "superseded",
+  "completed"
+]);
+const terminalCheckpointControlStates = new Set(["superseded", "completed"]);
+const secretLikeCheckpointKey = /(?:secret|token|password|passwd|credential|private.?key|api.?key|authorization|cookie)/i;
 const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
 const contextFocusRoutingGuidance = `\`harness-rule:project-neutral-core\`: Normalize the durable target to ${contextFocusIntentTargets}; adapters own downstream paths and facts while plugin core remains project-neutral.`;
 const executeContextFocusGuidance = "`harness-rule:path-containment`: configured writes, Goal/Spec references, Run arguments, and DAG artifacts stay inside configured roots after lexical and existing-parent realpath checks.";
@@ -72,6 +85,7 @@ const degradedExecutionProvenanceGuidance = "`harness-rule:candidate-accepted-ev
 const controllerCancellationBoundaryGuidance = "`harness-rule:run-dag-ownership`: Harness records ready nodes, dependencies, ownership, verification, and candidate evidence; the Codex runtime owns scheduling, delegation, concurrency, and cancellation.";
 const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
 const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex directly; already tracked simple work may use one bounded postflight sync; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, DAGs, multiple workers, or high-risk control.";
+const checkpointRecoveryGuidance = "`harness-rule:checkpoint-recovery`: explicitly enforced managed Runs use an independent revision-safe checkpoint; contract drift and uncertain external state fail closed, while disabled and legacy paths keep existing behavior.";
 const codexNativeExecutionGuidance = "For accepted long-running controller work, establish or reuse a compatible Codex runtime Goal and use Codex Plan for current multi-step progress. Controller means outcome owner and accepted-state owner; only explicit review-only or gate-only direction prohibits foreground implementation.";
 const postflightSyncGuidance = "Postflight sync verifies completed work and updates existing tracked state only. It creates no Goal, Run, DAG, gate, or status artifact solely for bookkeeping, and durable completion gates do not apply unless a durable Goal/Run is being closed.";
 
@@ -161,7 +175,39 @@ function parseArgs(argv) {
     "thread",
     "verification",
     "workMode",
-    "work-mode"
+    "work-mode",
+    "adapterDimensions",
+    "adapter-dimensions",
+    "checkpointPolicy",
+    "checkpoint-policy",
+    "checkpointStages",
+    "checkpoint-stages",
+    "controlState",
+    "control-state",
+    "currentStage",
+    "current-stage",
+    "evidenceReference",
+    "evidence-reference",
+    "expectedRevision",
+    "expected-revision",
+    "lastCompletedStage",
+    "last-completed-stage",
+    "nextAction",
+    "next-action",
+    "observedAt",
+    "observed-at",
+    "observedSource",
+    "observed-source",
+    "pauseReason",
+    "pause-reason",
+    "replacementRun",
+    "replacement-run",
+    "requiredEvidence",
+    "required-evidence",
+    "prohibitedActions",
+    "prohibited-actions",
+    "reconciliationRequired",
+    "reconciliation-required"
   ]);
   const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "apply", "dryRun", "dry-run", "force", "help", "json", "record"]);
 
@@ -447,7 +493,7 @@ const messages = {
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
-  agent-harness orient next [--cwd PATH] [--json]
+  agent-harness orient next [--cwd PATH] [--run RUN_DIR] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness artifacts inspect [--cwd PATH] [--json]
@@ -458,11 +504,15 @@ const messages = {
   agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run] [--force]
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--checkpoint-stages JSON] [--dry-run] [--force]
   agent-harness goal list [--cwd PATH] [--json]
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
+  agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
+  agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
+  agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
+  agent-harness run checkpoint update --run <run-dir> --expected-revision <n> [checkpoint fields] [--dry-run] [--json]
   agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]
   agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--review-url <url>] [--integration-ref <ref>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
@@ -492,7 +542,7 @@ const messages = {
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
-  agent-harness orient next [--cwd PATH] [--json]
+  agent-harness orient next [--cwd PATH] [--run RUN_DIR] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness artifacts inspect [--cwd PATH] [--json]
@@ -503,11 +553,15 @@ const messages = {
   agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run] [--force]
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--checkpoint-stages JSON] [--dry-run] [--force]
   agent-harness goal list [--cwd PATH] [--json]
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness run prepare --goal <goal-file> [--cwd PATH]
+  agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
+  agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
+  agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
+  agent-harness run checkpoint update --run <run-dir> --expected-revision <n> [checkpoint fields] [--dry-run] [--json]
   agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]
   agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--review-url <url>] [--integration-ref <ref>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
   agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
@@ -756,8 +810,68 @@ function isRelativeHarnessPath(value) {
     && !value.split(/[\\/]+/).includes("..");
 }
 
+function checkpointConfigErrors(config) {
+  const errors = [];
+  const checkpoint = config.checkpoint && typeof config.checkpoint === "object" && !Array.isArray(config.checkpoint)
+    ? config.checkpoint
+    : {};
+  if (checkpoint.defaultPolicy !== undefined && !validCheckpointPolicies.has(checkpoint.defaultPolicy)) {
+    errors.push("$.checkpoint.defaultPolicy must be disabled or enforced.");
+  }
+  errors.push(...checkpointStageVocabularyErrors(checkpoint.stages || [], "$.checkpoint.stages"));
+  const dimensions = checkpoint.adapterDimensions === undefined ? {} : checkpoint.adapterDimensions;
+  if (!dimensions || typeof dimensions !== "object" || Array.isArray(dimensions)) {
+    errors.push("$.checkpoint.adapterDimensions must be an object.");
+    return errors;
+  }
+  if (JSON.stringify(dimensions).length > 16_384) {
+    errors.push("$.checkpoint.adapterDimensions must stay below 16384 serialized characters.");
+  }
+  for (const [key, values] of Object.entries(dimensions)) {
+    if (!/^[A-Za-z][A-Za-z0-9._-]{0,63}$/.test(key) || secretLikeCheckpointKey.test(key)) {
+      errors.push(`$.checkpoint.adapterDimensions.${key} is unsafe or secret-like.`);
+      continue;
+    }
+    if (!Array.isArray(values) || !values.length || values.length > 50) {
+      errors.push(`$.checkpoint.adapterDimensions.${key} must contain 1-50 allowed primitive values.`);
+      continue;
+    }
+    const serialized = new Set();
+    for (const value of values) {
+      if (!["string", "number", "boolean"].includes(typeof value) || (typeof value === "number" && !Number.isFinite(value))) {
+        errors.push(`$.checkpoint.adapterDimensions.${key} values must be finite strings, numbers, or booleans.`);
+        break;
+      }
+      if (typeof value === "string" && value.length > 256) {
+        errors.push(`$.checkpoint.adapterDimensions.${key} string values must be at most 256 characters.`);
+        break;
+      }
+      serialized.add(JSON.stringify(value));
+    }
+    if (serialized.size !== values.length) {
+      errors.push(`$.checkpoint.adapterDimensions.${key} values must be unique.`);
+    }
+  }
+  return errors;
+}
+
+function checkpointStageVocabularyErrors(stages, label = "Checkpoint stages") {
+  const errors = [];
+  if (!Array.isArray(stages)) return [`${label} must be an array.`];
+  if (stages.length > 50) errors.push(`${label} must contain at most 50 items.`);
+  const unique = new Set();
+  for (const [index, stage] of stages.entries()) {
+    errors.push(...checkpointStringErrors(stage, `${label}[${index}]`, { maxLength: 128 }));
+    if (missingEvidence(stage) || secretLikeCheckpointKey.test(String(stage))) errors.push(`${label}[${index}] must be a concrete non-secret stage label.`);
+    unique.add(String(stage));
+  }
+  if (unique.size !== stages.length) errors.push(`${label} must contain unique items.`);
+  return errors;
+}
+
 function validateConfiguredPaths(config, contract) {
   const errors = [];
+  errors.push(...checkpointConfigErrors(config));
   const paths = config.paths || {};
   if (paths.tasks && paths.taskIndex && paths.tasks !== paths.taskIndex) {
     errors.push("$.paths.tasks and $.paths.taskIndex conflict; keep only canonical taskIndex output.");
@@ -1988,6 +2102,57 @@ function firstLines(value, limit = 6) {
     .slice(0, limit);
 }
 
+function checkpointOrientationCandidates(cwd, context, selectedRun = "") {
+  const runsRoot = configuredOptionalPath(cwd, context.paths.runs, "Runs root");
+  if (!runsRoot || !existsSync(runsRoot)) return [];
+  const entries = selectedRun
+    ? [{ name: basename(configuredRunDir(cwd, context, selectedRun)), isDirectory: () => true }]
+    : readdirSync(runsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.isSymbolicLink() && !entry.name.startsWith("."));
+  const candidates = [];
+  for (const entry of entries) {
+    const runDir = assertContainedPath(runsRoot, join(runsRoot, entry.name), "Run directory");
+    const statusPath = artifactPath(runDir, "status.json", "Run status path");
+    const manifestPath = artifactPath(runDir, "manifest.json", "Run manifest path");
+    if (!existsSync(statusPath) || !existsSync(manifestPath)) continue;
+    let status = null;
+    let manifest = null;
+    try {
+      status = JSON.parse(readFileSync(statusPath, "utf8"));
+      manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    } catch {
+      continue;
+    }
+    if (checkpointDeclaration(manifest).policy !== "enforced") continue;
+    const state = readRunCheckpoint({ cwd, context, runDir, status, manifest, requireTerminalConsistency: true });
+    const checkpoint = state.checkpoint;
+    if (!selectedRun && checkpoint && terminalCheckpointControlStates.has(checkpoint.controlState)) continue;
+    let contractError = "";
+    try {
+      const goalContext = runGoalContext(cwd, context, status);
+      contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag: readExecutionDag(runDir) });
+    } catch (error) {
+      contractError = error.message;
+    }
+    candidates.push({
+      run: displayPath(cwd, runDir),
+      goalPath: status.goalPath || manifest.goalPath || "",
+      revision: checkpoint?.revision ?? null,
+      controlState: checkpoint?.controlState || "invalid",
+      currentStage: checkpoint?.currentStage ?? null,
+      lastCompletedStage: checkpoint?.lastCompletedStage ?? null,
+      nextAction: checkpoint?.nextAction || "repair or reconcile the invalid checkpoint",
+      userDecision: ["blocked", "replan-required"].includes(checkpoint?.controlState) ? checkpoint?.pauseReason || "review the pause reason" : "none",
+      pauseReason: checkpoint?.pauseReason || null,
+      prohibitedActions: checkpoint?.prohibitedActions || [],
+      requiredEvidence: checkpoint?.requiredEvidence || [],
+      adapterDimensions: checkpoint?.adapterDimensions || {},
+      consistent: state.errors.length === 0 && !contractError,
+      errors: [...state.errors, ...(contractError ? [contractError] : [])]
+    });
+  }
+  return candidates.sort((a, b) => a.run.localeCompare(b.run));
+}
+
 function orientationPayload(args) {
   const cwd = targetCwd(args);
   const context = resolveHarnessContext(cwd);
@@ -2010,7 +2175,7 @@ function orientationPayload(args) {
         ? "no ready task found; continue the active in-progress task"
         : "no ready or in-progress task found; unblock the highest-priority blocked task"
     : "";
-  const recommendation = recommendationTask
+  let recommendation = recommendationTask
     ? recommendationForTask(recommendationTask, context, recommendationReason)
     : {
       title: "",
@@ -2027,6 +2192,42 @@ function orientationPayload(args) {
       startPrompt: "",
       goalCommand: ""
     };
+
+  const checkpointCandidates = checkpointOrientationCandidates(cwd, context, args.run || "");
+  const checkpointAmbiguous = checkpointCandidates.length > 1;
+  const checkpointRecovery = {
+    selected: Boolean(args.run),
+    candidateCount: checkpointCandidates.length,
+    ambiguous: checkpointAmbiguous,
+    candidates: checkpointCandidates,
+    active: checkpointCandidates.length === 1 ? checkpointCandidates[0] : null
+  };
+  if (checkpointAmbiguous) {
+    recommendation = {
+      title: "",
+      taskState: "blocked",
+      priority: "",
+      spec: "",
+      goal: "",
+      reason: "multiple active enforced checkpoints require explicit Run selection",
+      route: "checkpoint-ambiguity",
+      startPrompt: "select one Run with --run before resuming",
+      goalCommand: ""
+    };
+  } else if (checkpointRecovery.active) {
+    const active = checkpointRecovery.active;
+    recommendation = {
+      title: `Resume checkpointed Run ${active.run}`,
+      taskState: active.controlState,
+      priority: "",
+      spec: "",
+      goal: active.goalPath,
+      reason: active.consistent ? "one enforced managed Run has a recoverable checkpoint" : "the enforced checkpoint requires repair or reconciliation before execution",
+      route: "checkpoint-recovery",
+      startPrompt: active.nextAction,
+      goalCommand: ""
+    };
+  }
 
   return {
     cwd,
@@ -2051,6 +2252,7 @@ function orientationPayload(args) {
       inProgress: inProgress.map(taskSummary),
       done: done.slice(0, 5).map(taskSummary)
     },
+    checkpointRecovery,
     recommendation,
     confirmation: {
       canContinueWithoutConfirmation: [
@@ -2083,6 +2285,29 @@ function orientNext(args) {
 
   if (args.json) {
     console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  if (payload.checkpointRecovery.ambiguous) {
+    console.log("Agent Harness checkpoint recovery");
+    console.log("Multiple active enforced checkpoints were found; no Run was selected.");
+    payload.checkpointRecovery.candidates.forEach((candidate) => console.log(`- ${candidate.run}: revision ${candidate.revision ?? "invalid"}, state ${candidate.controlState}`));
+    console.log("Next action: rerun orient next with --run <run-dir>.");
+    return;
+  }
+  if (payload.checkpointRecovery.active) {
+    const active = payload.checkpointRecovery.active;
+    console.log("Agent Harness checkpoint recovery");
+    console.log(`Run: ${active.run}`);
+    console.log(`Checkpoint revision: ${active.revision ?? "invalid"}`);
+    console.log(`Control state: ${active.controlState}`);
+    console.log(`Current stage: ${active.currentStage || "none"}`);
+    console.log(`Last completed stage: ${active.lastCompletedStage || "none"}`);
+    console.log(`Next action: ${active.nextAction}`);
+    console.log(`User decision: ${active.userDecision}`);
+    console.log(`Pause reason: ${active.pauseReason || "none"}`);
+    console.log(`Prohibited actions: ${active.prohibitedActions.join(", ") || "none"}`);
+    console.log(`Consistency: ${active.consistent ? "ok" : active.errors.join("; ")}`);
     return;
   }
 
@@ -2916,7 +3141,7 @@ function recursiveArtifactStats(root) {
   return result;
 }
 
-function artifactRunState(cwd, runsRelPath, entry) {
+function artifactRunState(cwd, runsRelPath, entry, context) {
   const runDir = join(runsRelPath, entry.name);
   const absolute = configuredPath(cwd, runDir, "Run artifact");
   const stats = entry.isDirectory()
@@ -2929,6 +3154,9 @@ function artifactRunState(cwd, runsRelPath, entry) {
   let statusError = "";
   let managed = false;
   let manifestError = "";
+  let checkpointPolicy = "disabled";
+  let checkpointControlState = "";
+  let checkpointError = "";
   if (statusPath && existsSync(statusPath)) {
     try {
       const status = JSON.parse(readFileSync(statusPath, "utf8"));
@@ -2938,19 +3166,29 @@ function artifactRunState(cwd, runsRelPath, entry) {
       const manifestState = runManifestState(absolute, status);
       managed = manifestState.managed;
       manifestError = manifestState.error;
+      if (manifestState.manifest) {
+        checkpointPolicy = checkpointDeclaration(manifestState.manifest).policy || "disabled";
+        if (checkpointPolicy === "enforced") {
+          const checkpointState = readRunCheckpoint({ cwd, context, runDir: absolute, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
+          checkpointControlState = checkpointState.checkpoint?.controlState || "invalid";
+          checkpointError = checkpointState.errors.join("; ");
+        }
+      }
     } catch (error) {
       phase = "invalid-status";
       statusError = error.message;
     }
   }
   const parsedUpdated = Date.parse(updatedAt);
-  const terminal = terminalArtifactRunPhases.has(phase);
+  const checkpointProtected = checkpointPolicy === "enforced"
+    && (checkpointError || !terminalCheckpointControlStates.has(checkpointControlState));
+  const terminal = terminalArtifactRunPhases.has(phase) && !checkpointProtected;
   const unmanaged = unmanagedArtifactRunPhases.has(phase);
   return {
     name: entry.name,
     runDir,
     phase,
-    classification: terminal ? "terminal" : unmanaged ? "unmanaged" : "active",
+    classification: terminal ? "terminal" : checkpointProtected ? "active" : unmanaged ? "unmanaged" : "active",
     terminal,
     unmanaged,
     managed,
@@ -2959,7 +3197,10 @@ function artifactRunState(cwd, runsRelPath, entry) {
     updatedMs: Number.isFinite(parsedUpdated) ? parsedUpdated : lstatSync(absolute).mtimeMs,
     ...stats,
     statusError,
-    manifestError
+    manifestError,
+    checkpointPolicy,
+    checkpointControlState,
+    checkpointError
   };
 }
 
@@ -3049,7 +3290,7 @@ function artifactInspectionPayload(args) {
   const runItems = runsAbs && existsSync(runsAbs)
     ? readdirSync(runsAbs, { withFileTypes: true })
       .filter((entry) => !entry.name.startsWith(".") && !entry.isSymbolicLink())
-      .map((entry) => artifactRunState(cwd, runsPath, entry))
+      .map((entry) => artifactRunState(cwd, runsPath, entry, context))
       .sort((a, b) => b.updatedMs - a.updatedMs || a.name.localeCompare(b.name))
     : [];
   const totals = runItems.reduce((total, run) => ({
@@ -3599,7 +3840,7 @@ ${items}
 `;
 }
 
-function buildGoalContent({ task, context, specPath, workMode, allowNoSpec = false }) {
+function buildGoalContent({ task, context, specPath, workMode, checkpointPolicy, checkpointStages, allowNoSpec = false }) {
   const heading = titleCase(task.title);
   const paths = context.paths;
   const taskIndexPath = paths.taskIndex || paths.tasks;
@@ -3616,6 +3857,8 @@ function buildGoalContent({ task, context, specPath, workMode, allowNoSpec = fal
   const docValue = detailValue(task, "Doc");
   const linkedDocs = extractLinkedDocPaths(docValue);
   const selectedWorkMode = workMode || "ask";
+  const selectedCheckpointPolicy = checkpointPolicy || context.config.checkpoint?.defaultPolicy || "disabled";
+  const selectedCheckpointStages = checkpointStages || context.config.checkpoint?.stages || [];
   const stateSyncPathList = stateSyncPaths(context);
   const readFirst = uniqueList([
     "AGENTS.md",
@@ -3660,7 +3903,9 @@ function buildGoalContent({ task, context, specPath, workMode, allowNoSpec = fal
   return `# Goal: ${heading}
 
 Spec: ${spec}
-${specPolicyLine}Status: ${statusLine}
+${specPolicyLine}Checkpoint Policy: ${selectedCheckpointPolicy}
+Checkpoint Stages: ${JSON.stringify(selectedCheckpointStages)}
+Status: ${statusLine}
 
 ## Source Task
 
@@ -3791,11 +4036,23 @@ function goalCreate(args) {
   const paths = context.paths;
   const taskQuery = args.task;
   if (!taskQuery) {
-    throw new Error("Usage: agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run]");
+    throw new Error("Usage: agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--dry-run]");
   }
   if (args.workMode && !validWorkModes.has(args.workMode)) {
     throw new Error(`Invalid --work-mode: ${args.workMode}`);
   }
+  if (args.checkpointPolicy && !validCheckpointPolicies.has(args.checkpointPolicy)) {
+    throw new Error(`Invalid --checkpoint-policy: ${args.checkpointPolicy}`);
+  }
+  const resolvedCheckpointPolicy = args.checkpointPolicy || context.config.checkpoint?.defaultPolicy || "disabled";
+  if (!validCheckpointPolicies.has(resolvedCheckpointPolicy)) {
+    throw new Error(`Invalid checkpoint.defaultPolicy: ${resolvedCheckpointPolicy}`);
+  }
+  const resolvedCheckpointStages = args.checkpointStages === undefined
+    ? context.config.checkpoint?.stages || []
+    : parseCheckpointJsonOption(args.checkpointStages, "--checkpoint-stages", "array");
+  const checkpointStageErrors = checkpointStageVocabularyErrors(resolvedCheckpointStages);
+  if (checkpointStageErrors.length) throw new Error(`Invalid checkpoint stages:\n- ${checkpointStageErrors.join("\n- ")}`);
   if (context.mode === "adapter" && !args.spec && !args.allowNoSpec) {
     throw new Error("Adapter goal creation requires --spec <spec-path> unless --allow-no-spec is explicitly set.");
   }
@@ -3821,6 +4078,8 @@ function goalCreate(args) {
     context,
     specPath: args.spec,
     workMode: args.workMode,
+    checkpointPolicy: resolvedCheckpointPolicy,
+    checkpointStages: resolvedCheckpointStages,
     allowNoSpec: Boolean(args.allowNoSpec)
   });
 
@@ -3862,6 +4121,23 @@ function canonicalGoalStatus(value) {
 function extractSpecPolicyRaw(content) {
   const match = content.match(/^Spec Policy:\s+`?([^\n`]+)`?\s*$/m);
   return match ? match[1].trim().toLowerCase() : "";
+}
+
+function extractCheckpointPolicyRaw(content) {
+  const match = content.match(/^Checkpoint Policy:\s+`?([^\n`]+)`?\s*$/m);
+  return match ? match[1].trim().toLowerCase() : "disabled";
+}
+
+function checkpointStageDetails(content) {
+  const match = content.match(/^Checkpoint Stages:\s+(.+?)\s*$/m);
+  if (!match) return { values: [], error: "" };
+  try {
+    const values = JSON.parse(match[1].trim());
+    const errors = checkpointStageVocabularyErrors(values);
+    return { values: Array.isArray(values) ? values : [], error: errors.join("; ") };
+  } catch (error) {
+    return { values: [], error: `Checkpoint Stages must be valid JSON: ${error.message}` };
+  }
 }
 
 function missingSpecValue(value) {
@@ -4445,12 +4721,16 @@ function goalMetadata(cwd, goalPath) {
   const specChecklist = specAcceptanceChecklistDetails(content, specContent);
   const gateEvidence = gateEvidenceDetails(content, specContent);
   const stateSyncNotes = stateSyncNotesDetails(content);
+  const checkpointStages = checkpointStageDetails(content);
 
   return {
     path: displayPath(cwd, goalPath),
     title: goalTitle(content, goalPath),
     status: extractStatusLine(content),
     specPolicy: extractSpecPolicyRaw(content),
+    checkpointPolicy: extractCheckpointPolicyRaw(content),
+    checkpointStages: checkpointStages.values,
+    checkpointStagesError: checkpointStages.error,
     spec,
     specPath: specInProject && specAbs ? displayPath(cwd, specAbs) : spec,
     specExists,
@@ -4542,6 +4822,10 @@ function validateGoal(cwd, goalPath) {
   if (metadata.specPolicy && !allowNoSpec) {
     errors.push(`Spec Policy must be allow-no-spec when present; found ${metadata.specPolicy}.`);
   }
+  if (!validCheckpointPolicies.has(metadata.checkpointPolicy)) {
+    errors.push(`Checkpoint Policy must use disabled or enforced; found ${metadata.checkpointPolicy || "(missing)"}.`);
+  }
+  if (metadata.checkpointStagesError) errors.push(metadata.checkpointStagesError);
   if (missingSpecValue(spec)) {
     if (!allowNoSpec) {
       errors.push("Spec must point to a repo-local spec file, not TBD, unless Spec Policy is allow-no-spec.");
@@ -5171,7 +5455,7 @@ function immutableEvidenceItems(details, key) {
   });
 }
 
-function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context) {
+function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { includeCheckpointPolicy = true } = {}) {
   const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
   const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
   const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
@@ -5204,6 +5488,8 @@ function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent,
       workMode: extractGoalWorkModeRaw(goalContent),
       executionRole: extractGoalExecutionRoleRaw(goalContent),
       conversationRoute: extractConversationRouteRaw(goalContent),
+      ...(includeCheckpointPolicy ? { checkpointPolicy: extractCheckpointPolicyRaw(goalContent) } : {}),
+      ...(includeCheckpointPolicy ? { checkpointStages: checkpointStageDetails(goalContent).values } : {}),
       executionContextLock: {
         conversationLane: contractText(executionContextLock.conversationLane),
         controllerThread: contractText(executionContextLock.controllerThread),
@@ -5259,6 +5545,8 @@ function dagManifestProjection(dag) {
 function buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specContent, context, dag, createdAt }) {
   const dagText = readFileSync(artifactPath(runDir, "dag.json", "DAG path"), "utf8");
   const goalContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context);
+  const checkpointPolicy = extractCheckpointPolicyRaw(goalContent);
+  const checkpointStages = checkpointStageDetails(goalContent).values;
   return {
     manifestVersion: runManifestVersion,
     createdAt,
@@ -5266,11 +5554,40 @@ function buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specCon
     goalPath: normalizePathReference(displayPath(cwd, goalPath)),
     goalContractHash: hashText(JSON.stringify(goalContract)),
     goalContract,
+    checkpoint: {
+      policy: checkpointPolicy,
+      path: checkpointPolicy === "enforced" ? "checkpoint.json" : "",
+      schemaVersion: checkpointPolicy === "enforced" ? checkpointSchemaVersion : null,
+      stages: checkpointStages
+    },
     dag: {
       path: "dag.json",
       sha256: hashText(dagText),
       projection: dagManifestProjection(dag)
     }
+  };
+}
+
+function buildInitialCheckpoint({ cwd, runDir, goalPath, dag, createdAt }) {
+  const ready = executionDagSnapshot(dag, runDir).readyNodes;
+  return {
+    schemaVersion: checkpointSchemaVersion,
+    revision: 0,
+    createdAt,
+    updatedAt: createdAt,
+    runDir: normalizePathReference(displayPath(cwd, runDir)),
+    goalPath: normalizePathReference(displayPath(cwd, goalPath)),
+    manifestRef: "manifest.json",
+    controlState: "active",
+    currentStage: null,
+    lastCompletedStage: null,
+    nextAction: ready.length === 1 ? `execute ready DAG node: ${ready[0]}` : "inspect the prepared Run DAG",
+    pauseReason: null,
+    reconciliationRequired: false,
+    requiredEvidence: [],
+    prohibitedActions: [],
+    replacementRun: null,
+    adapterDimensions: {}
   };
 }
 
@@ -5302,6 +5619,29 @@ function runManifestState(runDir, status = {}) {
     }
     if (manifest.goalContract && hashText(JSON.stringify(manifest.goalContract)) !== manifest.goalContractHash) {
       return { managed: false, manifest, error: "Run manifest Goal contract hash is invalid." };
+    }
+    const checkpoint = checkpointDeclaration(manifest);
+    if (!validCheckpointPolicies.has(checkpoint.policy)) {
+      return { managed: false, manifest, error: "Run manifest checkpoint policy is invalid." };
+    }
+    const checkpointStageErrors = checkpointStageVocabularyErrors(checkpoint.stages, "Run manifest checkpoint stages");
+    if (checkpointStageErrors.length) {
+      return { managed: false, manifest, error: checkpointStageErrors.join("; ") };
+    }
+    if (checkpoint.policy === "enforced") {
+      if (checkpoint.path !== "checkpoint.json" || checkpoint.schemaVersion !== checkpointSchemaVersion) {
+        return { managed: false, manifest, error: "Run manifest checkpoint binding is invalid or unsupported." };
+      }
+      if (status.checkpointPolicy !== "enforced" || status.checkpoint !== checkpoint.path
+          || !Array.isArray(status.files) || !status.files.includes(checkpoint.path)) {
+        return { managed: false, manifest, error: "status.json is not bound to the enforced checkpoint." };
+      }
+      const checkpointPath = artifactPath(runDir, checkpoint.path, "Run checkpoint path");
+      if (!existsSync(checkpointPath)) {
+        return { managed: false, manifest, error: "Enforced checkpoint.json is missing." };
+      }
+    } else if (!checkpoint.legacy && (status.checkpointPolicy !== "disabled" || status.checkpoint)) {
+      return { managed: false, manifest, error: "status.json conflicts with disabled checkpoint policy." };
     }
     if (Array.isArray(status.files) && status.files.includes("dag.json")) {
       const dagPath = artifactPath(runDir, "dag.json", "DAG path");
@@ -5337,6 +5677,14 @@ function managedRunEvidence(cwd, run, runsRelPath, { requireCompletedDag = false
   }
   const manifestState = runManifestState(runAbs, status);
   if (!manifestState.managed) return { ok: false, reason: manifestState.error };
+  if (checkpointDeclaration(manifestState.manifest).policy === "enforced") {
+    const context = resolveHarnessContext(cwd);
+    const checkpointState = readRunCheckpoint({ cwd, context, runDir: runAbs, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
+    if (checkpointState.errors.length) return { ok: false, reason: `Checkpoint recovery evidence is invalid: ${checkpointState.errors.join("; ")}` };
+    if (!terminalCheckpointControlStates.has(checkpointState.checkpoint.controlState)) {
+      return { ok: false, reason: `Checkpoint controlState '${checkpointState.checkpoint.controlState}' is nonterminal and must not be pruned.` };
+    }
+  }
   if (!Array.isArray(status.files) || !status.files.includes("dag.json")) {
     return { ok: true, reason: "Managed migration Run has a bound manifest." };
   }
@@ -5388,7 +5736,8 @@ function assertPreparedRunContract({ cwd, context, runDir, status, goalPath, goa
   if (normalizePathReference(manifest.goalPath) !== normalizePathReference(displayPath(cwd, goalPath))) {
     throw new Error("Run manifest and current Goal path do not match.");
   }
-  const currentContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context);
+  const includeCheckpointPolicy = Object.prototype.hasOwnProperty.call(manifest.goalContract?.values || {}, "checkpointPolicy");
+  const currentContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { includeCheckpointPolicy });
   if (hashText(JSON.stringify(currentContract)) !== manifest.goalContractHash) {
     throw new Error("Goal or Spec execution contract changed after Run preparation; prepare a new Run.");
   }
@@ -5753,6 +6102,7 @@ Requirements:
 - ${codexNativeExecutionGuidance}
 - Runtime Goal owns the current outcome and continuation; Codex Plan owns transient steps. Reuse compatible active state and never invent runtime ids.
 - ${boundedDirectExecutionGuidance} The supplied Goal/Run remains authoritative and must not be downgraded.
+- ${checkpointRecoveryGuidance} Read \`checkpoint.json\` before acting when the prepared manifest enables it, and never retry an action listed in \`prohibitedActions\`.
 - ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 - ${authoritativeCompletionGuidance}
 - ${cyberneticStabilityGuidance}
@@ -5866,7 +6216,9 @@ function runPrepare(args) {
   const runsRoot = configuredPath(cwd, paths.runs, "Runs root");
   const baseRunPath = assertContainedPath(runsRoot, join(runsRoot, `${runTimestamp()}-${runSlug}`), "Run directory");
   const runDir = createRunDirectory(runsRoot, baseRunPath);
+  const checkpointPolicy = extractCheckpointPolicyRaw(goalContent);
   const files = ["run.md", "prompt.md", "subagents.md", "dag.md", "dag.json", "manifest.json", "agents", "status.json"];
+  if (checkpointPolicy === "enforced") files.push("checkpoint.json");
   const logsDir = artifactPath(runDir, "logs", "Run logs path");
 
   mkdirSync(logsDir, { recursive: true });
@@ -5895,6 +6247,10 @@ function runPrepare(args) {
   const manifest = buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specContent, context, dag: executionDag, createdAt });
   const manifestText = `${JSON.stringify(manifest, null, 2)}\n`;
   atomicWriteFile(artifactPath(runDir, "manifest.json", "Run manifest path"), manifestText);
+  if (checkpointPolicy === "enforced") {
+    const checkpoint = buildInitialCheckpoint({ cwd, runDir, goalPath, dag: executionDag, createdAt });
+    atomicWriteFile(artifactPath(runDir, "checkpoint.json", "Run checkpoint path"), `${JSON.stringify(checkpoint, null, 2)}\n`);
+  }
   const executionDagState = executionDagSnapshot(executionDag, runDir);
   atomicWriteFile(artifactPath(runDir, "status.json", "Run status path"), `${JSON.stringify({
     harnessContract: context.contract,
@@ -5937,6 +6293,8 @@ function runPrepare(args) {
     manifest: "manifest.json",
     manifestVersion: runManifestVersion,
     manifestSha256: hashText(manifestText),
+    checkpointPolicy,
+    checkpoint: checkpointPolicy === "enforced" ? "checkpoint.json" : "",
     logs: "logs/",
     executionDag: executionDagState,
     verificationCommands: extractVerificationCommands(extractSection(goalContent, "Verification"))
@@ -5974,6 +6332,515 @@ function runGoalContext(cwd, context, status, { requireGoal = true } = {}) {
     : assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Goal Spec path");
   const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
   return { goalPath, goalContent, specRel, specAbs, specContent };
+}
+
+function checkpointDeclaration(manifest = {}) {
+  if (!manifest.checkpoint) {
+    return { policy: "disabled", path: "", schemaVersion: null, stages: [], legacy: true };
+  }
+  return {
+    policy: manifest.checkpoint.policy || "",
+    path: manifest.checkpoint.path || "",
+    schemaVersion: manifest.checkpoint.schemaVersion ?? null,
+    stages: manifest.checkpoint.stages || [],
+    legacy: false
+  };
+}
+
+function checkpointArtifactPath(runDir, manifest) {
+  const declaration = checkpointDeclaration(manifest);
+  if (declaration.policy !== "enforced") return "";
+  if (declaration.path !== "checkpoint.json") {
+    throw new Error(`Enforced checkpoint path must be checkpoint.json; found ${declaration.path || "(missing)"}.`);
+  }
+  return artifactPath(runDir, declaration.path, "Run checkpoint path");
+}
+
+function checkpointStringErrors(value, label, { nullable = false, maxLength = 1000 } = {}) {
+  if (value === null && nullable) return [];
+  if (typeof value !== "string") return [`${label} must be ${nullable ? "a string or null" : "a string"}.`];
+  if (value.length > maxLength) return [`${label} must be at most ${maxLength} characters.`];
+  if (/\p{Cc}/u.test(value)) return [`${label} must not contain control characters.`];
+  return [];
+}
+
+function checkpointEvidenceErrors(items) {
+  const errors = [];
+  if (!Array.isArray(items)) return ["requiredEvidence must be an array."];
+  if (items.length > 50 || JSON.stringify(items).length > 16_384) {
+    errors.push("requiredEvidence must contain at most 50 bounded entries and stay below 16384 serialized characters.");
+  }
+  for (const [index, item] of items.entries()) {
+    if (typeof item === "string") {
+      errors.push(...checkpointStringErrors(item, `requiredEvidence[${index}]`, { maxLength: 500 }));
+      if (missingEvidence(item)) errors.push(`requiredEvidence[${index}] must contain concrete evidence.`);
+      continue;
+    }
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      errors.push(`requiredEvidence[${index}] must be a string or observation object.`);
+      continue;
+    }
+    const unexpected = Object.keys(item).filter((key) => !["reference", "observedAt", "observedSource"].includes(key));
+    if (unexpected.length) errors.push(`requiredEvidence[${index}] has unsupported fields: ${unexpected.join(", ")}.`);
+    for (const key of ["reference", "observedAt", "observedSource"]) {
+      errors.push(...checkpointStringErrors(item[key], `requiredEvidence[${index}].${key}`, { maxLength: 500 }));
+      if (missingEvidence(item[key])) errors.push(`requiredEvidence[${index}].${key} must contain concrete evidence.`);
+    }
+    if (item.observedAt && !Number.isFinite(Date.parse(item.observedAt))) {
+      errors.push(`requiredEvidence[${index}].observedAt must be a valid timestamp.`);
+    }
+  }
+  return errors;
+}
+
+function checkpointAdapterDimensionErrors(dimensions, context) {
+  const errors = [];
+  if (!dimensions || typeof dimensions !== "object" || Array.isArray(dimensions)) {
+    return ["adapterDimensions must be an object."];
+  }
+  if (JSON.stringify(dimensions).length > 16_384) {
+    errors.push("adapterDimensions must stay below 16384 serialized characters.");
+  }
+  const domains = context?.config?.checkpoint?.adapterDimensions || {};
+  for (const [key, value] of Object.entries(dimensions)) {
+    if (!/^[A-Za-z][A-Za-z0-9._-]{0,63}$/.test(key) || secretLikeCheckpointKey.test(key)) {
+      errors.push(`adapterDimensions.${key} is unsafe or secret-like.`);
+      continue;
+    }
+    if (!Object.prototype.hasOwnProperty.call(domains, key) || !Array.isArray(domains[key])) {
+      errors.push(`adapterDimensions.${key} is not declared by the project adapter.`);
+      continue;
+    }
+    if (!domains[key].some((allowed) => JSON.stringify(allowed) === JSON.stringify(value))) {
+      errors.push(`adapterDimensions.${key} is outside the adapter-declared value domain.`);
+    }
+  }
+  return errors;
+}
+
+function checkpointCoreErrors({ cwd, runDir, status, manifest, checkpoint, context, requireTerminalConsistency = false }) {
+  const errors = [];
+  const declaration = checkpointDeclaration(manifest);
+  if (declaration.policy !== "enforced") return ["Run checkpoint policy is not enforced."];
+  if (declaration.path !== "checkpoint.json" || declaration.schemaVersion !== checkpointSchemaVersion) {
+    errors.push("Manifest checkpoint binding is invalid or unsupported.");
+  }
+  errors.push(...checkpointStageVocabularyErrors(declaration.stages, "Manifest checkpoint stages"));
+  if (status.checkpoint !== declaration.path || status.checkpointPolicy !== "enforced") {
+    errors.push("status.json is not bound to the enforced checkpoint declaration.");
+  }
+  if (!checkpoint || typeof checkpoint !== "object" || Array.isArray(checkpoint)) return [...errors, "checkpoint.json must contain an object."];
+  const allowedFields = new Set([
+    "schemaVersion", "revision", "createdAt", "updatedAt", "runDir", "goalPath",
+    "manifestRef", "controlState", "currentStage", "lastCompletedStage",
+    "nextAction", "pauseReason", "reconciliationRequired", "requiredEvidence",
+    "prohibitedActions", "replacementRun", "adapterDimensions"
+  ]);
+  const unexpectedFields = Object.keys(checkpoint).filter((key) => !allowedFields.has(key));
+  if (unexpectedFields.length) errors.push(`checkpoint.json has unsupported fields: ${unexpectedFields.join(", ")}.`);
+  if (Object.keys(checkpoint).some((key) => secretLikeCheckpointKey.test(key))) errors.push("checkpoint.json must not contain secret-like top-level fields.");
+  if (JSON.stringify(checkpoint).length > 65_536) errors.push("checkpoint.json must stay below 65536 serialized characters.");
+  if (checkpoint.schemaVersion !== checkpointSchemaVersion) errors.push("checkpoint schemaVersion is unsupported.");
+  if (!Number.isInteger(checkpoint.revision) || checkpoint.revision < 0) errors.push("checkpoint revision must be a non-negative integer.");
+  for (const key of ["createdAt", "updatedAt"]) {
+    if (typeof checkpoint[key] !== "string" || !Number.isFinite(Date.parse(checkpoint[key]))) errors.push(`checkpoint ${key} must be a valid timestamp.`);
+  }
+  if (normalizePathReference(checkpoint.runDir) !== normalizePathReference(displayPath(cwd, runDir))) errors.push("checkpoint runDir does not match the requested Run.");
+  if (normalizePathReference(checkpoint.goalPath) !== normalizePathReference(status.goalPath)
+      || normalizePathReference(checkpoint.goalPath) !== normalizePathReference(manifest.goalPath)) errors.push("checkpoint Goal binding does not match manifest/status.");
+  if (checkpoint.manifestRef !== "manifest.json") errors.push("checkpoint manifestRef must be manifest.json.");
+  if (!validCheckpointControlStates.has(checkpoint.controlState)) errors.push(`checkpoint controlState is invalid: ${checkpoint.controlState || "(missing)"}.`);
+  errors.push(...checkpointStringErrors(checkpoint.currentStage, "currentStage", { nullable: true, maxLength: 128 }));
+  errors.push(...checkpointStringErrors(checkpoint.lastCompletedStage, "lastCompletedStage", { nullable: true, maxLength: 128 }));
+  if (checkpoint.currentStage !== null && !declaration.stages.includes(checkpoint.currentStage)) errors.push("currentStage must be null or belong to the manifest-bound checkpoint stage vocabulary.");
+  if (checkpoint.lastCompletedStage !== null && !declaration.stages.includes(checkpoint.lastCompletedStage)) errors.push("lastCompletedStage must be null or belong to the manifest-bound checkpoint stage vocabulary.");
+  errors.push(...checkpointStringErrors(checkpoint.nextAction, "nextAction", { maxLength: 1000 }));
+  errors.push(...checkpointStringErrors(checkpoint.pauseReason, "pauseReason", { nullable: true, maxLength: 1000 }));
+  if (typeof checkpoint.reconciliationRequired !== "boolean") errors.push("reconciliationRequired must be boolean.");
+  if (checkpoint.reconciliationRequired !== (checkpoint.controlState === "reconciliation-required")) errors.push("reconciliationRequired must be true exactly when controlState is reconciliation-required.");
+  errors.push(...checkpointEvidenceErrors(checkpoint.requiredEvidence));
+  if (!Array.isArray(checkpoint.prohibitedActions) || checkpoint.prohibitedActions.length > 50) {
+    errors.push("prohibitedActions must be an array with at most 50 items.");
+  } else {
+    checkpoint.prohibitedActions.forEach((item, index) => {
+      errors.push(...checkpointStringErrors(item, `prohibitedActions[${index}]`, { maxLength: 500 }));
+      if (missingEvidence(item)) errors.push(`prohibitedActions[${index}] must name a concrete prohibited action.`);
+    });
+  }
+  errors.push(...checkpointStringErrors(checkpoint.replacementRun, "replacementRun", { nullable: true, maxLength: 500 }));
+  errors.push(...checkpointAdapterDimensionErrors(checkpoint.adapterDimensions, context));
+  if (["blocked", "replan-required", "reconciliation-required"].includes(checkpoint.controlState) && missingEvidence(checkpoint.pauseReason)) {
+    errors.push(`${checkpoint.controlState} requires a concrete pauseReason.`);
+  }
+  if (checkpoint.controlState === "reconciliation-required") {
+    if (missingEvidence(checkpoint.nextAction) || !/(inspect|reconcil|verify|read|query|检查|核对|验证|查询)/i.test(checkpoint.nextAction)) errors.push("reconciliation-required nextAction must explicitly inspect or reconcile authoritative state.");
+    if (!checkpoint.prohibitedActions?.length) errors.push("reconciliation-required requires at least one prohibited action.");
+  }
+  if (checkpoint.controlState === "superseded" && missingEvidence(checkpoint.replacementRun)) errors.push("superseded requires replacementRun.");
+  if (checkpoint.controlState !== "superseded" && checkpoint.replacementRun !== null) errors.push("replacementRun must be null unless controlState is superseded.");
+  if (requireTerminalConsistency && checkpoint.controlState === "completed") {
+    const dag = readExecutionDag(runDir);
+    const dagState = dag ? executionDagSnapshot(dag, runDir) : null;
+    if (!dagState?.allNodesCompleted || dagState.runningNodes.length || dagState.blockedNodes.length) errors.push("completed checkpoint requires a terminal completed Run DAG.");
+  }
+  return errors;
+}
+
+function readRunCheckpoint({ cwd, context, runDir, status, manifest, requireTerminalConsistency = false }) {
+  const declaration = checkpointDeclaration(manifest);
+  if (declaration.policy !== "enforced") {
+    return { policy: declaration.policy || "disabled", enabled: false, checkpoint: null, path: "", errors: [] };
+  }
+  let path = "";
+  try {
+    path = checkpointArtifactPath(runDir, manifest);
+  } catch (error) {
+    return { policy: declaration.policy, enabled: true, checkpoint: null, path: "", errors: [error.message] };
+  }
+  if (!existsSync(path)) return { policy: declaration.policy, enabled: true, checkpoint: null, path, errors: ["checkpoint.json is missing."] };
+  let checkpoint = null;
+  try {
+    checkpoint = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    return { policy: declaration.policy, enabled: true, checkpoint: null, path, errors: [`Could not parse checkpoint.json: ${error.message}`] };
+  }
+  return {
+    policy: declaration.policy,
+    enabled: true,
+    checkpoint,
+    path,
+    errors: checkpointCoreErrors({ cwd, runDir, status, manifest, checkpoint, context, requireTerminalConsistency })
+  };
+}
+
+function preparedRunContractError({ cwd, context, runDir, status, goalContext, dag }) {
+  try {
+    assertPreparedRunContract({
+      cwd,
+      context,
+      runDir,
+      status,
+      goalPath: goalContext.goalPath,
+      goalContent: goalContext.goalContent,
+      specRel: goalContext.specRel,
+      specContent: goalContext.specContent,
+      dag
+    });
+    return "";
+  } catch (error) {
+    return error.message;
+  }
+}
+
+function runValidationPayload(args) {
+  const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
+  if (!args.run) throw new Error("Usage: agent-harness run validate --run <run-dir> [--cwd PATH] [--json]");
+  const runDir = configuredRunDir(cwd, context, args.run);
+  const errors = [];
+  const statusPath = artifactPath(runDir, "status.json", "Run status path");
+  if (!existsSync(statusPath)) throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
+  let status = null;
+  try { status = JSON.parse(readFileSync(statusPath, "utf8")); } catch (error) { throw new Error(`Could not parse status.json: ${error.message}`); }
+  const expectedFiles = status.files || ["run.md", "prompt.md", "subagents.md", "status.json"];
+  const missingFiles = expectedFiles.filter((file) => !existsSync(artifactPath(runDir, file, "Run artifact path")));
+  if (missingFiles.length) errors.push(`Missing Run artifacts: ${missingFiles.join(", ")}.`);
+  const manifestState = runManifestState(runDir, status);
+  if (!manifestState.managed) errors.push(manifestState.error || "Run is unmanaged.");
+  let checkpoint = { policy: "disabled", enabled: false, checkpoint: null, path: "", errors: [] };
+  let contractError = "";
+  let expectedContractDrift = false;
+  if (manifestState.managed) {
+    const dag = readExecutionDag(runDir);
+    const goalContext = runGoalContext(cwd, context, status);
+    contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag });
+    checkpoint = readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
+    errors.push(...checkpoint.errors);
+    if (contractError && checkpoint.checkpoint?.controlState === "superseded"
+        && /Goal or Spec execution contract changed after Run preparation/.test(contractError)) {
+      const replacementErrors = replacementRunErrors({
+        cwd,
+        context,
+        runDir,
+        manifest: manifestState.manifest,
+        replacementRun: checkpoint.checkpoint.replacementRun
+      });
+      if (replacementErrors.length) errors.push(...replacementErrors);
+      else expectedContractDrift = true;
+    } else if (contractError) {
+      errors.push(contractError);
+    }
+  }
+  return {
+    ok: errors.length === 0,
+    run: displayPath(cwd, runDir),
+    phase: status.phase || status.status || "unknown",
+    errors,
+    manifest: { managed: manifestState.managed, error: manifestState.error },
+    contract: { ok: !contractError || expectedContractDrift, expectedDrift: expectedContractDrift, error: contractError },
+    checkpoint: {
+      policy: checkpoint.policy,
+      enabled: checkpoint.enabled,
+      path: checkpoint.path ? displayPath(cwd, checkpoint.path) : "",
+      revision: checkpoint.checkpoint?.revision ?? null,
+      controlState: checkpoint.checkpoint?.controlState || "",
+      nextAction: checkpoint.checkpoint?.nextAction || "",
+      errors: checkpoint.errors
+    }
+  };
+}
+
+function printValidationPayload(payload, args) {
+  if (args.json) console.log(JSON.stringify(payload, null, 2));
+  else {
+    console.log(`Run: ${payload.run}`);
+    console.log(`Valid: ${payload.ok ? "yes" : "no"}`);
+    console.log(`Checkpoint policy: ${payload.checkpoint.policy}`);
+    if (payload.checkpoint.enabled) {
+      console.log(`Checkpoint revision: ${payload.checkpoint.revision}`);
+      console.log(`Control state: ${payload.checkpoint.controlState}`);
+      console.log(`Next action: ${payload.checkpoint.nextAction}`);
+    }
+    if (payload.errors.length) payload.errors.forEach((error) => console.log(`- ${error}`));
+  }
+  if (!payload.ok) process.exitCode = 1;
+}
+
+function runValidate(args) {
+  printValidationPayload(runValidationPayload(args), args);
+}
+
+function checkpointShowPayload(args, { validateContract = false } = {}) {
+  const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
+  if (!args.run) throw new Error("Usage: agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]");
+  const runDir = configuredRunDir(cwd, context, args.run);
+  const statusPath = artifactPath(runDir, "status.json", "Run status path");
+  if (!existsSync(statusPath)) throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
+  const status = JSON.parse(readFileSync(statusPath, "utf8"));
+  const manifestState = runManifestState(runDir, status);
+  if (!manifestState.managed) throw new Error(`Run is not a managed prepared Run: ${manifestState.error}`);
+  const state = readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
+  if (!state.enabled) throw new Error("Run checkpoint policy is disabled; no checkpoint authority exists.");
+  let contractError = "";
+  let expectedContractDrift = false;
+  if (validateContract) {
+    const goalContext = runGoalContext(cwd, context, status);
+    contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag: readExecutionDag(runDir) });
+    if (contractError && state.checkpoint?.controlState === "superseded"
+        && /Goal or Spec execution contract changed after Run preparation/.test(contractError)) {
+      const replacementErrors = replacementRunErrors({ cwd, context, runDir, manifest: manifestState.manifest, replacementRun: state.checkpoint.replacementRun });
+      if (!replacementErrors.length) expectedContractDrift = true;
+      else state.errors.push(...replacementErrors);
+    }
+  }
+  return {
+    ok: state.errors.length === 0 && (!contractError || expectedContractDrift),
+    run: displayPath(cwd, runDir),
+    path: displayPath(cwd, state.path),
+    policy: state.policy,
+    checkpoint: state.checkpoint,
+    contract: { ok: !contractError || expectedContractDrift, expectedDrift: expectedContractDrift, error: contractError },
+    errors: [...state.errors, ...(contractError && !expectedContractDrift ? [contractError] : [])]
+  };
+}
+
+function runCheckpointShow(args) {
+  const payload = checkpointShowPayload(args);
+  if (args.json) console.log(JSON.stringify(payload, null, 2));
+  else {
+    console.log(`Run: ${payload.run}`);
+    console.log(`Checkpoint: ${payload.path}`);
+    console.log(`Revision: ${payload.checkpoint?.revision ?? "invalid"}`);
+    console.log(`Control state: ${payload.checkpoint?.controlState || "invalid"}`);
+    console.log(`Next action: ${payload.checkpoint?.nextAction || "not recorded"}`);
+    console.log(`Pause reason: ${payload.checkpoint?.pauseReason || "none"}`);
+    console.log(`Prohibited actions: ${payload.checkpoint?.prohibitedActions?.join(", ") || "none"}`);
+  }
+}
+
+function runCheckpointValidate(args) {
+  const payload = checkpointShowPayload(args, { validateContract: true });
+  if (args.json) console.log(JSON.stringify(payload, null, 2));
+  else {
+    console.log(`Run: ${payload.run}`);
+    console.log(`Checkpoint valid: ${payload.ok ? "yes" : "no"}`);
+    if (payload.errors.length) payload.errors.forEach((error) => console.log(`- ${error}`));
+  }
+  if (!payload.ok) process.exitCode = 1;
+}
+
+function parseCheckpointJsonOption(value, label, expectedType) {
+  if (value === undefined) return undefined;
+  let parsed = null;
+  try { parsed = JSON.parse(value); } catch (error) { throw new Error(`${label} must be valid JSON: ${error.message}`); }
+  if (expectedType === "array" && !Array.isArray(parsed)) throw new Error(`${label} must be a JSON array.`);
+  if (expectedType === "object" && (!parsed || typeof parsed !== "object" || Array.isArray(parsed))) throw new Error(`${label} must be a JSON object.`);
+  return parsed;
+}
+
+function parseNullableCheckpointValue(value) {
+  return value === undefined ? undefined : String(value).trim().toLowerCase() === "null" ? null : value;
+}
+
+function parseCheckpointBoolean(value, label) {
+  if (value === undefined) return undefined;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`${label} must be true or false.`);
+}
+
+function checkpointTransitionAllowed(from, to) {
+  if (from === to) return true;
+  const transitions = {
+    active: new Set(["waiting", "blocked", "replan-required", "reconciliation-required", "completed"]),
+    waiting: new Set(["active", "blocked", "replan-required", "reconciliation-required", "completed"]),
+    blocked: new Set(["active", "waiting", "replan-required", "reconciliation-required", "completed"]),
+    "reconciliation-required": new Set(["active", "waiting", "blocked", "replan-required"]),
+    "replan-required": new Set(["superseded"]),
+    superseded: new Set(),
+    completed: new Set()
+  };
+  return Boolean(transitions[from]?.has(to));
+}
+
+function replacementRunErrors({ cwd, context, runDir, manifest, replacementRun }) {
+  const errors = [];
+  if (!replacementRun) return ["superseded requires a replacement Run path."];
+  let replacementDir = "";
+  try { replacementDir = configuredRunDir(cwd, context, replacementRun); } catch (error) { return [error.message]; }
+  if (replacementDir === runDir) return ["replacement Run must differ from the superseded Run."];
+  const statusPath = artifactPath(replacementDir, "status.json", "Replacement Run status path");
+  if (!existsSync(statusPath)) return ["replacement Run status.json is missing."];
+  const replacementStatus = JSON.parse(readFileSync(statusPath, "utf8"));
+  const replacementManifestState = runManifestState(replacementDir, replacementStatus);
+  if (!replacementManifestState.managed) return [`Replacement Run is not a valid managed Run: ${replacementManifestState.error}`];
+  const replacementDeclaration = checkpointDeclaration(replacementManifestState.manifest);
+  if (replacementDeclaration.policy !== "enforced") errors.push("Replacement Run must retain enforced checkpoint policy.");
+  const currentSource = manifest.goalContract?.sourceTask || {};
+  const replacementSource = replacementManifestState.manifest.goalContract?.sourceTask || {};
+  const sameGoal = normalizePathReference(manifest.goalPath) === normalizePathReference(replacementManifestState.manifest.goalPath);
+  const sameSource = currentSource.path && replacementSource.path
+    && normalizePathReference(currentSource.path) === normalizePathReference(replacementSource.path)
+    && oneLine(currentSource.title) === oneLine(replacementSource.title);
+  if (!sameGoal && !sameSource) errors.push("Replacement Run is not bound to the same accepted Goal/source outcome.");
+  const goalContext = runGoalContext(cwd, context, replacementStatus);
+  const contractError = preparedRunContractError({ cwd, context, runDir: replacementDir, status: replacementStatus, goalContext, dag: readExecutionDag(replacementDir) });
+  if (contractError) errors.push(`Replacement Run validation failed: ${contractError}`);
+  return errors;
+}
+
+function runCheckpointUpdate(args) {
+  const cwd = targetCwd(args);
+  const context = resolveHarnessContext(cwd);
+  if (!args.run) throw new Error("Usage: agent-harness run checkpoint update --run <run-dir> --expected-revision <n> [checkpoint fields]");
+  const expectedRevision = Number(args.expectedRevision);
+  if (!Number.isInteger(expectedRevision) || expectedRevision < 0 || String(expectedRevision) !== String(args.expectedRevision)) {
+    throw new Error("--expected-revision must be a non-negative integer.");
+  }
+  const runDir = configuredRunDir(cwd, context, args.run);
+  return withRunLock(runDir, () => {
+    const statusPath = artifactPath(runDir, "status.json", "Run status path");
+    if (!existsSync(statusPath)) throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
+    const status = JSON.parse(readFileSync(statusPath, "utf8"));
+    const manifestState = runManifestState(runDir, status);
+    if (!manifestState.managed) throw new Error(`Run is not a managed prepared Run: ${manifestState.error}`);
+    const state = readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest });
+    if (!state.enabled) throw new Error("Run checkpoint policy is disabled; mutation is not allowed.");
+    if (state.errors.length) throw new Error(`Checkpoint validation failed:\n- ${state.errors.join("\n- ")}`);
+    const current = state.checkpoint;
+    if (current.revision !== expectedRevision) throw new Error(`Stale checkpoint revision: expected ${expectedRevision}, current ${current.revision}. Run checkpoint show/orient before retrying.`);
+
+    const next = structuredClone(current);
+    const suppliedFields = [];
+    const assign = (key, value) => { if (value !== undefined) { next[key] = value; suppliedFields.push(key); } };
+    assign("controlState", args.controlState);
+    assign("currentStage", parseNullableCheckpointValue(args.currentStage));
+    assign("lastCompletedStage", parseNullableCheckpointValue(args.lastCompletedStage));
+    assign("nextAction", args.nextAction);
+    assign("pauseReason", parseNullableCheckpointValue(args.pauseReason));
+    assign("requiredEvidence", parseCheckpointJsonOption(args.requiredEvidence, "--required-evidence", "array"));
+    assign("prohibitedActions", parseCheckpointJsonOption(args.prohibitedActions, "--prohibited-actions", "array"));
+    assign("replacementRun", parseNullableCheckpointValue(args.replacementRun));
+    assign("adapterDimensions", parseCheckpointJsonOption(args.adapterDimensions, "--adapter-dimensions", "object"));
+    const requestedReconciliation = parseCheckpointBoolean(args.reconciliationRequired, "--reconciliation-required");
+    if (requestedReconciliation !== undefined) suppliedFields.push("reconciliationRequired");
+    if (!suppliedFields.length && !args.evidenceReference) throw new Error("Checkpoint update requires at least one changed field.");
+    if (!validCheckpointControlStates.has(next.controlState)) throw new Error(`Invalid --control-state: ${next.controlState || "(missing)"}.`);
+    if (!checkpointTransitionAllowed(current.controlState, next.controlState)) throw new Error(`Illegal checkpoint transition: ${current.controlState} -> ${next.controlState}.`);
+    next.reconciliationRequired = next.controlState === "reconciliation-required";
+    if (requestedReconciliation !== undefined && requestedReconciliation !== next.reconciliationRequired) {
+      throw new Error("--reconciliation-required must match the requested control state.");
+    }
+    if (current.controlState === "reconciliation-required" && next.controlState !== "reconciliation-required") {
+      if ([args.evidenceReference, args.observedAt, args.observedSource].some((value) => missingEvidence(value))) {
+        throw new Error("Clearing reconciliation requires --evidence-reference, --observed-at, and --observed-source.");
+      }
+      if (!Number.isFinite(Date.parse(args.observedAt))) throw new Error("--observed-at must be a valid timestamp.");
+      next.requiredEvidence = [...next.requiredEvidence, {
+        reference: args.evidenceReference,
+        observedAt: args.observedAt,
+        observedSource: args.observedSource
+      }];
+    } else if (args.evidenceReference || args.observedAt || args.observedSource) {
+      throw new Error("Observation fields are only valid when clearing reconciliation-required state.");
+    }
+
+    const goalContext = runGoalContext(cwd, context, status);
+    const contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag: readExecutionDag(runDir) });
+    const restrictedRecovery = /Goal or Spec execution contract changed after Run preparation/.test(contractError)
+      && ["replan-required", "superseded"].includes(next.controlState);
+    if (contractError && !restrictedRecovery) throw new Error(contractError);
+    if (next.controlState === "superseded") {
+      const replacementErrors = replacementRunErrors({ cwd, context, runDir, manifest: manifestState.manifest, replacementRun: next.replacementRun });
+      if (replacementErrors.length) throw new Error(`Replacement Run validation failed:\n- ${replacementErrors.join("\n- ")}`);
+    }
+    next.revision = current.revision + 1;
+    next.updatedAt = new Date().toISOString();
+    const nextErrors = checkpointCoreErrors({ cwd, runDir, status, manifest: manifestState.manifest, checkpoint: next, context, requireTerminalConsistency: true });
+    if (nextErrors.length) throw new Error(`Checkpoint update is invalid:\n- ${nextErrors.join("\n- ")}`);
+    const payload = {
+      ok: true,
+      dryRun: Boolean(args.dryRun),
+      run: displayPath(cwd, runDir),
+      path: displayPath(cwd, state.path),
+      previousRevision: current.revision,
+      revision: next.revision,
+      controlState: next.controlState,
+      nextAction: next.nextAction,
+      contractDrift: Boolean(contractError),
+      checkpoint: next
+    };
+    if (!args.dryRun) atomicWriteFile(state.path, `${JSON.stringify(next, null, 2)}\n`);
+    if (args.json) console.log(JSON.stringify(payload, null, 2));
+    else {
+      console.log(`${args.dryRun ? "Would update" : "Updated"} checkpoint: ${payload.path}`);
+      console.log(`Revision: ${payload.previousRevision} -> ${payload.revision}`);
+      console.log(`Control state: ${payload.controlState}`);
+      console.log(`Next action: ${payload.nextAction}`);
+    }
+    return payload;
+  });
+}
+
+function assertCheckpointAllowsRunMutation({ cwd, context, runDir, status, manifest, action, phase }) {
+  const declaration = checkpointDeclaration(manifest);
+  if (declaration.policy !== "enforced") return;
+  const state = readRunCheckpoint({ cwd, context, runDir, status, manifest });
+  if (state.errors.length) throw new Error(`Checkpoint validation failed:\n- ${state.errors.join("\n- ")}`);
+  const controlState = state.checkpoint.controlState;
+  const allowed = action === "node"
+    ? phase === "running"
+      ? new Set(["active"])
+      : phase === "completed"
+        ? new Set(["active", "waiting"])
+        : new Set(["blocked", "replan-required", "reconciliation-required"])
+    : phase === "completed"
+      ? new Set(["completed"])
+      : new Set(["blocked", "replan-required", "reconciliation-required"]);
+  if (!allowed.has(controlState)) {
+    throw new Error(`Checkpoint controlState '${controlState}' does not allow Run ${action} phase '${phase}'. Update checkpoint recovery state first.`);
+  }
 }
 
 function runNodeRecord(args) {
@@ -6024,7 +6891,7 @@ function runNodeRecord(args) {
 
   const runStatus = JSON.parse(readFileSync(runStatusPath, "utf8"));
   const goalContext = runGoalContext(cwd, context, runStatus);
-  assertPreparedRunContract({
+  const preparedManifest = assertPreparedRunContract({
     cwd,
     context,
     runDir,
@@ -6035,6 +6902,7 @@ function runNodeRecord(args) {
     specContent: goalContext.specContent,
     dag
   });
+  assertCheckpointAllowsRunMutation({ cwd, context, runDir, status: runStatus, manifest: preparedManifest, action: "node", phase: args.phase });
   const now = new Date().toISOString();
   const previousNodeStatus = readNodeStatus(runDir, node);
   const currentRunPhase = runStatus.phase || runStatus.status || "";
@@ -6156,7 +7024,7 @@ function runRecord(args) {
   const statusGoalContext = runGoalContext(cwd, context, status, { requireGoal: args.phase === "completed" });
   const { goalPath, goalContent, specRel, specContent } = statusGoalContext;
   if (args.phase === "completed") {
-    assertPreparedRunContract({
+    const preparedManifest = assertPreparedRunContract({
       cwd,
       context,
       runDir,
@@ -6167,12 +7035,19 @@ function runRecord(args) {
       specContent,
       dag
     });
+    assertCheckpointAllowsRunMutation({ cwd, context, runDir, status, manifest: preparedManifest, action: "run", phase: args.phase });
     const goalStatus = canonicalGoalStatus(extractStatusLine(goalContent));
     if (goalStatus === "blocked") {
       throw new Error("Blocked Goals cannot complete a Run; update the accepted Goal state first.");
     }
     if (!validGoalStatuses.has(goalStatus)) {
       throw new Error(`Completed Runs require a valid Goal Status; found ${extractStatusLine(goalContent) || "(missing)"}.`);
+    }
+  }
+  if (args.phase === "blocked") {
+    const manifestState = runManifestState(runDir, status);
+    if (manifestState.managed) {
+      assertCheckpointAllowsRunMutation({ cwd, context, runDir, status, manifest: manifestState.manifest, action: "run", phase: args.phase });
     }
   }
   if (args.phase === "completed") {
@@ -6349,6 +7224,9 @@ function runStatus(args) {
   const manifestState = runManifestState(runDir, status);
   const dag = readExecutionDag(runDir);
   const dagState = dag ? executionDagSnapshot(dag, runDir) : status.executionDag || null;
+  const checkpointState = manifestState.managed
+    ? readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest })
+    : { policy: status.checkpointPolicy || "disabled", enabled: false, checkpoint: null, errors: [] };
 
   const payload = {
     run: displayPath(cwd, runDir),
@@ -6387,6 +7265,14 @@ function runStatus(args) {
       managed: manifestState.managed,
       error: manifestState.error
     },
+    checkpoint: {
+      policy: checkpointState.policy,
+      enabled: checkpointState.enabled,
+      revision: checkpointState.checkpoint?.revision ?? null,
+      controlState: checkpointState.checkpoint?.controlState || "",
+      nextAction: checkpointState.checkpoint?.nextAction || "",
+      errors: checkpointState.errors
+    },
     executionDag: dagState
   };
 
@@ -6409,6 +7295,12 @@ function runStatus(args) {
   console.log(`Task size: ${status.taskSize || "unknown"}`);
   console.log(`Updated: ${status.updatedAt || "unknown"}`);
   console.log(`Files: ${missing.length ? `missing ${missing.join(", ")}` : "ok"}`);
+  console.log(`Checkpoint policy: ${checkpointState.policy}`);
+  if (checkpointState.enabled) {
+    console.log(`Checkpoint revision: ${checkpointState.checkpoint?.revision ?? "invalid"}`);
+    console.log(`Checkpoint control state: ${checkpointState.checkpoint?.controlState || "invalid"}`);
+    console.log(`Checkpoint next action: ${checkpointState.checkpoint?.nextAction || "not recorded"}`);
+  }
   if (dagState) {
     console.log(`DAG enforcement: ${dagState.enforcement || "unknown"}`);
     console.log(`Ready nodes: ${dagState.readyNodes.join(", ") || "none"}`);
@@ -6472,6 +7364,14 @@ function main() {
       goalValidate(args);
     } else if (command === "run" && subcommand === "prepare") {
       runPrepare(args);
+    } else if (command === "run" && subcommand === "validate") {
+      runValidate(args);
+    } else if (command === "run" && subcommand === "checkpoint" && args._[2] === "show") {
+      runCheckpointShow(args);
+    } else if (command === "run" && subcommand === "checkpoint" && args._[2] === "validate") {
+      runCheckpointValidate(args);
+    } else if (command === "run" && subcommand === "checkpoint" && args._[2] === "update") {
+      runCheckpointUpdate(args);
     } else if (command === "run" && subcommand === "node" && args._[2] === "record") {
       runNodeRecord(args);
     } else if (command === "run" && subcommand === "record") {

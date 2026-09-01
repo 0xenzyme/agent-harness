@@ -39,9 +39,11 @@ Agent Harness has three layers:
 1. Harness plugin: canonical adapter protocol, references, skills,
    templates, and deterministic CLI helpers.
 2. Project adapter: project-specific artifact paths, source-of-truth rules,
-   hard boundaries, validation commands, and enabled gates.
+   hard boundaries, validation commands, enabled gates, and optional finite
+   checkpoint dimension domains.
 3. Documentation artifacts: Goal indexes, specs, goals, milestones, gate
-   records, run logs, status files, mental models, and deferred registers.
+   records, run logs, checkpoints, status files, mental models, and deferred
+   registers.
 
 Fixed-contract projects keep the original fixed file contract.
 Adapter-contract projects resolve artifact paths through

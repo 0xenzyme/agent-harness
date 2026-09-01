@@ -84,6 +84,9 @@ owns the repeatable execution mechanics inside the project adapter:
 - prepare Goals and execution DAGs instead of stopping at the next small spec;
 - record worker ownership, DAG state, and candidate evidence while the Codex runtime schedules work;
 - bind prepared Runs to a Goal/Spec/DAG manifest and protect state with atomic concurrent recording;
+- give explicitly `enforced` managed Runs an independent revision-safe
+  `checkpoint.json`; contract drift and uncertain external state fail closed,
+  while default-disabled Runs and fast paths gain no ceremony;
 - verify concrete evidence before accepting Task/Goal completion;
 - require `State Sync Notes` as part of Goal and Task completion;
 - keep Goal indexes, bounded status snapshots, Goals, Runs, and gates aligned;

@@ -33,6 +33,11 @@
   "communication": {
     "commentary": "minimal"
   },
+  "checkpoint": {
+    "defaultPolicy": "disabled",
+    "stages": [],
+    "adapterDimensions": {}
+  },
   "worktree": {
     "defaultPolicy": "ask"
   },

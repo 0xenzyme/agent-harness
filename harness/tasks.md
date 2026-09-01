@@ -8,6 +8,26 @@
 
 ## Done
 
+- [x] P0 Implement Run Checkpoint and Recovery Protocol.
+  - Type: development
+  - Status: completed
+  - Spec: `harness/specs/2026-09-01-run-checkpoint-and-recovery-protocol.md`
+  - Goal: `harness/goals/2026-09-01-implement-run-checkpoint-and-recovery-protocol.md`
+  - Run: `.harness/runs/20260901-164310-implement-run-checkpoint-and-recovery-protocol`
+  - Completed: Added explicit default-disabled/enforced checkpoint policy,
+    independent checkpoint state, manifest binding, lock/atomic/CAS mutation,
+    drift/replacement and reconciliation recovery, L0/L1 orientation, and safe
+    lifecycle handling while retaining legacy and fast-path compatibility.
+  - Completed: Aligned config/schema/templates, execute/orient skills,
+    adapter/lifecycle references, bilingual docs, capability matrix, CHANGELOG,
+    deterministic regressions, behavior evals, and durable project state.
+  - Verification: Syntax, `npm run test:all`, `npm run test:eval`,
+    `npm run validate:plugin`, config/Goal/Run validation, project doctor,
+    lifecycle previews, and `git diff --check` passed.
+  - Delivery: `validated-local`; no version bump, commit, push, publish,
+    release, deploy, production access, credential, paid API, or destructive
+    operation was performed. RC-D1 through RC-D6 remain deferred in the spec.
+
 - [x] P1 Refresh stale documentation and project state after post-0.10 hardening.
   - Type: docs
   - Status: completed
@@ -223,31 +243,3 @@
   - Delivery: `validated-local`; no commit, push, review, integration,
     publish, release, deploy, production access, daemon, watcher, paid API,
     credential, or destructive operation was performed.
-
-- [x] Shape Agent Harness terminology simplification and priority/milestone separation.
-  - Completed: Created accepted terminology spec with user-confirmed decisions:
-    `Roadmap -> Milestone -> Goal -> Task -> Run`; `Goal` as the main work
-    unit; `Task` as Goal-internal breakdown; `Run` as execution attempt and
-    evidence record; `P0` / `P1` / `P2` / `P3` as priority only.
-  - Completed: Updated README, README.zh-CN, CLI/install docs, project
-    contract, execute/intake skill guidance, references, templates, social
-    preview text, and GitHub presentation flow to use `Milestone` in new
-    user-facing terminology.
-  - Completed: Updated CLI generation/status/record output to use
-    `Milestone Completion Map` while preserving legacy `Stage Completion Map`
-    compatibility input and JSON aliases.
-  - Completed: Added `harness-rule:terminology-boundary` protocol coverage and
-    smoke tests for priority separation, intent normalization, Run/thread
-    boundary, milestone completion output, and legacy Stage compatibility.
-  - Source: Intake idea was superseded by user-confirmed terminology decisions
-    on 2026-07-04.
-  - Spec: `harness/specs/2026-07-04-agent-harness-terminology-simplification.md`
-  - Goal: `harness/goals/2026-07-04-shape-agent-harness-terminology-simplification-and-prioritystage-separation.md`
-  - Run: `.harness/runs/20260704-154151-shape-agent-harness-terminology-simplification-and-prioritystage-separation/`
-  - Verification: `node --check plugins/agent-harness/scripts/agent-harness.mjs`,
-    `node --check scripts/test-suites.mjs`, `node --check tests/smoke.mjs`,
-    `npm run test:protocol`, `npm run test:smoke`, `npm run validate:plugin`,
-    and `git diff --check`.
-  - Delivery: `validated-local`; no commit, push, review, integration, publish,
-    release, deploy, production access, daemon, watcher, paid API, credential,
-    or destructive operation was performed.

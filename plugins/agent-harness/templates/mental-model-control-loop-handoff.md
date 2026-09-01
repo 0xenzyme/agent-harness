@@ -22,3 +22,5 @@ and hands work off.
 - candidate evidence not yet accepted:
 - what remains blocked or deferred:
 - where the next action starts:
+- checkpoint policy/revision/control state/sole next action (when enforced):
+- prohibited retry or reconciliation/replacement evidence:
