@@ -17,9 +17,9 @@ Spec/Goal, and `.harness/config.json`. Run `worktree recommend` for a
 Harness-managed project. An unresolved `ask` result or conflict between those
 sources pauses for user direction before runtime delegation.
 
-Authorization to create a thread is not authorization to create a worktree.
-Do not pass an existing runtime `startingState` unless the current user
-explicitly requests that specific state. Parallel-writer isolation is a reason
+Authorization to create a session or worker is not authorization to create a worktree.
+Do not pass host-specific starting checkout or session state unless the current
+user explicitly requests that specific state. Parallel-writer isolation is a reason
 to ask; it does not override an unresolved work-mode decision.
 
 Harness does not claim automatic worktree rules that the runtime cannot

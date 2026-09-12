@@ -74,10 +74,10 @@ for (const skill of ["init", "execute"]) {
 const initMetadata = readFileSync(join(repoRoot, "plugins/agent-harness/skills/init/agents/openai.yaml"), "utf8");
 assert(initMetadata.includes("Set up, import, or repair") && !initMetadata.includes("audit"), "init implicit metadata must stay limited to setup/import/repair");
 const executeMetadata = readFileSync(join(repoRoot, "plugins/agent-harness/skills/execute/agents/openai.yaml"), "utf8");
-assert(executeMetadata.includes("long-running controller work") && executeMetadata.includes("existing durable Harness state") && executeMetadata.includes("bounded postflight sync") && executeMetadata.includes("ordinary clear work use Codex directly"), "execute implicit metadata must cover controller, durable, and tracked postflight work only");
-const nativeBridge = readFileSync(join(repoRoot, "plugins/agent-harness/references/codex-native-execution.md"), "utf8");
-for (const marker of ["codex-direct", "codex-direct-postflight", "durable-harness", "create_goal", "update_plan"]) {
-  assert(nativeBridge.includes(marker), `Codex-native bridge must include ${marker}`);
+assert(executeMetadata.includes("long-running controller work") && executeMetadata.includes("existing durable Harness state") && executeMetadata.includes("bounded postflight sync") && executeMetadata.includes("ordinary clear work use the current host directly"), "execute implicit metadata must cover controller, durable, and tracked postflight work only");
+const hostBridge = readFileSync(join(repoRoot, "plugins/agent-harness/references/host-execution.md"), "utf8");
+for (const marker of ["host-direct", "host-direct-postflight", "durable-harness"]) {
+  assert(hostBridge.includes(marker), `Host execution bridge must include ${marker}`);
 }
 
 const temp = mkdtempSync(join(tmpdir(), "agent-harness-smoke-"));
@@ -122,6 +122,12 @@ try {
   const worktree = JSON.parse(run(["worktree", "recommend", "--cwd", temp, "--json"]));
   assert(["local", "worktree", "ask"].includes(worktree.recommendation), "worktree recommendation must return a canonical policy");
   assert(!("git" in worktree), "worktree recommendation must follow configured policy without checkout-state telemetry");
+  const skillPreview = JSON.parse(run(["skills", "install", "--cwd", temp, "--dry-run", "--json"]));
+  assert(skillPreview.ok && skillPreview.target === ".agents/skills/", "skills install preview must target .agents/skills/");
+  assert(skillPreview.writes.some((item) => item.path === ".agents/skills/execute" && item.action === "would-copy"), "skills install must plan the four public skills");
+  run(["skills", "install", "--cwd", temp]);
+  assert(existsSync(join(temp, ".agents/skills/execute/SKILL.md")), "skills install must copy execute into .agents/skills");
+  assert(existsSync(join(temp, ".agents/references/host-execution.md")), "skills install must copy protocol references beside skills");
 
   assert(canonicalConfig.worktree?.defaultPolicy === "ask" && !canonicalConfig.workMode, "canonical config must write worktree, not legacy workMode");
   assert(canonicalConfig.artifactPolicy?.retention && canonicalConfig.artifactPolicy?.tasks, "canonical config must declare bounded artifact lifecycle defaults");
@@ -292,7 +298,8 @@ try {
   const goalRel = `harness/goals/${goalName}`;
   const generatedGoalPath = join(runProject, goalRel);
   const generatedGoal = readFileSync(generatedGoalPath, "utf8");
-  assert(generatedGoal.includes("## Codex-Native Execution"), "generated durable Goals must bind to Codex-native execution");
+  assert(generatedGoal.includes("## Host Execution"), "generated durable Goals must bind to host execution");
+  assert(!generatedGoal.includes("## Codex-Native Execution"), "generated durable Goals must not write Codex-Native Execution");
   assert(generatedGoal.includes("These gates apply only to durable Goal/Run completion"), "generated Goal gates must declare durable-only scope");
   assert(generatedGoal.includes("## State Sync Notes") && generatedGoal.includes("Accepted-state records: `TBD`"), "generated Goals must include an explicit State Sync Notes contract");
   writeFileSync(generatedGoalPath, generatedGoal.replace(/## State Sync Notes[\s\S]*?## Spec Acceptance Checklist/, "## Spec Acceptance Checklist"));

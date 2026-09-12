@@ -1,6 +1,6 @@
 # CLI Reference
 
-The primary user path is to ask Codex or another coding agent to use the
+The primary user path is to ask the current coding agent to use the
 `harness:*` workflow skills. The CLI is deterministic tooling for agents,
 operators, diagnostics, scripted adoption, and plugin maintainers.
 
@@ -48,7 +48,12 @@ Initialize an adapter-contract downstream project:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
+node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd /path/to/project
 ```
+
+`skills install` copies the four public skills to `.agents/skills/` and the
+protocol references to `.agents/references/`. Preview with `--dry-run --json`.
+This is the default skill-discovery path; Codex marketplace install is optional.
 
 The same `init` options work for a fixed contract. `--task-index` sets the
 configured task file and `--idea-inbox` creates an optional Markdown inbox;
@@ -271,7 +276,7 @@ Prepared run packets include `manifest.json`, `dag.json`, `dag.md`, and
 `agents/<node>/prompt.md`. `manifest.json` binds the prepared Goal/Spec
 execution contract and DAG shape; changing those inputs after preparation is
 rejected and requires a new Run. Harness records ready nodes, ownership, verification,
-and candidate evidence; the Codex runtime owns worker selection, delegation,
+and candidate evidence; the host owns worker selection, delegation,
 concurrency, and cancellation. `run prepare` does not start workers or pin
 model/effort. Task/Goal remains the accepted-state authority; Run packets store
 execution and verification evidence, while status remains a bounded projection.
@@ -372,13 +377,13 @@ Active `running` or `blocked` nodes block completion; cancellation or supersessi
 cooperative controller signal, not proof that a worker runtime stopped.
 
 Configured `gates.requiredForCompletion` and `gates.blocking` apply to durable
-Goal/Run completion. They do not require ordinary Codex-direct work or bounded
+Goal/Run completion. They do not require ordinary host-direct work or bounded
 postflight-only state updates to create a Run. Once a Run is prepared,
 postflight wording cannot bypass its DAG, gates, or evidence.
 
-The CLI records durable state; it does not implement Codex runtime Goal or
-Plan. Skills bind long-running controller work to the host's native Goal and
-Plan capabilities when exposed.
+The CLI records durable state; it does not implement host runtime outcome or
+transient plan. Skills bind long-running controller work to the host's native
+outcome and plan capabilities when exposed.
 
 Legacy Goal and Run delivery fields remain readable for the `0.10.0`
 compatibility boundary, but current validation, completion, maintenance, and

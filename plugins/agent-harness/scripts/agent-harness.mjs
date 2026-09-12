@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, cpSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -56,7 +56,15 @@ const commonTaskIndexCandidates = [
 ];
 
 const validExecutionRoles = new Set(["gate-only", "implementer"]);
-const validConversationRoutes = new Set(["current-thread", "slot-thread", "remote-control-worktree"]);
+const conversationRouteAliases = {
+  "current-session": "current-session",
+  "delegated-worker": "delegated-worker",
+  "isolated-worktree": "isolated-worktree",
+  "current-thread": "current-session",
+  "slot-thread": "delegated-worker",
+  "remote-control-worktree": "isolated-worktree"
+};
+const validConversationRoutes = new Set(Object.keys(conversationRouteAliases));
 const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validGoalStatuses = new Set(["active", "completed", "blocked"]);
@@ -82,11 +90,11 @@ const executeContextFocusGuidance = "`harness-rule:path-containment`: configured
 const authoritativeCompletionGuidance = "`harness-rule:authoritative-completion-state`: Task/Goal is the accepted-state authority with active, completed, or blocked phase; blocked is resumable and non-complete, Run stores evidence, and status is a bounded projection.";
 const cyberneticStabilityGuidance = "`harness-rule:state-sync-evidence`: durable completion includes verified State Sync Notes and synchronization of the configured Goal, Task, Run, gate, and bounded status records.";
 const degradedExecutionProvenanceGuidance = "`harness-rule:candidate-accepted-evidence`: execution and worker output remains candidate evidence until the accepted-state owner verifies and records it.";
-const controllerCancellationBoundaryGuidance = "`harness-rule:run-dag-ownership`: Harness records ready nodes, dependencies, ownership, verification, and candidate evidence; the Codex runtime owns scheduling, delegation, concurrency, and cancellation.";
+const controllerCancellationBoundaryGuidance = "`harness-rule:run-dag-ownership`: Harness records ready nodes, dependencies, ownership, verification, and candidate evidence; the host owns scheduling, delegation, concurrency, and cancellation.";
 const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
-const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses Codex directly; already tracked simple work may use one bounded postflight sync; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, DAGs, multiple workers, or high-risk control.";
+const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses the current host directly; already tracked simple work may use one bounded postflight sync; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, DAGs, multiple workers, or high-risk control.";
 const checkpointRecoveryGuidance = "`harness-rule:checkpoint-recovery`: explicitly enforced managed Runs use an independent revision-safe checkpoint; contract drift and uncertain external state fail closed, while disabled and legacy paths keep existing behavior.";
-const codexNativeExecutionGuidance = "For accepted long-running controller work, establish or reuse a compatible Codex runtime Goal and use Codex Plan for current multi-step progress. Controller means outcome owner and accepted-state owner; only explicit review-only or gate-only direction prohibits foreground implementation.";
+const hostExecutionGuidance = "For accepted long-running controller work, establish or reuse a compatible runtime outcome and use the host transient plan for current multi-step progress when those capabilities are exposed. Controller means outcome owner and accepted-state owner; only explicit review-only or gate-only direction prohibits foreground implementation.";
 const postflightSyncGuidance = "Postflight sync verifies completed work and updates existing tracked state only. It creates no Goal, Run, DAG, gate, or status artifact solely for bookkeeping, and durable completion gates do not apply unless a durable Goal/Run is being closed.";
 
 function commentaryPolicyDetails(config = {}) {
@@ -490,6 +498,7 @@ const messages = {
   en: {
     usage: `Usage:
   agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--idea-inbox PATH] [--project-name NAME] [--force] [--lang CODE]
+  agent-harness skills install [--cwd PATH] [--dry-run] [--force] [--json]
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
@@ -539,6 +548,7 @@ const messages = {
   "zh-CN": {
     usage: `用法:
   agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--idea-inbox PATH] [--project-name NAME] [--force] [--lang CODE]
+  agent-harness skills install [--cwd PATH] [--dry-run] [--force] [--json]
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
@@ -1473,6 +1483,75 @@ function init(args) {
 
   console.log(t(lang, "initDone", { cwd }));
   console.log(created.length ? t(lang, "initCreated", { files: created.join(", ") }) : t(lang, "initNoChanges"));
+}
+
+const publicSkillNames = ["orient", "intake", "init", "execute"];
+
+function skillsInstallPlan() {
+  return [
+    ...publicSkillNames.map((name) => ({
+      kind: "skill",
+      name,
+      from: join(pluginRoot, "skills", name),
+      toRel: `.agents/skills/${name}`
+    })),
+    {
+      kind: "references",
+      name: "references",
+      from: join(pluginRoot, "references"),
+      toRel: ".agents/references"
+    }
+  ];
+}
+
+function skillsInstall(args) {
+  const cwd = targetCwd(args);
+  const projectRoot = resolve(cwd);
+  const writes = skillsInstallPlan().map((item) => {
+    const dest = resolve(projectRoot, item.toRel);
+    const relativeDest = relative(projectRoot, dest);
+    if (isAbsolute(relativeDest) || relativeDest.startsWith("..")) {
+      throw new Error(`Skill install path escapes project root: ${item.toRel}`);
+    }
+    const exists = existsSync(dest);
+    let action = "copy";
+    if (args.dryRun) action = "would-copy";
+    if (exists && !args.force) action = "skip";
+    return { ...item, dest, exists, action };
+  });
+
+  if (args.json) {
+    console.log(JSON.stringify({
+      ok: true,
+      dryRun: Boolean(args.dryRun),
+      target: ".agents/skills/",
+      writes: writes.map((item) => ({
+        kind: item.kind,
+        name: item.name,
+        path: item.toRel,
+        exists: item.exists,
+        action: item.action
+      }))
+    }, null, 2));
+    return;
+  }
+
+  for (const item of writes) {
+    if (item.action === "skip") {
+      console.log(`Skip existing ${item.toRel} (use --force to replace)`);
+      continue;
+    }
+    if (args.dryRun) {
+      console.log(`Would install ${item.toRel}`);
+      continue;
+    }
+    mkdirSync(dirname(item.dest), { recursive: true });
+    if (existsSync(item.dest)) {
+      rmSync(item.dest, { recursive: true, force: true });
+    }
+    cpSync(item.from, item.dest, { recursive: true });
+    console.log(`Installed ${item.toRel}`);
+  }
 }
 
 function configImport(args) {
@@ -3926,29 +4005,29 @@ Use \`implementer\`.
 - \`gate-only\`: the current thread reviews candidate output and verification evidence, but does not directly edit implementation files.
 - \`implementer\`: the current thread may edit files inside the accepted scope.
 - Controller means outcome owner and accepted-state owner. Use \`gate-only\` only when review-only behavior is explicit; otherwise a controller may implement foreground work.
-- Ordinary clear change/build requests use Codex directly. This durable Goal uses only \`gate-only\` or \`implementer\` roles.
+- Ordinary clear change/build requests use the current host directly. This durable Goal uses only \`gate-only\` or \`implementer\` roles.
 - ${boundedDirectExecutionGuidance} Once this durable Goal exists, do not downgrade its checklist, gate, or state-sync obligations to the bounded tier.
 
-## Codex-Native Execution
+## Host Execution
 
-- ${codexNativeExecutionGuidance}
-- Runtime Goal owns the current outcome and continuation; Codex Plan owns transient steps.
-- Codex runtime owns Thread/subagent scheduling, concurrency, cancellation, and model/effort selection.
+- ${hostExecutionGuidance}
+- Runtime outcome owns the current outcome and continuation; transient plan owns short-lived steps.
+- The host owns scheduling, concurrency, cancellation, and model/effort selection when those capabilities are exposed.
 - Repository Goal/Run owns cross-task recovery, durable dependencies, evidence, gates, and state sync.
-- If native Goal or Plan is unavailable, continue in the current thread and record degraded provenance only when this durable Run requires it. Never invent runtime identifiers.
+- If native outcome or plan is unavailable, continue in the current session and record degraded provenance only when this durable Run requires it. Never invent runtime identifiers.
 
 ## Conversation Route
 
-Use \`current-thread\`.
+Use \`current-session\`.
 
-- \`current-thread\`: the current conversation owns execution in the locked cwd.
-- \`slot-thread\`: hand off to a dedicated slot conversation before editing.
-- \`remote-control-worktree\`: the current conversation may control a different locked worktree only when explicitly approved.
+- \`current-session\`: the current conversation owns execution in the locked cwd.
+- \`delegated-worker\`: hand off to a dedicated worker session before editing.
+- \`isolated-worktree\`: the current conversation may control a different locked worktree only when explicitly approved.
 
 ## Execution Context Lock
 
-- Conversation lane: \`current-thread\`
-- Controller thread: \`current-thread\`
+- Conversation lane: \`current-session\`
+- Controller thread: \`current-session\`
 - Execution cwd: \`${context.cwd}\`
 - Execution branch: \`TBD\`
 - Execution slot: \`N/A\`
@@ -3957,7 +4036,7 @@ Use \`current-thread\`.
 ## Execution DAG
 
 Use \`run prepare\` to generate \`dag.json\`, \`dag.md\`, and per-node
-\`agents/<node>/prompt.md\` files. The Codex runtime owns worker selection,
+\`agents/<node>/prompt.md\` files. The host owns worker selection,
 delegation, concurrency, and cancellation; Harness records ownership and evidence.
 
 ## Context Focus Routing
@@ -4195,6 +4274,14 @@ function extractConversationRouteRaw(goalContent) {
   const section = extractSection(goalContent, "Conversation Route");
   const match = section.match(/Use\s+`([^`]+)`/i);
   return match ? match[1].trim().toLowerCase() : "";
+}
+
+function normalizeConversationRoute(value) {
+  return conversationRouteAliases[String(value || "").trim().toLowerCase()] || "";
+}
+
+function extractHostExecutionSection(content) {
+  return extractSection(content, "Host Execution") || extractSection(content, "Codex-Native Execution");
 }
 
 function parseExecutionContextLock(section) {
@@ -4564,10 +4651,11 @@ function executionContextValidationErrors({ workMode, conversationRoute, executi
     return errors;
   }
 
+  const canonicalRoute = normalizeConversationRoute(conversationRoute);
   if (!conversationRoute) {
     errors.push("Worktree goals require a Conversation Route section.");
-  } else if (!validConversationRoutes.has(conversationRoute)) {
-    errors.push(`Conversation Route must use one of current-thread, slot-thread, or remote-control-worktree; found ${conversationRoute}.`);
+  } else if (!canonicalRoute) {
+    errors.push(`Conversation Route must use one of current-session, delegated-worker, or isolated-worktree (legacy aliases current-thread, slot-thread, remote-control-worktree remain readable); found ${conversationRoute}.`);
   }
 
   if (!executionContextLock.section) {
@@ -4592,10 +4680,10 @@ function executionContextValidationErrors({ workMode, conversationRoute, executi
   if (executionContextLock.remoteControlWorktree && !remoteControl) {
     errors.push("Execution Context Lock Remote-control worktree must be yes or no.");
   }
-  if (conversationRoute === "remote-control-worktree" && remoteControl !== "yes") {
-    errors.push("Conversation Route remote-control-worktree requires Execution Context Lock Remote-control worktree: yes.");
+  if (canonicalRoute === "isolated-worktree" && remoteControl !== "yes") {
+    errors.push("Conversation Route isolated-worktree requires Execution Context Lock Remote-control worktree: yes.");
   }
-  if ((conversationRoute === "current-thread" || conversationRoute === "slot-thread") && remoteControl === "yes") {
+  if ((canonicalRoute === "current-session" || canonicalRoute === "delegated-worker") && remoteControl === "yes") {
     errors.push(`Conversation Route ${conversationRoute} must not set Remote-control worktree: yes.`);
   }
 
@@ -4778,6 +4866,7 @@ function goalMetadata(cwd, goalPath) {
       readFirst: Boolean(extractSection(content, "Read First")),
       workModeRecommendation: Boolean(extractSection(content, "Work Mode Recommendation")),
       executionRole: Boolean(extractSection(content, "Execution Role")),
+      hostExecution: Boolean(extractHostExecutionSection(content)),
       conversationRoute: Boolean(extractSection(content, "Conversation Route")),
       executionContextLock: Boolean(extractSection(content, "Execution Context Lock")),
       sourceTaskAcceptanceMap: Boolean(extractSection(content, "Source Task Acceptance Map")),
@@ -5182,7 +5271,7 @@ function defaultDagNodes(taskSize, executionRole) {
       mode: executionRole === "gate-only" ? "write" : "implementer",
       ownership: executionRole === "gate-only"
         ? "runtime-selected implementation inside the accepted goal scope; the controller remains review-only"
-        : "accepted goal scope in the current Codex runtime; runtime Goal and Plan own transient execution",
+        : "accepted goal scope in the current host; runtime outcome and transient plan own short-lived execution",
       expectedOutput: "focused implementation evidence, changed files, verification summary, and state-sync notes",
       stopConditions: "scope conflict, unclear ownership, credentials, destructive commands, production access, or unauthorized delivery"
     }),
@@ -5242,7 +5331,7 @@ function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole, c
     communication,
     enforcement: taskSize === "medium" || taskSize === "large" ? "required-before-run-completion" : "advisory",
     launchPolicy: "runtime-dispatched",
-    runtimeOwnership: "Codex owns scheduling, delegation, concurrency, cancellation, and model selection; Harness records dependencies, ownership, verification, and candidate evidence",
+    runtimeOwnership: "the host owns scheduling, delegation, concurrency, cancellation, and model selection; Harness records dependencies, ownership, verification, and candidate evidence",
     parallelSafety: {
       requirement: "parallel writers require separate locked worktrees/cwds; otherwise concurrent nodes must be read-only or have proven non-overlapping file ownership"
     },
@@ -5853,7 +5942,7 @@ ${node.stopConditions}
 - Commentary: ${dag.communication.guidance}
 - Report cadence: \`${dag.communication.reportCadence}\`
 - Notify on: ${dag.communication.notifyOn}
-- Worker selection, delegation, concurrency, cancellation, and model selection belong to the Codex runtime.
+- Worker selection, delegation, concurrency, cancellation, and model selection belong to the host.
 - Concurrent writers require a separate locked worktree/cwd or recorded proof of non-overlapping ownership.
 - ${degradedExecutionProvenanceGuidance}
 - ${controllerCancellationBoundaryGuidance}
@@ -5872,7 +5961,7 @@ Return an Execution Result Packet:
 Execution Result Packet
 
 Goal:
-Thread:
+Session:
 Node: ${node.id}
 Status:
 State change:
@@ -6030,7 +6119,7 @@ ${sourceTask}
 2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
 3. Confirm the execution role. Controller means outcome and accepted-state owner; only explicit \`gate-only\` direction makes it review-only. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
 4. Do not bypass this prepared durable Run with ordinary direct execution.
-5. ${codexNativeExecutionGuidance} Runtime Goal owns the outcome; Codex Plan owns transient steps. Do not mirror every Plan transition into Git.
+5. ${hostExecutionGuidance} Runtime outcome owns the outcome; transient plan owns short-lived steps. Do not mirror every plan transition into Git.
 6. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
 7. Apply the configured Commentary Policy: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
 8. ${cyberneticStabilityGuidance}
@@ -6038,13 +6127,13 @@ ${sourceTask}
 10. ${degradedExecutionProvenanceGuidance}
 11. ${controllerCancellationBoundaryGuidance}
 12. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
-13. If the route is \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
+13. If the route is \`isolated-worktree\` or legacy \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
 14. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
 15. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
 16. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
 17. Adapter completion gates are durable-only. For this prepared Run, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording completion.
 18. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; parallel workers require recorded isolation evidence.
-19. Give ready node packets to the Codex runtime and record ownership, verification, and candidate evidence.
+19. Give ready node packets to the host and record ownership, verification, and candidate evidence.
 20. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
 21. Run the verification commands from the goal.
 22. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
@@ -6061,7 +6150,7 @@ ${verification}
 
 ## Boundaries
 
-- This prepared run packet does not start Codex, create a daemon, deploy, publish, or perform external side effects by itself.
+- This prepared run packet does not start a host session, create a daemon, deploy, publish, or perform external side effects by itself.
 - ${postflightSyncGuidance} This prepared enforced Run is not postflight-only and remains authoritative.
 - Direct execution can skip spec/goal/run/worker ceremony for ordinary clear local work when no existing Harness Goal/Run or tracked sync obligation applies; verification, \`Need user\`, and \`Remaining\` still apply.
 - ${boundedDirectExecutionGuidance} This prepared Run remains authoritative.
@@ -6098,9 +6187,9 @@ Requirements:
 - Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
 - Follow the goal's Execution Role: \`${executionRole}\`.
 - Controller means outcome owner and accepted-state owner. It may implement foreground work unless Execution Role is explicitly \`gate-only\`.
-- If Execution Role is \`gate-only\`, keep the current thread review-only; the Codex runtime decides whether and how to delegate implementation.
-- ${codexNativeExecutionGuidance}
-- Runtime Goal owns the current outcome and continuation; Codex Plan owns transient steps. Reuse compatible active state and never invent runtime ids.
+- If Execution Role is \`gate-only\`, keep the current session review-only; the host decides whether and how to delegate implementation.
+- ${hostExecutionGuidance}
+- Runtime outcome owns the current outcome and continuation; transient plan owns short-lived steps. Reuse compatible active state and never invent runtime ids.
 - ${boundedDirectExecutionGuidance} The supplied Goal/Run remains authoritative and must not be downgraded.
 - ${checkpointRecoveryGuidance} Read \`checkpoint.json\` before acting when the prepared manifest enables it, and never retry an action listed in \`prohibitedActions\`.
 - ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
@@ -6115,7 +6204,7 @@ Requirements:
 - ${boundedStatusSnapshotGuidance}
 - Do not close if feedback quality is weak, stale, delayed, or advisory; verify, re-orient, ask, or pause when the remaining gap is not shrinking or the loop is saturated.
 - Final user-facing closeout must include explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` for routine closeouts with no true pause trigger or follow-up instead of asking broad confirmation questions.
-- Do not deploy, publish, start a daemon, or automatically launch additional Codex sessions unless the accepted scope and controller explicitly authorize it.
+- Do not deploy, publish, start a daemon, or automatically launch additional host sessions unless the accepted scope and controller explicitly authorize it.
 - After implementation, run the goal's verification commands, produce State Sync Notes, and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync. Status-file updates must replace bounded snapshot sections instead of appending historical focus logs.
 
 ## Goal Content
@@ -6135,7 +6224,7 @@ Do not split work yet. Pause for the user when product direction, production acc
 
   return `Recommended for this run: \`${taskSize}\`.
 
-Use the active runtime Goal for the outcome and Codex Plan for current steps.
+Use the active runtime outcome for the outcome and the host transient plan for current steps.
 The runtime may keep work in the foreground or delegate it. Harness does not
 prescribe explorer/implementer/reviewer workers. If delegation occurs, record
 only durable dependencies, ownership, verification, and candidate evidence.
@@ -6157,7 +6246,7 @@ Goal: \`${relGoal}\`
 - This prepared Run is durable and must not be downgraded to ordinary direct execution.
 - ${cyberneticStabilityGuidance}
 - \`small\`: the runtime may keep implementer work in the current lane or delegate it; gate-only remains read-only.
-- \`medium\` and \`large\`: use Codex Plan for transient steps; delegate only
+- \`medium\` and \`large\`: use the host transient plan for short-lived steps; delegate only
   when the runtime finds it useful or durable ownership requires it.
 - \`ask\`: pause before splitting when the work involves production, destructive actions, credentials, paid APIs, product direction, or unclear file ownership.
 
@@ -6304,7 +6393,7 @@ function runPrepare(args) {
   console.log(`Prompt: ${displayPath(cwd, join(runDir, "prompt.md"))}`);
   console.log(`DAG: ${displayPath(cwd, join(runDir, "dag.md"))}`);
   console.log(`Ready nodes: ${executionDagState.readyNodes.join(", ") || "none"}`);
-  console.log("Next: hand ready nodes to the Codex runtime; record ownership, verification, and candidate evidence in this Run.");
+  console.log("Next: hand ready nodes to the host; record ownership, verification, and candidate evidence in this Run.");
 }
 
 const recordableRunPhases = new Set(["completed", "blocked"]);
@@ -7326,6 +7415,8 @@ function main() {
       usage(args.language);
     } else if (command === "init") {
       init(args);
+    } else if (command === "skills" && subcommand === "install") {
+      skillsInstall(args);
     } else if (command === "doctor") {
       doctor(args);
     } else if (command === "print-contract") {

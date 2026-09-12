@@ -63,7 +63,7 @@ the Agent Harness plugin references.
 - Allowed values: `minimal`, `balanced`, `audit`
 - Project preference: `minimal`
 - Boundary: this shapes Harness instructions and generated artifacts; it does
-  not filter Codex messages or override host-required updates.
+  not filter host messages or override host-required updates.
 
 ## Artifact Lifecycle Policy
 
@@ -117,13 +117,13 @@ the Agent Harness plugin references.
 - Treat the configured status file as a bounded current-state snapshot. Replace
   current sections when syncing state; keep historical details in Goal index
   entries, Goal files, run logs, and gate records.
-- Ordinary work may use Codex directly. Postflight sync updates existing state
+- Ordinary work may use the current host directly. Postflight sync updates existing state
   only and creates no lifecycle solely for bookkeeping.
 
-## Codex-Native Execution
+## Host Execution
 
-- Runtime Goal owns accepted long-running outcomes.
-- Codex Plan owns transient execution steps.
+- Runtime outcome owns accepted long-running outcomes.
+- Transient plan owns short-lived execution steps.
 - Harness Goal/Run owns durable recovery, evidence, gates, and state sync.
 - Controller may implement unless explicitly `gate-only` or review-only.
 

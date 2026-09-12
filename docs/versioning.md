@@ -46,6 +46,7 @@ Examples:
 0.7.0 -> 0.8.0  integrated runtime Goal/Plan with direct, postflight, and durable paths
 0.8.0 -> 0.9.0  added bounded artifact lifecycle, compaction, and safe Run retention
 0.9.0 -> 0.10.0 simplified authoritative completion and removed Git-derived Delivery State
+0.10.0 -> 0.11.0 split host-neutral protocol from the Codex pack and added CLI-first skill install
 0.8.0 -> 0.8.1  fix wording or validation coverage for that blueprint line
 ```
 

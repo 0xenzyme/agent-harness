@@ -2,7 +2,7 @@
 
 ## Scope
 
-This repository builds a reusable Codex harness for project-level task control,
+This repository builds a reusable coding-agent harness for project-level task control,
 goal handoffs, and loop engineering.
 
 ## Product Value Proposition

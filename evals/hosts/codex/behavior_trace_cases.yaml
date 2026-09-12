@@ -1,0 +1,26 @@
+[
+  {
+    "id": "ah_codex_controller_uses_create_goal_and_update_plan",
+    "skill": "harness:execute",
+    "scenario": "On a Codex host, accepted long-running controller work uses create_goal then update_plan.",
+    "user_request": "作为主控开发这个已接受的多阶段目标，推进直到完成。",
+    "trace": [
+      { "type": "read", "target": "harness/goals/accepted-goal.md" },
+      { "type": "tool_call", "target": "create_goal", "fields": { "objective": "accepted durable outcome", "success_criteria": true } },
+      { "type": "tool_call", "target": "update_plan", "fields": { "multi_step": true, "transient": true } },
+      { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_goal_active": true, "plan_active": true } }
+    ],
+    "assertions": {
+      "required_ordered_reads": ["harness/goals/accepted-goal.md"],
+      "required_ordered_events": [
+        { "type": "tool_call", "target": "create_goal" },
+        { "type": "tool_call", "target": "update_plan" }
+      ],
+      "required_event_fields": [
+        { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_goal_active": true, "plan_active": true } }
+      ],
+      "forbidden_writes": [],
+      "forbidden_mutations": ["model-pin", "runtime-scheduler-policy"]
+    }
+  }
+]

@@ -1,8 +1,8 @@
 {
   "name": "agent-harness",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
-  "description": "Reusable Codex workflow harness for project task control and loop engineering.",
+  "description": "Reusable coding-agent workflow harness for project task control and loop engineering.",
   "type": "module",
   "bin": {
     "agent-harness": "./plugins/agent-harness/scripts/agent-harness.mjs"
@@ -17,6 +17,7 @@
     "test:eval:live": "node evals/run-live-skill-activation.mjs",
     "test:presentation": "node scripts/test-suites.mjs presentation",
     "test:protocol": "node scripts/test-suites.mjs protocol",
+    "test:hosts-codex": "node scripts/test-suites.mjs hosts-codex",
     "test:smoke": "node tests/smoke.mjs",
     "test:regressions": "node tests/regressions.mjs",
     "validate:plugin": "node tools/validate-plugin.mjs"

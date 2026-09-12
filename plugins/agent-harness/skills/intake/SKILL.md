@@ -31,6 +31,6 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
    leaves the accepted Goal index unchanged. Without an idea inbox, refuse
    unsupported table writes without changing the file. Do not promote a
    candidate to accepted scope, create Spec/Goal/Run artifacts, or implement it.
-   An accepted ordinary change returns to Codex directly and may use bounded
+   An accepted ordinary change returns to the current host directly and may use bounded
    postflight sync for this already recorded Task; durable accepted work uses
    `harness:execute` before execution only when its tier boundary applies.

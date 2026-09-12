@@ -9,7 +9,7 @@ surface, and repository metadata aligned with shipped behavior.
 Use this description for the GitHub repository:
 
 ```text
-Adapter-driven control plane for Codex and coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync.
+Adapter-driven control plane for coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync.
 ```
 
 ## Topics
@@ -64,13 +64,13 @@ the Settings -> General -> Social preview control.
 
 ## Release Surface
 
-The release surface for `0.10.0` is currently release preparation:
+The release surface for `0.11.0` is currently release preparation:
 
 - `CHANGELOG.md`
-- `docs/releases/v0.10.0.md`
-- Planned Git tag `v0.10.0`
-- Planned GitHub Release `v0.10.0`
+- `docs/releases/v0.11.0.md`
+- Planned Git tag `v0.11.0`
+- Planned GitHub Release `v0.11.0`
 
 Do not claim a Git tag or GitHub Release exists unless `gh release view
-v0.10.0` succeeds. Until the release step is explicitly authorized and
+v0.11.0` succeeds. Until the release step is explicitly authorized and
 completed, local docs are release-prep evidence only.

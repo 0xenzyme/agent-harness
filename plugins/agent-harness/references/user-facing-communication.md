@@ -1,7 +1,7 @@
 # User-Facing Communication
 
 Use this contract for user-visible in-turn `commentary`. It controls Harness
-prompt and artifact behavior; it does not filter Codex transport events or
+prompt and artifact behavior; it does not filter host transport events or
 override host system/developer instructions.
 
 The Commentary Policy resolves its effective value from

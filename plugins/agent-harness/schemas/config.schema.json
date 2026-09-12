@@ -138,7 +138,7 @@
       }
     },
     "communication": {
-      "description": "User-facing in-turn communication policy. This shapes Harness prompts and artifacts; it does not suppress host-required commentary or filter Codex transport events.",
+      "description": "User-facing in-turn communication policy. This shapes Harness prompts and artifacts; it does not suppress host-required commentary or filter host transport events.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -270,7 +270,7 @@
           "uniqueItems": true
         },
         "requiredForCompletion": {
-          "description": "Gate labels required when completing a durable Harness Goal/Run; does not apply to Codex-direct or postflight-only work.",
+          "description": "Gate labels required when completing a durable Harness Goal/Run; does not apply to host-direct or postflight-only work.",
           "type": "array",
           "items": {
             "type": "string",

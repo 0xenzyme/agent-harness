@@ -1,15 +1,15 @@
 # Agent Harness Project Contract
 
-Agent Harness is the durable project control plane around Codex. It preserves
-configured artifact roots, repository Goals/Runs/DAGs, candidate-versus-
-accepted evidence, controller gates, authoritative completion state, and state
-sync.
-Codex runtime owns ordinary execution, delegation, concurrency, cancellation,
-and model/effort selection.
+Agent Harness is the durable project control plane around a coding-agent host.
+It preserves configured artifact roots, repository Goals/Runs/DAGs,
+candidate-versus-accepted evidence, controller gates, authoritative completion
+state, and state sync.
+The host owns ordinary execution, delegation, concurrency, cancellation,
+and model/effort selection when those capabilities are exposed.
 
-Runtime Goal owns the current long-running outcome; Codex Plan owns transient
-steps. Harness does not mirror every Plan transition. It records project facts
-at durable boundaries or in one bounded postflight closeout.
+Runtime outcome owns the current long-running result; transient plan owns
+short-lived steps. Harness does not mirror every plan transition. It records
+project facts at durable boundaries or in one bounded postflight closeout.
 
 ## Contracts
 
@@ -26,10 +26,10 @@ writes current fields, and conflicts fail.
 
 ## Routing
 
-The three execution paths are `codex-direct`, `codex-direct-postflight`, and
+The three execution paths are `host-direct`, `host-direct-postflight`, and
 `durable-harness`. Ordinary clear questions, reviews, changes, and builds use
-Codex directly without lifecycle artifacts. Simple completed work linked to
-state that already existed may use bounded postflight sync. Use durable
+the current host directly without lifecycle artifacts. Simple completed work
+linked to state that already existed may use bounded postflight sync. Use durable
 `harness:execute` for recovery, audit, persistent state sync, milestone
 acceptance, Run/DAG, multiple workers, or high-risk control.
 `harness:orient`, `harness:intake`, and `harness:init` cover read-only
@@ -42,11 +42,11 @@ non-editing. Durable execution roles remain `gate-only` and `implementer`. Worke
 candidate evidence; the accepted-state owner alone records accepted Goal,
 Task, Run, gate, and status state.
 
-Before thread creation, handoff, or worker delegation, durable execution
+Before session creation, handoff, or worker delegation, durable execution
 resolves work mode from current user direction, repository instructions,
 accepted Spec/Goal state, and config. An unresolved `ask` result or conflict
-pauses before the runtime call; thread authority alone does not authorize a
-worktree or an existing `startingState`.
+pauses before the host call; session authority alone does not authorize a
+worktree or host-specific starting checkout state.
 
 ## Completion And Run Evidence
 
@@ -69,7 +69,7 @@ declare `paths.ideaInbox` for unaccepted intake candidates),
 `gates.requiredForCompletion`, and
 `gates.blocking`.
 These configured gates apply to durable Goal/Run completion. They do not apply
-to `codex-direct` or postflight-only synchronization, and postflight cannot
+to `host-direct` or postflight-only synchronization, and postflight cannot
 bypass an existing enforced Run.
 Legacy `mode`, `paths.tasks`, `paths.mentalModel`, `workMode.defaultPolicy`, and
 `gates.enabled` remain readable at the migration boundary. `loops`, `lifecycle`,
