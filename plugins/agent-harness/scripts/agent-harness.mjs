@@ -3923,19 +3923,16 @@ Use \`${selectedWorkMode}\` until the goal has ${hasConfirmedSpec ? "a confirmed
 
 Use \`implementer\`.
 
-- \`gate-only\`: the current thread reviews candidate output and verification evidence, but does not directly edit implementation files.
-- \`implementer\`: the current thread may edit files inside the accepted scope.
-- Controller means outcome owner and accepted-state owner. Use \`gate-only\` only when review-only behavior is explicit; otherwise a controller may implement foreground work.
-- Ordinary clear change/build requests use Codex directly. This durable Goal uses only \`gate-only\` or \`implementer\` roles.
-- ${boundedDirectExecutionGuidance} Once this durable Goal exists, do not downgrade its checklist, gate, or state-sync obligations to the bounded tier.
+- \`gate-only\` reviews candidate evidence; \`implementer\` may edit accepted scope.
+- Controller owns the outcome and accepted state. Use \`gate-only\` only when review-only behavior is explicit.
+- Ordinary clear work uses Codex directly. This Goal keeps its durable evidence and state-sync obligations.
 
 ## Codex-Native Execution
 
 - ${codexNativeExecutionGuidance}
-- Runtime Goal owns the current outcome and continuation; Codex Plan owns transient steps.
-- Codex runtime owns Thread/subagent scheduling, concurrency, cancellation, and model/effort selection.
-- Repository Goal/Run owns cross-task recovery, durable dependencies, evidence, gates, and state sync.
-- If native Goal or Plan is unavailable, continue in the current thread and record degraded provenance only when this durable Run requires it. Never invent runtime identifiers.
+- Use native Goal, Plan, subagents, or steering only when the current host exposes them.
+- Without those capabilities, continue in this thread with a short checklist; never invent runtime identifiers or emulate runtime features with repository files.
+- Repository Goal/Run remains responsible for durable recovery, evidence, gates, and state sync.
 
 ## Conversation Route
 

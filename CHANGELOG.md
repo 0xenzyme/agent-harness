@@ -21,6 +21,19 @@
   Run recording with exclusive locks and atomic writes, and added a dedicated
   regression suite to `npm run test:all`.
 
+## 0.11.0 - 2026-09-16 (release preparation)
+
+- Added a model-neutral runtime capability profile with a conservative baseline
+  for older models and optional native Goal, Plan, subagent, and steering
+  capabilities when the current host exposes them.
+- Updated the Codex-native execution bridge and generated Goal guidance to use
+  a current-thread checklist fallback without inventing runtime identifiers or
+  repository artifacts for unavailable runtime features.
+- Reduced repeated execution-role and native-runtime instructions in generated
+  Goals while preserving durable evidence, gate, and state-sync contracts.
+- Kept the existing direct, postflight, and durable execution paths and all
+  prepared enforced Run protections compatible.
+
 ## 0.10.0 - 2026-07-21 (release preparation)
 
 - Made Task/Goal the authoritative accepted-state record with `active`,

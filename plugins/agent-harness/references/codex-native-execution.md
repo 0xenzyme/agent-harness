@@ -2,6 +2,10 @@
 
 Harness complements the Codex runtime; it does not replace it.
 
+Read [Runtime Capability Compatibility](runtime-capabilities.md) when deciding
+whether a native Goal, Plan, subagent, or steering feature is available. The
+baseline protocol must work when none of those capabilities are exposed.
+
 ## Three Execution Paths
 
 1. `codex-direct`: ordinary clear, local, reversible work uses Codex directly.
@@ -18,13 +22,12 @@ as postflight-only to bypass its DAG, checklist, gates, or evidence.
 
 ## Native Runtime Binding
 
-- Runtime Goal owns the current long-running outcome, success criteria, and
-  continuation. For accepted controller work such as "作为主控开发", "推进直到完成",
-  "不要停", or cross-turn continuation, establish or reuse a compatible
-  runtime Goal before execution. In Codex hosts that expose it, use the native
-  `create_goal` capability.
-- Codex Plan owns current steps and transient progress. Multi-step work should
-  use the native Plan capability, such as `update_plan` when exposed.
+- Runtime Goal owns the current long-running outcome when the host exposes a
+  compatible native Goal capability such as `create_goal`. Otherwise keep the
+  outcome in the repository Goal or current thread.
+- Codex Plan owns current steps when a plan capability such as `update_plan` is
+  exposed. Otherwise use a short checklist; do not mirror transient steps into
+  repository files.
 - Thread/subagent runtime owns execution, delegation, scheduling, concurrency,
   cancellation, and model/effort selection.
 - Repository Goal/Run owns cross-task recovery, durable dependencies and
@@ -32,7 +35,7 @@ as postflight-only to bypass its DAG, checklist, gates, or evidence.
 
 Do not duplicate a compatible active runtime Goal. Do not mirror every Plan
 transition into Git. If a native capability is unavailable, continue in the
-current thread; record degraded provenance only when an active durable Run
+current thread and record degraded provenance only when an active durable Run
 requires it. Never invent runtime ids or state the host does not expose.
 
 ## Controller Meaning

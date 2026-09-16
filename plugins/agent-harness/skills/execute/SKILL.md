@@ -11,10 +11,16 @@ control, or when already completed simple work needs bounded postflight sync to
 existing Harness state. A clear ordinary change/build request uses Codex
 directly without this skill.
 
+The current user instruction and project instructions take precedence over this
+skill. This skill supplies routing and safety boundaries; it does not add an
+approval requirement beyond the boundaries stated below.
+
 Read [Completion Evidence](references/completion-evidence.md) before accepting
 or recording durable completion.
 Read [Codex-Native Execution Bridge](../../references/codex-native-execution.md)
 before selecting direct, postflight, or durable execution.
+Read [Runtime Capability Compatibility](../../references/runtime-capabilities.md)
+only when native runtime features or model compatibility affect the route.
 Read [Artifact Lifecycle](../../references/artifact-lifecycle.md) before
 compacting task state or pruning Runs.
 Read [Worker Runner Contract](../../references/worker-runner-contract.md) before
@@ -48,8 +54,9 @@ delegating any DAG node or worker.
    explicitly says the controller only reviews evidence; otherwise use
    `implementer` for edits inside accepted scope.
 5. For accepted long-running controller work, establish or reuse a compatible
-   Codex runtime Goal. Use Codex Plan for multi-step work. Do not emulate
-   missing runtime capabilities with extra repository artifacts.
+   Codex runtime Goal and Plan when the host exposes them. Otherwise continue
+   with the current thread and a short checklist. Do not emulate missing
+   runtime capabilities with extra repository artifacts.
 6. Validate or create the repository Goal, then prepare a Run when durable
    execution is required:
 

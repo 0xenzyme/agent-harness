@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.10.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.11.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -72,6 +72,11 @@ Harness uses three execution paths:
 Long-running controller work should use Codex runtime Goal for the current
 outcome and Codex Plan for transient steps. Harness does not mirror every Plan
 transition; it records project facts at durable boundaries or postflight closeout.
+
+These runtime capabilities are optional and are detected from the current host,
+not inferred from a model name. Older models or smaller runtimes fall back to
+the current thread and a short checklist; the CLI still validates paths,
+evidence, gates, and accepted state.
 
 ## Why Agent Harness
 
@@ -271,7 +276,7 @@ See the [CLI reference](docs/cli.md) for its command surface.
 ## Evaluation
 
 The deterministic suite under [`evals/`](evals/) validates fixtures and trace
-contracts; it does not run a model or prove GPT-5.6 activation. The separately
+contracts; it does not run a model or prove GPT-6 Astra activation. The separately
 authorized `npm run test:eval:live` lane uses ephemeral read-only Codex
 execution and requires runtime-reported model evidence.
 
@@ -288,7 +293,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.10.0 Release Preparation Notes](docs/releases/v0.10.0.md)
+- [v0.11.0 Release Preparation Notes](docs/releases/v0.11.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while

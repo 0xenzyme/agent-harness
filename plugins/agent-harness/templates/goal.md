@@ -25,20 +25,17 @@ Use `ask` until cwd and ownership are confirmed.
 
 Use `implementer`.
 
-- `gate-only`: verify candidate evidence and own accepted state; do not edit.
-- `implementer`: edit only accepted owned scope and return candidate evidence.
-
-Controller means outcome owner and accepted-state owner. It is `gate-only`
-only when review-only behavior is explicitly required.
+- `gate-only` reviews candidate evidence; `implementer` edits accepted scope.
+- Controller owns the outcome and accepted state. Use `gate-only` only when
+  review-only behavior is explicitly required.
 
 ## Codex-Native Execution
 
-- Runtime Goal: establish or reuse for accepted long-running controller work.
-- Codex Plan: use for current multi-step execution; do not mirror every update.
-- Runtime execution: Codex owns Thread/subagent scheduling and model choice.
-- Repository Goal/Run: owns durable recovery, evidence, gates, and state sync.
-- Fallback: continue in the current thread if Goal/Plan capabilities are not
-  exposed; record degraded provenance only when this durable Run requires it.
+- Use native Goal, Plan, subagents, or steering only when the current host
+  exposes them.
+- Fallback: continue in this thread with a short checklist; never invent
+  runtime identifiers or emulate runtime features with repository files.
+- Repository Goal/Run owns durable recovery, evidence, gates, and state sync.
 
 ## Conversation Route
 

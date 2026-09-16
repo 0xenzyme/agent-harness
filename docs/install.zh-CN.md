@@ -30,6 +30,10 @@ codex plugin marketplace add /path/to/agent-harness
 high-risk durable control，或对执行前已有状态做显式 bounded postflight sync。
 长时间 controller 工作在 host 暴露能力时使用 Codex runtime Goal 和 Plan。
 
+Goal、Plan、subagent 和 steering 都是可选 runtime 能力，不根据模型名称推断。旧模型
+或不提供这些能力的 host 使用当前 thread 和短 checklist；Harness CLI 继续负责状态、
+路径、evidence 和 gate 校验。
+
 Harness 不安装 explorer/implementer agent，也不默认固定 model/effort。
 可选高级 `harness_reviewer.toml` 模板是 read-only，并继承 parent model 和
 reasoning effort。

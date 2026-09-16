@@ -8,6 +8,10 @@ description: Explicitly preview or record rough Agent Harness ideas, requirement
 Use intake for rough, unaccepted work. Preview is read-only; recording requires
 an explicit user request.
 
+The current user instruction and project instructions take precedence over this
+skill. This skill supplies routing and safety boundaries; it does not add an
+approval requirement beyond the boundaries stated below.
+
 Read [Capture And Promotion](references/capture-promotion.md) before recording
 or promoting an intake candidate.
 

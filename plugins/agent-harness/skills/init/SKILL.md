@@ -8,6 +8,10 @@ description: Explicitly audit, initialize, import, or repair Agent Harness setup
 Use this skill only for explicit Harness setup, import, migration, or repair.
 Doctor and activation preview remain read-only.
 
+The current user instruction and project instructions take precedence over this
+skill. This skill supplies routing and safety boundaries; it does not add an
+approval requirement beyond the boundaries stated below.
+
 Read [Setup And Migration Safety](references/setup-migration-safety.md) before
 any mutating init, import, or repair action.
 

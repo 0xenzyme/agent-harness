@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-[![Version](https://img.shields.io/badge/version-0.10.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.11.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
@@ -70,6 +70,10 @@ Harness 使用三条执行路径：
 长时间的 controller 工作优先使用 Codex runtime Goal 保存当前 outcome，用 Codex Plan
 维护即时步骤。Harness 不镜像每一次 Plan 更新，只在 durable boundary 或 postflight
 closeout 保存项目事实。
+
+这些 runtime 能力是可选的，不按模型名称猜测。旧模型或较小 runtime 没有 Goal、Plan、
+subagent 或 steering 时，回退到当前 thread 和短 checklist；CLI 仍负责验证路径、
+evidence、gate 和 accepted state。
 
 ## 为什么需要 Agent Harness
 
@@ -252,7 +256,7 @@ surface 见 [CLI reference](docs/cli.zh-CN.md)。
 ## 评估
 
 [`evals/`](evals/) 下的 deterministic suite 验证 fixtures 和 trace
-contracts；它不会运行模型，也不能证明 GPT-5.6 activation。单独授权的
+contracts；它不会运行模型，也不能证明 GPT-6 Astra activation。单独授权的
 `npm run test:eval:live` lane 使用 ephemeral read-only Codex execution，
 并要求 runtime-reported model evidence。
 
@@ -269,7 +273,7 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.10.0 Release Preparation Notes](docs/releases/v0.10.0.md)
+- [v0.11.0 Release Preparation Notes](docs/releases/v0.11.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的

@@ -37,10 +37,10 @@ presentation, protocol, smoke, and regression coverage should all run. Use
 An opt-in live check requires explicit model/cost authorization:
 
 ```bash
-AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-5.6 --reasoning-effort high --output evals/results/live-gpt-5.6.json
+AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-6-astra --reasoning-effort high --output evals/results/live-gpt-6-astra.json
 ```
 
-The live runner refuses a GPT-5.6 claim unless Codex reports the runtime model.
+The live runner refuses a GPT-6 Astra claim unless Codex reports the runtime model.
 
 ## Initialize Or Import Projects
 

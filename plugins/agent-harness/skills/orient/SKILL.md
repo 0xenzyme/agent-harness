@@ -7,6 +7,10 @@ description: Inspect durable Agent Harness state and recommend the next public e
 
 Use this skill to inspect durable project-control state without mutation.
 
+The current user instruction and project instructions take precedence over this
+skill. This skill supplies routing and safety boundaries; it does not add an
+approval requirement beyond the boundaries stated below.
+
 1. Read repo instructions and inspect config:
 
 ```bash

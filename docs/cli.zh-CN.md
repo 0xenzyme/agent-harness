@@ -41,10 +41,10 @@ presentation、protocol、smoke 和 regression coverage，运行
 显式批准模型/成本后才能运行 live check：
 
 ```bash
-AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-5.6 --reasoning-effort high --output evals/results/live-gpt-5.6.json
+AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-6-astra --reasoning-effort high --output evals/results/live-gpt-6-astra.json
 ```
 
-如果 Codex 没有报告 runtime model，live runner 会拒绝声称 GPT-5.6 evidence。
+如果 Codex 没有报告 runtime model，live runner 会拒绝声称 GPT-6 Astra evidence。
 
 ## 初始化或导入项目
 

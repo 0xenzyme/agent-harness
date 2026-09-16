@@ -109,11 +109,11 @@ not write forbidden harness files.
 Run an explicitly authorized live activation check with:
 
 ```bash
-AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-5.6 --reasoning-effort high --output evals/results/live-gpt-5.6.json
+AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-6-astra --reasoning-effort high --output evals/results/live-gpt-6-astra.json
 ```
 
 The live runner uses ephemeral, read-only `codex exec`, records expected versus
-selected skills, and refuses to claim GPT-5.6 evidence unless Codex JSONL
+selected skills, and refuses to claim GPT-6 Astra evidence unless Codex JSONL
 reports the actual runtime model. It may use paid model capacity and is never
 part of the default test suite.
 

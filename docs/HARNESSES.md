@@ -6,6 +6,11 @@ state, candidate-versus-accepted evidence, controller gates, and state sync.
 
 ## Codex-Native Integration
 
+Runtime Goal, Plan, subagent, and steering support are optional host
+capabilities. The compatibility baseline uses the current thread, a short
+checklist, and CLI validation, so older models do not need a separate skill.
+See [Runtime Capability Compatibility](../plugins/agent-harness/references/runtime-capabilities.md).
+
 | Execution path | Runtime behavior | Harness behavior |
 | --- | --- | --- |
 | `codex-direct` | Codex Goal/Plan/Thread as needed | No Harness execution or lifecycle creation. |

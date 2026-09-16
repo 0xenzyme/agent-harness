@@ -293,6 +293,7 @@ try {
   const generatedGoalPath = join(runProject, goalRel);
   const generatedGoal = readFileSync(generatedGoalPath, "utf8");
   assert(generatedGoal.includes("## Codex-Native Execution"), "generated durable Goals must bind to Codex-native execution");
+  assert(generatedGoal.includes("short checklist") && generatedGoal.includes("never invent runtime identifiers"), "generated durable Goals must provide a model-neutral runtime fallback");
   assert(generatedGoal.includes("These gates apply only to durable Goal/Run completion"), "generated Goal gates must declare durable-only scope");
   assert(generatedGoal.includes("## State Sync Notes") && generatedGoal.includes("Accepted-state records: `TBD`"), "generated Goals must include an explicit State Sync Notes contract");
   writeFileSync(generatedGoalPath, generatedGoal.replace(/## State Sync Notes[\s\S]*?## Spec Acceptance Checklist/, "## Spec Acceptance Checklist"));

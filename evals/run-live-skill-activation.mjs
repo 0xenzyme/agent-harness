@@ -112,7 +112,7 @@ try {
   if (outputPath) writeFileSync(resolve(repoRoot, outputPath), serialized);
   process.stdout.write(serialized);
 
-  if (!reportedModels.length) fail("Codex JSONL did not report the runtime model; refusing to claim GPT-5.6 activation evidence.");
+  if (!reportedModels.length) fail(`Codex JSONL did not report the runtime model; refusing to claim ${requestedModel} activation evidence.`);
   if (!reportedModels.every((model) => model === requestedModel)) {
     fail(`Runtime model mismatch: requested ${requestedModel}, reported ${reportedModels.join(", ")}.`);
   }
