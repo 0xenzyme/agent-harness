@@ -52,6 +52,24 @@ function commandLabel(command, args) {
   return [command, ...args].join(" ");
 }
 
+function normalizePath(path) {
+  const resolved = resolve(path);
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+function marketplaceRootFromList(stdout, name) {
+  for (const line of String(stdout || "").split(/\r?\n/)) {
+    const match = line.match(/^(\S+)\s+(\S.*)$/);
+    if (!match || match[1] === "MARKETPLACE") {
+      continue;
+    }
+    if (match[1] === name) {
+      return normalizePath(match[2].trim());
+    }
+  }
+  return null;
+}
+
 function run(command, args, options = {}) {
   const useShell = process.platform === "win32"
     && !command.includes("\\")
@@ -128,8 +146,10 @@ run(process.execPath, ["tests/smoke.mjs"], { env: smokeEnv });
 
 console.log(`Refreshing Codex plugin cache for ${pluginSelector}...`);
 run("codex", ["plugin", "--help"], { capture: true });
+const expectedRoot = normalizePath(repoRoot);
 const marketplaceBefore = run("codex", ["plugin", "marketplace", "list"], { capture: true });
-if (marketplaceBefore.stdout.includes(marketplace) && !marketplaceBefore.stdout.includes(repoRoot)) {
+const listedRoot = marketplaceRootFromList(marketplaceBefore.stdout, marketplace);
+if (listedRoot && listedRoot !== expectedRoot) {
   throw new Error(`Marketplace ${JSON.stringify(marketplace)} is already registered to a different root; refusing to deploy from ${repoRoot}.`);
 }
 const marketplaceAdd = run("codex", ["plugin", "marketplace", "add", repoRoot], {
@@ -143,7 +163,8 @@ if (marketplaceAdd.status !== 0) {
   }
 }
 const marketplaceList = run("codex", ["plugin", "marketplace", "list"], { capture: true });
-if (!marketplaceList.stdout.includes(marketplace) || !marketplaceList.stdout.includes(repoRoot)) {
+const confirmedRoot = marketplaceRootFromList(marketplaceList.stdout, marketplace);
+if (confirmedRoot !== expectedRoot) {
   throw new Error(`Marketplace registration did not confirm name ${JSON.stringify(marketplace)} at root ${repoRoot}.`);
 }
 

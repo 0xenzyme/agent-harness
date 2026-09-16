@@ -55,6 +55,7 @@ assert(marketplace.name === "agent-harness-local", "marketplace must have a uniq
 assert(marketplace.plugins.length === 1 && marketplace.plugins[0].name === manifest.name, "marketplace entry must match plugin manifest");
 const deployHelper = readFileSync(join(repoRoot, "tools/deploy-local-plugin.mjs"), "utf8");
 assert(deployHelper.includes("marketplaceManifest") && deployHelper.includes("different root; refusing"), "deploy helper must derive and strictly validate marketplace name/root metadata");
+assert(deployHelper.includes("marketplaceRootFromList"), "deploy helper must compare marketplace roots exactly, not as path substrings");
 
 const suites = readFileSync(join(repoRoot, "scripts/test-suites.mjs"), "utf8");
 assert(!suites.includes("npm.cmd"), "test:all must not spawn npm.cmd");
