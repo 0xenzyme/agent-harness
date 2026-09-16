@@ -514,6 +514,8 @@ function main() {
   const triggerCases = readJsonYaml(join(skillEvalRoot, "trigger_cases.yaml"));
   const taskCases = readJsonYaml(join(skillEvalRoot, "task_cases.yaml"));
   const behaviorTraceCases = readJsonYaml(join(skillEvalRoot, "behavior_trace_cases.yaml"));
+  const codexHostTracePath = join(evalRoot, "hosts/codex/behavior_trace_cases.yaml");
+  const codexHostTraceCases = existsSync(codexHostTracePath) ? readJsonYaml(codexHostTracePath) : [];
 
   const triggerCounts = validateTriggerCases(triggerCases);
   assert(Array.isArray(taskCases), "task cases must be an array");
@@ -528,6 +530,9 @@ function main() {
   for (const testCase of behaviorTraceCases) {
     runBehaviorTraceCase(testCase);
   }
+  for (const testCase of codexHostTraceCases) {
+    runBehaviorTraceCase(testCase);
+  }
 
   const totalTriggerCases = Object.values(triggerCounts).reduce((sum, count) => sum + count, 0);
   console.log("Agent Harness deterministic routing-classification checks passed.");
@@ -536,7 +541,7 @@ function main() {
     `Trigger cases: ${totalTriggerCases} (${triggerCounts.positive} positive, ${triggerCounts.negative} negative, ${triggerCounts.boundary} boundary).`
   );
   console.log(`Task cases: ${taskCases.length}; hard CLI checks: ${hardCommandCount}.`);
-  console.log(`Behavior trace cases: ${behaviorTraceCases.length}.`);
+  console.log(`Behavior trace cases: ${behaviorTraceCases.length}; Codex host traces: ${codexHostTraceCases.length}.`);
 }
 
 main();

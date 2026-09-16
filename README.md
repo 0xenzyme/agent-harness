@@ -6,9 +6,9 @@
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
-Agent Harness 是面向 Codex 和 coding agent 的 adapter-driven control plane。
+Agent Harness 是面向 coding agent 的 adapter-driven control plane。
 它把已经确认的方向转成边界明确的执行、可验证的 evidence 和同步后的项目状态，
-减少人持续充当 task router 的负担。
+减少人持续充当 task router 的负担。Codex 是第一个 host pack，不是唯一运行时。
 
 ```text
 Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
@@ -19,26 +19,18 @@ Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 
 ## 在项目中怎么用
 
-### 1. 注册本地 marketplace
-
-从本地 checkout 注册：
+### 1. 用 CLI 接入项目
 
 ```bash
-codex plugin marketplace add <path-to-agent-harness-repo>
+node plugins/agent-harness/scripts/agent-harness.mjs init --cwd <project> --contract adapter
+node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd <project>
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd <project>
 ```
 
-这一步只注册 checkout 中的 marketplace metadata，不安装 plugin。
+技能默认装到下游项目的 `.agents/skills/`。这是跨客户端发现约定，不是每个
+host 的唯一目录。完整步骤见[安装说明](docs/install.zh-CN.md)。
 
-### 2. 从 Plugins Directory 安装
-
-在 Codex 的 Plugins Directory 中选择 `harness`（marketplace
-`agent-harness-local`）并安装。GitHub/远程 marketplace 的注册方式见安装文档。
-
-Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
-`harness`。更新、activation 和项目接入细节见
-[Codex 安装说明](docs/install.zh-CN.md)。
-
-### 3. 直接让 Codex 使用 Harness
+### 2. 让当前 host 使用 Harness
 
 大多数用户不需要指定 skill，也不需要直接运行 CLI：
 
@@ -46,8 +38,19 @@ Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
 用 harness 看当前项目下一步。
 用 harness 记录这个想法，先不要实现：增加一个 import flow。
 用 harness 执行 harness/goals/YYYY-MM-DD-task-title.md，验证并同步状态。
-使用当前 thread 作为 controller，把已接受的 spec 推进到完成；当前目标用 Codex Goal，步骤用 Codex Plan。
+使用当前会话作为 controller，把已接受的 spec 推进到完成；当前结果用 runtime outcome，步骤用 transient plan。
 ```
+
+### 3. Codex marketplace（可选）
+
+Codex 用户仍可从 Plugins Directory 安装 `harness`（marketplace
+`agent-harness-local`）。先注册本地 marketplace：
+
+```bash
+codex plugin marketplace add <path-to-agent-harness-repo>
+```
+
+这一步只注册 checkout 中的 marketplace metadata，不安装 plugin。
 
 ### 4. 需要时选择明确入口
 
@@ -56,19 +59,19 @@ Codex 会读取 `.agents/plugins/marketplace.json`，并把 plugin 暴露为
 | 接入 Harness、导入已有 Goal index、运行 doctor，或预览 activation。 | `harness:init` |
 | 只读检查状态、blocker、stale artifact 或下一条 route。 | `harness:orient` |
 | 收集或 triage 想法、需求、bug 或 inbox note；adapter 可把未确认候选写入 `paths.ideaInbox`。 | `harness:intake` |
-| 控制 durable work，或在 Codex 完成简单任务后同步已有 Harness 状态。 | `harness:execute` |
+| 控制 durable work，或在当前 host 完成简单任务后同步已有 Harness 状态。 | `harness:execute` |
 
-普通、明确的 change/build 请求由 Codex 直接执行。澄清 scope、提问和创建 repository Goal
+普通、明确的 change/build 请求由当前 host 直接执行。澄清 scope、提问和创建 repository Goal
 是动作，不是额外 route；proposal competition 仅是显式选择的高级只读技术。
 
 Harness 使用三条执行路径：
 
-- `codex-direct`：普通任务完全交给 Codex，不创建 Harness lifecycle。
-- `codex-direct-postflight`：Codex 完成简单任务后，只验证并同步执行前已经存在的 Task、Goal 或 status。
+- `host-direct`：普通任务完全交给当前 host，不创建 Harness lifecycle。
+- `host-direct-postflight`：host 完成简单任务后，只验证并同步执行前已经存在的 Task、Goal 或 status。
 - `durable-harness`：跨 task 恢复、audit、milestone/DAG、multi-worker、persistent state sync 或 high-risk 工作使用 repository Goal/Run。
 
-长时间的 controller 工作优先使用 Codex runtime Goal 保存当前 outcome，用 Codex Plan
-维护即时步骤。Harness 不镜像每一次 Plan 更新，只在 durable boundary 或 postflight
+长时间的 controller 工作优先使用 runtime outcome 保存当前结果，用 transient plan
+维护即时步骤。Harness 不镜像每一次 plan 更新，只在 durable boundary 或 postflight
 closeout 保存项目事实。
 
 这些 runtime 能力是可选的，不按模型名称猜测。旧模型或较小 runtime 没有 Goal、Plan、
@@ -134,7 +137,7 @@ source-spec item，不能在 implementation 尚未完成时静默关闭父级 `M
 
 领域不变量把 durable control 保持在明确边界内：配置路径 containment、
 Run/DAG ownership、candidate/accepted evidence、authoritative completion 和
-state sync。普通 clear change/build 由 Codex 直接执行；已有简单状态只在完成后做
+state sync。普通 clear change/build 由当前 host 直接执行；已有简单状态只在完成后做
 postflight sync；只有 recovery、audit、milestone/DAG、multi-worker、persistent
 state sync 或 high-risk 工作进入 `harness-rule:durable-tier-boundary`。详见
 [Capability Matrix](docs/HARNESSES.md)。
@@ -196,7 +199,7 @@ Project 可以减少重复的过程叙述，同时保留真正重要的信号：
 ```
 
 支持 `minimal`、`balanced` 和 `audit`；未配置时默认使用 `minimal`。该
-policy 只约束 Harness skill 与生成的 Run guidance，不会过滤 Codex message，
+policy 只约束 Harness skill 与生成的 Run guidance，不会过滤 host message，
 也不会覆盖 host 强制要求的 tool、safety、approval 或 heartbeat 更新。详见
 [Project Contract](docs/project-contract.md#commentary-policy)。
 
@@ -217,7 +220,7 @@ evidence，直到 control lane 完成验证。Completion 需要可检查的 evid
 - Task/Goal 是 accepted-state authority；Run 保存 evidence，status 保持为
   bounded projection。
 - `harness-rule:durable-tier-boundary` 让普通 clear change/build 直接使用
-  Codex，已有简单状态只做 postflight sync；Harness ceremony 只用于需要持久化控制的工作。
+  当前 host，已有简单状态只做 postflight sync；Harness ceremony 只用于需要持久化控制的工作。
 - Status file 是 bounded current-state snapshot，不是 append-only history。
 - 执行前要把更新的 conversation-confirmed direction 与 stale artifact 对齐。
 - Conditional plugin bootstrap 尚未启用，因此安装 Harness 不会向无关项目
@@ -281,8 +284,9 @@ fixed/adapter contracts 和 project-neutral core。
 
 ## Roadmap
 
-下一步方向是让其他 coding agent 也能实现同一套 agent-neutral adapter
-contract，而不削弱 Harness 边界。只有当新的 execution surface 能声明
-isolation、返回 inspectable result packet、报告 verification 和 state-sync
-evidence，并遵守 accepted scope 和 external-action boundaries 时，才应该加入。能力不足时，Harness 应
+协议、CLI 和四技能已经按 host capability 描述。Codex 是第一个 host pack；
+Cursor 的 capability 与 result-packet 对照见
+`plugins/agent-harness/hosts/cursor/`。在第二个 host 走完
+`host-direct` / `host-direct-postflight` / `durable-harness` 的实证之前，
+不要把本仓库表述成“已完整支持所有 coding agent”。能力不足时，Harness 应
 fallback 到 bounded foreground execution，而不是假装具备并行或隔离能力。

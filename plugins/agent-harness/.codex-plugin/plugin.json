@@ -1,7 +1,7 @@
 {
   "name": "harness",
   "version": "0.11.0",
-  "description": "Reusable Codex harness for workflow-oriented project task control and adapter-driven execution. / 可复用 Codex 项目任务控制与 adapter 执行工作流。",
+  "description": "Reusable coding-agent harness for workflow-oriented project task control and adapter-driven execution. / 可复用项目任务控制与 adapter 执行工作流。",
   "author": {
     "name": "Agent Harness Maintainers"
   },
@@ -9,19 +9,19 @@
   "interface": {
     "displayName": "Agent Harness",
     "shortDescription": "Orient, intake, initialize, and execute adapter-driven project work. / 定位、收集、初始化并执行 adapter 驱动的项目工作。",
-    "longDescription": "Agent Harness uses one model-neutral baseline with optional host runtime Goal, Plan, Thread, and subagent capabilities, plus durable fixed/adapter project control: authoritative Task/Goal state, repository Runs/DAGs, postflight state sync, gates, and evidence. zh-CN fallback: Agent Harness 使用兼容不同模型的基础协议，并在 host 暴露能力时使用 runtime Goal、Plan、Thread 和 subagent，连接到持久化 fixed / adapter 项目控制，包括权威 Task/Goal 状态、repository Run/DAG、postflight 状态同步、gate 和 evidence。",
+    "longDescription": "Agent Harness bridges host runtime outcome, transient plan, session, and worker execution with durable fixed/adapter project control: authoritative Task/Goal state, repository Runs/DAGs, postflight state sync, gates, and evidence. zh-CN fallback: Agent Harness 把 host 的 runtime outcome、transient plan、会话和 worker 执行连接到持久化 fixed / adapter 项目控制，包括权威 Task/Goal 状态、repository Run/DAG、postflight 状态同步、gate 和 evidence。",
     "developerName": "Agent Harness Maintainers",
     "category": "Productivity",
     "capabilities": [
       "Project task control",
-      "Model-neutral runtime capability bridge",
+      "Host runtime outcome and plan bridge",
       "Postflight state sync",
       "Goal handoff",
       "Run preparation",
       "Loop engineering"
     ],
     "defaultPrompt": [
-      "Use harness:orient to inspect durable state and choose codex-direct, codex-direct-postflight, or durable-harness. Use native runtime Goal and Plan only when the current host exposes them; otherwise use the current thread and a short checklist."
+      "Use harness:orient to inspect durable state and choose host-direct, host-direct-postflight, or durable-harness. Prefer native runtime outcome and transient plan when the host exposes them."
     ]
   }
 }

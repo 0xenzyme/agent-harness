@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.11.0 - 2026-09-12
+
+- Split host-neutral protocol from the Codex pack: execution paths are now
+  `host-direct` and `host-direct-postflight`, generated Goals write
+  `Host Execution`, and Codex tool names live in `hosts/codex/`.
+- Added `skills install` so downstream projects discover the four public
+  skills under `.agents/skills/`; CLI-first install is the documented default.
+- Added a Cursor host capability and result-packet map without claiming full
+  multi-agent support.
+
 - Added explicit default-disabled managed Run checkpoints with independent
   `checkpoint.json`, manifest/status binding, lock-protected expected-revision
   mutation, contract-drift replacement, reconciliation-only recovery,

@@ -1,6 +1,6 @@
 # Using Agent Harness in a Project
 
-This page answers one question: after Agent Harness is installed or adopted in a project, what can you type into Codex to move work forward?
+This page answers one question: after Agent Harness is installed or adopted in a project, what can you type into the current coding-agent host to move work forward?
 
 This is not an installation guide or the full protocol. For setup, CLI, goal/run/evidence boundaries, see [`install.md`](install.md) and [`cli.md`](cli.md). 中文版见 [`usage.zh-CN.md`](usage.zh-CN.md)。
 
@@ -130,7 +130,7 @@ Use the current thread as controller and carry the spec through to completion.
 
 Controller defaults to outcome owner and accepted-state owner and may implement
 foreground work. For long-running work, Harness should establish or reuse a
-Codex runtime Goal and maintain current steps in Codex Plan.
+runtime outcome and maintain current steps in the host transient plan.
 
 A more natural variant:
 

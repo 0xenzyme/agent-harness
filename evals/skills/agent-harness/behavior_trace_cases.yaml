@@ -87,22 +87,19 @@
   {
     "id": "ah_behavior_controller_uses_runtime_goal_and_plan",
     "skill": "harness:execute",
-    "scenario": "Accepted long-running controller development binds the outcome to runtime Goal and transient work to Codex Plan.",
+    "scenario": "Accepted long-running controller development binds the outcome to runtime outcome and transient work to the host plan capability.",
     "user_request": "作为主控开发这个已接受的多阶段目标，推进直到完成。",
     "trace": [
       { "type": "read", "target": "harness/goals/accepted-goal.md" },
-      { "type": "tool_call", "target": "create_goal", "fields": { "objective": "accepted durable outcome", "success_criteria": true } },
-      { "type": "tool_call", "target": "update_plan", "fields": { "multi_step": true, "transient": true } },
-      { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_goal_active": true, "plan_active": true } }
+      { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_outcome_active": true, "transient_plan_active": true, "capability": "runtimeOutcome" } }
     ],
     "assertions": {
       "required_ordered_reads": ["harness/goals/accepted-goal.md"],
       "required_ordered_events": [
-        { "type": "tool_call", "target": "create_goal" },
-        { "type": "tool_call", "target": "update_plan" }
+        { "type": "status_snapshot", "target": "runtime bridge" }
       ],
       "required_event_fields": [
-        { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_goal_active": true, "plan_active": true } }
+        { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_outcome_active": true, "transient_plan_active": true } }
       ],
       "forbidden_writes": [],
       "forbidden_mutations": ["model-pin", "runtime-scheduler-policy"]
@@ -118,17 +115,17 @@
       { "type": "verification", "target": "fresh postflight verification", "fields": { "passed": true } },
       { "type": "write", "target": "harness/tasks.md", "fields": { "existing_state_only": true } },
       { "type": "write", "target": "harness/status.md", "fields": { "bounded": true, "existing_state_only": true } },
-      { "type": "closeout", "target": "codex-direct-postflight", "fields": { "durable_gates_applied": false, "lifecycle_created": false } }
+      { "type": "closeout", "target": "host-direct-postflight", "fields": { "durable_gates_applied": false, "lifecycle_created": false } }
     ],
     "assertions": {
       "required_ordered_reads": ["harness/tasks.md"],
       "required_ordered_events": [
         { "type": "verification", "target": "fresh postflight verification" },
         { "type": "write", "target": "harness/tasks.md" },
-        { "type": "closeout", "target": "codex-direct-postflight" }
+        { "type": "closeout", "target": "host-direct-postflight" }
       ],
       "required_event_fields": [
-        { "type": "closeout", "target": "codex-direct-postflight", "fields": { "durable_gates_applied": false, "lifecycle_created": false } }
+        { "type": "closeout", "target": "host-direct-postflight", "fields": { "durable_gates_applied": false, "lifecycle_created": false } }
       ],
       "forbidden_writes": ["harness/goals/**", ".harness/runs/**"],
       "forbidden_mutations": ["goal-create", "run-prepare", "gate-create"]
@@ -137,18 +134,18 @@
   {
     "id": "ah_behavior_direct_work_creates_no_harness_state",
     "skill": "harness:orient",
-    "scenario": "Ordinary clear untracked work is routed to Codex without Harness execution or state creation.",
+    "scenario": "Ordinary clear untracked work is routed to the current host without Harness execution or state creation.",
     "user_request": "修正这个明确的一行拼写错误并跑测试。",
     "trace": [
-      { "type": "closeout", "target": "codex-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }
+      { "type": "closeout", "target": "host-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }
     ],
     "assertions": {
       "required_ordered_reads": [],
       "required_ordered_events": [
-        { "type": "closeout", "target": "codex-direct" }
+        { "type": "closeout", "target": "host-direct" }
       ],
       "required_event_fields": [
-        { "type": "closeout", "target": "codex-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }
+        { "type": "closeout", "target": "host-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }
       ],
       "forbidden_writes": ["harness/**", ".harness/**"],
       "forbidden_mutations": ["goal-create", "run-prepare", "accepted-state-write"]
@@ -157,21 +154,19 @@
   {
     "id": "ah_behavior_runtime_goal_fallback_is_bounded",
     "skill": "harness:execute",
-    "scenario": "A durable Run continues in the current thread when native runtime Goal is unavailable without inventing provenance.",
-    "user_request": "继续这个 durable Run；如果原生 Goal 不可用就用当前 thread 完成。",
+    "scenario": "A durable Run continues in the current session when native runtime outcome is unavailable without inventing provenance.",
+    "user_request": "继续这个 durable Run；如果原生 runtime outcome 不可用就用当前会话完成。",
     "trace": [
       { "type": "read", "target": ".harness/runs/example/status.json" },
-      { "type": "control_notice", "target": "runtime Goal unavailable", "fields": { "fallback": "current-thread", "invented_runtime_id": false, "durable_run_preserved": true } },
-      { "type": "tool_call", "target": "update_plan", "fields": { "multi_step": true, "transient": true } }
+      { "type": "control_notice", "target": "runtime outcome unavailable", "fields": { "fallback": "current-session", "invented_runtime_id": false, "durable_run_preserved": true } }
     ],
     "assertions": {
       "required_ordered_reads": [".harness/runs/example/status.json"],
       "required_ordered_events": [
-        { "type": "control_notice", "target": "runtime Goal unavailable" },
-        { "type": "tool_call", "target": "update_plan" }
+        { "type": "control_notice", "target": "runtime outcome unavailable" }
       ],
       "required_event_fields": [
-        { "type": "control_notice", "target": "runtime Goal unavailable", "fields": { "fallback": "current-thread", "invented_runtime_id": false, "durable_run_preserved": true } }
+        { "type": "control_notice", "target": "runtime outcome unavailable", "fields": { "fallback": "current-session", "invented_runtime_id": false, "durable_run_preserved": true } }
       ],
       "forbidden_writes": [],
       "forbidden_mutations": ["fake-runtime-goal-id", "downgrade-to-postflight"]

@@ -9,7 +9,7 @@ surface, and repository metadata aligned with shipped behavior.
 Use this description for the GitHub repository:
 
 ```text
-Adapter-driven control plane for Codex and coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync.
+Adapter-driven control plane for coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync.
 ```
 
 ## Topics

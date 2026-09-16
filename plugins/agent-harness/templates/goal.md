@@ -25,27 +25,32 @@ Use `ask` until cwd and ownership are confirmed.
 
 Use `implementer`.
 
-- `gate-only` reviews candidate evidence; `implementer` edits accepted scope.
-- Controller owns the outcome and accepted state. Use `gate-only` only when
-  review-only behavior is explicitly required.
+- `gate-only`: verify candidate evidence and own accepted state; do not edit.
+- `implementer`: edit only accepted owned scope and return candidate evidence.
 
-## Codex-Native Execution
+Controller means outcome owner and accepted-state owner. It is `gate-only`
+only when review-only behavior is explicitly required.
 
-- Use native Goal, Plan, subagents, or steering only when the current host
-  exposes them.
-- Fallback: continue in this thread with a short checklist; never invent
-  runtime identifiers or emulate runtime features with repository files.
-- Repository Goal/Run owns durable recovery, evidence, gates, and state sync.
+## Host Execution
+
+- Runtime outcome: establish or reuse for accepted long-running controller work
+  when the host exposes `runtimeOutcome`.
+- Transient plan: use for current multi-step execution; do not mirror every update.
+- Runtime execution: the host owns scheduling and model choice when those
+  capabilities are exposed.
+- Repository Goal/Run: owns durable recovery, evidence, gates, and state sync.
+- Fallback: continue in the current session if outcome or plan capabilities are
+  not exposed; record degraded provenance only when this durable Run requires it.
 
 ## Conversation Route
 
-Use `current-thread`.
+Use `current-session`.
 
 ## Execution Context Lock
 
-- Conversation lane: `current-thread`
-- Controller thread: `current-thread`
-- Accepted-state owner: `current-thread`
+- Conversation lane: `current-session`
+- Controller thread: `current-session`
+- Accepted-state owner: `current-session`
 - Execution cwd: `TBD`
 - Execution branch: `TBD`
 - Execution slot: `N/A`
@@ -62,7 +67,7 @@ Use `current-thread`.
 - `harness-rule:project-neutral-core`
 - `harness-rule:durable-tier-boundary`
 
-The Codex runtime owns scheduling, delegation, concurrency, cancellation, and
+The host owns scheduling, delegation, concurrency, cancellation, and
 model selection. Harness records ready nodes, dependencies, ownership,
 verification, candidate evidence, gates, and state sync.
 

@@ -92,7 +92,8 @@ until the project needs a full YAML parser.
 - `assertions.required_gate_only_acceptance_evidence`: gate-only evidence that
   must exist before an accepted-state transition.
 - `assertions.required_ordered_events`: required event type/target sequence,
-  including `create_goal` before `update_plan` for long-running controller work.
+  including host-capability events for long-running controller work. Codex-only
+  `create_goal` / `update_plan` traces live in `evals/hosts/codex/`.
 - `assertions.required_event_fields`: exact fields required on a matching trace
   event, such as postflight lifecycle/gate boundaries or native fallback facts.
 
@@ -109,13 +110,13 @@ not write forbidden harness files.
 Run an explicitly authorized live activation check with:
 
 ```bash
-AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-6-astra --reasoning-effort high --output evals/results/live-gpt-6-astra.json
+AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-5.6 --reasoning-effort high --output evals/results/live-gpt-5.6.json
 ```
 
-The live runner uses ephemeral, read-only `codex exec`, records expected versus
-selected skills, and refuses to claim GPT-6 Astra evidence unless Codex JSONL
-reports the actual runtime model. It may use paid model capacity and is never
-part of the default test suite.
+The live runner is a Codex host probe. It uses ephemeral, read-only `codex exec`,
+records expected versus selected skills, and refuses to claim GPT-5.6 evidence
+unless Codex JSONL reports the actual runtime model. It may use paid model
+capacity and is never part of the default test suite.
 
 ## Initial Automated Checks
 

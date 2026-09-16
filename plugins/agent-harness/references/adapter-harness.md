@@ -4,7 +4,7 @@ An adapter declares project-specific artifact roots, preflight, state-sync, and
 completion gates. Plugin core defines the durable protocol and remains
 project-neutral.
 
-Completion gates are durable Goal/Run gates. Ordinary Codex-direct work and
+Completion gates are durable Goal/Run gates. Ordinary host-direct work and
 bounded postflight-only updates do not inherit them. A prepared enforced Run
 still requires its DAG, checklist, gate, and evidence contract.
 
@@ -24,16 +24,17 @@ conflict.
 
 Durable Runs record DAG ready state, ownership, verification,
 candidate evidence, and accepted gate/state-sync results. Scheduling and model
-selection belong to the Codex runtime.
+selection belong to the host.
 
 An adapter may default selected new Goals to enforced checkpoints, but the Goal
 must persist the resolved policy. Core validates the checkpoint protocol and
 finite adapter dimension domains; adapters own the dimension names/values and
 must not store credentials, payloads, or downstream product rules in core.
 
-Runtime Goal owns the active long-running outcome and Codex Plan owns transient
-steps. Postflight sync updates only existing adapter-declared state and creates
-no lifecycle solely for bookkeeping.
+Runtime outcome owns the active long-running outcome and transient plan owns
+short-lived steps when those capabilities are exposed. Postflight sync updates
+only existing adapter-declared state and creates no lifecycle solely for
+bookkeeping.
 
 Artifact policy distinguishes bounded current state from retained history.
 Status is replaced, active Goal indexes retain only a configured recent-Done

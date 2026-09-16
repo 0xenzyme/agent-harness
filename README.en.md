@@ -6,9 +6,10 @@
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
-Agent Harness is an adapter-driven control plane for Codex and coding-agent
-work. It turns accepted direction into scoped execution, verifiable evidence,
+Agent Harness is an adapter-driven control plane for coding-agent work.
+It turns accepted direction into scoped execution, verifiable evidence,
 and synchronized project state—without making the human route every task.
+Codex is the first host pack, not the only runtime.
 
 ```text
 Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
@@ -20,26 +21,19 @@ Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 
 ## Use With A Coding Agent
 
-### 1. Register the local marketplace
-
-From a local checkout:
+### 1. Adopt the project with the CLI
 
 ```bash
-codex plugin marketplace add <path-to-agent-harness-repo>
+node plugins/agent-harness/scripts/agent-harness.mjs init --cwd <project> --contract adapter
+node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd <project>
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd <project>
 ```
 
-This registers marketplace metadata from the checkout; it does not install the plugin.
+Skills install into the downstream project's `.agents/skills/` directory. That
+is the cross-client discovery convention, not every host's only path. See
+[Install](docs/install.md).
 
-### 2. Install from the Plugins Directory
-
-In Codex, open the Plugins Directory and install `harness` from
-`agent-harness-local`. See the install guide for remote marketplace registration.
-
-Codex reads `.agents/plugins/marketplace.json` and exposes the plugin as
-`harness`. See [Install In Codex](docs/install.md) for updates, activation, and
-project-adoption details.
-
-### 3. Ask Codex to use Harness
+### 2. Ask the current host to use Harness
 
 Most users do not need to name a skill or run the CLI directly:
 
@@ -47,8 +41,19 @@ Most users do not need to name a skill or run the CLI directly:
 Use harness to check the next step in this project.
 Use harness to record this idea, but do not implement it yet: Add an import flow.
 Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
-Use the current thread as controller and carry the accepted spec through to completion; keep the outcome in Codex Goal and current steps in Codex Plan.
+Use the current session as controller and carry the accepted spec through to completion; keep the outcome in the runtime outcome and current steps in the transient plan.
 ```
+
+### 3. Optional Codex marketplace
+
+Codex users can still install `harness` from the Plugins Directory
+(`agent-harness-local`). Register the local marketplace first:
+
+```bash
+codex plugin marketplace add <path-to-agent-harness-repo>
+```
+
+This registers marketplace metadata from the checkout; it does not install the plugin.
 
 ### 4. Choose an explicit entry when needed
 
@@ -57,20 +62,20 @@ Use the current thread as controller and carry the accepted spec through to comp
 | Adopt Harness, import an existing Goal index, run doctor, or preview activation. | `harness:init` |
 | Inspect status, blockers, stale artifacts, or the next route without mutation. | `harness:orient` |
 | Capture or triage an idea, requirement, bug, or inbox note; adapters can record unaccepted candidates through `paths.ideaInbox`. | `harness:intake` |
-| Control durable work, or sync existing Harness state after Codex completes simple work. | `harness:execute` |
+| Control durable work, or sync existing Harness state after the current host completes simple work. | `harness:execute` |
 
-Ordinary clear change/build requests use Codex directly. Clarifying scope,
+Ordinary clear change/build requests use the current host directly. Clarifying scope,
 asking a question, and creating a repository Goal are actions rather than extra routes;
 proposal competition is an explicitly chosen advanced read-only technique.
 
 Harness uses three execution paths:
 
-- `codex-direct`: ordinary work stays entirely in Codex and creates no Harness lifecycle.
-- `codex-direct-postflight`: after Codex completes simple work, verify and update only Task, Goal, or status state that already existed before execution.
+- `host-direct`: ordinary work stays entirely in the current host and creates no Harness lifecycle.
+- `host-direct-postflight`: after the host completes simple work, verify and update only Task, Goal, or status state that already existed before execution.
 - `durable-harness`: cross-task recovery, audit, milestone/DAG, multi-worker, persistent state sync, or high-risk work uses a repository Goal/Run.
 
-Long-running controller work should use Codex runtime Goal for the current
-outcome and Codex Plan for transient steps. Harness does not mirror every Plan
+Long-running controller work should use a runtime outcome for the current
+result and a transient plan for short-lived steps. Harness does not mirror every plan
 transition; it records project facts at durable boundaries or postflight closeout.
 
 These runtime capabilities are optional and are detected from the current host,
@@ -87,7 +92,7 @@ owns the repeatable execution mechanics inside the project adapter:
 - discover roadmap, milestone, spec, Goal, Task, and Run state;
 - turn a request such as `complete M5` into explicit completion items;
 - prepare Goals and execution DAGs instead of stopping at the next small spec;
-- record worker ownership, DAG state, and candidate evidence while the Codex runtime schedules work;
+- record worker ownership, DAG state, and candidate evidence while the host schedules work;
 - bind prepared Runs to a Goal/Spec/DAG manifest and protect state with atomic concurrent recording;
 - give explicitly `enforced` managed Runs an independent revision-safe
   `checkpoint.json`; contract drift and uncertain external state fail closed,
@@ -229,7 +234,7 @@ Key boundaries:
   unresolved `ask` result or authority conflict pauses for the user; thread
   authority alone does not authorize a worktree.
 - Parallel writers require separate locked worktrees/cwds or recorded proof of
-  non-overlapping ownership; the Codex runtime owns scheduling and concurrency.
+  non-overlapping ownership; the host owns scheduling and concurrency.
 - Task/Goal is the accepted-state authority; Run retains evidence and status
   remains a bounded projection.
 - `harness-rule:durable-tier-boundary` sends ordinary clear change/build to
@@ -287,7 +292,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 ## Documentation
 
 - [Usage](docs/usage.md)
-- [Install In Codex](docs/install.md)
+- [Install](docs/install.md)
 - [CLI Reference](docs/cli.md)
 - [Capability Matrix](docs/HARNESSES.md)
 - [Project Contract](docs/project-contract.md)
@@ -301,9 +306,10 @@ keeping its own fixed/adapter contracts and project-neutral core.
 
 ## Roadmap
 
-The next direction is an agent-neutral adapter layer that other coding agents
-can implement without weakening Harness contracts. New execution surfaces
-should be added only when they can declare isolation, return inspectable result
-packets, report verification and state-sync evidence, and respect accepted
-scope and external-action boundaries. When those capabilities are missing, Harness should fall back to
+The protocol, CLI, and four skills now speak in host capabilities. Codex is
+the first host pack; the Cursor capability and result-packet map lives in
+`plugins/agent-harness/hosts/cursor/`. Do not describe this repository as
+fully multi-agent until a second host has walked `host-direct`,
+`host-direct-postflight`, and `durable-harness` with inspectable evidence.
+When those capabilities are missing, Harness should fall back to
 bounded foreground execution rather than pretend parallelism or isolation.

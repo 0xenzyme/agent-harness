@@ -1,6 +1,6 @@
 # Control Loop / Handoff Model
 
-This model answers how Codex enters, executes, verifies, updates state, stops,
+This model answers how the current host enters, executes, verifies, updates state, stops,
 and hands work off.
 
 ## Loop

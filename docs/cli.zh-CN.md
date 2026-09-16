@@ -1,6 +1,6 @@
 # CLI Reference
 
-主要用户路径是让 Codex 或其他 coding agent 使用 `harness:*` workflow
+主要用户路径是让当前 coding agent 使用 `harness:*` workflow
 skills。CLI 是 agents、operators、diagnostics、scripted adoption 和 plugin
 maintainers 使用的确定性工具。
 
@@ -52,7 +52,12 @@ AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-6-astra --reason
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
+node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd /path/to/project
 ```
+
+`skills install` 把四个公开 skill 复制到 `.agents/skills/`，并把协议 references
+复制到 `.agents/references/`。用 `--dry-run --json` 预览。这是默认技能发现
+路径；Codex marketplace 安装是可选项。
 
 固定契约也支持同样的 `init` 选项：`--task-index` 设置任务文件，
 `--idea-inbox` 创建可选的 Markdown inbox；路径会写入 `.harness/config.json`
@@ -267,7 +272,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/
 准备好的 run packet 会包含 `manifest.json`、`dag.json`、`dag.md` 和
 `agents/<node>/prompt.md`。`manifest.json` 绑定准备时的 Goal/Spec 执行合同与
 DAG 形状；准备后修改这些输入会被拒绝，必须重新准备 Run。Harness 记录 ready nodes、ownership、verification
-和 candidate evidence；Codex runtime 负责 worker selection、delegation、
+和 candidate evidence；host 负责 worker selection、delegation、
 concurrency 与 cancellation。`run prepare` 不启动 worker，也不固定 model/
 effort。Task/Goal 保持为 accepted-state authority；Run packet 保存 execution 和
 verification evidence，status 保持为 bounded projection。
@@ -362,12 +367,13 @@ active `running` 或 `blocked` node 会阻止 completion；cancellation 或 supe
 controller signal，不是 worker runtime 已停止的证明。
 
 配置的 `gates.requiredForCompletion` 和 `gates.blocking` 只约束 durable
-Goal/Run completion。普通 Codex-direct 工作和轻量 postflight-only 状态更新不需要
+Goal/Run completion。普通 host-direct 工作和轻量 postflight-only 状态更新不需要
 因此创建 Run。一旦 Run 已 prepared，不能用 postflight 表述绕过 DAG、gate 或
 evidence。
 
-CLI 记录 durable state，不实现 Codex runtime Goal 或 Plan。Skill 在 host 暴露
-原生能力时，把长时间 controller 工作绑定到 runtime Goal 和 Plan。
+CLI 记录 durable state，不实现 host runtime outcome 或 transient plan。Skill
+在 host 暴露原生能力时，把长时间 controller 工作绑定到 runtime outcome 和
+transient plan。
 
 旧 Goal 和 Run 中的 delivery 字段在 `0.10.0` compatibility boundary 内仍可
 读取，但 current validation、completion、maintenance 和 status output 会忽略

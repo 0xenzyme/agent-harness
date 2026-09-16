@@ -33,19 +33,23 @@ function protocol() {
     includes("docs/HARNESSES.md", invariant);
   }
   excludes(execute, "`mixed`");
-  includes("plugins/agent-harness/references/route-entry-mapping.md", "Ordinary clear change/build requests use Codex directly");
+  includes("plugins/agent-harness/references/route-entry-mapping.md", "Ordinary clear change/build requests use the current host directly");
   includes("plugins/agent-harness/references/model-routing.md", "not pin either by default");
-  includes("plugins/agent-harness/references/worker-runner-contract.md", "Codex runtime owns delegation");
+  includes("plugins/agent-harness/references/worker-runner-contract.md", "the host owns delegation");
+  includes("plugins/agent-harness/references/host-execution.md", "host-direct-postflight");
+  includes("plugins/agent-harness/references/host-execution.md", "host-direct");
+  includes("plugins/agent-harness/references/host-capabilities.md", "runtimeOutcome");
+  includes("plugins/agent-harness/references/host-capabilities.md", "resultPacket");
+  includes("plugins/agent-harness/hosts/cursor/execution.md", "runtimeOutcome");
+  includes("plugins/agent-harness/hosts/cursor/result-packet.md", "run node record");
   includes("plugins/agent-harness/references/codex-native-execution.md", "codex-direct-postflight");
-  includes("plugins/agent-harness/references/codex-native-execution.md", "create_goal");
-  includes("plugins/agent-harness/references/codex-native-execution.md", "update_plan");
   includes("plugins/agent-harness/references/artifact-lifecycle.md", "reconciliation-required");
   includes("plugins/agent-harness/templates/goal.md", "Checkpoint Policy: disabled");
   includes("docs/cli.md", "run checkpoint update");
   includes("docs/cli.zh-CN.md", "run checkpoint update");
   includes(execute, "Controller means outcome owner and accepted-state owner");
-  includes(execute, "Authorization to create a thread is not authorization to create a worktree");
-  includes(execute, "Do not pass `startingState` unless the current user explicitly requests");
+  includes(execute, "Authorization to create a session or worker is not authorization to create a worktree");
+  includes(execute, "Do not pass host-specific starting checkout or session state unless the");
   includes(execute, "Workers return candidate evidence and State Sync Notes; only the controller");
   includes(execute, "writes accepted Goal, Task, status, Run, or gate state");
   includes(execute, "Do not apply durable gates");
@@ -73,6 +77,20 @@ function protocol() {
   const adapter = json("plugins/agent-harness/templates/config.adapter.json");
   assert(adapter.worktree && adapter.artifactPolicy && adapter.checkpoint?.defaultPolicy === "disabled" && adapter.paths.ideaInbox === "harness/intake.md" && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must include the idea inbox and explicit default-disabled checkpoint policy while remaining slim and lifecycle-aware");
   console.log(`Protocol checks passed (${invariants.length} domain invariants).`);
+}
+
+function hostsCodex() {
+  includes("plugins/agent-harness/hosts/codex/execution.md", "create_goal");
+  includes("plugins/agent-harness/hosts/codex/execution.md", "update_plan");
+  includes("plugins/agent-harness/hosts/codex/execution.md", "startingState");
+  includes("plugins/agent-harness/hosts/codex/execution.md", "codex-direct");
+  includes("plugins/agent-harness/references/codex-native-execution.md", "hosts/codex/execution.md");
+  assert(!existsSync(join(repoRoot, "plugins/agent-harness/templates/codex-agents/harness_explorer.toml")), "explorer template must be absent");
+  assert(!existsSync(join(repoRoot, "plugins/agent-harness/templates/codex-agents/harness_implementer.toml")), "implementer template must be absent");
+  const plugin = json("plugins/agent-harness/.codex-plugin/plugin.json");
+  assert(plugin.name === "harness", "Codex plugin name must remain harness");
+  execFileSync(process.execPath, ["tests/hosts/codex.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
+  console.log("Codex host checks passed.");
 }
 
 function presentation() {
@@ -113,8 +131,9 @@ function regressions() {
 const mode = process.argv[2] || "list";
 if (mode === "protocol") protocol();
 else if (mode === "presentation") presentation();
-else if (mode === "all") { presentation(); protocol(); smoke(); regressions(); }
+else if (mode === "hosts-codex") hostsCodex();
+else if (mode === "all") { presentation(); protocol(); hostsCodex(); smoke(); regressions(); }
 else if (mode === "smoke") smoke();
 else if (mode === "regressions") regressions();
-else if (mode === "list" || mode === "--list") console.log("presentation, protocol, smoke, regressions, all");
+else if (mode === "list" || mode === "--list") console.log("presentation, protocol, hosts-codex, smoke, regressions, all");
 else throw new Error(`Unknown suite mode: ${mode}`);

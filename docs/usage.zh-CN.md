@@ -1,6 +1,6 @@
 # 在项目中使用 Agent Harness
 
-这页只回答一个问题：在已经安装或接入 Agent Harness 的项目里，你想推进某件事时，可以对 Codex 输入什么。
+这页只回答一个问题：在已经安装或接入 Agent Harness 的项目里，你想推进某件事时，可以对当前 coding agent 输入什么。
 
 这里不是安装说明，也不是完整协议说明。更详细的接入、CLI、goal/run/evidence 边界分别见 [`install.zh-CN.md`](install.zh-CN.md) 和 [`cli.zh-CN.md`](cli.zh-CN.md)。English version: [`usage.md`](usage.md).
 
@@ -127,7 +127,7 @@
 ```
 
 主控默认是 outcome owner 和 accepted-state owner，可以直接实现 foreground
-work。对长任务，Harness 应建立或复用 Codex runtime Goal，并用 Codex Plan
+work。对长任务，Harness 应建立或复用 runtime outcome，并用 host transient plan
 维护当前步骤。
 
 也可以说得更自然：

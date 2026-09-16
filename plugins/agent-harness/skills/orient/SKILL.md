@@ -30,8 +30,8 @@ When multiple active checkpoints exist, select one explicitly with
    [Artifact Lifecycle](../../references/artifact-lifecycle.md).
 3. Reconcile those artifacts with newer explicit conversation decisions.
 4. Recommend one execution path before naming a public entry:
-   - `codex-direct` for ordinary clear work with no state-sync obligation;
-   - `codex-direct-postflight` when simple work only needs a bounded update to
+   - `host-direct` for ordinary clear work with no state-sync obligation;
+   - `host-direct-postflight` when simple work only needs a bounded update to
      state that already existed;
    - `durable-harness` for recovery, audit, milestone acceptance, DAGs,
      multiple workers, persistent state sync, or high risk.

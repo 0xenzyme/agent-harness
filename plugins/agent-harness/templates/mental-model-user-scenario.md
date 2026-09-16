@@ -40,8 +40,8 @@ initialize or import adapter
 - Plugin-scope bootstrap through a session-start hook:
 - Conditional bootstrap when `.harness/config.json` exists:
 - Current conditional-bootstrap status and validation evidence:
-- Config and adapter files Codex should read:
-- CLI commands Codex may use:
+- Config and adapter files the host should read:
+- CLI commands the host may use:
 - Existing rules that must not be weakened:
 - Explicit-use fallback when activation is not configured:
 - Activation snippet command:
@@ -87,7 +87,7 @@ Harness owns durable coordination state.
 ```text
 User sets intent and approvals.
 Harness stores project control state.
-Codex executes the loop and updates evidence.
+The current host executes the loop and updates evidence.
 ```
 
 ### User Responsibilities
@@ -98,7 +98,7 @@ Codex executes the loop and updates evidence.
 - Approve high-risk operations:
 - Review final results:
 
-### Codex Responsibilities
+### Host Responsibilities
 
 - Read project instructions:
 - Inspect harness config:
@@ -130,7 +130,7 @@ automation for these modes are separate implementation work.
 
 ## Confirmation Check
 
-- Actions Codex can continue without confirmation:
+- Actions the host can continue without confirmation:
 - Actions requiring user judgment:
 - Review-boundary confirmation:
 - Goal / Execute entry confirmation:
@@ -179,8 +179,8 @@ automation for these modes are separate implementation work.
 ## Who Uses It
 
 - Repository maintainer:
-- Current Codex session:
-- Future Codex session:
+- Current host session:
+- Future host session:
 - Subagent or worker:
 
 ## Non-Scenarios
