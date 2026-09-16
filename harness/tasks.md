@@ -8,6 +8,17 @@
 
 ## Done
 
+- [x] P0 Publish Agent Harness `0.12.0` as a GitHub Release.
+  - Type: docs/release
+  - Status: completed
+  - Source: User asked to publish a new version release after the
+    presentation and host-neutral docs pass.
+  - Completed: Folded Unreleased presentation/docs work into `0.12.0`,
+    finalized `docs/releases/v0.12.0.md`, and switched GitHub presentation
+    from release preparation to the public `v0.12.0` surface.
+  - Delivery: Git tag `v0.12.0` and GitHub Release authorized in this
+    thread. Evidence is recorded after `gh release view v0.12.0` succeeds.
+
 - [x] P0+P1 GitHub presentation first screen and social preview.
   - Type: docs
   - Status: completed

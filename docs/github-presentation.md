@@ -72,13 +72,12 @@ and the uploaded OG image cannot be set from repository files.
 
 ## Release Surface
 
-The release surface for `0.12.0` is currently release preparation:
+The public release surface for `0.12.0` is:
 
 - `CHANGELOG.md`
 - `docs/releases/v0.12.0.md`
-- Planned Git tag `v0.12.0`
-- Planned GitHub Release `v0.12.0`
+- Git tag `v0.12.0`
+- GitHub Release `v0.12.0`
 
-Do not claim a Git tag or GitHub Release exists unless `gh release view
-v0.12.0` succeeds. Until the release step is explicitly authorized and
-completed, local docs are release-prep evidence only.
+Do not claim a GitHub Release exists unless `gh release view v0.12.0`
+succeeds.

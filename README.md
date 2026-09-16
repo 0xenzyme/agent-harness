@@ -304,7 +304,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.12.0 Release Preparation Notes](docs/releases/v0.12.0.md)
+- [v0.12.0 Release Notes](docs/releases/v0.12.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while

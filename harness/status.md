@@ -7,28 +7,17 @@ belongs to Task/Goal records; historical detail belongs in
 ## Focus
 
 - Current Goal: none active.
-- Last completed: GitHub presentation P0+P1 (README first screen and
-  social preview).
+- Last completed: ship Agent Harness `0.12.0` as a GitHub Release.
 - Goal index: `harness/tasks.md` (docs Goal; no separate spec/Run).
-- Package / plugin version: `0.12.0` (release preparation; no Git tag or
-  GitHub Release).
+- Package / plugin version: `0.12.0`.
 - Phase: completed.
 - Execution path: `host-direct-postflight`; no new durable Run.
 
 ## Accepted Result
 
-- Protocol, skills, CLI, schema, and capability matrix already described
-  `host-direct`, `host-direct-postflight`, `durable-harness`, and optional
-  runtime capabilities.
-- User-facing docs match that contract; GitHub default README is English.
-- README first screen now carries version/Codex/protocol/smoke/license
-  badges and routes to the capability matrix, changelog, v0.12.0
-  preparation notes, and social preview; first-use leads with host
-  prompts, then CLI adoption.
-- Social preview subtitle is host-neutral, the flow row includes State
-  Sync, and `docs/assets/github/social-preview.png` is the 1280x640 PNG.
-  `package.json` description and GitHub About now match the presentation
-  positioning line. Topics already matched. OG upload remains Settings.
+- Folded remaining presentation and host-neutral docs into `0.12.0`.
+- `CHANGELOG.md`, `docs/releases/v0.12.0.md`, and GitHub presentation now
+  describe the public `0.12.0` release surface rather than preparation.
 - Nested untracked `agent-harness/` copy remains at 0.11.0 until explicit
   delete/gitignore authorization.
 - RC-D1 through RC-D6 remain deferred.
@@ -36,16 +25,16 @@ belongs to Task/Goal records; historical detail belongs in
 ## Verification
 
 - Passed: `git diff --check`, `npm run test:presentation`,
-  `npm run test:all`, `npm run validate:plugin`, and project `doctor`.
+  `npm run test:all`, `npm run test:eval`, and `npm run validate:plugin`.
+- Remaining delivery: Git tag `v0.12.0` and `gh release view v0.12.0`.
 
 ## Route
 
 - Public next entry: `harness:orient` for a new project decision.
-- Accepted-state owner: none active after this docs pass.
+- Accepted-state owner: none active after this release pass.
 - Need user: confirm fate of nested `agent-harness/` before deletion;
   social-preview PNG still needs a Settings OG upload if desired.
-- Delivery ceiling: validated local changes only; no version bump, commit,
-  push, publish, release, deploy, or production operation is authorized.
+- Delivery ceiling: Git tag `v0.12.0` and GitHub Release authorized.
 - Remaining: nested 0.11.0 copy is still untracked and unused.
 
 ## Blockers

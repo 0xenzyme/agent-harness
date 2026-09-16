@@ -18,7 +18,7 @@ Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 
 [快速开始](#在项目中怎么用) · [工作方式](#工作方式) ·
 [能力矩阵](docs/HARNESSES.md) · [更新日志](CHANGELOG.md) ·
-[v0.12.0 预备说明](docs/releases/v0.12.0.md) ·
+[v0.12.0 发布说明](docs/releases/v0.12.0.md) ·
 [社交预览](docs/assets/github/social-preview.svg)
 
 ## 在项目中怎么用
@@ -282,7 +282,7 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.12.0 Release Preparation Notes](docs/releases/v0.12.0.md)
+- [v0.12.0 发布说明](docs/releases/v0.12.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的
