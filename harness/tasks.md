@@ -16,8 +16,10 @@
   - Completed: Folded Unreleased presentation/docs work into `0.12.0`,
     finalized `docs/releases/v0.12.0.md`, and switched GitHub presentation
     from release preparation to the public `v0.12.0` surface.
-  - Delivery: Git tag `v0.12.0` and GitHub Release authorized in this
-    thread. Evidence is recorded after `gh release view v0.12.0` succeeds.
+  - Delivery: commit `a1c786c`, tag `v0.12.0`, and GitHub Release
+    https://github.com/0xenzyme/agent-harness/releases/tag/v0.12.0
+  - Verification: `git ls-remote --tags origin v0.12.0` and
+    `gh release view v0.12.0`.
 
 - [x] P0+P1 GitHub presentation first screen and social preview.
   - Type: docs
