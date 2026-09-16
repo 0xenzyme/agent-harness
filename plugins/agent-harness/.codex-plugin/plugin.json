@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Reusable coding-agent harness for workflow-oriented project task control and adapter-driven execution. / 可复用项目任务控制与 adapter 执行工作流。",
   "author": {
     "name": "Agent Harness Maintainers"

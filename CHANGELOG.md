@@ -31,7 +31,7 @@
   Run recording with exclusive locks and atomic writes, and added a dedicated
   regression suite to `npm run test:all`.
 
-## 0.11.0 - 2026-09-16 (release preparation)
+## 0.12.0 - 2026-09-16 (release preparation)
 
 - Added a model-neutral runtime capability profile with a conservative baseline
   for older models and optional native Goal, Plan, subagent, and steering
