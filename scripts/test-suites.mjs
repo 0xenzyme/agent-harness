@@ -104,17 +104,41 @@ function presentation() {
   includes(releaseNotes, `# Agent Harness v${version}`);
   includes("CHANGELOG.md", `## ${version} -`);
   assert(Array.isArray(plugin.interface.defaultPrompt) && plugin.interface.defaultPrompt.every((item) => typeof item === "string"), "defaultPrompt must be a string array");
-  for (const file of ["README.md", "README.en.md"]) {
-    includes(file, `version-${version}-`);
-    includes(file, `(docs/releases/v${version}.md)`);
+  assert(!existsSync(join(repoRoot, "README.en.md")), "English README must be README.md, not README.en.md");
+  const pkgDescription = "Adapter-driven control plane for coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync.";
+  assert(pkg.description === pkgDescription, "package.json description must match the GitHub presentation positioning line");
+  includes("docs/github-presentation.md", pkgDescription);
+  for (const file of ["README.md", "README.zh-CN.md"]) {
+    const body = read(file);
+    const hero = body.slice(0, body.indexOf("\n## "));
+    assert(hero.includes(`version-${version}-`), `${file} first screen must include the version badge`);
+    assert(hero.includes("protocol-checks"), `${file} first screen must include the protocol badge`);
+    assert(hero.includes("smoke-checks"), `${file} first screen must include the smoke badge`);
+    assert(hero.includes("(docs/HARNESSES.md)"), `${file} first screen must route to the capability matrix`);
+    assert(hero.includes("(CHANGELOG.md)"), `${file} first screen must route to the changelog`);
+    assert(hero.includes(`(docs/releases/v${version}.md)`), `${file} first screen must route to release notes`);
+    assert(hero.includes("docs/assets/github/social-preview.svg"), `${file} first screen must route to the social preview`);
+    assert(!/!\[[^\]]*]\(\s*docs\/assets\/github\/social-preview/.test(hero), `${file} must link rather than embed the social preview`);
     includes(file, "Plugins Directory");
     includes(file, "marketplace");
     includes(file, "npm run test:all");
   }
+  const en = read("README.md");
+  const zh = read("README.zh-CN.md");
+  assert(en.indexOf("### 1. Ask the current host to use Harness") !== -1
+    && en.indexOf("### 1. Ask the current host to use Harness") < en.indexOf("### 2. Adopt a project with the CLI"),
+  "English README must lead first-use with host prompts, then CLI adoption");
+  assert(zh.indexOf("### 1. 让当前 host 使用 Harness") !== -1
+    && zh.indexOf("### 1. 让当前 host 使用 Harness") < zh.indexOf("### 2. 用 CLI 接入项目"),
+  "Chinese README must lead first-use with host prompts, then CLI adoption");
   for (const file of ["docs/cli.md", "docs/cli.zh-CN.md"]) includes(file, "npm run test:regressions");
   includes("docs/github-presentation.md", `release surface for \`${version}\``);
   includes("docs/github-presentation.md", `docs/releases/v${version}.md`);
   includes("docs/assets/github/social-preview.svg", `v${version}`);
+  includes("docs/assets/github/social-preview.svg", "Adapter-driven control plane for coding-agent work");
+  includes("docs/assets/github/social-preview.svg", "State Sync");
+  excludes("docs/assets/github/social-preview.svg", "for Codex and coding-agent");
+  assert(existsSync(join(repoRoot, "docs/assets/github/social-preview.png")), "social preview PNG must exist at 1280x640 source output");
   const marketplace = json(".agents/plugins/marketplace.json");
   assert(marketplace.name === "agent-harness-local", "unique local marketplace identity required");
   console.log("Presentation checks passed.");

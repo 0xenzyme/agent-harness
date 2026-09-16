@@ -56,14 +56,14 @@ The implementation is done. Use harness to tell me what is next.
 
 ## Ordinary Work And Lightweight State Sync
 
-Give clear, one-off, untracked work directly to Codex:
+Give clear, one-off, untracked work directly to the current host:
 
 ```text
 Fix this clear small issue, verify it, and report the result.
 ```
 
-If Codex completed simple work linked to a Harness Task or status item that
-already existed before execution:
+If the current host completed simple work linked to a Harness Task or status
+item that already existed before execution:
 
 ```text
 Use harness for postflight: verify the result and update only the existing Task/status. Do not create a Goal or Run.
@@ -78,7 +78,7 @@ Use harness to record this idea, but do not implement it yet:
 <idea>
 ```
 
-If you want Codex to preview where it would go before recording it:
+If you want the current host to preview where it would go before recording it:
 
 ```text
 Use harness to preview where this idea belongs. Record it only after I confirm:

@@ -269,7 +269,7 @@
     "user_request": "Fix this clear one-line typo, run the focused test, and report the result.",
     "expected_skills": [],
     "should_trigger": false,
-    "rationale": "Ordinary clear untracked work is Codex-direct and should not invoke Harness."
+    "rationale": "Ordinary clear untracked work is host-direct and should not invoke Harness."
   },
   {
     "id": "ah_trigger_boundary_001",

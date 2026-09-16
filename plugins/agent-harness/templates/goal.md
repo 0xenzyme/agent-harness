@@ -60,12 +60,14 @@ Use `current-session`.
 
 - `harness-rule:path-containment`
 - `harness-rule:run-dag-ownership`
+- `harness-rule:pre-delegation-work-mode`
 - `harness-rule:candidate-accepted-evidence`
 - `harness-rule:authoritative-completion-state`
 - `harness-rule:state-sync-evidence`
 - `harness-rule:bounded-status-snapshot`
 - `harness-rule:project-neutral-core`
 - `harness-rule:durable-tier-boundary`
+- `harness-rule:checkpoint-recovery`
 
 The host owns scheduling, delegation, concurrency, cancellation, and
 model selection. Harness records ready nodes, dependencies, ownership,

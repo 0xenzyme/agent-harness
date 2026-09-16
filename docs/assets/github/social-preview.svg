@@ -27,29 +27,32 @@
   </g>
 
   <text x="128" y="174" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="70" font-weight="760" letter-spacing="0">Agent Harness</text>
-  <text x="132" y="226" fill="#cbd5e1" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="28" font-weight="500" letter-spacing="0">Adapter-driven control plane for Codex and coding-agent work</text>
+  <text x="132" y="226" fill="#cbd5e1" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="28" font-weight="500" letter-spacing="0">Adapter-driven control plane for coding-agent work</text>
 
-  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">
-    <rect x="130" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="156" y="349" fill="#e2e8f0">Roadmap</text>
-    <rect x="305" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="326" y="349" fill="#e2e8f0">Milestone</text>
-    <rect x="480" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="529" y="349" fill="#e2e8f0">Goal</text>
-    <rect x="655" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="705" y="349" fill="#e2e8f0">Task</text>
-    <rect x="830" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="875" y="349" fill="#e2e8f0">Run</text>
-    <rect x="1005" y="304" width="145" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="1036" y="349" fill="#e2e8f0">Evidence</text>
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="700" text-anchor="middle">
+    <rect x="128" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="194" y="347" fill="#e2e8f0">Roadmap</text>
+    <rect x="278" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="344" y="347" fill="#e2e8f0">Milestone</text>
+    <rect x="428" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="494" y="347" fill="#e2e8f0">Goal</text>
+    <rect x="578" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="644" y="347" fill="#e2e8f0">Task</text>
+    <rect x="728" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="794" y="347" fill="#e2e8f0">Run</text>
+    <rect x="878" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="944" y="347" fill="#e2e8f0">Evidence</text>
+    <rect x="1028" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
+    <text x="1094" y="347" fill="#e2e8f0">State Sync</text>
   </g>
 
   <g stroke="url(#line)" stroke-width="5" stroke-linecap="round" fill="none">
-    <path d="M279 340H301"/>
-    <path d="M454 340H476"/>
-    <path d="M629 340H651"/>
-    <path d="M804 340H826"/>
-    <path d="M979 340H1001"/>
+    <path d="M260 340H274"/>
+    <path d="M410 340H424"/>
+    <path d="M560 340H574"/>
+    <path d="M710 340H724"/>
+    <path d="M860 340H874"/>
+    <path d="M1010 340H1024"/>
   </g>
 
   <g fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="22" font-weight="520">

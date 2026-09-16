@@ -6,41 +6,47 @@ belongs to Task/Goal records; historical detail belongs in
 
 ## Focus
 
-- Current Goal: Implement Run Checkpoint and Recovery Protocol.
-- Goal: `harness/goals/2026-09-01-implement-run-checkpoint-and-recovery-protocol.md`.
-- Spec: `harness/specs/2026-09-01-run-checkpoint-and-recovery-protocol.md` (`accepted`).
-- Run: `.harness/runs/20260901-164310-implement-run-checkpoint-and-recovery-protocol`.
-- Phase: completed; implementation and verification evidence are recorded in
-  the durable Run.
-- Execution path: `durable-harness`, `current-thread`, `local`, `implementer`.
+- Current Goal: none active.
+- Last completed: GitHub presentation P0+P1 (README first screen and
+  social preview).
+- Goal index: `harness/tasks.md` (docs Goal; no separate spec/Run).
+- Package / plugin version: `0.12.0` (release preparation; no Git tag or
+  GitHub Release).
+- Phase: completed.
+- Execution path: `host-direct-postflight`; no new durable Run.
 
 ## Accepted Result
 
-- Managed prepared Runs can explicitly enforce an independent, schema-bound
-  `checkpoint.json` with lock/atomic/CAS mutation, finite control/stage state,
-  drift/replacement recovery, reconciliation evidence, and L0/L1 orientation.
-- Checkpoint-disabled Runs, Codex fast paths, v1 manifests, and legacy Runs
-  remain compatible; nonterminal recovery state remains prune-protected.
-- Core CLI, config/schema/templates, skills, references, bilingual docs,
-  capability matrix, CHANGELOG, tests, evals, and project state are aligned.
-- Checkpoint/Run completion does not complete Goal authority. RC-D1 through
-  RC-D6 remain deferred and were not silently absorbed.
+- Protocol, skills, CLI, schema, and capability matrix already described
+  `host-direct`, `host-direct-postflight`, `durable-harness`, and optional
+  runtime capabilities.
+- User-facing docs match that contract; GitHub default README is English.
+- README first screen now carries version/Codex/protocol/smoke/license
+  badges and routes to the capability matrix, changelog, v0.12.0
+  preparation notes, and social preview; first-use leads with host
+  prompts, then CLI adoption.
+- Social preview subtitle is host-neutral, the flow row includes State
+  Sync, and `docs/assets/github/social-preview.png` is the 1280x640 PNG.
+  `package.json` description and GitHub About now match the presentation
+  positioning line. Topics already matched. OG upload remains Settings.
+- Nested untracked `agent-harness/` copy remains at 0.11.0 until explicit
+  delete/gitignore authorization.
+- RC-D1 through RC-D6 remain deferred.
 
 ## Verification
 
-- Passed: JavaScript syntax, focused protocol/regression coverage,
-  `npm run test:all`, `npm run test:eval`, and `npm run validate:plugin`.
-- Passed: config, Goal, and Run validation; project doctor; artifact inspect,
-  compact, and prune previews; final `git diff --check`.
+- Passed: `git diff --check`, `npm run test:presentation`,
+  `npm run test:all`, `npm run validate:plugin`, and project `doctor`.
 
 ## Route
 
 - Public next entry: `harness:orient` for a new project decision.
-- Accepted-state owner: none active after this completed Run.
-- Need user: None.
+- Accepted-state owner: none active after this docs pass.
+- Need user: confirm fate of nested `agent-harness/` before deletion;
+  social-preview PNG still needs a Settings OG upload if desired.
 - Delivery ceiling: validated local changes only; no version bump, commit,
   push, publish, release, deploy, or production operation is authorized.
-- Remaining: None for the accepted implementation scope.
+- Remaining: nested 0.11.0 copy is still untracked and unused.
 
 ## Blockers
 

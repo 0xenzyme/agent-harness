@@ -56,13 +56,13 @@
 
 ## 普通任务与轻量状态同步
 
-明确、一次性、未被 Harness 追踪的任务直接交给 Codex：
+明确、一次性、未被 Harness 追踪的任务直接交给当前 host：
 
 ```text
 修正这个明确的小问题，验证后告诉我结果。
 ```
 
-如果 Codex 已完成简单任务，而它关联执行前已经存在的 Harness Task 或 status：
+如果当前 host 已完成简单任务，而它关联执行前已经存在的 Harness Task 或 status：
 
 ```text
 用 harness 做 postflight：验证刚才的结果，只同步已有 Task/status，不创建 Goal 或 Run。
@@ -77,7 +77,7 @@
 <写下想法>
 ```
 
-如果你希望 Codex 先预览它会怎么归类，再由你确认是否记录：
+如果你希望当前 host 先预览它会怎么归类，再由你确认是否记录：
 
 ```text
 用 harness 先预览这个想法应该放哪里，等我确认后再记录：

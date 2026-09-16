@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- Restored README first-screen protocol and smoke badges, routed the hero to
+  the capability matrix, changelog, release-prep notes, and social preview,
+  and led first-use with host prompts before CLI adoption.
+- Aligned the social preview subtitle with host-neutral positioning, added
+  State Sync to the preview flow, published `social-preview.png`, and matched
+  `package.json` description to the GitHub presentation line.
+- Made `README.md` the canonical English homepage and moved Simplified
+  Chinese to `README.zh-CN.md`.
+- Reordered the 0.12.0 changelog above 0.11.0 and aligned remaining
+  user-facing docs with host-neutral execution paths and runtime capabilities.
+
+## 0.12.0 - 2026-09-16 (release preparation)
+
+- Added a model-neutral runtime capability profile with a conservative baseline
+  for older models and optional native Goal, Plan, subagent, and steering
+  capabilities when the current host exposes them.
+- Updated the Codex-native execution bridge and generated Goal guidance to use
+  a current-thread checklist fallback without inventing runtime identifiers or
+  repository artifacts for unavailable runtime features.
+- Reduced repeated execution-role and native-runtime instructions in generated
+  Goals while preserving durable evidence, gate, and state-sync contracts.
+- Kept the existing direct, postflight, and durable execution paths and all
+  prepared enforced Run protections compatible.
+
 ## 0.11.0 - 2026-09-12
 
 - Split host-neutral protocol from the Codex pack: execution paths are now
@@ -30,19 +54,6 @@
 - Bound prepared Runs to their Goal/Spec/DAG contract, protected concurrent
   Run recording with exclusive locks and atomic writes, and added a dedicated
   regression suite to `npm run test:all`.
-
-## 0.12.0 - 2026-09-16 (release preparation)
-
-- Added a model-neutral runtime capability profile with a conservative baseline
-  for older models and optional native Goal, Plan, subagent, and steering
-  capabilities when the current host exposes them.
-- Updated the Codex-native execution bridge and generated Goal guidance to use
-  a current-thread checklist fallback without inventing runtime identifiers or
-  repository artifacts for unavailable runtime features.
-- Reduced repeated execution-role and native-runtime instructions in generated
-  Goals while preserving durable evidence, gate, and state-sync contracts.
-- Kept the existing direct, postflight, and durable execution paths and all
-  prepared enforced Run protections compatible.
 
 ## 0.10.0 - 2026-07-21 (release preparation)
 

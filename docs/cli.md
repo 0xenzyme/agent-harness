@@ -114,6 +114,14 @@ node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path
 `config inspect` also reports the effective `communication.commentary` policy,
 its configured/default source, `Report cadence`, and `Notify on` contract.
 
+Print the canonical fixed or adapter contract JSON for maintainers (stable,
+untranslated JSON; not a first-use path):
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs print-contract
+node plugins/agent-harness/scripts/agent-harness.mjs print-contract --contract adapter
+```
+
 Summarize current status and recommend the next action without starting work:
 
 ```bash
@@ -221,14 +229,14 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/proje
 This affects supported CLI messages only. Goal, Spec, status, run packet, and
 other generated artifact bodies currently use English templates/renderers;
 `--lang` does not translate them. `auto` uses process locale for deterministic
-CLI execution, not the language of a Codex conversation.
+CLI execution, not the language of a host conversation.
 
 ## Goals And Runs
 
 User-facing hierarchy is `Roadmap -> Milestone -> Goal -> Task -> Run`.
 `Goal` is the main Harness work unit. `Task` means a concrete checklist or
 execution breakdown inside a Goal. A `Run` is one execution attempt and
-evidence record, not a Codex thread or session.
+evidence record, not a host thread or session.
 
 Create a goal handoff from the configured Goal index:
 
@@ -291,7 +299,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 ### Run checkpoint and recovery
 
 Checkpointing is default-disabled and does not affect ordinary managed Runs or
-Codex fast paths. An adapter may provide the default for new Goals, while each
+host-direct / host-direct-postflight paths. An adapter may provide the default
+for new Goals, while each
 Goal persists the resolved policy:
 
 ```json

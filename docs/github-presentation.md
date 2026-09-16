@@ -33,8 +33,8 @@ agent-harness
 
 ## First Screen
 
-`README.md` is the canonical Simplified Chinese README. `README.en.md` is the
-secondary English edition. Do not maintain a duplicate `README.zh-CN.md`.
+`README.md` is the canonical English README. `README.zh-CN.md` is the
+Simplified Chinese edition. Do not maintain a duplicate `README.en.md`.
 
 The README first screen should communicate:
 
@@ -44,6 +44,9 @@ The README first screen should communicate:
 - trust signals: version, Codex plugin, protocol checks, smoke checks, license;
 - routes to the capability matrix, changelog, release notes, and social preview.
 
+First-use copy leads with host prompts, then CLI adoption. Link the social
+preview; do not embed the 1280x640 asset in the README.
+
 ## Social Preview
 
 The social preview source lives at:
@@ -52,7 +55,10 @@ The social preview source lives at:
 docs/assets/github/social-preview.svg
 ```
 
-If a PNG renderer is available, publish:
+The SVG subtitle matches the repository positioning line (host-neutral, no
+Codex prefix). The flow row includes State Sync.
+
+The published 1280x640 PNG is:
 
 ```text
 docs/assets/github/social-preview.png
@@ -60,7 +66,9 @@ docs/assets/github/social-preview.png
 
 GitHub's repository social preview setting is managed in repository settings.
 If an API or authenticated UI path is unavailable, upload the PNG manually using
-the Settings -> General -> Social preview control.
+the Settings -> General -> Social preview control. `package.json` `description`
+uses the same positioning line as the GitHub About text above. About, topics,
+and the uploaded OG image cannot be set from repository files.
 
 ## Release Surface
 

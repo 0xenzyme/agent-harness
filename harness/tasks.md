@@ -8,6 +8,51 @@
 
 ## Done
 
+- [x] P0+P1 GitHub presentation first screen and social preview.
+  - Type: docs
+  - Status: completed
+  - Source: User asked what to optimize from the presentation contract,
+    then approved P0+P1.
+  - Completed: Restored protocol/smoke badges; routed the README hero to
+    HARNESSES, CHANGELOG, v0.12.0 notes, and the social preview SVG;
+    reordered first-use to host prompts then CLI.
+  - Completed: Host-neutral social-preview subtitle, State Sync in the
+    preview flow, published 1280x640 `social-preview.png`, `package.json`
+    description aligned to the presentation line, and presentation-suite
+    locks for first-screen routes.
+  - Delivery: `validated-local`; GitHub About updated to the host-neutral
+    positioning line. No version bump, commit, push, tag, GitHub Release,
+    or Settings/OG upload.
+
+- [x] P1 Make `README.md` the canonical English homepage.
+  - Type: docs
+  - Status: completed
+  - Source: User asked to switch the default README to English.
+  - Completed: Moved Simplified Chinese to `README.zh-CN.md`, updated the
+    GitHub presentation contract and presentation suite, and removed
+    `README.en.md`.
+  - Delivery: `validated-local`; no version bump, commit, push, tag, or
+    release.
+
+- [x] P1 Align user-facing docs with the 0.12.0 host-neutral contract.
+  - Type: docs
+  - Status: completed
+  - Source: User asked for an overall look because recent versions may have
+    left documentation behind, then approved the docs-alignment plan.
+  - Completed: Moved `CHANGELOG.md` `0.12.0` above `0.11.0`; recorded the
+    remaining alignment under Unreleased.
+  - Completed: Replaced leftover “ordinary work = Codex” wording in README,
+    usage, and CLI with current-host / `host-direct` language; documented
+    maintainer `print-contract`.
+  - Completed: Aligned eval live examples and trigger rationale, added the
+    two missing durable invariants to Goal/Spec templates, and made
+    `runtime-capabilities.md` host-neutral.
+  - Verification: `git diff --check`, `npm run test:presentation`,
+    `npm run test:protocol`, `npm run test:eval`, `npm run validate:plugin`,
+    `npm run test:all`, and project `doctor` passed.
+  - Delivery: `validated-local`; no version bump, commit, push, tag,
+    publish, release, deploy, or nested-copy deletion was performed.
+
 - [x] P0 Implement Run Checkpoint and Recovery Protocol.
   - Type: development
   - Status: completed

@@ -11,7 +11,7 @@ Runtime outcome owns the current long-running result; transient plan owns
 short-lived steps. Harness does not mirror every plan transition. It records
 project facts at durable boundaries or in one bounded postflight closeout.
 
-## Contracts
+## Adapter Contract
 
 - `fixed`: `harness/tasks.md`, `.harness/config.json`, `harness/status.md`,
   `harness/goals/`, and `.harness/runs/`.
@@ -66,8 +66,8 @@ Canonical behavior fields include adapter/configured paths (an adapter may
 declare `paths.ideaInbox` for unaccepted intake candidates),
 `worktree.defaultPolicy`, `checkpoint.defaultPolicy`, optional finite
 `checkpoint.stages` and `checkpoint.adapterDimensions`,
-`gates.requiredForCompletion`, and
-`gates.blocking`.
+`gates.requiredForCompletion`, `gates.blocking`, `language.default`, and
+`communication.commentary`.
 These configured gates apply to durable Goal/Run completion. They do not apply
 to `host-direct` or postflight-only synchronization, and postflight cannot
 bypass an existing enforced Run.
@@ -75,6 +75,22 @@ Legacy `mode`, `paths.tasks`, `paths.mentalModel`, `workMode.defaultPolicy`, and
 `gates.enabled` remain readable at the migration boundary. `loops`, `lifecycle`,
 `gates.optional`, and worktree auto-rules do not drive current behavior and are
 not emitted by canonical templates.
+
+## Adapter Language Policy
+
+`language.default` is `auto`, `en`, or `zh-CN`. CLI selection is `--lang`,
+`AGENT_HARNESS_LANG`, `language.default`, `LC_ALL`, `LC_MESSAGES`, then
+`LANG`; unresolved `auto` falls back to English. This localizes supported
+CLI messages only. Deterministic artifacts from `init`, `goal create`, and
+`run prepare` stay on English templates. Command details live in the
+[CLI language section](cli.md#language).
+
+## Commentary Policy
+
+`communication.commentary` is `minimal`, `balanced`, or `audit`; omitted
+config defaults to `minimal`. The policy shapes Harness skill and generated
+Run guidance. It does not filter host messages or override host-required
+tool, safety, approval, or heartbeat updates.
 
 ## State Sync
 

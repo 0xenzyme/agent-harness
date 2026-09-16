@@ -115,6 +115,14 @@ node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path
 `config inspect` 还会报告实际生效的 `communication.commentary` policy、其
 configured/default 来源、`Report cadence` 与 `Notify on` contract。
 
+维护者可以打印 canonical fixed / adapter contract JSON（稳定、不翻译；不是
+用户首要入口）：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs print-contract
+node plugins/agent-harness/scripts/agent-harness.mjs print-contract --contract adapter
+```
+
 只读汇总当前状态并推荐下一步，不开始执行：
 
 ```bash
@@ -219,13 +227,13 @@ node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/proje
 该设置只影响已经支持的 CLI messages。Goal、Spec、status、run packet 和其他
 generated artifact body 当前仍使用英文 templates/renderers；`--lang` 不会翻译
 这些文件。Deterministic CLI 的 `auto` 读取 process locale，不读取 Codex
-conversation language。
+host conversation language。
 
 ## Goals And Runs
 
 用户可见术语主线是 `Roadmap -> Milestone -> Goal -> Task -> Run`。`Goal`
 是 Harness 的主要工作单位。`Task` 是 Goal 内部的 checklist 或 execution
-breakdown。`Run` 是一次执行尝试和 evidence record，不等于 Codex thread
+breakdown。`Run` 是一次执行尝试和 evidence record，不等于 host thread
 或 session。
 
 从配置的 Goal index 创建 goal handoff：
@@ -286,7 +294,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/p
 
 ### Run checkpoint 与 recovery
 
-Checkpoint 默认关闭，不影响普通 managed Run 或 Codex fast path。Adapter 可以
+Checkpoint 默认关闭，不影响普通 managed Run 或 host-direct /
+host-direct-postflight 路径。Adapter 可以
 为新 Goal 提供默认值，Goal 仍会持久化最终 policy：
 
 ```json
