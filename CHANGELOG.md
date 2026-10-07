@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added a Grok host capability and result-packet map under
+  `plugins/agent-harness/hosts/grok/`. Grok has no runtime outcome; `todo_write`
+  is the transient plan, and `spawn_subagent` is delegation and worktree isolation.
+- Added `.grok-plugin/marketplace.json` so Grok can install the existing plugin
+  without changing the Codex marketplace. `npm run validate:plugin` stays the
+  Codex pack validator. `npm run test:hosts-grok` checks the Grok pack.
+
 ## 0.12.0 - 2026-09-16
 
 - Added a model-neutral runtime capability profile with a conservative baseline

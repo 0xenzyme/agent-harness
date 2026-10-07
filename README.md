@@ -60,6 +60,9 @@ codex plugin marketplace add <path-to-agent-harness-repo>
 
 This registers marketplace metadata from the checkout; it does not install the plugin.
 
+Grok can install the same plugin from `.grok-plugin/marketplace.json`. See
+[Install](docs/install.md).
+
 ### 4. Choose an explicit entry when needed
 
 | Situation | Public skill |
@@ -260,7 +263,8 @@ the [Capability Matrix](docs/HARNESSES.md).
 This repository is both the Agent Harness source project and a Codex local
 marketplace:
 
-- `.agents/plugins/marketplace.json` exposes the local plugin.
+- `.agents/plugins/marketplace.json` exposes the local Codex plugin.
+- `.grok-plugin/marketplace.json` exposes the same plugin to Grok.
 - `plugins/agent-harness/` contains the installable plugin.
 - `plugins/agent-harness/skills/` contains the four public workflow skills.
 - `plugins/agent-harness/references/` contains canonical protocols.
@@ -313,9 +317,10 @@ keeping its own fixed/adapter contracts and project-neutral core.
 ## Roadmap
 
 The protocol, CLI, and four skills now speak in host capabilities. Codex is
-the first host pack; the Cursor capability and result-packet map lives in
-`plugins/agent-harness/hosts/cursor/`. Do not describe this repository as
-fully multi-agent until a second host has walked `host-direct`,
+the first host pack. The Cursor and Grok capability and result-packet maps
+live in `plugins/agent-harness/hosts/cursor/` and
+`plugins/agent-harness/hosts/grok/`. Do not describe this repository as
+fully multi-agent until a non-Codex host has walked `host-direct`,
 `host-direct-postflight`, and `durable-harness` with inspectable evidence.
 When those capabilities are missing, Harness should fall back to
 bounded foreground execution rather than pretend parallelism or isolation.

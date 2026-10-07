@@ -20,6 +20,8 @@ See [Runtime Capability Compatibility](../plugins/agent-harness/references/runti
 
 Legacy aliases `codex-direct` and `codex-direct-postflight` remain readable.
 Codex tool names live in `plugins/agent-harness/hosts/codex/execution.md`.
+Cursor and Grok capability maps live in `plugins/agent-harness/hosts/cursor/`
+and `plugins/agent-harness/hosts/grok/`.
 
 Controller means outcome owner and accepted-state owner. Only explicit
 `gate-only` or review-only direction forbids foreground implementation.
@@ -44,6 +46,7 @@ model/effort when those capabilities are exposed. Harness never starts workers,
 pins those settings, or expands generic explorer/implementer workers by default.
 
 Suite routing: `npm run test:presentation`, `npm run test:protocol`,
-`npm run test:hosts-codex`, `npm run test:smoke`, `npm run test:regressions`,
-`npm run test:routing-classification`, and `npm run test:all`.
+`npm run test:hosts-codex`, `npm run test:hosts-grok`, `npm run test:smoke`,
+`npm run test:regressions`, `npm run test:routing-classification`, and
+`npm run test:all`.
 `npm run validate:plugin` is the Codex pack validator, not the core protocol gate.

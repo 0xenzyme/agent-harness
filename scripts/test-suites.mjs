@@ -42,6 +42,8 @@ function protocol() {
   includes("plugins/agent-harness/references/host-capabilities.md", "resultPacket");
   includes("plugins/agent-harness/hosts/cursor/execution.md", "runtimeOutcome");
   includes("plugins/agent-harness/hosts/cursor/result-packet.md", "run node record");
+  includes("plugins/agent-harness/hosts/grok/execution.md", "runtimeOutcome");
+  includes("plugins/agent-harness/hosts/grok/result-packet.md", "run node record");
   includes("plugins/agent-harness/references/codex-native-execution.md", "codex-direct-postflight");
   includes("plugins/agent-harness/references/artifact-lifecycle.md", "reconciliation-required");
   includes("plugins/agent-harness/templates/goal.md", "Checkpoint Policy: disabled");
@@ -91,6 +93,18 @@ function hostsCodex() {
   assert(plugin.name === "harness", "Codex plugin name must remain harness");
   execFileSync(process.execPath, ["tests/hosts/codex.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
   console.log("Codex host checks passed.");
+}
+
+function hostsGrok() {
+  includes("plugins/agent-harness/hosts/grok/execution.md", "todo_write");
+  includes("plugins/agent-harness/hosts/grok/execution.md", "spawn_subagent");
+  includes("plugins/agent-harness/hosts/grok/execution.md", "worktree");
+  includes("plugins/agent-harness/hosts/grok/result-packet.md", "--surface grok");
+  assert(!existsSync(join(repoRoot, "plugins/agent-harness/agents")), "Grok plugin agents directory must stay absent");
+  const marketplace = json(".grok-plugin/marketplace.json");
+  assert(marketplace.name === "agent-harness-local", "Grok marketplace identity must remain agent-harness-local");
+  execFileSync(process.execPath, ["tests/hosts/grok.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
+  console.log("Grok host checks passed.");
 }
 
 function presentation() {
@@ -156,8 +170,9 @@ const mode = process.argv[2] || "list";
 if (mode === "protocol") protocol();
 else if (mode === "presentation") presentation();
 else if (mode === "hosts-codex") hostsCodex();
-else if (mode === "all") { presentation(); protocol(); hostsCodex(); smoke(); regressions(); }
+else if (mode === "hosts-grok") hostsGrok();
+else if (mode === "all") { presentation(); protocol(); hostsCodex(); hostsGrok(); smoke(); regressions(); }
 else if (mode === "smoke") smoke();
 else if (mode === "regressions") regressions();
-else if (mode === "list" || mode === "--list") console.log("presentation, protocol, hosts-codex, smoke, regressions, all");
+else if (mode === "list" || mode === "--list") console.log("presentation, protocol, hosts-codex, hosts-grok, smoke, regressions, all");
 else throw new Error(`Unknown suite mode: ${mode}`);

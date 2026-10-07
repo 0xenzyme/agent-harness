@@ -8,11 +8,14 @@ Agent Harness has two install surfaces:
    `execute`.
 
 `.agents/skills/` is the cross-client discovery path. It is not every host's
-only directory. Cursor may also read `.cursor/skills/`; Claude Code may also
-read `.claude/skills/`. Do not use `.agent/skill`.
+only directory. Grok scans `.agents/skills/` and `.grok/skills/`. Cursor may
+also read `.cursor/skills/`; Claude Code may also read `.claude/skills/`. Do
+not use `.agent/skill`. Do not copy Harness skills into `.grok/skills/` by
+default.
 
-Codex marketplace install remains valid and is documented in the appendix.
-`npm run validate:plugin` validates the Codex pack, not the core protocol.
+Codex and Grok marketplace installs remain optional and are documented in the
+appendix. `npm run validate:plugin` validates the Codex pack, not the core
+protocol. `npm run test:hosts-grok` checks the Grok pack.
 
 ## Control Plane
 
@@ -82,3 +85,23 @@ Codex-specific Goal/Plan/Thread names live in
 `plugins/agent-harness/hosts/codex/execution.md`. The optional advanced
 `harness_reviewer.toml` template is read-only and inherits the parent model
 and reasoning effort.
+
+## Appendix: Grok Marketplace
+
+For a local checkout:
+
+```bash
+grok plugin marketplace add /path/to/agent-harness
+grok plugin install harness --trust
+```
+
+The repository metadata declares the marketplace identity
+`agent-harness-local` in `.grok-plugin/marketplace.json`. Registration only
+adds the marketplace. `grok plugin install harness --trust` installs the
+plugin from `./plugins/agent-harness`.
+
+Grok-specific capability names live in
+`plugins/agent-harness/hosts/grok/execution.md`. Grok does not expose a runtime
+outcome. `todo_write` is the transient plan when the session exposes it, and
+`spawn_subagent` covers delegation and worktree isolation. Do not add a default
+reviewer under `plugins/agent-harness/agents/`.

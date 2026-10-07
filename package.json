@@ -18,6 +18,7 @@
     "test:presentation": "node scripts/test-suites.mjs presentation",
     "test:protocol": "node scripts/test-suites.mjs protocol",
     "test:hosts-codex": "node scripts/test-suites.mjs hosts-codex",
+    "test:hosts-grok": "node scripts/test-suites.mjs hosts-grok",
     "test:smoke": "node tests/smoke.mjs",
     "test:regressions": "node tests/regressions.mjs",
     "validate:plugin": "node tools/validate-plugin.mjs"

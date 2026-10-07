@@ -1,0 +1,15 @@
+{
+  "name": "agent-harness-local",
+  "description": "Local marketplace for the Agent Harness coding-agent control plane.",
+  "owner": {
+    "name": "Agent Harness Maintainers"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "description": "Reusable coding-agent harness for workflow-oriented project task control and adapter-driven execution.",
+      "category": "Productivity",
+      "source": "./plugins/agent-harness"
+    }
+  ]
+}

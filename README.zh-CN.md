@@ -58,6 +58,9 @@ codex plugin marketplace add <path-to-agent-harness-repo>
 
 这一步只注册 checkout 中的 marketplace metadata，不安装 plugin。
 
+Grok 可以从 `.grok-plugin/marketplace.json` 安装同一个 plugin。见
+[安装说明](docs/install.zh-CN.md)。
+
 ### 4. 需要时选择明确入口
 
 | 场景 | 公开 skill |
@@ -239,7 +242,8 @@ evidence，直到 control lane 完成验证。Completion 需要可检查的 evid
 
 这个仓库同时是 Agent Harness source project 和 Codex local marketplace：
 
-- `.agents/plugins/marketplace.json` 暴露本地 plugin。
+- `.agents/plugins/marketplace.json` 暴露本地 Codex plugin。
+- `.grok-plugin/marketplace.json` 把同一个 plugin 暴露给 Grok。
 - `plugins/agent-harness/` 包含可安装 plugin。
 - `plugins/agent-harness/skills/` 包含四个公开 workflow skills。
 - `plugins/agent-harness/references/` 包含 canonical protocols。
@@ -290,9 +294,10 @@ fixed/adapter contracts 和 project-neutral core。
 
 ## Roadmap
 
-协议、CLI 和四技能已经按 host capability 描述。Codex 是第一个 host pack；
-Cursor 的 capability 与 result-packet 对照见
-`plugins/agent-harness/hosts/cursor/`。在第二个 host 走完
+协议、CLI 和四技能已经按 host capability 描述。Codex 是第一个 host pack。
+Cursor 和 Grok 的 capability 与 result-packet 对照见
+`plugins/agent-harness/hosts/cursor/` 和
+`plugins/agent-harness/hosts/grok/`。在非 Codex host 走完
 `host-direct` / `host-direct-postflight` / `durable-harness` 的实证之前，
 不要把本仓库表述成“已完整支持所有 coding agent”。能力不足时，Harness 应
 fallback 到 bounded foreground execution，而不是假装具备并行或隔离能力。

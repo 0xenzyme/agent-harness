@@ -57,7 +57,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd /path/
 
 `skills install` 把四个公开 skill 复制到 `.agents/skills/`，并把协议 references
 复制到 `.agents/references/`。用 `--dry-run --json` 预览。这是默认技能发现
-路径；Codex marketplace 安装是可选项。
+路径。Codex 和 Grok 的 marketplace 安装是可选项。
 
 固定契约也支持同样的 `init` 选项：`--task-index` 设置任务文件，
 `--idea-inbox` 创建可选的 Markdown inbox；路径会写入 `.harness/config.json`

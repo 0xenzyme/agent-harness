@@ -53,7 +53,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd /path/
 
 `skills install` copies the four public skills to `.agents/skills/` and the
 protocol references to `.agents/references/`. Preview with `--dry-run --json`.
-This is the default skill-discovery path; Codex marketplace install is optional.
+This is the default skill-discovery path. Codex and Grok marketplace installs
+are optional.
 
 The same `init` options work for a fixed contract. `--task-index` sets the
 configured task file and `--idea-inbox` creates an optional Markdown inbox;
