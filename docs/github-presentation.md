@@ -72,12 +72,10 @@ and the uploaded OG image cannot be set from repository files.
 
 ## Release Surface
 
-The public release surface for `0.12.0` is:
+The in-tree release surface for `0.13.0` is:
 
 - `CHANGELOG.md`
-- `docs/releases/v0.12.0.md`
-- Git tag `v0.12.0`
-- GitHub Release `v0.12.0`
+- `docs/releases/v0.13.0.md`
 
-Do not claim a GitHub Release exists unless `gh release view v0.12.0`
-succeeds.
+The last published Git tag and GitHub Release remain `v0.12.0`. Do not claim
+a GitHub Release exists unless `gh release view v0.13.0` succeeds.

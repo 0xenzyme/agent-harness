@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.12.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.13.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![Protocol](https://img.shields.io/badge/protocol-checks-0369a1)](docs/HARNESSES.md)
 [![Smoke](https://img.shields.io/badge/smoke-checks-1d4ed8)](docs/HARNESSES.md)
@@ -19,7 +19,7 @@ Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 
 [Quick Start](#use-with-a-coding-agent) · [How It Works](#how-it-works) ·
 [Capability Matrix](docs/HARNESSES.md) · [Changelog](CHANGELOG.md) ·
-[v0.12.0 Notes](docs/releases/v0.12.0.md) ·
+[v0.13.0 Notes](docs/releases/v0.13.0.md) ·
 [Social Preview](docs/assets/github/social-preview.svg)
 
 ## Use With A Coding Agent
@@ -90,6 +90,26 @@ These runtime capabilities are optional and are detected from the current host,
 not inferred from a model name. Older models or smaller runtimes fall back to
 the current session and a short checklist; the CLI still validates paths,
 evidence, gates, and accepted state.
+
+## One entry for an accepted Goal or Milestone
+
+An accepted execution plan lives beside its target as
+`<target-filename>.plan.json`; the target names it in `Execution Plan:`.
+For a Milestone, every member Goal references the same Milestone-adjacent
+plan. A standalone Goal uses its own adjacent plan. The versioned plan
+declares Goal dependencies and each Goal's Task dependencies. The controller
+validates the plan, prepares eligible Goal Runs,
+reviews candidate receipts and fresh verification, synchronizes state, and
+repeats the next action until the entire selected Goal or Milestone is done.
+It stops only on whole-target completion, a true blocker, or an explicit user
+pause. It asks for a concrete human decision at a real authority or direction
+gate; a completed leaf does not end the stage. See [usage](docs/usage.md),
+[CLI](docs/cli.md), and the [plan and receipt contract](plugins/agent-harness/references/planned-execution.md).
+
+Planned Runs use manifest v2 and enforced checkpoints. Existing unplanned
+manifest v1 Runs remain on their legacy path. Native runtime Goals and worker
+delegation require host support and authorization; foreground execution is the
+fallback. This controller loop runs in the current session without a scheduler.
 
 ## Why Agent Harness
 
@@ -308,7 +328,7 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.12.0 Release Notes](docs/releases/v0.12.0.md)
+- [v0.13.0 Release Notes](docs/releases/v0.13.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while

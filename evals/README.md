@@ -119,6 +119,88 @@ records expected versus selected skills, and refuses to claim GPT-6 Astra
 evidence unless Codex JSONL reports the actual runtime model. It may use paid
 model capacity and is never part of the default test suite.
 
+## Live Development Execution
+
+Run the deterministic planned execution integration suite with:
+
+```bash
+npm run test:planned-execution
+```
+
+It uses temporary adapter projects, real Node verification for the completion
+path, and controlled failure receipts for repair and recovery contracts. It
+does not use a model.
+
+Inspect the development launcher without using a model:
+
+```bash
+npm run test:eval:development -- --help
+npm run test:eval:development -- --dry-run --case all
+```
+
+Run it only after explicitly opting in to model capacity:
+
+```bash
+AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:development -- --model MODEL --reasoning-effort high --case all --output /tmp/agent-harness-live-development.json
+```
+
+`--case normal` runs one bounded Codex invocation. `human-gate` first checks a
+pause and then supplies explicit approval in a second invocation. `recovery`
+asks the first invocation to complete the whole Milestone, then sends a real
+process-group interrupt after the first Goal's Run and checkpoint are durably
+completed. It starts one fresh invocation against the persisted fixture with
+an explicit resume input. A requested stop or an ordinary process exit does
+not count as an interruption. If the host cannot interrupt the process group,
+the case reports an environment limitation and fails. Neither variant tests
+automatic host waking. Each
+invocation has a ten minute limit. The launcher copies the local plugin into a
+temporary project, configures a workspace-write sandbox with network access
+disabled, disables Codex web search and connector apps, ignores the user's
+Codex config, and removes the fixture afterward. Structured Codex JSONL events
+are checked for unexpected MCP, connector, browser, or web tool calls; any such
+call fails the boundary check because the fixture authorizes only local CLI
+work. It does not enter the default test suite.
+
+The fixture has three dependent Goals: parse signed integers, sum them, and
+format the result. `--dry-run` builds and validates the starting fixture without
+using a model. On POSIX hosts it also runs a local mock process to check hard
+interruption, spawn-error cleanup, observed-model reporting, and external-tool
+event detection. A truncated JSONL capture fails provenance and boundary
+scoring. Integration tests and an independent runner-owned oracle check
+actual source behavior. The final report validates the saved plan, checks
+`execute next --milestone` returns `done`, and runs `goal validate` and
+`run validate` for every Goal and Run. It also checks the bundled CLI, test
+files, configuration and fixture instructions against their starting digest.
+Every invocation records the requested model separately from the observed
+Codex host and runtime model. The observed model must appear in that
+invocation's trusted host lifecycle JSONL; it may differ from the requested
+model when the host resolves an alias or fallback. If the host does not report
+one actual model, the report marks provenance unavailable and the case fails
+as unverified. A requested model or agent-authored text cannot establish
+runtime provenance. Failed state or boundary checks also fail the case.
+
+## Plugin Validation
+
+The official Python plugin validator remains the `npm run validate:plugin`
+check. Supply a different location when the default Codex installation path
+is unavailable:
+
+```bash
+npm run validate:plugin -- --validator /absolute/path/to/validate_plugin.py
+AGENT_HARNESS_PLUGIN_VALIDATOR=/absolute/path/to/validate_plugin.py npm run validate:plugin
+```
+
+The separate portable check is:
+
+```bash
+npm run validate:plugin:local
+```
+
+It checks repository manifest, skill directories and Markdown references,
+JSON schemas, and package bin/version integrity. It does not replace or claim
+parity with the official validator; a missing official script remains a
+failure from `validate:plugin`.
+
 ## Initial Automated Checks
 
 The first implementation can use a simple runner that:

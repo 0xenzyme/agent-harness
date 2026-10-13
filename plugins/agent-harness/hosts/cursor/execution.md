@@ -27,6 +27,10 @@ Use the canonical paths `host-direct`, `host-direct-postflight`, and
 
 - Authorization to create a Task or Cloud Agent is not authorization to create
   a worktree.
+- Use a native Goal or delegation only when this session exposes the capability
+  and current authorization permits it. Otherwise run the controller loop and
+  ready nodes in the current chat until whole-target `done`; do not create a
+  scheduler or another visible chat for continuation.
 - Do not pass a host-specific starting checkout unless the current user
   explicitly requests that Git state.
 - Worker output must be recorded with `run node record` before dependents run.

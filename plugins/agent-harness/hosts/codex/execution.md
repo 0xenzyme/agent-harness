@@ -29,6 +29,11 @@ Conversation-route aliases:
 ## Codex-Specific Rules
 
 - Authorization to create a thread is not authorization to create a worktree.
+- Use native `create_goal` for accepted long-running controller work only when
+  the tool is exposed and the user authorized that outcome. Delegation likewise
+  needs both capability and authority; otherwise execute ready nodes in the
+  foreground. Continue `execute next` through whole-target `done` in this
+  thread. Do not create a visible chat or scheduler for the loop.
 - Do not pass `startingState` unless the current user explicitly requests that
   specific existing Git state.
 - Worker selection, concurrency, cancellation, and model/effort belong to the

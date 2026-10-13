@@ -121,6 +121,32 @@ Use harness to check what remains for <milestone id>, then move the next confirm
 
 ## Use The Current Thread As Controller
 
+For an accepted Goal or Milestone with an `Execution Plan:` reference to the
+adjacent `<target-filename>.plan.json`, ask the current controller to complete
+that target. A Milestone member Goal references its parent's adjacent plan;
+a standalone Goal references its own. The controller validates the plan,
+prepares eligible per-Goal Runs, acts on
+`execute next --goal <path>` or `execute next --milestone <path>`, and repeats
+until `done` covers the whole selected target. Goal dependencies gate Run
+preparation; Task dependencies gate node execution. Candidate receipts need
+controller review, fresh validation logs and input hashes before dependents
+become ready. Pending state sync is resumed before further implementation.
+The controller stores node check logs inside their own Run, uses timestamps at or
+after manifest creation, and keeps source write scope outside Harness state.
+Milestone closeout passes the anchor Run revision returned by `execute next`.
+Stage logs stay inside that anchor Run and postdate the latest required Goal
+completion. A Goal explicitly marked `blocked` is reconciled before preparation
+or execution.
+A human Task with an already satisfied mapping and concrete Evidence is
+verified into a receipt; only a missing decision is asked again. Repeated
+identical verification failures report the attempt count and failure evidence.
+An actionable next step does not require a pure continuation prompt.
+
+Use native runtime Goals or delegation only when both the host exposes them
+and current authorization permits them. Foreground work in the current session
+is the fallback. Setup runs once only if already authorized; the loop creates
+no scheduler, visible chat, or automatic `AGENTS.md` change.
+
 When you want the current thread to own the outcome, coordinate, break down,
 dispatch, and accept work:
 

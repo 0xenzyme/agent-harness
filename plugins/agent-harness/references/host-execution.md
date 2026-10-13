@@ -42,6 +42,14 @@ continue in the current session; record degraded provenance only when an
 active durable Run requires it. Never invent runtime ids or state the host
 does not expose.
 
+For one-entry execution, both host capability and current authorization must
+permit a native runtime Goal or delegation. The controller loops over
+`execute next` until the selected Goal or Milestone is complete, implementing
+ready nodes in the foreground when delegation is unavailable or unauthorized.
+It does not create a background scheduler or new visible chat. One-shot setup
+is permitted only when already authorized; activation never edits `AGENTS.md`
+automatically.
+
 ## Controller Meaning
 
 Controller means outcome owner and accepted-state owner. It does not imply

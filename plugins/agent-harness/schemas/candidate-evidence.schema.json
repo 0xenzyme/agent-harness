@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-harness.local/schemas/candidate-evidence.schema.json",
+  "title": "Agent Harness planned node candidate receipt",
+  "type": "object",
+  "required": ["version", "target", "goal", "run", "node", "summary", "changedFiles", "stateSyncNotes", "risks", "remaining", "needUser", "executor", "checks"],
+  "properties": {
+    "version": { "const": 1 },
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "path"],
+      "properties": { "kind": { "enum": ["goal", "milestone"] }, "path": { "type": "string", "minLength": 1 } }
+    },
+    "goal": { "type": "string", "minLength": 1 },
+    "run": { "type": "string", "minLength": 1 },
+    "node": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "changedFiles": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "stateSyncNotes": { "type": "string", "minLength": 1 },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "remaining": { "type": "array", "items": { "type": "string" } },
+    "needUser": { "type": ["string", "null"] },
+    "executor": {
+      "type": "object",
+      "required": ["status", "observedAt", "observedSource"],
+      "properties": {
+        "status": { "const": "completed" },
+        "thread": { "type": "string", "minLength": 1, "description": "For a delegated node recorded as running, must equal the recorded worker identity." },
+        "observedAt": { "type": "string", "format": "date-time", "description": "Observed executor completion time; must be at or after this Run manifest's createdAt." },
+        "observedSource": { "type": "string", "minLength": 1 }
+      }
+    },
+    "checks": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "command", "exitCode", "observedAt", "inputs", "log", "logHash"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+          "command": { "type": "string", "minLength": 1 },
+          "exitCode": { "type": "integer" },
+          "observedAt": { "type": "string", "format": "date-time", "description": "For a node check, at or after its bound Run manifest's createdAt. For a Milestone stage check, at or after the latest required Goal Run completedAt (or legacy updatedAt fallback)." },
+          "inputs": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+          "log": { "type": "string", "minLength": 1, "description": "Repository-relative regular file inside the same bound Run: the node's own Run for Task checks or the anchor Run for Milestone stage checks." },
+          "logHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "manual": { "type": "boolean" },
+          "humanDecision": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

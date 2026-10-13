@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.13.0 - 2026-10-13
+
+- Add one-entry Goal/Milestone control through immutable two-level execution
+  plans, dependency-gated manifest v2 Runs and target-scoped next actions.
+- Require controller review of candidate receipts, current verification inputs,
+  logs and accepted dependency evidence before planned nodes release successors.
+- Share completion checks and synchronize Goal/index/status/Run/checkpoint
+  through project locks, atomic writes and recoverable synchronization journals.
+- Preserve manifest v1 and direct/postflight execution; keep continuous execution
+  and interruption wakeups with the host without adding a scheduler.
+- Add deterministic planned execution integration coverage and opt-in live
+  development evaluation with independent code oracles and host provenance.
+- Allow an explicit official plugin-validator path and report a missing validator
+  as an environment error; provide a separate portable integrity check.
+
 - Added a Grok host capability and result-packet map under
   `plugins/agent-harness/hosts/grok/`. Grok has no runtime outcome; `todo_write`
   is the transient plan, and `spawn_subagent` is delegation and worktree isolation.

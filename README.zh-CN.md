@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.12.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.13.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![Protocol](https://img.shields.io/badge/protocol-checks-0369a1)](docs/HARNESSES.md)
 [![Smoke](https://img.shields.io/badge/smoke-checks-1d4ed8)](docs/HARNESSES.md)
@@ -18,7 +18,7 @@ Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
 
 [快速开始](#在项目中怎么用) · [工作方式](#工作方式) ·
 [能力矩阵](docs/HARNESSES.md) · [更新日志](CHANGELOG.md) ·
-[v0.12.0 发布说明](docs/releases/v0.12.0.md) ·
+[v0.13.0 发布说明](docs/releases/v0.13.0.md) ·
 [社交预览](docs/assets/github/social-preview.svg)
 
 ## 在项目中怎么用
@@ -86,6 +86,22 @@ closeout 保存项目事实。
 这些 runtime 能力是可选的，不按模型名称猜测。旧模型或较小 runtime 没有 Goal、Plan、
 subagent 或 steering 时，回退到当前会话和短 checklist；CLI 仍负责验证路径、
 evidence、gate 和 accepted state。
+
+## 已确认 Goal 或 Milestone 的单入口执行
+
+已确认的执行计划与目标文档相邻，路径为 `<target-filename>.plan.json`；
+目标用 `Execution Plan:` 引用它。Milestone 内每个 Goal 都引用该 Milestone
+旁的同一计划；独立 Goal 才使用自己旁边的计划。版本化计划声明 Goal 依赖，
+以及每个 Goal 内的 Task 依赖。主控验证计划、为符合条件的 Goal 准备 Run、
+审查候选回执和当前验证证据、同步状态，然后反复取得下一动作，直到选中的
+整个 Goal 或 Milestone 完成。只在全部完成、真实阻塞或用户明确暂停时结束；
+只有确实缺少权限或方向决策时才请求用户输入。
+单个节点完成不代表阶段完成。见[使用说明](docs/usage.zh-CN.md)、
+[CLI](docs/cli.zh-CN.md)和[计划与回执合同](plugins/agent-harness/references/planned-execution.md)。
+
+计划内 Run 使用 manifest v2 和 enforced checkpoint。已有未计划的
+manifest v1 Run 沿用旧路径。原生 runtime Goal 与 worker 委派都要求 host
+支持且已经获授权；否则在当前会话前台执行。这个循环不创建 scheduler。
 
 ## 为什么需要 Agent Harness
 
@@ -286,7 +302,7 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [Project Contract](docs/project-contract.md)
 - [Cybernetic Stability](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.12.0 发布说明](docs/releases/v0.12.0.md)
+- [v0.13.0 发布说明](docs/releases/v0.13.0.md)
 - [Changelog](CHANGELOG.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的

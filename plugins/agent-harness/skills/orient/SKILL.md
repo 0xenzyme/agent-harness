@@ -22,6 +22,15 @@ node <plugin-root>/scripts/agent-harness.mjs orient next --cwd <project> --json
 revision, control state, sole next action, pause reason, and prohibited actions.
 When multiple active checkpoints exist, select one explicitly with
 `--run <run-dir>`; never choose by timestamp or chat memory.
+For an accepted one-entry target, use `orient next --goal <goal-file>` or
+`orient next --milestone <milestone-file>` to inspect the same target-scoped
+decision as `execute next`. Check the adjacent `<target-filename>.plan.json`
+named by `Execution Plan:` and report the whole target's next action, including
+pending sync or review. `done` means the selected Goal or Milestone is complete;
+`reconcile` with `needUser: null` reports a non-user blocker, while
+`need-user` carries a concrete decision.
+A ready human Task with satisfied mapped items and concrete Evidence routes to
+`verify-node` for receipt capture; ask only when the accepted record is absent.
 
 2. Read the configured adapter, Goal index, bounded status, and only the
    relevant Spec/Goal/Run evidence.

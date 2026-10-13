@@ -1,6 +1,6 @@
 {
   "name": "agent-harness",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "private": true,
   "description": "Adapter-driven control plane for coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync.",
   "type": "module",
@@ -21,7 +21,10 @@
     "test:hosts-grok": "node scripts/test-suites.mjs hosts-grok",
     "test:smoke": "node tests/smoke.mjs",
     "test:regressions": "node tests/regressions.mjs",
-    "validate:plugin": "node tools/validate-plugin.mjs"
+    "validate:plugin": "node tools/validate-plugin.mjs",
+    "test:planned-execution": "node tests/planned-execution.mjs",
+    "test:eval:development": "node evals/run-live-development.mjs",
+    "validate:plugin:local": "node tools/validate-plugin-local.mjs"
   },
   "license": "MIT"
 }

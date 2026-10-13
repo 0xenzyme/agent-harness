@@ -234,6 +234,120 @@ CLI execution, not the language of a host conversation.
 
 ## Goals And Runs
 
+### Planned one-entry execution
+
+`plan validate` also checks the Goal contract and adapter-required gates.
+Planned Goals use explicit map labels instead of legacy batch or M-number
+phasing inference. An explicitly blocked root Milestone prevents Run and Task
+starts. Repeated completion is idempotent; the status file projects the current
+target and later accepted work does not reopen historical completed targets.
+
+Place the versioned plan beside its Goal or Milestone target as
+`<target-filename>.plan.json`, and reference it with `Execution Plan:` in
+that target. The [planned execution reference](../plugins/agent-harness/references/planned-execution.md)
+defines the version 1 JSON fields and candidate receipt. Every Goal in a
+Milestone plan references that Milestone-adjacent plan; only a standalone Goal
+uses its own adjacent plan. Validation checks configured path containment,
+duplicate or missing IDs, cycles, acceptance and gate coverage, and the two
+dependency levels. Goal dependencies gate preparation of per-Goal Runs; Task
+dependencies become the Run DAG and gate node execution.
+If a Milestone `Goal List` has concrete Doc rows, the plan covers exactly
+those Goal paths. Its contract hash binds declarative row fields (Goal name,
+Doc, priority, dependencies and gate) while excluding mutable Status cells.
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs plan validate --cwd /path/to/project --plan harness/goals/example.md.plan.json --json
+node plugins/agent-harness/scripts/agent-harness.mjs plan inputs --cwd /path/to/project --plan harness/goals/example.md.plan.json --json
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/example.md --plan harness/goals/example.md.plan.json --dry-run --json
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/example.md --plan harness/goals/example.md.plan.json --json
+node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd /path/to/project --goal harness/goals/example.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd /path/to/project --milestone harness/milestones/example.md --json
+node plugins/agent-harness/scripts/agent-harness.mjs run node inputs --cwd /path/to/project --run .harness/runs/example --node build --json
+```
+
+`execute next` is target scoped. Its stable output fields are `action`
+(string), `target` (`{kind, path}`), `goal`, `run`, `node`, and `reason`
+(strings; absent selections are empty strings), `checkpointRevision`
+(integer or null), `requiredEvidence` (array), and `needUser` (string or
+null). Actions are `execute-node`, `wait`,
+`review-node`, `verify-node`, `sync`, `prepare-run`, `complete-goal`,
+`complete-milestone`, `reconcile`, `replan`, `need-user`, and `done`.
+`done` means the entire selected target is complete. `reconcile` with
+`needUser: null` identifies a non-user blocker; `need-user` identifies a concrete
+decision. Target-scoped `orient next` shares this read-only decision.
+`complete-milestone` includes the anchor `run` and `checkpointRevision`.
+
+Planned Runs use manifest v2 with an enforced checkpoint. Manifest v1 and
+unplanned Runs retain their legacy behavior. Planned `run node record` calls
+for `running` and `blocked` require `--expected-revision`; node review and
+Goal completion use the same checkpoint revision discipline. Inspect the
+current revision before each mutation. Mutating commands support `--dry-run`
+previews and `--json` output.
+The plan itself uses `version: 1`. Its `goals[].tasks[]` entries declare
+`type: implementation|verification|human`, `ownership.read` and
+`ownership.write`, acceptance references `{path, section, item}`, and
+mandatory `verification[]` checks `{id, command, inputs, manual?}`.
+`goal create --plan PATH` is optional for new planned Goals and defaults their
+checkpoint policy to enforced. Existing Goals must explicitly have
+`Checkpoint Policy: enforced` before planned Run preparation.
+For a single-Goal target, every optional root `verification` check must be
+identical to one Task check. Milestones require root `verification` checks.
+Acceptance coverage includes legacy `Stage Completion Map` and
+`Source Task Acceptance Map` items alongside the current checklist and gate
+sections; mappings use the exact item labels.
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/example --node build --phase running --summary "Starting build" --expected-revision 0 --dry-run --json
+node plugins/agent-harness/scripts/agent-harness.mjs run node review --cwd /path/to/project --run .harness/runs/example --node build --evidence evidence/build.json --decision accepted --expected-revision 1 --json
+node plugins/agent-harness/scripts/agent-harness.mjs run sync --cwd /path/to/project --run .harness/runs/example --expected-revision 2 --json
+node plugins/agent-harness/scripts/agent-harness.mjs goal complete --cwd /path/to/project --goal harness/goals/example.md --run .harness/runs/example --expected-revision 3 --json
+node plugins/agent-harness/scripts/agent-harness.mjs milestone complete --cwd /path/to/project --milestone harness/milestones/example.md --evidence evidence/milestone.json --expected-revision <checkpointRevision-from-execute-next> --json
+```
+
+Write the node receipt to `<run>/agents/<node>/candidate.json`. It is candidate
+evidence with `version: 1`, bound `target`, `goal`, `run`, `node`,
+`summary`, `changedFiles`, `stateSyncNotes`, `risks`, `remaining`,
+`needUser`, `executor`, and `checks`. Each check records `id`, `command`,
+`exitCode`, `observedAt`, an `inputs` path-to-hash map, `log`, and `logHash`;
+manual checks also need `humanDecision`. Use `run node inputs` after the
+check to capture current hashes. Logs must be regular files inside that
+node's own bound Run, and check timestamps must be at or after the Run
+manifest creation time. Task `ownership.write` cannot cover authoritative
+Harness artifacts. For a delegated node recorded as `running`, the optional
+`executor.thread` field must equal the recorded worker identity. Review checks actual validation logs
+and content hashes of current verification inputs. `accepted` releases Task
+dependents; `request-fix` requests bounded repair; `blocked` records failure.
+Three identical failures without progress block that item while other ready
+work continues. Unknown worker liveness requires host inspection before
+retry. Pending project sync is resumed with `run sync` before new execution;
+intervening user edits cause a conflict rather than an overwrite. A completed
+node or Run never completes the parent Goal or Milestone by implication.
+Completion checks reject pending requirements, stale evidence, placeholders,
+incomplete dependencies, and unfinished sync. Contract drift calls for a
+replacement Run, leaving the old manifest immutable.
+The controller runs required checks and records actual results; the CLI
+validates the recorded receipt and hashes. Source-root `.` input snapshots
+exclude `.git`, `node_modules`, configured Specs and other Harness control
+artifacts, including config, sync journal, and project lock.
+Milestone completion checks the `--expected-revision` from the anchor Run
+returned by `execute next` and advances that Run's checkpoint revision.
+It also synchronizes `Current Status` and `Goal List`, records
+`Completion Evidence Hash`, and verifies that hash on later `done` checks.
+Stage verification logs belong inside the same anchor Run. Stage check
+timestamps must be at or after the latest completed time among required Goal
+Runs (`completedAt`, with legacy `updatedAt` fallback). An explicitly
+`blocked` Goal returns `reconcile` and cannot be prepared or executed until
+its phase is recovered.
+For fixed projects, Spec references stay project-local unless `paths.specs`
+is configured; the optional Milestone root defaults to `harness/milestones/`.
+A ready human Task with all mapped items marked `satisfied` and concrete
+`Evidence` returns `verify-node`. Verify that prior accepted record and put
+its decision in receipt `humanDecision`; ask through `need-user` only if the
+record is missing. After three identical verification failures without
+progress, `reconcile` names the attempt count and failure summary and includes
+the review receipt in `requiredEvidence`.
+
+
 User-facing hierarchy is `Roadmap -> Milestone -> Goal -> Task -> Run`.
 `Goal` is the main Harness work unit. `Task` means a concrete checklist or
 execution breakdown inside a Goal. A `Run` is one execution attempt and
@@ -358,6 +472,8 @@ Record a node start before launch, then record its result. Node IDs are generate
 per task size; inspect `run status --json` (or `dag.json`) before copying a command.
 For the current default medium/large DAG, the IDs are `execution` and
 `verification`; a second concurrent writer requires `--isolation-evidence`:
+The examples below show the legacy unplanned Run path; planned `running` and
+`blocked` records require `--expected-revision` as shown above.
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase running --summary "Starting accepted implementation"

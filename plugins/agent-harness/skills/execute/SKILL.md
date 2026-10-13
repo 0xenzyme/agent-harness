@@ -21,6 +21,8 @@ Read [Artifact Lifecycle](../../references/artifact-lifecycle.md) before
 compacting task state or pruning Runs.
 Read [Worker Runner Contract](../../references/worker-runner-contract.md) before
 delegating any DAG node or worker.
+Read [Planned Execution Contract](../../references/planned-execution.md) before
+validating a plan or accepting a planned candidate receipt.
 
 ## Workflow
 
@@ -63,6 +65,22 @@ node <plugin-root>/scripts/agent-harness.mjs goal validate --cwd <project> --goa
 node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
 ```
 
+   For an accepted one-entry Goal or Milestone, validate its versioned plan at
+   `<target-filename>.plan.json` and prepare each eligible Goal with `--plan`.
+   The target document's `Execution Plan:` line references that adjacent plan.
+   Every Goal in a Milestone plan references the Milestone-adjacent plan;
+   only a standalone single-Goal plan sits beside its Goal.
+   If a Milestone Goal List has concrete Doc rows, the plan must cover those
+   Goal paths exactly. Declarative row fields are bound, but Status may change.
+   The plan has `version: 1`, a `{kind, path}` target, Goals with Task arrays,
+   explicit ownership and acceptance references, and mandatory verification
+   checks with `id`, `command`, and `inputs`.
+   A single-Goal plan's optional root checks must exactly match assigned Task
+   checks; a Milestone plan requires its own root checks.
+   A planned Run uses manifest v2 and an enforced checkpoint; the existing
+   unplanned path and manifest v1 remain legacy paths. Goal dependencies gate
+   Run preparation; Task dependencies gate node execution.
+
 7. Give ready DAG nodes to the host when `delegation` is available. Harness
    does not start workers, choose concurrency, cancel runtimes, or pin
    model/effort by default. Record
@@ -88,6 +106,63 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
    State Sync Notes, remaining work, and any true user decision.
 11. Close with changed output, verification, accepted phase, `Need user`, and
     `Remaining`.
+
+## One-Entry Controller Loop
+
+For an accepted target, repeatedly call `execute next --goal <goal-file>` or
+`execute next --milestone <milestone-file>`. Act on the returned action, then
+read the next action again until it is `done` for the entire selected target.
+`orient next` with the target uses the same decision logic for read-only routing.
+Do not end a turn with a pure “continue?” question when an accepted next step
+is executable. Do not infer parent completion from a completed node or Run.
+
+The stable next-action fields are `action`, `target`, `goal`, `run`, `node`,
+`reason`, `checkpointRevision`, `requiredEvidence`, and `needUser`. Actions
+are `execute-node`, `wait`, `review-node`, `verify-node`, `sync`,
+`prepare-run`, `complete-goal`, `complete-milestone`, `reconcile`, `replan`,
+`need-user`, and `done`. `reconcile` with `needUser: null` reports a non-user
+blocker; `need-user` names a concrete decision or authority gap. A
+`complete-milestone` action includes its anchor `run` and
+`checkpointRevision`; pass that revision to `milestone complete`.
+
+Before action, inspect pending project sync and uncertain external effects;
+use `run sync --run <run> --expected-revision <revision>` to resume a pending
+sync. A planned node start or block uses `run node record` with the current
+checkpoint revision. Read current verification hashes with `plan inputs`
+or `run node inputs`; the executor writes its candidate receipt to
+`<run>/agents/<node>/candidate.json`. The controller
+checks actual validation logs inside the node's own bound Run, check timestamps
+at or after Run manifest creation, current input content hashes, source write
+scope outside authoritative Harness artifacts, and gates,
+then records `run node review --decision accepted|request-fix|blocked` with
+evidence and expected revision. Only acceptance releases dependents. Request
+bounded repair for failed verification; three identical failures without
+progress block that item while other ready work continues. The next action is
+`reconcile` with `needUser: null`, a specific no-progress reason and the
+review receipt in `requiredEvidence`. A ready human Task with satisfied mapped
+items and concrete Evidence goes to `verify-node`; verify that accepted record
+and copy its decision into receipt `humanDecision` without asking again.
+Unknown worker liveness requires host inspection before retry. Complete the Goal and then the
+Milestone only after fresh evidence and resumable state sync pass their gates.
+The controller runs necessary Task and stage checks and records their actual
+logs. CLI commands validate those records; they do not run the checks. A
+delegated receipt names the recorded worker in `executor.thread` when the node
+was running. Milestone completion synchronizes `Current Status` and
+`Goal List`, records `Completion Evidence Hash`, and advances its anchor checkpoint.
+Stage logs belong inside that anchor Run, with check timestamps at or after
+the latest required Goal Run completion time. A root Milestone explicitly
+marked `blocked` prevents Run and Task starts until accepted recovery. Planned
+Goals use explicit map labels without legacy batch or M-number inference.
+Successful repeated completion preserves the revision; later accepted work
+may replace the current status projection without reopening historical targets. A Goal explicitly marked
+`blocked` returns `reconcile` and cannot be prepared or executed until
+recovered.
+
+Native runtime Goals and delegation require both current host capability and
+authorization. When either is absent, continue foreground in the current
+session. The loop is session driven; it does not create a scheduler, visible
+chat, or automatic `AGENTS.md` edit. One-shot setup runs only when setup was
+already authorized.
 
 ## Domain Invariants
 

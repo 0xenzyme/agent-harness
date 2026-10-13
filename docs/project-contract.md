@@ -19,6 +19,10 @@ project facts at durable boundaries or in one bounded postflight closeout.
   idea inbox, status, specs, goals, milestones, runs, gate records, and
   deferred-register paths.
 
+Fixed-contract Spec references remain project-local unless `paths.specs` is
+explicitly configured. The optional Milestone root defaults to
+`harness/milestones/`; fixed `init` does not gain a required directory.
+
 All configured writes and Goal/Spec/Run/DAG references must stay inside their
 configured project roots after lexical and existing-parent realpath checks.
 Legacy aliases remain readable for one migration boundary, canonical output
@@ -49,6 +53,80 @@ pauses before the host call; session authority alone does not authorize a
 worktree or host-specific starting checkout state.
 
 ## Completion And Run Evidence
+
+An accepted one-entry Goal or Milestone can reference a versioned adjacent
+`<target-filename>.plan.json` through `Execution Plan:`. The
+[planned execution reference](../plugins/agent-harness/references/planned-execution.md)
+defines version 1 plan and receipt fields. Validation enforces configured-root
+containment. Every Goal in a Milestone plan references the Milestone-adjacent
+plan; only a standalone Goal references its own adjacent plan. The validator checks
+complete acceptance/gate mapping, unique Goal and Task IDs,
+existing dependencies, and acyclic Goal and Task graphs. Goal dependencies
+gate per-Goal Run preparation; Task dependencies compile into the planned Run
+DAG. Planned Runs use manifest v2 and enforced checkpoints. Existing manifest
+v1 and unplanned Runs retain legacy behavior and are not rebound.
+If a Milestone Goal List contains concrete Doc rows, the plan must cover
+exactly those Goal paths. Its target contract hash binds declarative row
+fields while excluding mutable Status cells.
+
+The controller repeats target-scoped `execute next` until whole-target `done`.
+Its stable fields are `action`, `target`, `goal`, `run`, `node`, `reason`,
+`checkpointRevision`, `requiredEvidence`, and `needUser`. `target` is a
+`{kind, path}` object; `goal`, `run`, `node`, and `reason` are strings;
+`checkpointRevision` is an integer or null; `requiredEvidence` is an array;
+`needUser` is a string or null. It may return
+`execute-node`, `wait`, `review-node`, `verify-node`, `sync`, `prepare-run`,
+`complete-goal`, `complete-milestone`, `reconcile`, `replan`, `need-user`,
+or `done`. `reconcile` with `needUser: null` denotes a non-user blocker;
+`need-user` identifies a concrete decision. `complete-milestone` supplies
+the anchor Run and its checkpoint revision; completion must pass that expected
+revision and advances the anchor checkpoint. A completed leaf does not imply
+parent completion. The read-only target-scoped `orient next` shares this
+selection. No scheduler is part of this contract.
+
+Planned node starts/blocks, reviews, sync and Goal completion require the
+current checkpoint revision. A worker result is a candidate receipt; the
+controller checks actual node validation logs inside that node's bound Run,
+check timestamps at or after manifest creation, and content hashes of current
+verification inputs before accepting it. Only accepted nodes release
+dependents. Failed verification can request bounded repair; three identical
+failures without progress block that item while other ready nodes continue.
+Task source write scope cannot include authoritative Harness artifacts.
+For a delegated node recorded as running, the candidate's optional
+`executor.thread` must match its recorded worker identity.
+Input snapshots exclude configured control artifacts, including Specs,
+config, sync journal, and project lock. A source-root `.` input omits those
+controls so state sync cannot invalidate its own verification hash.
+For a single-Goal plan, any root verification check must be identical to a
+check assigned to that Goal's Task; Milestone root verification is mandatory.
+The controller runs necessary checks and saves actual logs; the CLI validates
+recorded evidence. Milestone completion synchronizes `Current Status` and
+`Goal List`, records `Completion Evidence Hash`, and advances the anchor Run's
+checkpoint revision.
+Stage validation logs stay inside the Milestone anchor Run. Stage checks must
+be observed at or after the latest required Goal Run completion time
+(`completedAt`, with a legacy `updatedAt` fallback). A Goal already marked
+`blocked` cannot be prepared, executed, or completed until it is recovered;
+target-scoped routing returns `reconcile` for that Goal.
+Ready human Tasks with all mapped items already `satisfied` and backed by
+concrete Evidence route to `verify-node`; the controller records the existing
+accepted decision in receipt `humanDecision`. Missing approval routes to
+`need-user` with a concrete question. Three identical verification failures
+without progress produce `reconcile` with a reason naming the attempt count
+and failure summary and the review receipt in `requiredEvidence`.
+Unknown worker liveness is inspected through the host before retry.
+An explicitly blocked root Milestone prevents Run preparation and Task starts
+until accepted recovery clears it. A completed Run with an active Goal routes
+to Goal closeout rather than preparing another Run. Planned Goals use explicit
+map labels; legacy batch and M-number phasing heuristics apply to unplanned work.
+Plan validation also validates each Goal contract, including adapter gates.
+Completion rejects pending requirements, placeholders, stale evidence,
+incomplete dependencies, and unfinished project sync. Interrupted multi-file
+sync resumes under lock before new implementation and detects intervening
+user edits instead of overwriting them.
+Repeated successful closeout is idempotent and keeps the checkpoint revision.
+Status projects the current target; later accepted work may replace that
+bounded projection without reopening historical completed Goals or Milestones.
 
 Task/Goal is the accepted-state authority and uses `active`, `completed`, or
 `blocked`. `blocked` is resumable and non-complete. A Run records DAG

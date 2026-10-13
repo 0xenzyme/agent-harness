@@ -6,6 +6,12 @@ Checkpoint Policy: disabled
 Checkpoint Stages: []
 Status: active.
 
+For a standalone planned Goal, add `Execution Plan: <goal-filename>.plan.json`
+beside the header and create the plan adjacent to this Goal file. For a Goal
+inside a planned Milestone, use the same `Execution Plan:` path as its parent
+Milestone; that plan is adjacent to the Milestone file, not this Goal file.
+Unplanned Goals leave the field absent and retain legacy Run behavior.
+
 ## Source Task
 
 -
@@ -107,6 +113,10 @@ ordinary direct or postflight-only work outside this durable lifecycle.
 ## Completion Conditions
 
 - Accepted scope, verification, required gates, and state sync are satisfied.
+- For a planned Goal, all required Tasks and accepted evidence are current;
+  `goal complete` finishes the whole Goal after the planned Run is synchronized.
+- Continue the controller loop without a pure continuation question while an
+  authorized next action remains. `done` requires whole-Goal completion.
 
 ## Pause Conditions
 

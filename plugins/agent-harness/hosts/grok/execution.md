@@ -26,6 +26,10 @@ Use the canonical paths `host-direct`, `host-direct-postflight`, and
 ## Grok-Specific Rules
 
 - Authorization to spawn a subagent is not authorization to create a worktree.
+- No native runtime Goal is available here; keep the accepted outcome in the
+  current session and loop over `execute next` to whole-target `done`.
+  Use `spawn_subagent` only when exposed and authorized; otherwise implement
+  ready nodes in the foreground. No scheduler or visible chat is implied.
 - Do not pass a host-specific starting checkout unless the current user
   explicitly requests that Git state.
 - Worker selection, concurrency, cancellation, and model/effort belong to the

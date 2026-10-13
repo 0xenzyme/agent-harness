@@ -4,6 +4,7 @@ import { closeSync, cpSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSyn
 import { createHash, randomBytes } from "node:crypto";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createPlannedExecution } from "./planned-execution.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const pluginRoot = resolve(dirname(__filename), "..");
@@ -134,6 +135,12 @@ function parseArgs(argv) {
     "gateEvidence",
     "gate-evidence",
     "goal",
+    "plan",
+    "milestone",
+    "evidence",
+    "decision",
+    "executorState",
+    "executor-state",
     "idea",
     "integrationRef",
     "integration-ref",
@@ -502,7 +509,7 @@ const messages = {
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
-  agent-harness orient next [--cwd PATH] [--run RUN_DIR] [--json]
+  agent-harness orient next [--cwd PATH] [--run RUN_DIR|--goal PATH|--milestone PATH] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness artifacts inspect [--cwd PATH] [--json]
@@ -513,11 +520,19 @@ const messages = {
   agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--checkpoint-stages JSON] [--dry-run] [--force]
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--checkpoint-stages JSON] [--plan PATH] [--dry-run] [--force] [--json]
   agent-harness goal list [--cwd PATH] [--json]
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
-  agent-harness run prepare --goal <goal-file> [--cwd PATH]
+  agent-harness plan validate --plan PATH [--cwd PATH] [--json]
+  agent-harness execute next --goal PATH|--milestone PATH [--cwd PATH] [--json]
+  agent-harness goal complete --goal PATH --run PATH --expected-revision N [--dry-run] [--json]
+  agent-harness milestone complete --milestone PATH --evidence PATH --expected-revision N [--dry-run] [--json]
+  agent-harness run node review --run PATH --node ID --evidence PATH --decision accepted|request-fix|blocked --expected-revision N [--dry-run] [--json]
+  agent-harness run node inputs --run PATH --node ID [--json]
+  agent-harness plan inputs --plan PATH [--json]
+  agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
+  agent-harness run prepare --goal <goal-file> [--plan PATH] [--cwd PATH] [--dry-run] [--json]
   agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
@@ -552,7 +567,7 @@ const messages = {
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
-  agent-harness orient next [--cwd PATH] [--run RUN_DIR] [--json]
+  agent-harness orient next [--cwd PATH] [--run RUN_DIR|--goal PATH|--milestone PATH] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness artifacts inspect [--cwd PATH] [--json]
@@ -563,11 +578,19 @@ const messages = {
   agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--checkpoint-stages JSON] [--dry-run] [--force]
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--checkpoint-stages JSON] [--plan PATH] [--dry-run] [--force] [--json]
   agent-harness goal list [--cwd PATH] [--json]
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
-  agent-harness run prepare --goal <goal-file> [--cwd PATH]
+  agent-harness plan validate --plan PATH [--cwd PATH] [--json]
+  agent-harness execute next --goal PATH|--milestone PATH [--cwd PATH] [--json]
+  agent-harness goal complete --goal PATH --run PATH --expected-revision N [--dry-run] [--json]
+  agent-harness milestone complete --milestone PATH --evidence PATH --expected-revision N [--dry-run] [--json]
+  agent-harness run node review --run PATH --node ID --evidence PATH --decision accepted|request-fix|blocked --expected-revision N [--dry-run] [--json]
+  agent-harness run node inputs --run PATH --node ID [--json]
+  agent-harness plan inputs --plan PATH [--json]
+  agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
+  agent-harness run prepare --goal <goal-file> [--plan PATH] [--cwd PATH] [--dry-run] [--json]
   agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
@@ -1242,6 +1265,8 @@ function resolveHarnessContext(cwd) {
     config: activeConfigRelPath || configRelPath,
     status: paths.status || fixedContract.status,
     goals: paths.goals || fixedContract.goals,
+    specs: paths.specs || "",
+    milestones: paths.milestones || "harness/milestones",
     runs: paths.runs || fixedContract.runs
   };
 
@@ -1276,6 +1301,8 @@ function fixedPathsFromConfig(config, activeConfigRelPath = configRelPath) {
     config: activeConfigRelPath,
     status: paths.status || fixedContract.status,
     goals: paths.goals || fixedContract.goals,
+    specs: paths.specs || "",
+    milestones: paths.milestones || "harness/milestones",
     runs: paths.runs || fixedContract.runs
   };
 }
@@ -2360,6 +2387,7 @@ function formatTaskSummaries(tasks, emptyText) {
 }
 
 function orientNext(args) {
+  if (args.goal || args.milestone) return planned.next(args);
   const payload = orientationPayload(args);
 
   if (args.json) {
@@ -3919,7 +3947,7 @@ ${items}
 `;
 }
 
-function buildGoalContent({ task, context, specPath, workMode, checkpointPolicy, checkpointStages, allowNoSpec = false }) {
+function buildGoalContent({ task, context, specPath, workMode, checkpointPolicy, checkpointStages, planPath = "", allowNoSpec = false }) {
   const heading = titleCase(task.title);
   const paths = context.paths;
   const taskIndexPath = paths.taskIndex || paths.tasks;
@@ -3982,7 +4010,7 @@ function buildGoalContent({ task, context, specPath, workMode, checkpointPolicy,
   return `# Goal: ${heading}
 
 Spec: ${spec}
-${specPolicyLine}Checkpoint Policy: ${selectedCheckpointPolicy}
+${planPath ? `Execution Plan: ${planPath}\n` : ""}${specPolicyLine}Checkpoint Policy: ${selectedCheckpointPolicy}
 Checkpoint Stages: ${JSON.stringify(selectedCheckpointStages)}
 Status: ${statusLine}
 
@@ -4123,7 +4151,11 @@ function goalCreate(args) {
   if (args.checkpointPolicy && !validCheckpointPolicies.has(args.checkpointPolicy)) {
     throw new Error(`Invalid --checkpoint-policy: ${args.checkpointPolicy}`);
   }
-  const resolvedCheckpointPolicy = args.checkpointPolicy || context.config.checkpoint?.defaultPolicy || "disabled";
+  const resolvedCheckpointPolicy = args.checkpointPolicy || (args.plan ? "enforced" : context.config.checkpoint?.defaultPolicy || "disabled");
+  if (args.plan) {
+    configuredPath(cwd, args.plan, "Execution plan");
+    if (resolvedCheckpointPolicy !== "enforced") throw new Error("Planned Goals require enforced checkpoint policy.");
+  }
   if (!validCheckpointPolicies.has(resolvedCheckpointPolicy)) {
     throw new Error(`Invalid checkpoint.defaultPolicy: ${resolvedCheckpointPolicy}`);
   }
@@ -4156,6 +4188,7 @@ function goalCreate(args) {
     task,
     context,
     specPath: args.spec,
+    planPath: args.plan || "",
     workMode: args.workMode,
     checkpointPolicy: resolvedCheckpointPolicy,
     checkpointStages: resolvedCheckpointStages,
@@ -4163,6 +4196,7 @@ function goalCreate(args) {
   });
 
   if (args.dryRun) {
+    if (args.json) { console.log(JSON.stringify({ goal: goalRelPath, dryRun: true, content }, null, 2)); return; }
     console.log(`Would create ${goalRelPath}`);
     console.log("");
     console.log(content.trimEnd());
@@ -4175,7 +4209,8 @@ function goalCreate(args) {
 
   mkdirSync(dirname(goalPath), { recursive: true });
   writeFileSync(goalPath, content);
-  console.log(`Created ${goalRelPath}`);
+  if (args.json) console.log(JSON.stringify({ goal: goalRelPath, dryRun: false }, null, 2));
+  else console.log(`Created ${goalRelPath}`);
 }
 
 function goalTitle(content, goalPath) {
@@ -4518,9 +4553,12 @@ function stageCompletionMapDetails(goalContent, specContent = "") {
   const goalLegacyStageSection = extractSection(goalContent, "Stage Completion Map");
   const specLegacyStageSection = extractSection(specContent, "Stage Completion Map");
   const section = goalMilestoneSection || specMilestoneSection || goalLegacyStageSection || specLegacyStageSection;
-  const requiredLabels = stageCompletionRequiredLabels(goalContent, specContent);
+  const plannedTarget = Boolean(extractInlinePath(goalContent, "Execution Plan"));
+  const requiredLabels = plannedTarget
+    ? parseEvidenceItems(section, "Item").map(item => item.label)
+    : stageCompletionRequiredLabels(goalContent, specContent);
   return {
-    required: stageCompletionMapRequired(goalContent, specContent, requiredLabels),
+    required: plannedTarget ? Boolean(section) : stageCompletionMapRequired(goalContent, specContent, requiredLabels),
     requiredLabels,
     source: goalMilestoneSection
       ? "goal"
@@ -4706,7 +4744,7 @@ function acceptanceMapDetails(goalContent, specContent = "") {
   const specSection = extractSection(specContent, "Source Task Acceptance Map");
   const section = goalSection || specSection;
   return {
-    required: batchSignals(goalContent) || batchSignals(specContent),
+    required: extractInlinePath(goalContent, "Execution Plan") ? Boolean(section) : batchSignals(goalContent) || batchSignals(specContent),
     source: goalSection ? "goal" : specSection ? "spec" : "",
     section,
     items: section ? parseSourceTaskAcceptanceMap(section) : []
@@ -4884,7 +4922,7 @@ function goalMetadata(cwd, goalPath) {
   };
 }
 
-function validateGoal(cwd, goalPath) {
+function validateGoal(cwd, goalPath, { checkCompletion = true } = {}) {
   const errors = [];
   const warnings = [];
   const context = resolveHarnessContext(cwd);
@@ -4997,6 +5035,11 @@ function validateGoal(cwd, goalPath) {
 
   errors.push(...stateSyncNotesValidationErrors(stateSyncNotesDetails(content)));
 
+  if (canonicalStatus === "completed" && checkCompletion) {
+    errors.push(...goalEvidenceErrors(cwd, context, displayPath(cwd, goalPath)));
+    errors.push(...planned.completionErrors(cwd, context, displayPath(cwd, goalPath)));
+  }
+
   const pauseConditions = extractSection(content, "Pause Conditions");
   const pauseLower = pauseConditions.toLowerCase();
   const requiredPauseSignals = [
@@ -5106,6 +5149,29 @@ function goalInspect(args) {
   for (const error of validation.errors) {
     console.log(`- ${error}`);
   }
+}
+
+function goalEvidenceErrors(cwd, context, goalRef, { skipSync = false, additionalGates = [] } = {}) {
+  const { goalContent, specContent } = runGoalContext(cwd, context, { goalPath: goalRef });
+  const errors = [];
+  const maps = [
+    ["Source Task Acceptance Map", acceptanceMapValidationErrors(acceptanceMapDetails(goalContent, specContent), { completed: true })],
+    ["Milestone Completion Map", stageCompletionMapValidationErrors(stageCompletionMapDetails(goalContent, specContent), { completed: true })]
+  ];
+  const checklist = specAcceptanceChecklistDetails(goalContent, specContent);
+  maps.push(["Spec Acceptance Checklist", evidenceItemValidationErrors(checklist, {
+    sectionTitle: "Spec Acceptance Checklist", itemTitle: "Item", requireAcceptance: true,
+    completed: true, requiredLabels: checklist.items.map(item => item.label)
+  })]);
+  const requiredGates = uniqueList([...durableRequiredCompletionGates(context), ...additionalGates]);
+  const gates = gateEvidenceDetails(goalContent, specContent);
+  if (requiredGates.length && !gates.section) errors.push(`Required Gate Evidence must include durable adapter-required gate(s): ${requiredGates.join(", ")}.`);
+  maps.push(["Required Gate Evidence", evidenceItemValidationErrors(gates, {
+    sectionTitle: "Required Gate Evidence", itemTitle: "Gate", completed: true, requiredLabels: requiredGates
+  })]);
+  if (!skipSync) maps.push(["State Sync Notes", stateSyncNotesValidationErrors(stateSyncNotesDetails(goalContent), { completed: true })]);
+  for (const [label, failures] of maps) if (failures.length) errors.push(`${label} validation failed:\n${failures.map(error => `- ${error}`).join("\n")}`);
+  return errors;
 }
 
 function goalValidate(args) {
@@ -5544,7 +5610,7 @@ function immutableEvidenceItems(details, key) {
   });
 }
 
-function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { includeCheckpointPolicy = true } = {}) {
+function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { includeCheckpointPolicy = true, plannedRun = false } = {}) {
   const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
   const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
   const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
@@ -5568,12 +5634,13 @@ function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent,
     goalPath: normalizePathReference(displayPath(cwd, goalPath)),
     title: contractText(goalTitle(goalContent, goalPath)),
     spec: normalizePathReference(specRel),
-    specHash: specContent ? hashText(specContent) : "",
+    specHash: specContent ? hashText(plannedRun ? planned.immutableDocument(specContent) : specContent) : "",
     sourceTask: {
       path: normalizePathReference(sourceTask.path),
       title: contractText(sourceTask.title)
     },
     values: {
+      ...(plannedRun ? { executionPlan: extractInlinePath(goalContent, "Execution Plan") } : {}),
       workMode: extractGoalWorkModeRaw(goalContent),
       executionRole: extractGoalExecutionRoleRaw(goalContent),
       conversationRoute: extractConversationRouteRaw(goalContent),
@@ -5633,11 +5700,13 @@ function dagManifestProjection(dag) {
 
 function buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specContent, context, dag, createdAt }) {
   const dagText = readFileSync(artifactPath(runDir, "dag.json", "DAG path"), "utf8");
-  const goalContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context);
+  const manifestVersion = dag.executionPlan ? 2 : runManifestVersion;
+  const goalContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { plannedRun: manifestVersion === 2 });
   const checkpointPolicy = extractCheckpointPolicyRaw(goalContent);
   const checkpointStages = checkpointStageDetails(goalContent).values;
   return {
-    manifestVersion: runManifestVersion,
+    manifestVersion,
+    ...(dag.executionPlan ? { executionPlan: dag.executionPlan } : {}),
     createdAt,
     runDir: normalizePathReference(displayPath(cwd, runDir)),
     goalPath: normalizePathReference(displayPath(cwd, goalPath)),
@@ -5688,10 +5757,10 @@ function runManifestState(runDir, status = {}) {
   try {
     const manifestText = readFileSync(manifestPath, "utf8");
     const manifest = JSON.parse(manifestText);
-    if (manifest.manifestVersion !== runManifestVersion) {
+    if (![1, 2].includes(manifest.manifestVersion)) {
       return { managed: false, manifest, error: "Run manifest version is unsupported." };
     }
-    if (status.manifest !== "manifest.json" || status.manifestVersion !== runManifestVersion) {
+    if (status.manifest !== "manifest.json" || status.manifestVersion !== manifest.manifestVersion) {
       return { managed: false, manifest, error: "status.json is not bound to manifest.json." };
     }
     if (normalizePathReference(manifest.goalPath) !== normalizePathReference(status.goalPath)) {
@@ -5708,6 +5777,9 @@ function runManifestState(runDir, status = {}) {
     }
     if (manifest.goalContract && hashText(JSON.stringify(manifest.goalContract)) !== manifest.goalContractHash) {
       return { managed: false, manifest, error: "Run manifest Goal contract hash is invalid." };
+    }
+    if (manifest.manifestVersion === 2 && (!manifest.executionPlan || manifest.checkpoint?.policy !== "enforced")) {
+      return { managed: false, manifest, error: "Planned manifest requires executionPlan and enforced checkpoint." };
     }
     const checkpoint = checkpointDeclaration(manifest);
     if (!validCheckpointPolicies.has(checkpoint.policy)) {
@@ -5826,7 +5898,7 @@ function assertPreparedRunContract({ cwd, context, runDir, status, goalPath, goa
     throw new Error("Run manifest and current Goal path do not match.");
   }
   const includeCheckpointPolicy = Object.prototype.hasOwnProperty.call(manifest.goalContract?.values || {}, "checkpointPolicy");
-  const currentContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { includeCheckpointPolicy });
+  const currentContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { includeCheckpointPolicy, plannedRun: manifest.manifestVersion === 2 });
   if (hashText(JSON.stringify(currentContract)) !== manifest.goalContractHash) {
     throw new Error("Goal or Spec execution contract changed after Run preparation; prepare a new Run.");
   }
@@ -5837,6 +5909,7 @@ function assertPreparedRunContract({ cwd, context, runDir, status, goalPath, goa
   if (hashText(JSON.stringify(dagManifestProjection(dag))) !== hashText(JSON.stringify(manifest.dag.projection))) {
     throw new Error("DAG execution contract changed after Run preparation; prepare a new Run.");
   }
+  planned.validateBinding(cwd, context, manifest);
   return manifest;
 }
 
@@ -5884,7 +5957,7 @@ ${layers || "No valid layers; inspect `dag.json` before execution."}
 - Dispatch only nodes listed as ready by \`run status --json\`; the runtime owns scheduling and delegation.
 - Concurrent writers require recorded isolation evidence: separate locked
   worktrees/cwds or proven non-overlapping ownership.
-- Use \`agent-harness run node record\` for each worker result before launching dependent nodes.
+${dag.executionPlan ? "- Query `execute next` for the whole planned target. Record starts with `run node record` and review candidate JSON with `run node review --decision accepted` using the current checkpoint revision before launching dependents. `run node record --phase completed` cannot accept planned work." : "- Use `agent-harness run node record` for each worker result before launching dependent nodes."}
 - Read \`plugins/agent-harness/references/worker-runner-contract.md\` before launching or accepting worker output.
 - Treat worker output as candidate evidence until the controller validates scope, verification, State Sync Notes, and required gates.
 - Do not present runtime cancellation or supersession as accepted evidence; unresolved or late output remains candidate evidence.
@@ -5954,6 +6027,8 @@ ${node.stopConditions}
 - Do not deploy, publish, start a daemon, use credentials, use paid APIs, touch production, or perform destructive operations unless the accepted scope and controller explicitly authorize it.
 
 ## Return Contract
+
+${node.task ? `Return a version-1 candidate JSON at ${relRunDir}/${node.candidate} using the planned-execution receipt contract. Required checks: ${JSON.stringify(node.task.verification)}. Capture current inputs with agent-harness run node inputs --run ${relRunDir} --node ${node.id} --json. Save command logs under this Run, hash them, and include target, goal, run, node, changedFiles, checks, executor observation, stateSyncNotes, risks, remaining and needUser. Only the controller runs necessary checks and calls run node review with an expected revision. Do not call run node record --phase completed.` : ""}
 
 Return an Execution Result Packet:
 
@@ -6189,6 +6264,7 @@ Requirements:
 - Controller means outcome owner and accepted-state owner. It may implement foreground work unless Execution Role is explicitly \`gate-only\`.
 - If Execution Role is \`gate-only\`, keep the current session review-only; the host decides whether and how to delegate implementation.
 - ${hostExecutionGuidance}
+${extractInlinePath(goalContent, "Execution Plan") ? `- Own the complete accepted target from ${extractInlinePath(goalContent, "Execution Plan")}. Repeatedly query agent-harness execute next with --goal or --milestone for the plan root; do not stop at one node or child Goal. Review candidates with fresh checks and expected revisions, close all required Goals, validate the stage and synchronize the Milestone. Wait on host executors and inspect unknown liveness before restarting. Continue other ready work while one item is blocked. Three identical failed repairs with no changed inputs require a concrete no-progress record. Finish only on done, a true blocker with no remaining executable work, or an explicit user pause; ordinary failed checks require repair. Reuse accepted product and delivery authorization. Host-native sustained execution owns continuation and waking; install no scheduler.` : ""}
 - Runtime outcome owns the current outcome and continuation; transient plan owns short-lived steps. Reuse compatible active state and never invent runtime ids.
 - ${boundedDirectExecutionGuidance} The supplied Goal/Run remains authoritative and must not be downgraded.
 - ${checkpointRecoveryGuidance} Read \`checkpoint.json\` before acting when the prepared manifest enables it, and never retry an action listed in \`prohibitedActions\`.
@@ -6276,6 +6352,10 @@ function runPrepare(args) {
   }
 
   const goalContent = readFileSync(goalPath, "utf8");
+  if ((args.plan || extractInlinePath(goalContent, "Execution Plan")) && !args._projectLockHeld && !args.dryRun) {
+    const controlRoot = dirname(configuredPath(cwd, context.paths.config || ".harness/config.json", "Project config"));
+    return withRunLock(controlRoot, () => runPrepare({ ...args, _projectLockHeld: true }));
+  }
   const specRel = extractInlinePath(goalContent, "Spec");
   const specsRoot = paths.specs ? configuredPath(cwd, paths.specs, "Specs root") : cwd;
   const specAbs = missingSpecValue(specRel)
@@ -6293,7 +6373,13 @@ function runPrepare(args) {
   const gateEvidence = gateEvidenceDetails(goalContent, specContent);
   const requiredGates = durableRequiredCompletionGates(context);
   const taskSize = classifyTask(goalContent, workMode);
-  const executionDag = buildExecutionDag({
+  const loadedPlan = planned.resolvePlan(cwd, context, displayPath(cwd, goalPath), args.plan || "");
+  if (loadedPlan) {
+    const journal = join(dirname(configuredPath(cwd, context.paths.config || ".harness/config.json")), "execution-sync.json");
+    if (existsSync(journal)) throw new Error("Resume project synchronization before preparing another Run.");
+    planned.prepareDependencies(cwd, context, goalPath, loadedPlan);
+  }
+  const executionDag = loadedPlan ? planned.compile(cwd, goalPath, loadedPlan, context.communication, workMode, executionRole) : buildExecutionDag({
     cwd,
     goalPath,
     taskSize,
@@ -6304,6 +6390,13 @@ function runPrepare(args) {
   const runSlug = runSlugFromGoal(goalPath);
   const runsRoot = configuredPath(cwd, paths.runs, "Runs root");
   const baseRunPath = assertContainedPath(runsRoot, join(runsRoot, `${runTimestamp()}-${runSlug}`), "Run directory");
+  if (args.dryRun) {
+    validateExecutionDagDefinition(baseRunPath, executionDag);
+    const preview = { ok: true, dryRun: true, goal: displayPath(cwd, goalPath), run: displayPath(cwd, baseRunPath), manifestVersion: loadedPlan ? 2 : 1, dag: executionDag };
+    console.log(args.json ? JSON.stringify(preview, null, 2) : `Would prepare Run: ${preview.run}`);
+    return;
+  }
+  validateExecutionDagDefinition(baseRunPath, executionDag);
   const runDir = createRunDirectory(runsRoot, baseRunPath);
   const checkpointPolicy = extractCheckpointPolicyRaw(goalContent);
   const files = ["run.md", "prompt.md", "subagents.md", "dag.md", "dag.json", "manifest.json", "agents", "status.json"];
@@ -6380,7 +6473,7 @@ function runPrepare(args) {
     taskSize,
     files,
     manifest: "manifest.json",
-    manifestVersion: runManifestVersion,
+    manifestVersion: manifest.manifestVersion,
     manifestSha256: hashText(manifestText),
     checkpointPolicy,
     checkpoint: checkpointPolicy === "enforced" ? "checkpoint.json" : "",
@@ -6389,6 +6482,7 @@ function runPrepare(args) {
     verificationCommands: extractVerificationCommands(extractSection(goalContent, "Verification"))
   }, null, 2)}\n`);
 
+  if (args.json) { console.log(JSON.stringify({ ok: true, run: displayPath(cwd, runDir), goal: displayPath(cwd, goalPath), manifestVersion: manifest.manifestVersion, checkpointRevision: checkpointPolicy === "enforced" ? 0 : null, readyNodes: executionDagState.readyNodes }, null, 2)); return; }
   console.log(`Prepared run packet: ${displayPath(cwd, runDir)}`);
   console.log(`Prompt: ${displayPath(cwd, join(runDir, "prompt.md"))}`);
   console.log(`DAG: ${displayPath(cwd, join(runDir, "dag.md"))}`);
@@ -6646,7 +6740,7 @@ function runValidationPayload(args) {
     checkpoint = readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
     errors.push(...checkpoint.errors);
     if (contractError && checkpoint.checkpoint?.controlState === "superseded"
-        && /Goal or Spec execution contract changed after Run preparation/.test(contractError)) {
+        && /(?:Goal or Spec execution contract|Execution plan or target contract) changed after Run preparation/.test(contractError)) {
       const replacementErrors = replacementRunErrors({
         cwd,
         context,
@@ -6659,6 +6753,10 @@ function runValidationPayload(args) {
     } else if (contractError) {
       errors.push(contractError);
     }
+  }
+  if (status.phase === "completed" && !expectedContractDrift) {
+    errors.push(...goalEvidenceErrors(cwd, context, status.goalPath, { additionalGates: status.requiredGates || [] }));
+    if (manifestState.manifest?.manifestVersion === 2) errors.push(...planned.completionErrors(cwd, context, status.goalPath, displayPath(cwd, runDir)));
   }
   return {
     ok: errors.length === 0,
@@ -6717,7 +6815,7 @@ function checkpointShowPayload(args, { validateContract = false } = {}) {
     const goalContext = runGoalContext(cwd, context, status);
     contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag: readExecutionDag(runDir) });
     if (contractError && state.checkpoint?.controlState === "superseded"
-        && /Goal or Spec execution contract changed after Run preparation/.test(contractError)) {
+        && /(?:Goal or Spec execution contract|Execution plan or target contract) changed after Run preparation/.test(contractError)) {
       const replacementErrors = replacementRunErrors({ cwd, context, runDir, manifest: manifestState.manifest, replacementRun: state.checkpoint.replacementRun });
       if (!replacementErrors.length) expectedContractDrift = true;
       else state.errors.push(...replacementErrors);
@@ -6828,10 +6926,17 @@ function runCheckpointUpdate(args) {
     throw new Error("--expected-revision must be a non-negative integer.");
   }
   const runDir = configuredRunDir(cwd, context, args.run);
+  const initialStatus = JSON.parse(readFileSync(artifactPath(runDir, "status.json"), "utf8"));
+  if (initialStatus.manifestVersion === 2 && !args._projectLockHeld && !args.dryRun) {
+    const controlRoot = dirname(configuredPath(cwd, context.paths.config || ".harness/config.json", "Project config"));
+    if (existsSync(join(controlRoot, "execution-sync.json"))) throw new Error("Resume project synchronization before checkpoint mutation.");
+    return withRunLock(controlRoot, () => runCheckpointUpdate({ ...args, _projectLockHeld: true }));
+  }
   return withRunLock(runDir, () => {
     const statusPath = artifactPath(runDir, "status.json", "Run status path");
     if (!existsSync(statusPath)) throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
     const status = JSON.parse(readFileSync(statusPath, "utf8"));
+    if (status.manifestVersion === 2 && existsSync(join(dirname(configuredPath(cwd, context.paths.config || ".harness/config.json")), "execution-sync.json"))) throw new Error("Resume project synchronization before checkpoint mutation.");
     const manifestState = runManifestState(runDir, status);
     if (!manifestState.managed) throw new Error(`Run is not a managed prepared Run: ${manifestState.error}`);
     const state = readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest });
@@ -6877,7 +6982,7 @@ function runCheckpointUpdate(args) {
 
     const goalContext = runGoalContext(cwd, context, status);
     const contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag: readExecutionDag(runDir) });
-    const restrictedRecovery = /Goal or Spec execution contract changed after Run preparation/.test(contractError)
+    const restrictedRecovery = /(?:Goal or Spec execution contract|Execution plan or target contract) changed after Run preparation/.test(contractError)
       && ["replan-required", "superseded"].includes(next.controlState);
     if (contractError && !restrictedRecovery) throw new Error(contractError);
     if (next.controlState === "superseded") {
@@ -6949,6 +7054,8 @@ function runNodeRecord(args) {
   }
 
   const runDir = configuredRunDir(cwd, context, args.run);
+  const plannedStatus = JSON.parse(readFileSync(artifactPath(runDir, "status.json"), "utf8"));
+  if (plannedStatus.manifestVersion === 2) return planned.plannedRecord(args);
   if (!args._runLockHeld) {
     return withRunLock(runDir, () => runNodeRecord({ ...args, _runLockHeld: true }));
   }
@@ -7087,6 +7194,8 @@ function runRecord(args) {
   }
 
   const runDir = configuredRunDir(cwd, context, args.run);
+  const plannedStatus = JSON.parse(readFileSync(artifactPath(runDir, "status.json"), "utf8"));
+  if (plannedStatus.manifestVersion === 2) return planned.recordRun(args);
   if (!args._runLockHeld) {
     return withRunLock(runDir, () => runRecord({ ...args, _runLockHeld: true }));
   }
@@ -7176,48 +7285,8 @@ function runRecord(args) {
     if (milestoneCompletionRequired && (!goalPath || !existsSync(goalPath))) {
       throw new Error("Completed milestone runs require a readable goal with Milestone Completion Map evidence.");
     }
-    const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
-    const acceptanceMapErrors = acceptanceMapValidationErrors(acceptanceMap, { completed: true });
-    if (acceptanceMapErrors.length) {
-      throw new Error(`Source Task Acceptance Map validation failed:\n${acceptanceMapErrors.map((error) => `- ${error}`).join("\n")}`);
-    }
-    const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
-    const stageCompletionMapErrors = stageCompletionMapValidationErrors(stageCompletionMap, { completed: true });
-    if (stageCompletionMapErrors.length) {
-      throw new Error(`Milestone Completion Map validation failed:\n${stageCompletionMapErrors.map((error) => `- ${error}`).join("\n")}`);
-    }
-    const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
-    const checklistErrors = evidenceItemValidationErrors(specChecklist, {
-      sectionTitle: "Spec Acceptance Checklist",
-      itemTitle: "Item",
-      requireAcceptance: true,
-      completed: true,
-      requiredLabels: specChecklist.items.map((item) => item.label)
-    });
-    if (checklistErrors.length) {
-      throw new Error(`Spec Acceptance Checklist validation failed:\n${checklistErrors.map((error) => `- ${error}`).join("\n")}`);
-    }
-    const requiredGates = uniqueList([
-      ...durableRequiredCompletionGates(context),
-      ...(Array.isArray(status.requiredGates) ? status.requiredGates : [])
-    ]);
-    const gateEvidence = gateEvidenceDetails(goalContent, specContent);
-    if (requiredGates.length && !gateEvidence.section) {
-      throw new Error(`Required Gate Evidence must include durable adapter-required gate(s): ${requiredGates.join(", ")}.`);
-    }
-    const gateErrors = evidenceItemValidationErrors(gateEvidence, {
-      sectionTitle: "Required Gate Evidence",
-      itemTitle: "Gate",
-      completed: true,
-      requiredLabels: requiredGates
-    });
-    if (gateErrors.length) {
-      throw new Error(`Required Gate Evidence validation failed:\n${gateErrors.map((error) => `- ${error}`).join("\n")}`);
-    }
-    const stateSyncErrors = stateSyncNotesValidationErrors(stateSyncNotesDetails(goalContent), { completed: true });
-    if (stateSyncErrors.length) {
-      throw new Error(`State Sync Notes validation failed:\n${stateSyncErrors.map((error) => `- ${error}`).join("\n")}`);
-    }
+    const completeErrors = goalEvidenceErrors(cwd, context, displayPath(cwd, goalPath), { additionalGates: status.requiredGates || [] });
+    if (completeErrors.length) throw new Error(completeErrors.join("\n"));
     if (!containsExactPathReference(goalContent, displayPath(cwd, runDir))) {
       throw new Error(`State Sync Notes validation failed: Goal must reference this Run exactly: ${displayPath(cwd, runDir)}.`);
     }
@@ -7445,6 +7514,22 @@ function main() {
       adapterInspect(args);
     } else if (command === "worktree" && subcommand === "recommend") {
       worktreeRecommend(args);
+    } else if (command === "plan" && subcommand === "validate") {
+      planned.planValidate(args);
+    } else if (command === "plan" && subcommand === "inputs") {
+      planned.inputs(args);
+    } else if (command === "execute" && subcommand === "next") {
+      planned.next(args);
+    } else if (command === "goal" && subcommand === "complete") {
+      planned.goalComplete(args);
+    } else if (command === "milestone" && subcommand === "complete") {
+      planned.milestoneComplete(args);
+    } else if (command === "run" && subcommand === "sync") {
+      planned.sync(args);
+    } else if (command === "run" && subcommand === "node" && args._[2] === "review") {
+      planned.nodeReview(args);
+    } else if (command === "run" && subcommand === "node" && args._[2] === "inputs") {
+      planned.inputs(args);
     } else if (command === "goal" && subcommand === "create") {
       goalCreate(args);
     } else if (command === "goal" && subcommand === "list") {
@@ -7478,5 +7563,15 @@ function main() {
     process.exitCode = 1;
   }
 }
+
+const planned = createPlannedExecution({
+  configuredPath, targetCwd, resolveHarnessContext, displayPath, assertContainedPath, isPathInside,
+  artifactPath, extractInlinePath, extractSection, parseEvidenceItems, cleanMapValue,
+  goalMetadata, validateGoal, canonicalGoalStatus, extractStatusLine, dagParallelLayers, configuredRunDir,
+  runManifestState, readExecutionDag, readRunCheckpoint, runGoalContext, assertPreparedRunContract,
+  readNodeStatus, executionDagSnapshot, extractCheckpointPolicyRaw, goalEvidenceErrors,
+  goalSourceTask, parseTasks, normalizedTaskTitle, isDoneTask, withRunLock, atomicWriteFile,
+  replaceMarkdownSection, missingEvidence
+});
 
 main();

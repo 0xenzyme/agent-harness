@@ -1,44 +1,40 @@
 # Project Status
 
-This file is a bounded current-state projection. Authoritative accepted phase
-belongs to Task/Goal records; historical detail belongs in
-`harness/tasks-archive.md`, Goals, milestones, owning-domain docs, and Runs.
+This file is a bounded current-state projection. Accepted phase belongs to
+Task/Goal records; detailed evidence belongs to Specs, verification records and Runs.
 
 ## Focus
 
-- Current Goal: none active.
-- Last completed: ship Agent Harness `0.12.0` as a GitHub Release.
-- Goal index: `harness/tasks.md` (docs Goal; no separate spec/Run).
-- Package / plugin version: `0.12.0` (Git tag and GitHub Release `v0.12.0`).
-- Phase: completed.
-- Execution path: `host-direct-postflight`; no new durable Run.
+- Last completed Goal: `harness/goals/2026-10-13-implement-one-entry-goal-and-milestone-execution.md`.
+- Accepted Spec: `harness/specs/2026-10-13-one-entry-stage-execution.md`.
+- Phase: completed; implementation, deterministic verification and state sync.
+- Run: `.harness/runs/20261013-130817-implement-one-entry-goal-and-milestone-execution`.
+- Accepted-state owner: current controller.
+- Package / plugin version: `0.13.0`.
 
 ## Accepted Result
 
-- Folded remaining presentation and host-neutral docs into `0.12.0`.
-- `CHANGELOG.md`, `docs/releases/v0.12.0.md`, and GitHub presentation now
-  describe the public `0.12.0` release surface.
-- GitHub Release: https://github.com/0xenzyme/agent-harness/releases/tag/v0.12.0
-- Nested untracked `agent-harness/` copy remains at 0.11.0 until explicit
-  delete/gitignore authorization.
-- RC-D1 through RC-D6 remain deferred.
+- Added two-level plans, manifest v2 DAGs and whole-target next actions.
+- Added controller review, current-input verification, shared completion and recoverable state sync.
+- Aligned four public skills, host packs, schemas, templates and bilingual docs.
+- Added 22 planned execution integrations and explicitly enabled live development evaluation.
+- Verification record: `docs/verification/2026-10-13-one-entry-execution.md`.
 
 ## Verification
 
-- Passed: `git diff --check`, `npm run test:presentation`,
-  `npm run test:all`, `npm run test:eval`, and `npm run validate:plugin`.
-- Passed: `git ls-remote --tags origin v0.12.0` and `gh release view v0.12.0`.
+- Passed: `npm run test:all`, including all 22 planned execution integrations.
+- Passed: `npm run test:routing-classification`.
+- Passed: `npm run validate:plugin:local` as a separate portable integrity check.
+- Passed: live evaluator fixture and mock-process preflight without a model call.
+- Passed: `git diff --check`.
+- Official plugin validation: environment error; external validator script missing, not passed.
+- Actual live host/model execution: not invoked; no autonomous runtime success claimed.
 
 ## Route
 
-- Public next entry: `harness:orient` for a new project decision.
-- Accepted-state owner: none active after this release pass.
-- Need user: confirm fate of nested `agent-harness/` before deletion;
-  social-preview PNG still needs a Settings OG upload if desired.
-- Delivery ceiling: `0.12.0` is published; no further tag, publish, or
-  production operation is authorized.
-- Remaining: nested 0.11.0 copy is still untracked and unused.
-
-## Blockers
-
-- None.
+- Need user: none for the completed implementation.
+- Remaining: none in the accepted implementation scope.
+- Interruption wakeups remain the host's responsibility.
+- Version metadata is `0.13.0` in this change. Git tag, GitHub Release, and scheduler installation were not performed.
+- Official validation can be rerun with `--validator PATH` or `AGENT_HARNESS_PLUGIN_VALIDATOR`.
+- Real development evaluation remains explicitly opt-in through `test:eval:development`.

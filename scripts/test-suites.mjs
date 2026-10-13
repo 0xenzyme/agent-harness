@@ -166,13 +166,18 @@ function regressions() {
   execFileSync(process.execPath, ["tests/regressions.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
 }
 
+function plannedExecution() {
+  execFileSync(process.execPath, ["tests/planned-execution.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
+}
+
 const mode = process.argv[2] || "list";
 if (mode === "protocol") protocol();
 else if (mode === "presentation") presentation();
 else if (mode === "hosts-codex") hostsCodex();
 else if (mode === "hosts-grok") hostsGrok();
-else if (mode === "all") { presentation(); protocol(); hostsCodex(); hostsGrok(); smoke(); regressions(); }
+else if (mode === "all") { presentation(); protocol(); hostsCodex(); hostsGrok(); smoke(); regressions(); plannedExecution(); }
+else if (mode === "planned-execution") plannedExecution();
 else if (mode === "smoke") smoke();
 else if (mode === "regressions") regressions();
-else if (mode === "list" || mode === "--list") console.log("presentation, protocol, hosts-codex, hosts-grok, smoke, regressions, all");
+else if (mode === "list" || mode === "--list") console.log("presentation, protocol, hosts-codex, hosts-grok, smoke, regressions, planned-execution, all");
 else throw new Error(`Unknown suite mode: ${mode}`);

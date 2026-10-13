@@ -120,6 +120,26 @@
 
 ## 让当前 thread 做主控
 
+对于用 `Execution Plan:` 引用相邻 `<target-filename>.plan.json` 的已确认
+Goal 或 Milestone，让当前主控完成整个目标。Milestone 内的 Goal 引用其父级
+旁的计划；独立 Goal 才引用自身旁的计划。主控验证计划、为符合条件的 Goal
+准备 Run、执行 `execute next --goal <path>` 或 `execute next --milestone
+<path>` 给出的动作，并重复直到 `done` 覆盖所选目标。Goal 依赖限制 Run
+准备；Task 依赖限制节点执行。候选回执须经主控审查，当前验证日志与输入
+内容哈希通过后才释放依赖。继续实现之前先恢复待完成的状态同步。
+节点检查日志存放在其所属 Run 内，时间不得早于 manifest 创建时间，
+源码写入范围不能覆盖 Harness 状态。Milestone 收尾传入 `execute next`
+返回的锚点 Run 修订号。
+阶段日志存放在该锚点 Run 内，时间不得早于最晚完成的必需 Goal。
+显式 `blocked` 的 Goal 在恢复前只做 `reconcile`，不准备或执行。
+human Task 若已有 `satisfied` 映射和具体 Evidence，主控核对后写入回执；
+只有缺少决策时才再次询问。重复且无进展的验证失败会报告次数和证据。
+已有可执行下一步时，不需要询问纯粹的“继续吗”。
+
+原生 runtime Goal 和委派都需要 host 暴露能力且当前授权允许；否则在当前
+会话前台执行。只有已经授权时才做一次性 setup；循环不创建 scheduler、
+可见 chat，也不自动修改 `AGENTS.md`。
+
 当你希望当前对话负责 outcome、拆解、调度和验收：
 
 ```text

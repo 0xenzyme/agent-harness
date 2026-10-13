@@ -2,11 +2,32 @@
 
 ## Now
 
+
 ## Next
 
 ## Later
 
 ## Done
+
+- [x] P0 Ship Agent Harness `0.13.0` in tree.
+  - Type: release
+  - Status: completed
+  - Source: User asked to bump the version, commit, and push.
+  - Completed: Aligned package and plugin versions, changelog, release notes,
+    README badges, versioning policy, social preview text, and the current
+    status snapshot at `0.13.0`.
+  - Delivery: commit and push to `origin/main`. No Git tag and no GitHub
+    Release.
+
+- [x] P0 Implement one-entry Goal and Milestone execution.
+  - Type: development
+  - Status: completed
+  - Spec: `harness/specs/2026-10-13-one-entry-stage-execution.md`
+  - Acceptance: Complete the accepted two-level plan, next-action, review, completion, recovery, compatibility, documentation, and evaluation contract.
+  - Work mode: local; controller owns accepted state and implementation.
+  - Goal: `harness/goals/2026-10-13-implement-one-entry-goal-and-milestone-execution.md`
+  - Evidence: `docs/verification/2026-10-13-one-entry-execution.md`; `.harness/runs/20261013-130817-implement-one-entry-goal-and-milestone-execution`.
+  - Limits: Official plugin validator is unavailable; actual live model execution remains opt-in and unmeasured.
 
 - [x] P0 Publish Agent Harness `0.12.0` as a GitHub Release.
   - Type: docs/release

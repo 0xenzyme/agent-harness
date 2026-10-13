@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-harness.local/schemas/execution-plan.schema.json",
+  "title": "Agent Harness execution plan",
+  "description": "Version 1 shape. For a Milestone with concrete Goal List Doc rows, plan validation requires exactly one planned Goal per listed Doc path. The target contract hashes declarative Goal List fields but excludes mutable Status cells.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "target", "goals"],
+  "properties": {
+    "version": { "const": 1 },
+    "target": { "$ref": "#/$defs/target" },
+    "goals": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/goal" } },
+    "verification": { "$ref": "#/$defs/checks", "description": "Required for Milestones. For a single Goal, every optional root check must be identical to a check assigned to one of that Goal's Tasks." }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "target": { "properties": { "kind": { "const": "milestone" } } } } },
+      "then": {
+        "required": ["verification"],
+        "properties": { "goals": { "items": { "required": ["milestoneItem"] } } }
+      }
+    }
+  ],
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "path": { "type": "string", "minLength": 1 },
+    "stringList": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "path"],
+      "properties": { "kind": { "enum": ["goal", "milestone"] }, "path": { "$ref": "#/$defs/path" } }
+    },
+    "reference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "section", "item"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "section": { "enum": ["Spec Acceptance Checklist", "Milestone Completion Map", "Stage Completion Map", "Required Gate Evidence", "Source Task Acceptance Map"] },
+        "item": { "type": "string", "minLength": 1 }
+      }
+    },
+    "check": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "command", "inputs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "command": { "type": "string", "minLength": 1 },
+        "inputs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+        "manual": { "type": "boolean" }
+      }
+    },
+    "checks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/check" } },
+    "ownership": {
+      "type": "object", "additionalProperties": false,
+      "description": "Write scope must stay outside configured authoritative Harness artifact paths; plan validate checks this against the project adapter.",
+      "required": ["read", "write"],
+      "properties": { "read": { "$ref": "#/$defs/stringList" }, "write": { "$ref": "#/$defs/stringList" } }
+    },
+    "task": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "dependsOn", "type", "ownership", "acceptance", "verification"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "type": "string", "minLength": 1 },
+        "dependsOn": { "$ref": "#/$defs/stringList" },
+        "type": { "enum": ["implementation", "verification", "human"] },
+        "ownership": { "$ref": "#/$defs/ownership" },
+        "acceptance": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reference" } },
+        "verification": { "$ref": "#/$defs/checks" },
+        "question": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "human" } }, "required": ["type"] }, "then": { "required": ["question"], "properties": { "ownership": { "properties": { "write": { "maxItems": 0 } } }, "verification": { "items": { "required": ["manual"], "properties": { "manual": { "const": true } } } } } } },
+        { "if": { "properties": { "type": { "const": "verification" } }, "required": ["type"] }, "then": { "properties": { "ownership": { "properties": { "write": { "maxItems": 0 } } } } } }
+      ]
+    },
+    "goal": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "dependsOn", "tasks"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "#/$defs/path" },
+        "dependsOn": { "$ref": "#/$defs/stringList" },
+        "milestoneItem": { "$ref": "#/$defs/reference" },
+        "tasks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/task" } }
+      }
+    }
+  }
+}
