@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Agent Harness">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.5" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#a3e635"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="#0f172a"/>
+  <rect x="18" y="18" width="92" height="8" rx="4" fill="url(#accent)"/>
+  <circle cx="34" cy="72" r="8" fill="#e2e8f0"/>
+  <circle cx="64" cy="72" r="8" fill="#e2e8f0"/>
+  <circle cx="94" cy="72" r="8" fill="#e2e8f0"/>
+  <path d="M42 72H56M72 72H86" stroke="url(#accent)" stroke-width="5" stroke-linecap="round"/>
+</svg>
