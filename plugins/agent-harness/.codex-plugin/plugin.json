@@ -36,7 +36,7 @@
     "composerIcon": "./assets/icon.svg",
     "logo": "./assets/logo.svg",
     "screenshots": [
-      "./assets/screenshot.svg"
+      "./assets/screenshot.png"
     ],
     "defaultPrompt": [
       "Use harness:orient to inspect durable state and choose host-direct, host-direct-postflight, or durable-harness. Prefer native runtime outcome and transient plan when the host exposes them."
