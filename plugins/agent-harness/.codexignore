@@ -1,0 +1,2 @@
+# Plugin-local Codex ignore list.
+# This package ships source. Do not exclude skills, schemas, scripts, or templates.
