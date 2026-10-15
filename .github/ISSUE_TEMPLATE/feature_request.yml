@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a change to the harness contract, CLI, skills, or docs.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What the current contract or workflow fails to do.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: The behavior you want, and how a check or doc would show it.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Protocol or project contract
+        - CLI
+        - Skills or host pack
+        - Docs
+        - Other
+    validations:
+      required: true

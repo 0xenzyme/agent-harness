@@ -152,7 +152,29 @@ function presentation() {
   includes("docs/assets/github/social-preview.svg", "Adapter-driven control plane for coding-agent work");
   includes("docs/assets/github/social-preview.svg", "State Sync");
   excludes("docs/assets/github/social-preview.svg", "for Codex and coding-agent");
-  assert(existsSync(join(repoRoot, "docs/assets/github/social-preview.png")), "social preview PNG must exist at 1280x640 source output");
+  const previewPng = readFileSync(join(repoRoot, "docs/assets/github/social-preview.png"));
+  assert(previewPng.length > 24 && previewPng.toString("ascii", 1, 4) === "PNG", "social preview must be a PNG");
+  assert(previewPng.readUInt32BE(16) === 1280 && previewPng.readUInt32BE(20) === 640, "social preview PNG must be 1280x640");
+  for (const path of [
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    ".github/CODEOWNERS",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/feature_request.yml",
+    ".github/pull_request_template.md",
+    ".github/workflows/ci.yml",
+    ".editorconfig",
+    ".gitattributes"
+  ]) assert(existsSync(join(repoRoot, path)), `${path} must exist`);
+  assert(!existsSync(join(repoRoot, ".github/dependabot.yml")), "Dependabot config must stay absent");
+  includes("docs/github-presentation.md", "CODE_OF_CONDUCT.md");
+  includes("docs/github-presentation.md", ".github/workflows/ci.yml");
+  includes("CONTRIBUTING.md", "npm run test:all");
+  includes(".github/workflows/ci.yml", "npm run test:all");
+  includes(".github/workflows/ci.yml", "npm run validate:plugin:local");
+  includes("README.md", "(CONTRIBUTING.md)");
+  includes("README.zh-CN.md", "(CONTRIBUTING.md)");
   const marketplace = json(".agents/plugins/marketplace.json");
   assert(marketplace.name === "agent-harness-local", "unique local marketplace identity required");
   console.log("Presentation checks passed.");

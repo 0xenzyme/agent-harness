@@ -304,6 +304,8 @@ fixed-contract compatibility、非 Harness 项目和 messy realistic state：
 - [GitHub Presentation](docs/github-presentation.md)
 - [v0.13.0 发布说明](docs/releases/v0.13.0.md)
 - [Changelog](CHANGELOG.md)
+- [贡献说明](CONTRIBUTING.md)
+- [行为准则](CODE_OF_CONDUCT.md)
 
 Agent Harness 部分受 b3ehive controller-led approach 启发，同时保持自己的
 fixed/adapter contracts 和 project-neutral core。

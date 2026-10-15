@@ -1,0 +1,51 @@
+name: Bug report
+description: Report incorrect Agent Harness behavior, docs, or checks.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For vulnerabilities, use private reporting instead of this form.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you observed.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Commands, host prompts, and the files that show the failure.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Agent Harness version
+      placeholder: "0.13.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Host
+      options:
+        - Codex
+        - Cursor
+        - Grok
+        - CLI only
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: contract
+    attributes:
+      label: Project contract
+      options:
+        - adapter
+        - fixed
+        - not adopted yet
+        - this repository
+    validations:
+      required: true

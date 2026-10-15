@@ -70,6 +70,22 @@ the Settings -> General -> Social preview control. `package.json` `description`
 uses the same positioning line as the GitHub About text above. About, topics,
 and the uploaded OG image cannot be set from repository files.
 
+## Community
+
+These files are the GitHub community profile:
+
+- `CODE_OF_CONDUCT.md`
+- `CONTRIBUTING.md`
+- `.github/ISSUE_TEMPLATE/config.yml`
+- `.github/ISSUE_TEMPLATE/bug_report.yml`
+- `.github/ISSUE_TEMPLATE/feature_request.yml`
+- `.github/pull_request_template.md`
+- `.github/CODEOWNERS`
+- `.github/workflows/ci.yml`
+
+`.editorconfig` and `.gitattributes` keep UTF-8 text on LF line endings.
+Do not add Dependabot configuration.
+
 ## Release Surface
 
 The in-tree release surface for `0.13.0` is:
@@ -77,5 +93,7 @@ The in-tree release surface for `0.13.0` is:
 - `CHANGELOG.md`
 - `docs/releases/v0.13.0.md`
 
-The last published Git tag and GitHub Release remain `v0.12.0`. Do not claim
-a GitHub Release exists unless `gh release view v0.13.0` succeeds.
+The published Git tag and GitHub Release for this line are `v0.13.0`:
+<https://github.com/0xenzyme/agent-harness/releases/tag/v0.13.0>.
+The tag points at `c2db4f93eaba56f4c32a44d7ea3281f2551166e4`, the `0.13.0`
+ship commit. Later `main` commits stay unreleased until their own version.

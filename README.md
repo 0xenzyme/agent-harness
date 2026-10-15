@@ -330,6 +330,8 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [GitHub Presentation](docs/github-presentation.md)
 - [v0.13.0 Release Notes](docs/releases/v0.13.0.md)
 - [Changelog](CHANGELOG.md)
+- [Contributing](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 
 Agent Harness is inspired in part by b3ehive's controller-led approach, while
 keeping its own fixed/adapter contracts and project-neutral core.
