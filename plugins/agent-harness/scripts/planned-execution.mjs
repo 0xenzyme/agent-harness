@@ -35,7 +35,7 @@ export function createPlannedExecution(s) {
     if (!existsSync(absolute)) throw new Error(`Planned node status is missing; inspect executor before recovery: ${node.id}`);
     return readJson(absolute);
   }
-  const refPath = (cwd, absolute) => s.displayPath(cwd, absolute);
+  const refPath = (cwd, absolute) => s.displayPath(cwd, absolute).replaceAll("\\", "/");
   const emit = (args, payload) => {
     if (args.json) console.log(jsonText(payload).trimEnd());
     else console.log(payload.action ? `${payload.action}: ${payload.reason}` : `${payload.ok === false ? "Invalid" : "OK"}: ${payload.target?.path || payload.run || payload.plan || "execution"}`);

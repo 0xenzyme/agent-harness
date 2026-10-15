@@ -31,7 +31,8 @@ for (const [name, path] of Object.entries(packageJson?.bin || {})) {
   check(typeof path === "string" && existsSync(resolve(root, path)), `Missing package bin ${name}: ${path}`);
 }
 const skillsRoot = resolve(plugin, manifest?.skills || "skills");
-check(skillsRoot.startsWith(`${plugin}/`) && existsSync(skillsRoot), `Missing skills directory: ${manifest?.skills}`);
+const portable = (value) => value.replaceAll("\\", "/");
+check(portable(skillsRoot).startsWith(`${portable(plugin)}/`) && existsSync(skillsRoot), `Missing skills directory: ${manifest?.skills}`);
 const walk = (dir) => {
   if (!existsSync(dir)) return;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -45,7 +46,7 @@ const walk = (dir) => {
           const target = match[1].split("#")[0];
           if (!target || /^(https?:|mailto:|#)/.test(target)) continue;
           const dest = resolve(dirname(path), decodeURIComponent(target));
-          check(dest === plugin || dest.startsWith(`${plugin}/`), `Reference escapes plugin: ${relative(root, path)} -> ${target}`);
+          check(dest === plugin || portable(dest).startsWith(`${portable(plugin)}/`), `Reference escapes plugin: ${relative(root, path)} -> ${target}`);
           check(existsSync(dest), `Missing reference: ${relative(root, path)} -> ${target}`);
         }
       }

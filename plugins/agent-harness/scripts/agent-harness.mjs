@@ -5039,7 +5039,7 @@ function validateGoal(cwd, goalPath, { checkCompletion = true } = {}) {
 
   if (canonicalStatus === "completed" && checkCompletion) {
     errors.push(...goalEvidenceErrors(cwd, context, displayPath(cwd, goalPath)));
-    errors.push(...planned.completionErrors(cwd, context, displayPath(cwd, goalPath)));
+    errors.push(...planned.completionErrors(cwd, context, normalizePathReference(displayPath(cwd, goalPath))));
   }
 
   const pauseConditions = extractSection(content, "Pause Conditions");
@@ -6447,7 +6447,7 @@ function runPrepare(args) {
     createdAt,
     updatedAt: createdAt,
     cwd,
-    goalPath: displayPath(cwd, goalPath),
+    goalPath: normalizePathReference(displayPath(cwd, goalPath)),
     runDir: displayPath(cwd, runDir),
     workMode,
     executionRole,
@@ -6763,14 +6763,14 @@ function runValidationPayload(args) {
   }
   if (status.phase === "completed" && !expectedContractDrift) {
     errors.push(...goalEvidenceErrors(cwd, context, status.goalPath, { additionalGates: status.requiredGates || [] }));
-    if (manifestState.manifest?.manifestVersion === 2) errors.push(...planned.completionErrors(cwd, context, status.goalPath, displayPath(cwd, runDir)));
+    if (manifestState.manifest?.manifestVersion === 2) errors.push(...planned.completionErrors(cwd, context, status.goalPath, normalizePathReference(displayPath(cwd, runDir))));
   }
   return {
     ok: errors.length === 0,
     run: displayPath(cwd, runDir),
     phase: status.phase || status.status || "unknown",
     errors,
-    ...(errors.length === 0 && status.phase === "completed" && manifestState.manifest?.manifestVersion === 2 ? planned.runScope(cwd, context, displayPath(cwd, runDir)) : {}),
+    ...(errors.length === 0 && status.phase === "completed" && manifestState.manifest?.manifestVersion === 2 ? planned.runScope(cwd, context, normalizePathReference(displayPath(cwd, runDir))) : {}),
     manifest: { managed: manifestState.managed, error: manifestState.error },
     contract: { ok: !contractError || expectedContractDrift, expectedDrift: expectedContractDrift, error: contractError },
     checkpoint: {
