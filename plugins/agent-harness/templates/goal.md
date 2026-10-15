@@ -115,6 +115,8 @@ ordinary direct or postflight-only work outside this durable lifecycle.
 - Accepted scope, verification, required gates, and state sync are satisfied.
 - For a planned Goal, all required Tasks and accepted evidence are current;
   `goal complete` finishes the whole Goal after the planned Run is synchronized.
+- Preserve exact logs and the completion snapshot with tracked Runs. Historical
+  acceptance does not verify subsequent source edits; record their own evidence.
 - Continue the controller loop without a pure continuation question while an
   authorized next action remains. `done` requires whole-Goal completion.
 

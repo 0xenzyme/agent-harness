@@ -126,7 +126,7 @@ Run's `agents/build/candidate.json`. Its shape is:
       "exitCode": 0,
       "observedAt": "<actual ISO timestamp>",
       "inputs": { "src/app.js": "<hash from run node inputs after verification>" },
-      "log": "<run-path>/logs/syntax.log",
+      "log": "<run-path>/logs/syntax.txt",
       "logHash": "<SHA-256 of exact log bytes>"
     }
   ]
@@ -138,7 +138,7 @@ claim that a check ran. `checks[].id` and `command` must match the plan.
 Omit `executor.thread` for foreground work. If a delegated node was recorded
 as `running`, set `executor.thread` to exactly the recorded worker identity.
 `checks[].inputs` must equal the current `run node inputs` map exactly; the
-controller rehashes files during review and later completion. Each `logHash`
+controller rehashes files during review and before initial completion. Each `logHash`
 must match the bytes at `log`, and the log must contain concrete evidence.
 The log must live inside the node's own bound Run, and its check's
 `observedAt` must be at or after that Run's manifest creation.
@@ -212,3 +212,58 @@ its accepted state is recovered. A completed Run with an active Goal returns
 successful Goal or Milestone closeout is idempotent and preserves revision.
 The bounded status file follows the current target; later accepted work can
 replace its projection without reopening historical completed targets.
+
+## Portable evidence and historical completion
+
+Checks may declare `exclude: ["backend/.data"]`: explicit repo-relative descendants
+of an input, never a whole input. `.git` and `node_modules` are excluded at every
+level. Other ignored files are not silently skipped. In a Git project with
+tracked Runs, acceptance rejects Git-ignored verification files; narrow the
+inputs or declare exclusions for build output. Untracked source remains an
+input and must be included in the delivered change.
+
+Node review preserves exact UTF-8 log bytes at
+`<run>/evidence/logs/<sha256>.txt` and binds the original receipt paths to those
+copies in node review metadata. The candidate and revisioned receipt remain
+unchanged. Evidence Git attributes preserve exact bytes and treat raw logs as
+binary diffs so whitespace checks do not require altering evidence. Milestone
+closeout also preserves its stage logs. Tracked evidence
+paths must not be Git-ignored. No renaming or newline normalization of a copy
+can substitute for the receipt's exact log hash.
+
+Initial Goal closeout seals the accepted receipt identities, source input
+hashes, manifest hash and durable log bindings in `<run>/evidence/completion.json`.
+Run status binds that snapshot by SHA-256. `baseCommit` records the checkout's
+Git base when available; the observed input hashes identify the accepted
+working tree, including uncommitted changes, rather than claiming HEAD alone
+was tested. The snapshot contains hashes and evidence, not a source backup.
+
+Once the whole target is completed, validation verifies this historical
+snapshot, receipts, logs, gates and state sync without requiring later source
+to equal the old input hashes. `execute next` / `orient next` return `done`
+with `evidenceScope: historical` and `currentVerification.status: matches|changed`.
+`goal validate` and `run validate` expose the same distinction.
+`changedInputs` identifies later drift; `matches` means the input hashes match,
+not that checks were rerun. Follow-up edits need their own accepted Goal or
+bounded postflight record with current validation. Do not reuse historical
+acceptance as evidence for those edits. Active Runs, unfinished Milestones and
+new Goal dependencies continue to require fresh input hashes.
+
+Legacy completion is not silently trusted. Restore the originally verified
+source and logs, then run:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs run seal --cwd <project> --run <run-path> --expected-revision <current-revision> --json
+```
+
+`run seal` validates existing completion against that source before adding a
+snapshot and durable log copies. It preserves original receipts, phases and
+completion timestamps, supports `--dry-run`, and advances the checkpoint once.
+Repeated sealing is idempotent. Missing or stale legacy evidence must be
+recovered or revalidated, not fabricated.
+
+Completed source tasks may move from the active index to the single configured
+`artifactPolicy.tasks.archive`. Validation requires an unambiguous done task
+with the same source title and, when present, a Doc identifying the Goal.
+An active-index row takes precedence, including a non-done or duplicate row.
+Archive lookup is for completion validation only and never schedules work.

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, lstatSync, rmSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 const jsonText = (value) => `${JSON.stringify(value, null, 2)}\n`;
@@ -38,6 +39,7 @@ export function createPlannedExecution(s) {
   const emit = (args, payload) => {
     if (args.json) console.log(jsonText(payload).trimEnd());
     else console.log(payload.action ? `${payload.action}: ${payload.reason}` : `${payload.ok === false ? "Invalid" : "OK"}: ${payload.target?.path || payload.run || payload.plan || "execution"}`);
+    if (!args.json && payload.evidenceScope) console.log(`Evidence scope: ${payload.evidenceScope}; current verification inputs: ${payload.currentVerification?.status || "not inspected"}`);
     return payload;
   };
   const rootFor = (cwd, context, kind) => path(cwd, kind === "goal" ? context.paths.goals : context.paths.milestones);
@@ -76,13 +78,20 @@ export function createPlannedExecution(s) {
     if (!Array.isArray(values) || !values.length) throw new Error(`${label} needs verification requirements.`);
     const ids = new Set();
     for (const check of values) {
-      object(check, ["id", "command", "inputs", "manual"], label);
+      object(check, ["id", "command", "inputs", "exclude", "manual"], label);
       if (typeof check.id !== "string" || !safeId.test(check.id) || ids.has(check.id)) throw new Error(`${label} has duplicate or invalid check id.`);
       ids.add(check.id);
       if (typeof check.command !== "string" || s.missingEvidence(check.command)) throw new Error(`${label} needs a concrete command or manual review description.`);
       if (check.manual !== undefined && typeof check.manual !== "boolean") throw new Error(`${label} manual must be boolean.`);
       strings(check.inputs, `${label} inputs`, { nonempty: true });
       for (const input of check.inputs) path(cwd, input, "Verification input");
+      if (check.exclude !== undefined) {
+        strings(check.exclude, `${label} exclude`);
+        for (const ref of check.exclude) {
+          const excluded = path(cwd, ref, "Verification exclusion");
+          if (!check.inputs.some(input => s.isPathInside(path(cwd, input), excluded)) || check.inputs.some(input => s.isPathInside(excluded, path(cwd, input)))) throw new Error("Verification exclusions must be descendants of an input and cannot remove a whole input.");
+        }
+      }
     }
   }
   const refKey = (ref) => JSON.stringify([ref.path, ref.section, ref.item]);
@@ -255,18 +264,20 @@ export function createPlannedExecution(s) {
     if (!goal || goal.path !== manifest.goalPath) throw new Error("Planned Run Goal binding is invalid.");
     return loaded;
   }
-  function snapshot(cwd, context, inputs) {
+  function snapshot(cwd, context, inputs, exclude = [], { portable = false } = {}) {
     const out = {};
-    const excluded = [".git", "node_modules", ...[context.paths.runs, context.paths.goals, context.paths.specs, context.paths.milestones, context.paths.config, refPath(cwd, journalPath(cwd, context)), refPath(cwd, join(controlRoot(cwd, context), ".harness-record.lock")), context.paths.status, context.paths.taskIndex || context.paths.tasks].filter(Boolean)].map(p => path(cwd, p));
+    const files = new Set();
+    const excluded = [".git", "node_modules", ...exclude, ...[context.config.artifactPolicy?.tasks?.archive, context.paths.runs, context.paths.goals, context.paths.specs, context.paths.milestones, context.paths.config, refPath(cwd, journalPath(cwd, context)), refPath(cwd, join(controlRoot(cwd, context), ".harness-record.lock")), context.paths.status, context.paths.taskIndex || context.paths.tasks].filter(Boolean)].map(p => path(cwd, p));
     function hashPath(absolute) {
       s.assertContainedPath(cwd, absolute, "Verification input");
       if (!existsSync(absolute)) return digest("missing");
       const stat = lstatSync(absolute);
       if (stat.isSymbolicLink()) throw new Error("Verification inputs cannot contain symbolic links.");
       if (stat.isDirectory()) {
-        return digest(JSON.stringify(readdirSync(absolute).sort().filter(name => !excluded.some(p => s.isPathInside(p, join(absolute, name)))).map(name => [name, hashPath(join(absolute, name))])));
+        return digest(JSON.stringify(readdirSync(absolute).sort().filter(name => ![".git", "node_modules"].includes(name) && !excluded.some(p => s.isPathInside(p, join(absolute, name)))).map(name => [name, hashPath(join(absolute, name))])));
       }
       if (!stat.isFile()) throw new Error("Verification input must be a regular file or directory.");
+      files.add(refPath(cwd, absolute));
       return digest(readFileSync(absolute));
     }
     for (const ref of [...new Set(inputs)].sort()) {
@@ -274,12 +285,20 @@ export function createPlannedExecution(s) {
       if (excluded.some(p => s.isPathInside(p, absolute))) throw new Error("Verification inputs cannot be mutable Harness control artifacts.");
       out[ref] = hashPath(absolute);
     }
+    if (portable && files.size && (context.config.artifactPolicy?.runs || "tracked") === "tracked") {
+      const git = spawnSync("git", ["rev-parse", "--show-toplevel"], { cwd, encoding: "utf8" });
+      if (git.status === 0) {
+        const ignored = spawnSync("git", ["check-ignore", "--stdin", "-z"], { cwd, input: [...files].join("\0") + "\0", encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+        if (ignored.status !== 0 && ignored.status !== 1) throw new Error("Cannot establish tracked verification input portability.");
+        if (ignored.stdout) throw new Error(`Tracked verification inputs include Git-ignored files; narrow inputs or declare exclude: ${ignored.stdout.split("\0").filter(Boolean).slice(0, 5).join(", ")}`);
+      }
+    }
     observations.push(() => {
       for (const [ref, expected] of Object.entries(out)) if (hashPath(path(cwd, ref, "Verification input")) !== expected) throw new Error(`Verification input changed during review: ${ref}`);
     });
     return out;
   }
-  function evidenceChecks(cwd, context, receipt, requirements, { allowFailure = false, earliest = 0, runRoot = "" } = {}) {
+  function evidenceChecks(cwd, context, receipt, requirements, { allowFailure = false, earliest = 0, runRoot = "", historical = false, durableLogs = {}, portable = false } = {}) {
     if (!Array.isArray(receipt.checks)) throw new Error("Evidence receipt needs checks.");
     const ids = new Set();
     for (const check of receipt.checks) {
@@ -290,8 +309,10 @@ export function createPlannedExecution(s) {
       const check = receipt.checks.find(c => c.id === required.id);
       if (!check || check.command !== required.command || !Number.isInteger(check.exitCode) || (!allowFailure && check.exitCode !== 0)) throw new Error(`Missing or failed verification: ${required.id}`);
       if (!Number.isFinite(Date.parse(check.observedAt)) || Date.parse(check.observedAt) > Date.now() + 5000 || Date.parse(check.observedAt) < earliest) throw new Error("Verification observedAt must be a valid non-future timestamp.");
-      if (!check.inputs || JSON.stringify(Object.entries(check.inputs).sort()) !== JSON.stringify(Object.entries(snapshot(cwd, context, required.inputs)).sort())) throw new Error(`Verification inputs changed; revalidate ${required.id}.`);
-      const log = path(cwd, check.log, "Verification log");
+      if (!check.inputs || Object.keys(check.inputs).sort().join("\0") !== [...required.inputs].sort().join("\0") || Object.values(check.inputs).some(hash => !/^[a-f0-9]{64}$/.test(hash))) throw new Error(`Invalid verification input snapshot: ${required.id}`);
+      for (const input of required.inputs) path(cwd, input, "Verification input");
+      if (!historical && JSON.stringify(Object.entries(check.inputs).sort()) !== JSON.stringify(Object.entries(snapshot(cwd, context, required.inputs, required.exclude, { portable })).sort())) throw new Error(`Verification inputs changed; revalidate ${required.id}.`);
+      const log = path(cwd, durableLogs[check.log] || check.log, "Verification log");
       if (!s.isPathInside(runRoot || path(cwd, context.paths.runs), log)) throw new Error("Verification logs must be recorded under their bound Run.");
       if (!existsSync(log) || !lstatSync(log).isFile() || lstatSync(log).isSymbolicLink() || digest(readFileSync(log)) !== check.logHash) throw new Error(`Verification log missing or changed: ${required.id}`);
       if (s.missingEvidence(readFileSync(log, "utf8"))) throw new Error("Verification logs must contain concrete evidence.");
@@ -336,7 +357,67 @@ export function createPlannedExecution(s) {
     }
     return matches;
   }
-  function acceptedReceipt(cwd, context, run, node) {
+  function preserveLogs(cwd, context, run, receipt, changes, existing = {}) {
+    const logs = {};
+    const attributes = `${run.ref}/evidence/.gitattributes`, attributeText = "* -text\nlogs/*.txt -diff\n";
+    if (existsSync(path(cwd, attributes)) && content(cwd, attributes) !== attributeText) throw new Error("Preserve and reconcile conflicting evidence Git attributes.");
+    changes.set(attributes, attributeText);
+    for (const check of receipt.checks) {
+      const original = path(cwd, existing[check.log] || check.log, "Verification log");
+      s.assertContainedPath(run.directory, original, "Verification log");
+      const bytes = readFileSync(original), text = bytes.toString("utf8");
+      if (digest(bytes) !== check.logHash || digest(text) !== check.logHash) throw new Error("Durable verification logs must preserve exact UTF-8 bytes.");
+      const ref = `${run.ref}/evidence/logs/${check.logHash}.txt`;
+      if ((context.config.artifactPolicy?.runs || "tracked") === "tracked") {
+        const ignored = spawnSync("git", ["check-ignore", "--", ref], { cwd, encoding: "utf8" });
+        if (ignored.status === 0) throw new Error(`Tracked Run evidence is Git-ignored; repair the tracking policy: ${ref}`);
+      }
+      logs[check.log] = ref;
+      changes.set(ref, text);
+    }
+    return logs;
+  }
+  function completionSeal(cwd, context, run) {
+    const binding = run.status.completionEvidence;
+    if (!binding) return null; // Legacy Runs retain current-input validation until explicitly sealed.
+    const ref = `${run.ref}/evidence/completion.json`;
+    if (binding.path !== ref) throw new Error("Completion snapshot path is invalid.");
+    const raw = content(cwd, ref);
+    if (digest(raw) !== binding.sha256) throw new Error("Completion snapshot changed.");
+    const seal = JSON.parse(raw);
+    if (seal.version !== 1 || seal.run !== run.ref || seal.goal !== run.status.goalPath || seal.manifestHash !== digest(readFileSync(s.artifactPath(run.directory, "manifest.json")))) throw new Error("Completion snapshot binding is invalid.");
+    const receipts = Object.fromEntries(run.dag.nodes.map(node => [node.id, nodeStatus(run.directory, node).review?.sha256]));
+    if (JSON.stringify(seal.receipts) !== JSON.stringify(receipts)) throw new Error("Completion snapshot accepted receipts changed.");
+    return seal;
+  }
+  function sealEvidence(cwd, context, run, changes) {
+    const receipts = {}, inputs = {}, logs = {};
+    for (const node of run.dag.nodes) {
+      const receipt = acceptedReceipt(cwd, context, run, node);
+      receipts[node.id] = nodeStatus(run.directory, node).review.sha256;
+      inputs[node.id] = Object.fromEntries(receipt.checks.map(check => [check.id, check.inputs]));
+      Object.assign(logs, preserveLogs(cwd, context, run, receipt, changes, nodeStatus(run.directory, node).review.logs));
+    }
+    let stage;
+    const target = run.manifest.executionPlan.target;
+    if (target.kind === "milestone" && s.canonicalGoalStatus(s.extractStatusLine(content(cwd, target.path))) === "completed") {
+      const loaded = validateBinding(cwd, context, run.manifest);
+      const { run: anchor, earliest } = milestoneAnchor(cwd, context, loaded);
+      if (anchor.ref === run.ref) {
+        const ref = s.extractInlinePath(content(cwd, target.path), "Completion Evidence"), raw = content(cwd, ref);
+        if (digest(raw) !== s.extractInlinePath(content(cwd, target.path), "Completion Evidence Hash")) throw new Error("Milestone accepted receipt changed.");
+        const receipt = JSON.parse(raw);
+        evidenceChecks(cwd, context, receipt, loaded.plan.verification, { earliest, runRoot: run.directory, durableLogs: receipt.durableLogs });
+        stage = { path: ref, sha256: digest(raw), logs: preserveLogs(cwd, context, run, receipt, changes, receipt.durableLogs) };
+      }
+    }
+    const git = spawnSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" });
+    const seal = { version: 1, run: run.ref, goal: run.status.goalPath, observedAt: now(), manifestHash: digest(readFileSync(s.artifactPath(run.directory, "manifest.json"))), baseCommit: git.status === 0 ? git.stdout.trim() : null, receipts, inputs, logs, ...(stage ? { stage } : {}) };
+    const ref = `${run.ref}/evidence/completion.json`, raw = jsonText(seal);
+    changes.set(ref, raw);
+    return { path: ref, sha256: digest(raw) };
+  }
+  function acceptedReceipt(cwd, context, run, node, { historical = false, seal = null } = {}) {
     const status = nodeStatus(run.directory, node);
     if (status.phase !== "completed" || status.review?.decision !== "accepted") throw new Error(`Task ${node.id} has not been accepted by the controller.`);
     const receiptPath = s.artifactPath(run.directory, status.review.receipt, "Accepted receipt");
@@ -344,10 +425,11 @@ export function createPlannedExecution(s) {
     if (digest(raw) !== status.review.sha256) throw new Error(`Accepted receipt changed for ${node.id}.`);
     const receipt = JSON.parse(raw);
     if (receipt.version !== 1 || receipt.run !== run.ref || receipt.goal !== run.status.goalPath || receipt.node !== node.id || JSON.stringify(receipt.target) !== JSON.stringify(run.manifest.executionPlan.target)) throw new Error("Accepted receipt identity no longer matches the Run.");
-    evidenceChecks(cwd, context, receipt, node.task.verification, { earliest: Date.parse(run.manifest.createdAt), runRoot: run.directory });
+    if (historical && JSON.stringify(seal?.inputs?.[node.id]) !== JSON.stringify(Object.fromEntries(receipt.checks.map(check => [check.id, check.inputs])))) throw new Error("Completion source snapshot changed.");
+    evidenceChecks(cwd, context, receipt, node.task.verification, { earliest: Date.parse(run.manifest.createdAt), runRoot: run.directory, historical, durableLogs: historical ? seal.logs : status.review.logs });
     return receipt;
   }
-  function completionErrors(cwd, context, goalRef, runRef = "", { closing = false } = {}) {
+  function completionErrors(cwd, context, goalRef, runRef = "", { closing = false, requireFresh = false } = {}) {
     const errors = [];
     try {
       const loaded = resolvePlan(cwd, context, goalRef);
@@ -357,7 +439,10 @@ export function createPlannedExecution(s) {
       const selected = matches.find(r => r.ref === boundRun);
       if (!selected) throw new Error("Completed planned Goal requires its accepted Run.");
       const run = runState(cwd, context, selected.ref);
-      for (const node of run.dag.nodes) acceptedReceipt(cwd, context, run, node);
+      const seal = completionSeal(cwd, context, run);
+      const wholeTargetCompleted = s.canonicalGoalStatus(s.extractStatusLine(content(cwd, loaded.plan.target.path))) === "completed";
+      const historical = Boolean(seal && !closing && !requireFresh && wholeTargetCompleted);
+      for (const node of run.dag.nodes) acceptedReceipt(cwd, context, run, node, { historical, seal });
       if (!closing && (run.status.phase !== "completed" || run.checkpoint.controlState !== "completed")) throw new Error("Completed Goal requires completed Run/checkpoint and synchronized state.");
       const goal = loaded.plan.goals.find(g => g.path === goalRef);
       for (const dependency of goal.dependsOn) {
@@ -365,13 +450,25 @@ export function createPlannedExecution(s) {
         if (s.canonicalGoalStatus(s.extractStatusLine(content(cwd, dep.path))) !== "completed") throw new Error(`Goal dependency is not accepted: ${dependency}`);
         const depErrors = s.goalEvidenceErrors(cwd, context, dep.path);
         if (depErrors.length) throw new Error(`Goal dependency evidence invalid: ${dependency}: ${depErrors.join("; ")}`);
-        const fresh = completionErrors(cwd, context, dep.path);
+        const fresh = completionErrors(cwd, context, dep.path, "", { requireFresh: requireFresh || closing || !wholeTargetCompleted });
         if (fresh.length) throw new Error(fresh.join("; "));
       }
       if (!closing) {
-        const index = content(cwd, context.paths.taskIndex || context.paths.tasks);
+        const indexRef = context.paths.taskIndex || context.paths.tasks;
+        const index = content(cwd, indexRef);
         const source = s.goalSourceTask(content(cwd, goalRef));
-        const tasks = s.parseTasks(index).filter(t => s.normalizedTaskTitle(t.title) === s.normalizedTaskTitle(source.title));
+        if (source.path !== indexRef) throw new Error("Goal Source Task must reference the configured task index.");
+        let tasks = s.parseTasks(index).filter(t => s.normalizedTaskTitle(t.title) === s.normalizedTaskTitle(source.title));
+        const archive = context.config.artifactPolicy?.tasks?.archive;
+        if (!tasks.length && archive && existsSync(path(cwd, archive, "Task archive"))) {
+          tasks = s.parseTasks(content(cwd, archive)).filter(t => s.normalizedTaskTitle(t.title) === s.normalizedTaskTitle(source.title));
+          for (const task of tasks) {
+            const doc = task.details.find(detail => detail.startsWith("Doc:"));
+            const links = doc ? [...doc.matchAll(/\]\(([^)]+)\)/g)].map(match => match[1].split("#")[0]) : [];
+            const refs = links.length ? links : doc ? s.cleanMapValue(doc.slice(4)).split(/[;\s]+/) : [];
+            if (doc && !refs.includes(goalRef)) throw new Error("Archived task does not identify its completed Goal.");
+          }
+        }
         if (tasks.length !== 1 || !s.isDoneTask(tasks[0])) throw new Error("Completed Goal task index is not synchronized.");
         if (loaded.plan.target.kind === "milestone") {
           const row = milestoneGoalRows(cwd, context, loaded.plan.target.path).find(row => row.path === goalRef);
@@ -398,7 +495,7 @@ export function createPlannedExecution(s) {
     for (const id of goal.dependsOn) {
       const dependency = loaded.plan.goals.find(g => g.id === id);
       if (s.canonicalGoalStatus(s.extractStatusLine(content(cwd, dependency.path))) !== "completed") throw new Error(`Cannot prepare Goal before accepted dependency: ${id}`);
-      const errors = [...s.goalEvidenceErrors(cwd, context, dependency.path), ...completionErrors(cwd, context, dependency.path)];
+      const errors = [...s.goalEvidenceErrors(cwd, context, dependency.path), ...completionErrors(cwd, context, dependency.path, "", { requireFresh: true })];
       if (errors.length) throw new Error(`Dependency ${id} cannot be accepted: ${errors.join("; ")}`);
     }
     for (const existing of runsFor(cwd, context, goal.path, loaded)) {
@@ -430,6 +527,7 @@ export function createPlannedExecution(s) {
     if (ref === `${loaded.plan.target.path}.completion.json`) return absolute;
     const local = relative(run.directory, absolute).replaceAll("\\", "/");
     if (["status.json", "checkpoint.json"].includes(local)) return absolute;
+    if (["evidence/completion.json", "evidence/.gitattributes"].includes(local) || /^evidence\/logs\/[a-f0-9]{64}\.txt$/.test(local)) return absolute;
     if (/^logs\/goal-complete-[0-9]+\.md$/.test(local)) return absolute;
     for (const node of run.dag.nodes) {
       if (local === node.status || local === node.result || new RegExp(`^agents/${node.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/reviews/[0-9]+\\.json$`).test(local)) return absolute;
@@ -464,7 +562,7 @@ export function createPlannedExecution(s) {
   }
   function applyJournal(cwd, context, payload, run, loaded, { dryRun = false } = {}) {
     const { integrity, ...body } = payload;
-    if (!["node-record", "node-review", "goal-complete", "milestone-complete", "run-record"].includes(payload.operation) || (!Number.isInteger(payload.revision) || payload.revision < 0) || payload.version !== 1 || digest(JSON.stringify(body)) !== integrity || payload.plan !== loaded.ref || payload.planHash !== loaded.hash || payload.run !== run.ref) throw new Error("Synchronization journal contract is invalid.");
+    if (!["node-record", "node-review", "goal-complete", "milestone-complete", "run-record", "run-seal"].includes(payload.operation) || (!Number.isInteger(payload.revision) || payload.revision < 0) || payload.version !== 1 || digest(JSON.stringify(body)) !== integrity || payload.plan !== loaded.ref || payload.planHash !== loaded.hash || payload.run !== run.ref) throw new Error("Synchronization journal contract is invalid.");
     if (!Array.isArray(payload.entries) || !payload.entries.length || new Set(payload.entries.map(e => e.path)).size !== payload.entries.length) throw new Error("Synchronization journal entries are invalid.");
     // Validate every destination/hash before replaying any remaining write.
     const pending = [];
@@ -593,7 +691,7 @@ export function createPlannedExecution(s) {
         const controls = [context.paths.goals, context.paths.specs, metadata.specExists ? metadata.specPath : "", context.paths.milestones, context.paths.runs, context.paths.status, context.paths.taskIndex || context.paths.tasks, context.paths.config].filter(Boolean);
         if (controls.some(p => s.isPathInside(path(cwd, p), absolute))) throw new Error("Workers cannot change authoritative Harness artifacts.");
       }
-      evidenceChecks(cwd, context, receipt, node.task.verification, { allowFailure: args.decision !== "accepted", earliest: Date.parse(run.manifest.createdAt), runRoot: run.directory });
+      evidenceChecks(cwd, context, receipt, node.task.verification, { allowFailure: args.decision !== "accepted", portable: args.decision === "accepted", earliest: Date.parse(run.manifest.createdAt), runRoot: run.directory });
       const before = s.executionDagSnapshot(run.dag, run.directory);
       if (node.dependencies.some(id => !before.completedNodes.includes(id))) throw new Error("Cannot review before accepted Task dependencies.");
       for (const id of node.dependencies) acceptedReceipt(cwd, context, run, run.dag.nodes.find(n => n.id === id));
@@ -613,6 +711,8 @@ export function createPlannedExecution(s) {
         [`${run.ref}/${receiptRef}`, raw], [`${run.ref}/${node.status}`, jsonText(next)],
         [`${run.ref}/${node.result}`, `# Controller review: ${args.decision}\n\n${receipt.summary}\n\nEvidence: ${run.ref}/${receiptRef}\n\nState Sync Notes: ${receipt.stateSyncNotes}\n`]
       ]);
+      next.review.logs = preserveLogs(cwd, context, run, receipt, changes);
+      changes.set(`${run.ref}/${node.status}`, jsonText(next));
       for (const ref of node.task.acceptance) {
         changes.set(ref.path, patchedItem(cwd, ref, { Status: phase === "completed" ? "satisfied" : phase === "blocked" ? "blocked" : "pending", Evidence: `${run.ref}/${receiptRef}`, Unblocker: blocked ? receipt.needUser || "repair repeated verification failure" : "N/A" }, changes.get(ref.path)));
       }
@@ -699,7 +799,7 @@ export function createPlannedExecution(s) {
         changes.set(loaded.plan.target.path, updatedGoalList(content(cwd, loaded.plan.target.path), [{ path: args.goal }]));
       }
       const summary = `Controller accepted all ${state.nodeCount} Tasks and synchronized Goal/index/status.`;
-      changes.set(`${args.run}/status.json`, jsonText({ ...run.status, phase: "completed", completedAt: now(), summary, verificationSummary: "All required receipt checks pass against current inputs", updatedAt: now(), executionDag: state }));
+      changes.set(`${args.run}/status.json`, jsonText({ ...run.status, phase: "completed", completionEvidence: sealEvidence(cwd, context, run, changes), completedAt: now(), summary, verificationSummary: "All required receipt checks pass against current inputs", updatedAt: now(), executionDag: state }));
       changes.set(`${args.run}/checkpoint.json`, jsonText(changedCheckpoint(run, { controlState: "completed", pauseReason: null, nextAction: "query execute next for remaining Goals or whole-target completion" })));
       changes.set(`${args.run}/logs/goal-complete-${run.checkpoint.revision + 1}.md`, `# Goal completion\n\nGoal: ${args.goal}\nRun: ${args.run}\n\n${summary}\n`);
       return emit(args, { ...transact(cwd, context, run, loaded, changes, "goal-complete", args), goal: args.goal });
@@ -724,23 +824,32 @@ export function createPlannedExecution(s) {
       if (!loaded || loaded.plan.target.kind !== "milestone" || loaded.plan.target.path !== args.milestone) throw new Error("Milestone completion requires its bound plan.");
       if (targetBlocked(content(cwd, args.milestone))) throw new Error("Blocked Milestone requires accepted recovery before completion.");
       if (existsSync(journalPath(cwd, context))) throw new Error("Resume pending synchronization before Milestone completion.");
+      const terminal = s.canonicalGoalStatus(s.extractStatusLine(content(cwd, args.milestone))) === "completed";
       for (const goal of loaded.plan.goals) {
         if (s.canonicalGoalStatus(s.extractStatusLine(content(cwd, goal.path))) !== "completed") throw new Error(`Required Goal remains incomplete: ${goal.id}`);
-        const errors = [...s.goalEvidenceErrors(cwd, context, goal.path), ...completionErrors(cwd, context, goal.path)];
+        const errors = [...s.goalEvidenceErrors(cwd, context, goal.path), ...completionErrors(cwd, context, goal.path, "", { requireFresh: !terminal })];
         if (errors.length) throw new Error(errors.join("; "));
       }
-      const raw = readFileSync(path(cwd, args.evidence, "Milestone receipt"), "utf8"), receipt = JSON.parse(raw);
+      const inputRaw = readFileSync(path(cwd, args.evidence, "Milestone receipt"), "utf8"), receipt = JSON.parse(inputRaw);
       if (receipt.version !== 1 || JSON.stringify(receipt.target) !== JSON.stringify(loaded.plan.target) || s.missingEvidence(receipt.stateSyncNotes)) throw new Error("Milestone receipt target and State Sync Notes are required.");
       const { run, earliest } = milestoneAnchor(cwd, context, loaded);
-      evidenceChecks(cwd, context, receipt, loaded.plan.verification, { earliest, runRoot: run.directory });
-      expected(run, args);
       const evidenceRef = `${args.milestone}.completion.json`;
-      if (s.canonicalGoalStatus(s.extractStatusLine(content(cwd, args.milestone))) === "completed" && existsSync(path(cwd, evidenceRef)) && digest(readFileSync(path(cwd, evidenceRef))) === digest(raw)) {
+      const previousRaw = terminal && existsSync(path(cwd, evidenceRef)) ? content(cwd, evidenceRef) : "";
+      const previous = previousRaw ? JSON.parse(previousRaw) : null;
+      const sealed = terminal && loaded.plan.goals.every(goal => Boolean(completionSeal(cwd, context, runState(cwd, context, s.extractInlinePath(content(cwd, goal.path), "Completion Run")))));
+      const durableLogs = receipt.durableLogs || previous?.durableLogs || completionSeal(cwd, context, run)?.stage?.logs;
+      evidenceChecks(cwd, context, receipt, loaded.plan.verification, { earliest, runRoot: run.directory, durableLogs, historical: sealed });
+      expected(run, args);
+      const changes = new Map();
+      receipt.durableLogs = preserveLogs(cwd, context, run, receipt, changes, durableLogs);
+      const raw = jsonText(receipt);
+      if (terminal && previousRaw && [digest(raw), digest(inputRaw)].includes(digest(previousRaw))) {
         const next = nextPayload({ ...args, goal: undefined, milestone: args.milestone });
         if (next.action !== "done") throw new Error(`Completed Milestone needs reconciliation: ${next.reason}`);
         return emit(args, { ok: true, target: loaded.plan.target, idempotent: true, revision: run.checkpoint.revision, writes: [] });
       }
-      const changes = new Map([[evidenceRef, raw]]);
+      if (terminal) throw new Error("Completed Milestone evidence cannot be replaced; use a follow-up target.");
+      changes.set(evidenceRef, raw);
       let targetText = content(cwd, args.milestone);
       for (const goal of loaded.plan.goals) targetText = patchedItem(cwd, goal.milestoneItem, { Status: "satisfied", Evidence: `${goal.path}; ${s.extractInlinePath(content(cwd, goal.path), "Completion Run")}`, Unblocker: "N/A" }, targetText);
       targetText = withInline(targetText, "Status", "completed.");
@@ -793,7 +902,7 @@ export function createPlannedExecution(s) {
       if (active.length > 1) return action("reconcile", "Multiple active planned Runs require authoritative selection or superseding.", { goal: goal.path, requiredEvidence: active.map(r => r.ref) });
       const failedDependencies = goal.dependsOn.filter(id => {
         const dep = loaded.plan.goals.find(g => g.id === id);
-        return s.canonicalGoalStatus(s.extractStatusLine(content(cwd, dep.path))) !== "completed" || s.goalEvidenceErrors(cwd, context, dep.path).length || completionErrors(cwd, context, dep.path).length;
+        return s.canonicalGoalStatus(s.extractStatusLine(content(cwd, dep.path))) !== "completed" || s.goalEvidenceErrors(cwd, context, dep.path).length || completionErrors(cwd, context, dep.path, "", { requireFresh: true }).length;
       });
       if (failedDependencies.length) { blockers.push(action("reconcile", `Waiting for accepted Goal dependencies: ${failedDependencies.join(", ")}`, { goal: goal.path })); continue; }
       if (!active.length) {
@@ -872,7 +981,9 @@ export function createPlannedExecution(s) {
           const receipt = JSON.parse(raw);
           if (JSON.stringify(receipt.target) !== JSON.stringify(loaded.plan.target)) throw new Error("Milestone completion receipt binding changed.");
           const { run: anchor, earliest } = milestoneAnchor(cwd, context, loaded);
-          evidenceChecks(cwd, context, receipt, loaded.plan.verification, { earliest, runRoot: anchor.directory });
+          const anchorSeal = completionSeal(cwd, context, anchor);
+          if (anchorSeal?.stage && (anchorSeal.stage.path !== evidenceRef || anchorSeal.stage.sha256 !== digest(raw))) throw new Error("Sealed Milestone receipt changed.");
+          evidenceChecks(cwd, context, receipt, loaded.plan.verification, { earliest, runRoot: anchor.directory, durableLogs: receipt.durableLogs || anchorSeal?.stage?.logs, historical: goals.every(goal => { const ref = s.extractInlinePath(content(cwd, goal.path), "Completion Run"); return Boolean(completionSeal(cwd, context, runState(cwd, context, ref))); }) });
           for (const goal of goals) {
             const item = acceptanceItem(cwd, context, goal.milestoneItem);
             if (item.status !== "satisfied" || s.missingEvidence(item.evidence) || !item.evidence.includes(goal.path)) throw new Error("Milestone acceptance state is not synchronized.");
@@ -880,17 +991,65 @@ export function createPlannedExecution(s) {
           const projection = s.extractSection(content(cwd, context.paths.status), "Harness Execution");
           if (!projection.includes("State sync: verified") || content(cwd, context.paths.status).split("\n").length > (context.config.artifactPolicy?.status?.maxLines || 160)) throw new Error("Milestone status projection is not synchronized.");
           if (projection.includes(`Target: \`${selectedTarget.path}\``) && !projection.includes("Phase: completed")) throw new Error("Milestone status projection phase is not synchronized.");
-          return action("done", "All required Goals, stage verification and state synchronization are complete.");
+          return action("done", "All required Goals, stage verification and state synchronization are complete.", verificationScope(cwd, context, loaded, goals, receipt));
         } catch (error) { return action("replan", error.message); }
       }
       const { run: anchorRun } = milestoneAnchor(cwd, context, loaded);
       const anchor = anchorRun.ref;
       return action("complete-milestone", "All required Goals are complete; run stage verification and synchronize the Milestone.", { run: anchor, checkpointRevision: anchorRun.checkpoint.revision, requiredEvidence: checksSnapshot(cwd, context, loaded.plan.verification) });
     }
-    return action("done", "Accepted scope, verification and synchronized Goal completion are satisfied.");
+    return action("done", "Accepted scope, verification and synchronized Goal completion are satisfied.", verificationScope(cwd, context, loaded, goals));
+  }
+  function verificationScope(cwd, context, loaded, goals, stage = null) {
+    const changed = new Set();
+    let sealed = true;
+    const inspect = (receipt, requirements) => {
+      for (const required of requirements) {
+        const previous = receipt.checks.find(check => check.id === required.id)?.inputs || {};
+        try {
+          const current = snapshot(cwd, context, required.inputs, required.exclude);
+          for (const ref of required.inputs) if (current[ref] !== previous[ref]) changed.add(ref);
+        } catch { for (const ref of required.inputs) changed.add(ref); }
+      }
+    };
+    for (const goal of goals) {
+      const run = runState(cwd, context, s.extractInlinePath(content(cwd, goal.path), "Completion Run"));
+      sealed &&= Boolean(completionSeal(cwd, context, run));
+      for (const node of run.dag.nodes) inspect(readJson(s.artifactPath(run.directory, nodeStatus(run.directory, node).review.receipt)), node.task.verification);
+    }
+    if (stage) inspect(stage, loaded.plan.verification);
+    return { evidenceScope: sealed ? "historical" : "current", currentVerification: { status: changed.size ? "changed" : "matches", changedInputs: [...changed].sort() }, ...(changed.size ? { followUp: "Historical acceptance remains valid; record and verify subsequent changes in a separate follow-up Goal or postflight record." } : {}) };
+  }
+  function sealRun(args) {
+    const cwd = s.targetCwd(args), context = s.resolveHarnessContext(cwd);
+    return projectLock(cwd, context, args, () => {
+      const run = runState(cwd, context, args.run); expected(run, args);
+      if (run.status.phase !== "completed" || run.checkpoint.controlState !== "completed") throw new Error("Only a completed planned Run can seal historical evidence.");
+      const loaded = validateBinding(cwd, context, run.manifest);
+      if (completionSeal(cwd, context, run)) {
+        const errors = completionErrors(cwd, context, run.status.goalPath, run.ref);
+        if (errors.length) throw new Error(errors.join("; "));
+        return emit(args, { ok: true, run: run.ref, idempotent: true, revision: run.checkpoint.revision, writes: [], ...runScope(cwd, context, run.ref) });
+      }
+      const errors = [...s.goalEvidenceErrors(cwd, context, run.status.goalPath), ...completionErrors(cwd, context, run.status.goalPath, run.ref, { requireFresh: true })];
+      if (errors.length) throw new Error(`Seal requires the originally verified source and logs: ${errors.join("; ")}`);
+      const changes = new Map();
+      const binding = sealEvidence(cwd, context, run, changes);
+      changes.set(`${run.ref}/status.json`, jsonText({ ...run.status, completionEvidence: binding }));
+      changes.set(`${run.ref}/checkpoint.json`, jsonText(changedCheckpoint(run, { nextAction: "historical evidence sealed; inspect current verification separately" })));
+      return emit(args, transact(cwd, context, run, loaded, changes, "run-seal", args));
+    });
+  }
+  function runScope(cwd, context, runRef) {
+    const run = runState(cwd, context, runRef);
+    if (!completionSeal(cwd, context, run)) return { evidenceScope: "current" };
+    const loaded = validateBinding(cwd, context, run.manifest);
+    const scope = verificationScope(cwd, context, loaded, loaded.plan.goals.filter(goal => goal.path === run.status.goalPath));
+    if (s.canonicalGoalStatus(s.extractStatusLine(content(cwd, loaded.plan.target.path))) !== "completed") scope.evidenceScope = "current";
+    return scope;
   }
   function checksSnapshot(cwd, context, requirements) {
-    return requirements.map(check => ({ id: check.id, command: check.command, inputs: snapshot(cwd, context, check.inputs), manual: Boolean(check.manual) }));
+    return requirements.map(check => ({ id: check.id, command: check.command, inputs: snapshot(cwd, context, check.inputs, check.exclude), manual: Boolean(check.manual) }));
   }
   function inputs(args) {
     const cwd = s.targetCwd(args), context = s.resolveHarnessContext(cwd);
@@ -922,5 +1081,5 @@ export function createPlannedExecution(s) {
   }
   return { load, resolvePlan, planValidate, compile, validateBinding, immutableDocument, prepareDependencies,
     completionErrors, nodeReview, plannedRecord, goalComplete, milestoneComplete, nextPayload,
-    next: args => emit(args, nextPayload(args)), inputs, sync, recordRun, snapshot };
+    next: args => emit(args, nextPayload(args)), inputs, sync, recordRun, snapshot, sealRun, runScope };
 }

@@ -54,3 +54,9 @@ A ready human Task with satisfied mapped items and concrete Evidence routes to
 
 Do not mutate files, launch workers, create lifecycle artifacts, or perform
 delivery actions. Treat summaries and worker output as candidate evidence.
+
+For sealed completed targets, report `evidenceScope` and `currentVerification`
+with `done`: historical acceptance can remain valid while later input hashes
+are `changed`. Do not call those later changes verified by the old Run. Route
+follow-up work separately. Legacy Runs need original source/log recovery before
+explicit `run seal`; orient itself never seals or repairs state.

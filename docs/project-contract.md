@@ -207,3 +207,16 @@ evidence and never replaces authoritative Task/Goal completion.
 Postflight sync updates existing state only with fresh verification, observed
 outcome, and remaining gap. It does not create
 a Goal, Run, DAG, gate, or status artifact solely for bookkeeping.
+
+
+### Historical completion and portable evidence
+
+Planned completion seals accepted input hashes and exact receipt logs inside the
+Run. A sealed terminal target validates historical acceptance; current source
+freshness is reported separately in `currentVerification`. Active execution,
+unfinished stages and new dependencies still require current inputs. Legacy
+Runs retain strict checks until `run seal` validates original source and logs.
+Completed source tasks may resolve from `artifactPolicy.tasks.archive` when absent
+from the active index; duplicate, non-done and mismatched Doc records fail closed.
+Verification checks may declare explicit `exclude` descendants for build output.
+Tracked acceptance rejects ignored source inputs and ignored durable log paths.

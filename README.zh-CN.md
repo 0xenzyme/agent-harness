@@ -103,6 +103,11 @@ evidence、gate 和 accepted state。
 manifest v1 Run 沿用旧路径。原生 runtime Goal 与 worker 委派都要求 host
 支持且已经获授权；否则在当前会话前台执行。这个循环不创建 scheduler。
 
+
+已完成的计划目标保存精确日志和带 hash 的源码输入快照。历史验收可在任务归档及后续
+源码修改后保留；`currentVerification` 单独报告当前输入是否仍匹配。后续修复需要自己的
+当前验证证据。见[证据保存与历史完成合同](plugins/agent-harness/references/planned-execution.md#portable-evidence-and-historical-completion)。
+
 ## 为什么需要 Agent Harness
 
 Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责产品判断、授权和真正

@@ -532,6 +532,7 @@ const messages = {
   agent-harness run node inputs --run PATH --node ID [--json]
   agent-harness plan inputs --plan PATH [--json]
   agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
+  agent-harness run seal --run PATH --expected-revision N [--dry-run] [--json]
   agent-harness run prepare --goal <goal-file> [--plan PATH] [--cwd PATH] [--dry-run] [--json]
   agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
@@ -590,6 +591,7 @@ const messages = {
   agent-harness run node inputs --run PATH --node ID [--json]
   agent-harness plan inputs --plan PATH [--json]
   agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
+  agent-harness run seal --run PATH --expected-revision N [--dry-run] [--json]
   agent-harness run prepare --goal <goal-file> [--plan PATH] [--cwd PATH] [--dry-run] [--json]
   agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
@@ -5183,10 +5185,13 @@ function goalValidate(args) {
 
   const goalPath = assertContainedPath(configuredPath(cwd, context.paths.goals, "Goals root"), resolve(cwd, args.goal), "Goal path");
   const validation = validateGoal(cwd, goalPath);
+  const goalText = validation.ok ? readFileSync(goalPath, "utf8") : "";
+  const completionRun = extractInlinePath(goalText, "Completion Run");
   const payload = {
     ok: validation.ok,
     errors: validation.errors,
     warnings: validation.warnings,
+    ...(validation.ok && canonicalGoalStatus(validation.metadata.status) === "completed" && completionRun && extractInlinePath(goalText, "Execution Plan") ? planned.runScope(cwd, context, completionRun) : {}),
     goal: validation.metadata
   };
 
@@ -5194,6 +5199,8 @@ function goalValidate(args) {
     console.log(JSON.stringify(payload, null, 2));
   } else {
     console.log(`Goal validation: ${validation.ok ? "ok" : "failed"}`);
+    if (payload.evidenceScope) console.log(`Evidence scope: ${payload.evidenceScope}`);
+    if (payload.currentVerification) console.log(`Current verification inputs: ${payload.currentVerification.status}`);
     for (const error of validation.errors) {
       console.log(`- ${error}`);
     }
@@ -6763,6 +6770,7 @@ function runValidationPayload(args) {
     run: displayPath(cwd, runDir),
     phase: status.phase || status.status || "unknown",
     errors,
+    ...(errors.length === 0 && status.phase === "completed" && manifestState.manifest?.manifestVersion === 2 ? planned.runScope(cwd, context, displayPath(cwd, runDir)) : {}),
     manifest: { managed: manifestState.managed, error: manifestState.error },
     contract: { ok: !contractError || expectedContractDrift, expectedDrift: expectedContractDrift, error: contractError },
     checkpoint: {
@@ -6782,6 +6790,8 @@ function printValidationPayload(payload, args) {
   else {
     console.log(`Run: ${payload.run}`);
     console.log(`Valid: ${payload.ok ? "yes" : "no"}`);
+    if (payload.evidenceScope) console.log(`Evidence scope: ${payload.evidenceScope}`);
+    if (payload.currentVerification) console.log(`Current verification inputs: ${payload.currentVerification.status}`);
     console.log(`Checkpoint policy: ${payload.checkpoint.policy}`);
     if (payload.checkpoint.enabled) {
       console.log(`Checkpoint revision: ${payload.checkpoint.revision}`);
@@ -7526,6 +7536,8 @@ function main() {
       planned.milestoneComplete(args);
     } else if (command === "run" && subcommand === "sync") {
       planned.sync(args);
+    } else if (command === "run" && subcommand === "seal") {
+      planned.sealRun(args);
     } else if (command === "run" && subcommand === "node" && args._[2] === "review") {
       planned.nodeReview(args);
     } else if (command === "run" && subcommand === "node" && args._[2] === "inputs") {

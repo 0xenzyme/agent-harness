@@ -278,7 +278,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs run node inputs --cwd /path
 计划自身为 `version: 1`。`goals[].tasks[]` 声明
 `type: implementation|verification|human`、`ownership.read`、
 `ownership.write`、`{path, section, item}` acceptance 引用，以及必填
-`verification[]` 检查 `{id, command, inputs, manual?}`。新建计划内 Goal
+`verification[]` 检查 `{id, command, inputs, exclude?, manual?}`。新建计划内 Goal
 可选 `goal create --plan PATH`，默认使用 enforced checkpoint；已有 Goal
 准备计划内 Run 前须明确设定 `Checkpoint Policy: enforced`。
 单 Goal 目标可选的根 `verification`，每项都必须与某个 Task check 完全相同；
@@ -493,3 +493,19 @@ transient plan。
 只有 `status.json` 的旧 Run 目录仍可被 inspect，但会标记为 `unmanaged`，不会
 自动把 Task 移到 Done，也不能通过 `artifacts prune --apply`。artifact policy 中的
 路径必须是仓库相对路径；required Harness 路径缺失时，`doctor` 返回非零退出码。
+
+
+### 可迁移证据与历史验收
+
+验证检查可声明 `exclude`，列出输入目录内要排除的具体路径，例如
+`{"id":"tests","command":"go test ./...","inputs":["backend"],"exclude":["backend/.data"]}`。
+不能排除整个 input。tracked 验收拒绝 Git ignored 输入，并把日志精确保存到
+`<run>/evidence/logs/<hash>.txt`。Goal 完成时在 `<run>/evidence/completion.json`
+封存输入 hash 和回执身份；tracked Run 必须保留这些文件。
+
+旧的 completed Run 先恢复原验证源码和日志，再运行
+`run seal --run PATH --expected-revision N [--dry-run] [--json]`。该命令验证原证据，
+保留原回执，并只推进一次 checkpoint。已封存的终态目标返回 `done`，同时给出
+`evidenceScope: historical` 和 `currentVerification: {status: matches|changed, changedInputs: [...]}`。
+历史完成不证明后续修改通过验证；后续工作使用独立 Goal 或 postflight 记录。
+执行中的工作与新依赖继续检查当前输入。完成任务可从配置的 `artifactPolicy.tasks.archive` 解析。

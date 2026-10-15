@@ -201,3 +201,20 @@ already authorized.
 - Do not apply durable gates to direct or postflight-only work, and do not use
   postflight wording to bypass an existing enforced Run.
 - Preserve fixed and adapter contracts and report in the user's language.
+
+## Completion history and follow-up edits
+
+Use explicit verification `exclude` paths for build output; tracked acceptance
+rejects ignored inputs. Keep source, fixtures and configuration inputs bound.
+The CLI preserves exact logs under the Run's `evidence/logs/` and seals input
+hashes at Goal closeout. Commit the evidence with tracked Runs. Completed source
+tasks may be resolved from the configured task archive after compaction.
+
+A sealed completed target's `done` describes historical acceptance. Inspect
+`evidenceScope` and `currentVerification`: `changed` requires separate current
+validation for follow-up edits, not rewriting old receipts or reporting that
+old tests verified the new code. Preserve the original Goal/Run and record the
+follow-up Goal or bounded postflight evidence, then reconcile the current status
+summary. Active work and dependency admission always require fresh evidence.
+For legacy recovery, `run seal` requires the originally verified source and
+logs and never turns stale evidence into acceptance.

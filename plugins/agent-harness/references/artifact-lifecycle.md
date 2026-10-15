@@ -35,3 +35,11 @@ requires a structurally valid terminal checkpoint (`completed` or
 A local-only Run path is a locator, not durable evidence by itself. Before
 pruning, configured durable evidence must retain the accepted conclusion, verification
 summary, and any audit reference needed after the raw Run disappears.
+
+Completed planned Goals resolve their source task from the active index first,
+then from `artifactPolicy.tasks.archive` only when the active row is absent.
+The archive must contain exactly one matching done task; a Doc field must
+identify that Goal. Compaction does not reopen valid historical completion.
+Tracked Runs preserve exact receipt logs under `evidence/logs/` and a hashed
+completion snapshot. Keep these files with the Run; a readable log copy at an
+unbound path is insufficient. See [Planned Execution](planned-execution.md).

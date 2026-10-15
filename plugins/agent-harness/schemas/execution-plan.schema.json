@@ -46,6 +46,7 @@
         "id": { "$ref": "#/$defs/id" },
         "command": { "type": "string", "minLength": 1 },
         "inputs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+        "exclude": { "$ref": "#/$defs/stringList", "description": "Explicit repo-relative descendants of inputs to omit, for example backend/.data. Cannot exclude a whole input." },
         "manual": { "type": "boolean" }
       }
     },

@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -98,7 +98,7 @@ function receipt(project, run, node, { forcedExitCode, stableFailureLog = "", ne
   const logRef = `${run}/logs/${node}-${Date.now()}-${Math.random().toString(36).slice(2)}.log`;
   const logText = stableFailureLog || `${observed.stdout || ""}${observed.stderr || ""}${forcedExitCode === undefined ? "" : "\nControlled repair probe: controller requests a fix despite passing source check.\n"}`;
   write(rel(project, logRef), logText);
-  const target = { kind: "milestone", path: milestoneRef };
+  const target = json(rel(project, `${run}/manifest.json`)).executionPlan.target;
   const goal = json(rel(project, `${run}/status.json`)).goalPath;
   const payload = { version: 1, target, goal, run, node, summary: `Observed ${node} result`, stateSyncNotes: "Controller will synchronize accepted state after verification.", changedFiles: changedFiles ?? (node.endsWith("code") ? [node === "format-code" ? "src/format.mjs" : "src/parse.mjs"] : []), risks: [], remaining, needUser,
     executor: { status: "completed", observedAt: new Date().toISOString(), observedSource: "deterministic test process" },
@@ -111,6 +111,158 @@ function receipt(project, run, node, { forcedExitCode, stableFailureLog = "", ne
 function review(project, run, node, evidence, decision = "accepted", extra = []) {
   return call(project, ["run", "node", "review", "--run", run, "--node", node, "--evidence", evidence, "--decision", decision, ...checkpointArgs(project, run), ...extra]);
 }
+
+function singleFixture() {
+  const result = fixture();
+  const goal = result.goals[0], ref = `${goal}.plan.json`;
+  write(rel(result.project, goal), readFileSync(rel(result.project, goal), "utf8").replace(`Execution Plan: ${planRef}`, `Execution Plan: ${ref}`));
+  const plan = { version: 1, target: { kind: "goal", path: goal }, goals: [{ ...result.plan.goals[0], milestoneItem: undefined }] };
+  write(rel(result.project, ref), JSON.stringify(plan));
+  return { ...result, goal, ref, plan };
+}
+
+function completeSingle({ project, goal, ref }) {
+  call(project, ["run", "prepare", "--goal", goal, "--plan", ref]);
+  const run = runDirs(project)[0];
+  write(rel(project, "src/parse.mjs"), "export const parse = (text) => Number(text);\n");
+  for (const node of ["parse-code", "parse-check"]) review(project, run, node, receipt(project, run, node));
+  call(project, ["goal", "complete", "--goal", goal, "--run", run, ...checkpointArgs(project, run)]);
+  return run;
+}
+
+test("tracked completion survives Git-only checkout, archive and later source changes", () => {
+  const f = singleFixture(), { project, goal } = f;
+  const checkout = mkdtempSync(join(tmpdir(), "harness-portable-checkout-"));
+  try {
+    assert.equal(spawnSync("git", ["init"], { cwd: project }).status, 0);
+    write(rel(project, ".gitignore"), "*.log\nsrc/.data/\n");
+    write(rel(project, "src/.data/runtime"), "local binary\n");
+    for (const task of f.plan.goals[0].tasks) task.verification[0] = { ...task.verification[0], inputs: ["src", "test/parse.test.mjs"], exclude: ["src/.data"] };
+    write(rel(project, f.ref), JSON.stringify(f.plan));
+    const run = completeSingle(f);
+    assert.equal(spawnSync("git", ["add", "."], { cwd: project }).status, 0);
+    const diff = spawnSync("git", ["diff", "--cached", "--check", "--", `${run}/evidence`], { cwd: project, encoding: "utf8" });
+    assert.equal(diff.status, 0, diff.stdout + diff.stderr);
+    const files = spawnSync("git", ["ls-files", "-z"], { cwd: project, encoding: "utf8" }).stdout.split("\0").filter(Boolean);
+    for (const file of files) { mkdirSync(dirname(rel(checkout, file)), { recursive: true }); cpSync(rel(project, file), rel(checkout, file)); }
+    assert.equal(existsSync(rel(checkout, "src/.data/runtime")), false);
+    assert.equal(call(checkout, ["run", "validate", "--run", run]).ok, true);
+    const config = json(rel(checkout, ".harness/config.json"));
+    config.artifactPolicy = { tasks: { archive: "harness/archive.md", keepDone: 0 } };
+    write(rel(checkout, ".harness/config.json"), JSON.stringify(config));
+    const index = readFileSync(rel(checkout, "harness/tasks.md"), "utf8");
+    write(rel(checkout, "harness/archive.md"), `# Archive\n\n- [x] P1 Parse input\n  - Doc: ${goal}\n`);
+    write(rel(checkout, "harness/tasks.md"), index.replace(/^- \[x\] P1 Parse input\n/m, ""));
+    assert.equal(call(checkout, ["goal", "validate", "--goal", goal]).ok, true);
+    write(rel(checkout, "src/parse.mjs"), "export const parse = (text) => Number(text.trim());\n");
+    const next = call(checkout, ["orient", "next", "--goal", goal]);
+    assert.equal(next.action, "done");
+    assert.equal(next.evidenceScope, "historical");
+    assert.equal(next.currentVerification.status, "changed");
+    assert(next.currentVerification.changedInputs.includes("src"));
+    assert.equal(call(checkout, ["run", "validate", "--run", run]).currentVerification.status, "changed");
+    assert.equal(call(checkout, ["goal", "validate", "--goal", goal]).currentVerification.status, "changed");
+    const archive = readFileSync(rel(checkout, "harness/archive.md"), "utf8");
+    write(rel(checkout, "harness/archive.md"), archive.replace(goal, `${goal}.unrelated`));
+    fail(checkout, ["goal", "validate", "--goal", goal], /Archived task|Goal/i);
+    write(rel(checkout, "harness/archive.md"), archive.replace(goal, "harness/goals/unrelated.md"));
+    fail(checkout, ["goal", "validate", "--goal", goal], /Archived task|Goal/i);
+    write(rel(checkout, "harness/archive.md"), `${archive}\n- [x] P1 Parse input\n`);
+    fail(checkout, ["goal", "validate", "--goal", goal], /index.*synchronized/i);
+    write(rel(checkout, "harness/archive.md"), archive);
+    write(rel(checkout, `${run}/evidence/completion.json`), "{}\n");
+    fail(checkout, ["run", "validate", "--run", run], /snapshot.*changed/i);
+  } finally { rmSync(project, { recursive: true, force: true }); rmSync(checkout, { recursive: true, force: true }); }
+});
+
+test("ignored inputs require explicit exclusions and active evidence stays fresh", () => {
+  const f = singleFixture(), { project, goal, ref, plan } = f;
+  try {
+    spawnSync("git", ["init"], { cwd: project });
+    write(rel(project, ".gitignore"), "src/.data/\n");
+    write(rel(project, "src/.data/runtime"), "local binary\n");
+    for (const task of plan.goals[0].tasks) task.verification[0].inputs = ["src"];
+    write(rel(project, ref), JSON.stringify(plan));
+    call(project, ["run", "prepare", "--goal", goal, "--plan", ref]);
+    const run = runDirs(project)[0];
+    write(rel(project, "src/parse.mjs"), "export const parse = (text) => Number(text);\n");
+    const candidate = receipt(project, run, "parse-code");
+    fail(project, ["run", "node", "review", "--run", run, "--node", "parse-code", "--evidence", candidate, "--decision", "accepted", ...checkpointArgs(project, run)], /Git-ignored files/);
+    assert.equal(spawnSync("git", ["add", "--force", "src/.data/runtime"], { cwd: project }).status, 0);
+    assert.equal(review(project, run, "parse-code", candidate).decision, "accepted", "Explicitly tracked fixtures remain verification inputs even under an ignore pattern");
+    write(rel(project, "src/parse.mjs"), "export const parse = (text) => Number(text.trim());\n");
+    assert.equal(call(project, ["execute", "next", "--goal", goal]).action, "verify-node", "Active accepted nodes still require current source hashes");
+    const invalid = structuredClone(plan); invalid.goals[0].tasks[0].verification[0].exclude = ["src"];
+    write(rel(project, ref), JSON.stringify(invalid));
+    fail(project, ["plan", "validate", "--plan", ref], /whole input|descendants/);
+    invalid.goals[0].tasks[0].verification[0].exclude = ["../outside"];
+    write(rel(project, ref), JSON.stringify(invalid));
+    fail(project, ["plan", "validate", "--plan", ref], /outside|escape|path/i);
+  } finally { rmSync(project, { recursive: true, force: true }); }
+});
+
+test("legacy sealing requires original sources and preserves old receipts", () => {
+  const f = singleFixture(), { project, goal } = f;
+  try {
+    const run = completeSingle(f), statusPath = rel(project, `${run}/status.json`);
+    const status = json(statusPath); delete status.completionEvidence;
+    write(statusPath, JSON.stringify(status));
+    const accepted = rel(project, `${run}/agents/parse-code/reviews/1.json`), original = readFileSync(accepted);
+    write(rel(project, "src/parse.mjs"), "export const parse = (text) => Number(text.trim());\n");
+    fail(project, ["run", "seal", "--run", run, ...checkpointArgs(project, run)], /originally verified|changed/i);
+    write(rel(project, "src/parse.mjs"), "export const parse = (text) => Number(text);\n");
+    const before = revision(project, run);
+    call(project, ["run", "seal", "--run", run, ...checkpointArgs(project, run), "--dry-run"]);
+    assert.equal(revision(project, run), before);
+    call(project, ["run", "seal", "--run", run, ...checkpointArgs(project, run)]);
+    assert.deepEqual(readFileSync(accepted), original);
+    assert.equal(call(project, ["run", "seal", "--run", run, ...checkpointArgs(project, run)]).idempotent, true);
+    const nodeStatus = json(rel(project, `${run}/agents/parse-code/status.json`));
+    const log = Object.values(nodeStatus.review.logs)[0];
+    write(rel(project, log), "tampered log\n");
+    fail(project, ["goal", "validate", "--goal", goal], /log missing or changed/i);
+  } finally { rmSync(project, { recursive: true, force: true }); }
+});
+
+test("legacy Milestone sealing preserves stage logs and reports later drift separately", () => {
+  const { project, goals } = fixture();
+  try {
+    const run1 = prepared(project, goals[0]);
+    write(rel(project, "src/parse.mjs"), "export const parse = (text) => Number(text);\n");
+    for (const node of ["parse-code", "parse-check"]) review(project, run1, node, receipt(project, run1, node));
+    call(project, ["goal", "complete", "--goal", goals[0], "--run", run1, ...checkpointArgs(project, run1)]);
+    const run2 = prepared(project, goals[1]);
+    write(rel(project, "src/format.mjs"), "export const format = (value) => `sum=${value}`;\n");
+    review(project, run2, "format-code", receipt(project, run2, "format-code"));
+    call(project, ["goal", "complete", "--goal", goals[1], "--run", run2, ...checkpointArgs(project, run2)]);
+    const check = call(project, ["plan", "inputs", "--plan", planRef]).checks[0];
+    const result = spawnSync(process.execPath, check.command.split(" ").slice(1), { cwd: project, encoding: "utf8" });
+    assert.equal(result.status, 0);
+    const log = `${run2}/logs/stage.log`, candidate = `${run2}/stage.json`;
+    const logText = `Command: ${check.command}\nExit: ${result.status}\n${result.stdout || ""}${result.stderr || ""}`;
+    write(rel(project, log), logText);
+    write(rel(project, candidate), JSON.stringify({ version: 1, target: { kind: "milestone", path: milestoneRef }, stateSyncNotes: "Both Goals and stage passed current checks.", checks: [{ ...check, exitCode: 0, observedAt: new Date().toISOString(), log, logHash: sha(logText) }] }));
+    call(project, ["milestone", "complete", "--milestone", milestoneRef, "--evidence", candidate, ...checkpointArgs(project, run2)]);
+    for (const run of [run1, run2]) {
+      const file = rel(project, `${run}/status.json`), value = json(file); delete value.completionEvidence; write(file, JSON.stringify(value));
+    }
+    const stageRef = `${milestoneRef}.completion.json`, legacy = json(rel(project, stageRef)); delete legacy.durableLogs;
+    const raw = JSON.stringify(legacy);
+    write(rel(project, stageRef), raw);
+    write(rel(project, milestoneRef), readFileSync(rel(project, milestoneRef), "utf8").replace(/^Completion Evidence Hash:.*$/m, `Completion Evidence Hash: ${sha(raw)}`));
+    for (const run of [run1, run2]) call(project, ["run", "seal", "--run", run, ...checkpointArgs(project, run)]);
+    assert.equal(readFileSync(rel(project, stageRef), "utf8"), raw, "Migration preserves the original stage receipt");
+    rmSync(rel(project, log));
+    write(rel(project, "src/parse.mjs"), "export const parse = (text) => Number(text.trim());\n");
+    const next = call(project, ["execute", "next", "--milestone", milestoneRef]);
+    assert.equal(next.action, "done");
+    assert.equal(next.evidenceScope, "historical");
+    assert.equal(next.currentVerification.status, "changed");
+    const stageRevision = revision(project, run2);
+    assert.equal(call(project, ["milestone", "complete", "--milestone", milestoneRef, "--evidence", stageRef, ...checkpointArgs(project, run2)]).idempotent, true);
+    assert.equal(revision(project, run2), stageRevision);
+  } finally { rmSync(project, { recursive: true, force: true }); }
+});
 
 test("plan validation rejects unmapped, duplicate, cyclic and escaping graphs", () => {
   const { project, plan } = fixture();

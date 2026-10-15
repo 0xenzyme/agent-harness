@@ -16,3 +16,9 @@ verification, and remaining gap. Do not create a
 Goal, Run, DAG, gate, or status artifact solely for postflight bookkeeping.
 Durable required gates do not apply unless the work closes a durable Goal/Run;
 an existing enforced Run still requires its full recorded evidence.
+
+Tracked completion must retain the CLI's exact log copies and hashed completion
+snapshot. Verification exclusions are explicit; ignored build artifacts cannot
+be implicit source inputs. Completed history and current validation are separate:
+a sealed `done` is historical when `currentVerification.status` is `changed`.
+Record new verification for follow-up edits without overwriting old receipts.

@@ -286,7 +286,7 @@ previews and `--json` output.
 The plan itself uses `version: 1`. Its `goals[].tasks[]` entries declare
 `type: implementation|verification|human`, `ownership.read` and
 `ownership.write`, acceptance references `{path, section, item}`, and
-mandatory `verification[]` checks `{id, command, inputs, manual?}`.
+mandatory `verification[]` checks `{id, command, inputs, exclude?, manual?}`.
 `goal create --plan PATH` is optional for new planned Goals and defaults their
 checkpoint policy to enforced. Existing Goals must explicitly have
 `Checkpoint Policy: enforced` before planned Run preparation.
@@ -520,3 +520,22 @@ for migration, but are marked `unmanaged` and cannot automatically move Tasks
 to Done or qualify for `artifacts prune --apply`. Configured artifact-policy
 paths must be repo-relative; `doctor` exits non-zero when required Harness paths
 are missing.
+
+
+### Portable completion evidence
+
+Verification checks accept optional `exclude` repo-relative descendants, such as
+`{"id":"tests","command":"go test ./...","inputs":["backend"],"exclude":["backend/.data"]}`.
+An exclusion cannot remove a whole input. Tracked acceptance rejects Git-ignored
+input files and preserves exact log bytes in `<run>/evidence/logs/<hash>.txt`.
+Goal completion seals source input hashes and receipt identities in
+`<run>/evidence/completion.json`; keep these files with tracked Runs.
+
+For a legacy completed Run, restore the originally verified source and logs, then
+use `run seal --run PATH --expected-revision N [--dry-run] [--json]`. Sealing
+validates existing evidence, preserves original receipts and advances the checkpoint
+once. A sealed terminal target returns `done` with `evidenceScope: historical`
+and `currentVerification: {status: matches|changed, changedInputs: [...]}`.
+This does not verify subsequent edits; record a follow-up Goal or postflight
+result. Active work and new dependencies still require fresh input hashes.
+Completed source tasks may be resolved from `artifactPolicy.tasks.archive`.

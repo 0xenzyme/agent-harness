@@ -111,6 +111,13 @@ manifest v1 Runs remain on their legacy path. Native runtime Goals and worker
 delegation require host support and authorization; foreground execution is the
 fallback. This controller loop runs in the current session without a scheduler.
 
+
+Completed planned targets preserve exact logs and a hashed source-input snapshot.
+Historical acceptance survives configured task archival and subsequent source
+edits; `currentVerification` reports whether today's inputs still match.
+Follow-up changes require their own current evidence. See the
+[planned execution contract](plugins/agent-harness/references/planned-execution.md#portable-evidence-and-historical-completion).
+
 ## Why Agent Harness
 
 Agent Harness is for the moment after the human has set direction. The human
