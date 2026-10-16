@@ -129,6 +129,37 @@ export function createPlannedExecution(s) {
     if (new Set(rows.map(r => r.path)).size !== rows.length) throw new Error("Milestone Goal List has duplicate Goal paths.");
     return rows;
   }
+  function activeParentMilestones(cwd, context, goalRef) {
+    if (!context.paths.milestones) return [];
+    const root = path(cwd, context.paths.milestones, "Milestones root");
+    if (!existsSync(root)) return [];
+    const parents = [];
+    function visit(directory) {
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        if (entry.isSymbolicLink()) continue;
+        const absolute = s.assertContainedPath(root, join(directory, entry.name), "Milestone document");
+        if (entry.isDirectory()) { visit(absolute); continue; }
+        if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+        const ref = refPath(cwd, absolute), text = content(cwd, ref);
+        const status = s.extractStatusLine(text) || s.extractSection(text, "Current Status").match(/^- Status:\s*(.+)$/m)?.[1] || "";
+        if (!/^active(?=$|[\s（(.:;])/i.test(s.canonicalGoalStatus(status))) continue;
+        const listed = s.extractSection(text, "Goal List").split("\n").some(line => {
+          if (!line.trim().startsWith("|")) return false;
+          const cells = line.trim().replace(/^\||\|$/g, "").split("|").map(cell => s.cleanMapValue(cell.trim()));
+          const doc = cells[3]?.match(/^\[[^\]]+\]\(([^)]+)\)$/)?.[1] || cells[3];
+          return doc?.replaceAll("\\", "/") === goalRef;
+        });
+        if (listed) parents.push(ref);
+      }
+    }
+    visit(root);
+    return parents.sort();
+  }
+  function assertStandaloneScope(cwd, context, goalRef, args) {
+    if (args.goalSlice) return;
+    const parents = activeParentMilestones(cwd, context, goalRef);
+    if (parents.length) throw new Error(`Goal belongs to active Milestone ${parents.join(", ")}. Continue the accepted Milestone target with --milestone; first bind its adjacent execution plan if needed. Use --goal-slice only when the user explicitly narrows the accepted scope to this Goal.`);
+  }
   function targetContract(cwd, plan, context) {
     const text = content(cwd, plan.target.path);
     return {
@@ -876,11 +907,15 @@ export function createPlannedExecution(s) {
       const cp = readJson(s.artifactPath(s.configuredRunDir(cwd, context, pending.run), "checkpoint.json"));
       return action("sync", "Resume unfinished project synchronization before any implementation.", { run: pending.run, checkpointRevision: cp.revision });
     }
+    if (selectedTarget.kind === "goal" && !args.goalSlice) {
+      const parents = activeParentMilestones(cwd, context, selectedTarget.path);
+      if (parents.length) return action("replan", `Goal is part of active Milestone ${parents.join(", ")}. Keep the accepted Milestone as the execution target and bind its adjacent plan; use --goal-slice only when the user explicitly narrows the scope.`, { requiredEvidence: parents });
+    }
     if (targetBlocked(content(cwd, selectedTarget.path))) return action("reconcile", "The selected target is explicitly blocked; inspect accepted recovery authority before execution.", { requiredEvidence: [selectedTarget.path] });
     let loaded;
     try { loaded = resolvePlan(cwd, context, selectedTarget.path, args.plan); }
     catch (error) { return action("replan", error.message); }
-    if (!loaded) return action("replan", "Prepare and bind an explicit execution plan for the accepted target.");
+    if (!loaded) return action("replan", `Prepare and bind an explicit execution plan for the accepted ${selectedTarget.kind} target; do not substitute a child Goal for an accepted Milestone.`, { requiredEvidence: [selectedTarget.path] });
     const goals = selectedTarget.kind === "goal" ? loaded.plan.goals.filter(g => g.path === selectedTarget.path) : loaded.plan.goals;
     if (!goals.length || (selectedTarget.kind === "milestone" && loaded.plan.target.path !== selectedTarget.path)) throw new Error("Selected target is not in the bound plan.");
     const readyActions = [], reviews = [], closeouts = [], waits = [], decisions = [], blockers = [];
@@ -1079,7 +1114,7 @@ export function createPlannedExecution(s) {
       return emit(args, transact(cwd, context, run, loaded, changes, "run-record", args));
     });
   }
-  return { load, resolvePlan, planValidate, compile, validateBinding, immutableDocument, prepareDependencies,
+  return { load, resolvePlan, planValidate, compile, validateBinding, immutableDocument, prepareDependencies, assertStandaloneScope,
     completionErrors, nodeReview, plannedRecord, goalComplete, milestoneComplete, nextPayload,
     next: args => emit(args, nextPayload(args)), inputs, sync, recordRun, snapshot, sealRun, runScope };
 }

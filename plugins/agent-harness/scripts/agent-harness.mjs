@@ -224,7 +224,7 @@ function parseArgs(argv) {
     "reconciliationRequired",
     "reconciliation-required"
   ]);
-  const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "apply", "dryRun", "dry-run", "force", "help", "json", "record"]);
+  const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "apply", "dryRun", "dry-run", "force", "goalSlice", "goal-slice", "help", "json", "record"]);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -525,7 +525,7 @@ const messages = {
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness plan validate --plan PATH [--cwd PATH] [--json]
-  agent-harness execute next --goal PATH|--milestone PATH [--cwd PATH] [--json]
+  agent-harness execute next --goal PATH|--milestone PATH [--goal-slice] [--cwd PATH] [--json]
   agent-harness goal complete --goal PATH --run PATH --expected-revision N [--dry-run] [--json]
   agent-harness milestone complete --milestone PATH --evidence PATH --expected-revision N [--dry-run] [--json]
   agent-harness run node review --run PATH --node ID --evidence PATH --decision accepted|request-fix|blocked --expected-revision N [--dry-run] [--json]
@@ -533,7 +533,7 @@ const messages = {
   agent-harness plan inputs --plan PATH [--json]
   agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
   agent-harness run seal --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run prepare --goal <goal-file> [--plan PATH] [--cwd PATH] [--dry-run] [--json]
+  agent-harness run prepare --goal <goal-file> [--plan PATH] [--goal-slice] [--cwd PATH] [--dry-run] [--json]
   agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
@@ -584,7 +584,7 @@ const messages = {
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness plan validate --plan PATH [--cwd PATH] [--json]
-  agent-harness execute next --goal PATH|--milestone PATH [--cwd PATH] [--json]
+  agent-harness execute next --goal PATH|--milestone PATH [--goal-slice] [--cwd PATH] [--json]
   agent-harness goal complete --goal PATH --run PATH --expected-revision N [--dry-run] [--json]
   agent-harness milestone complete --milestone PATH --evidence PATH --expected-revision N [--dry-run] [--json]
   agent-harness run node review --run PATH --node ID --evidence PATH --decision accepted|request-fix|blocked --expected-revision N [--dry-run] [--json]
@@ -592,7 +592,7 @@ const messages = {
   agent-harness plan inputs --plan PATH [--json]
   agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
   agent-harness run seal --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run prepare --goal <goal-file> [--plan PATH] [--cwd PATH] [--dry-run] [--json]
+  agent-harness run prepare --goal <goal-file> [--plan PATH] [--goal-slice] [--cwd PATH] [--dry-run] [--json]
   agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
@@ -6381,6 +6381,7 @@ function runPrepare(args) {
   const requiredGates = durableRequiredCompletionGates(context);
   const taskSize = classifyTask(goalContent, workMode);
   const loadedPlan = planned.resolvePlan(cwd, context, displayPath(cwd, goalPath), args.plan || "");
+  if (loadedPlan?.plan.target.kind !== "milestone") planned.assertStandaloneScope(cwd, context, displayPath(cwd, goalPath).replaceAll("\\", "/"), args);
   if (loadedPlan) {
     const journal = join(dirname(configuredPath(cwd, context.paths.config || ".harness/config.json")), "execution-sync.json");
     if (existsSync(journal)) throw new Error("Resume project synchronization before preparing another Run.");

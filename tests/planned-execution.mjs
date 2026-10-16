@@ -118,6 +118,8 @@ function singleFixture() {
   write(rel(result.project, goal), readFileSync(rel(result.project, goal), "utf8").replace(`Execution Plan: ${planRef}`, `Execution Plan: ${ref}`));
   const plan = { version: 1, target: { kind: "goal", path: goal }, goals: [{ ...result.plan.goals[0], milestoneItem: undefined }] };
   write(rel(result.project, ref), JSON.stringify(plan));
+  rmSync(rel(result.project, milestoneRef));
+  rmSync(rel(result.project, planRef));
   return { ...result, goal, ref, plan };
 }
 
@@ -341,6 +343,8 @@ test("candidate logs stay inside their bound Run and identify the recorded execu
 test("single Goal target has a real next action and rejects unassigned target checks", () => {
   const { project, goals, plan } = fixture();
   try {
+    rmSync(rel(project, milestoneRef));
+    rmSync(rel(project, planRef));
     const singleRef = `${goals[0]}.plan.json`;
     const goalPath = rel(project, goals[0]);
     write(goalPath, readFileSync(goalPath, "utf8").replace(`Execution Plan: ${planRef}`, `Execution Plan: ${singleRef}`));
@@ -352,6 +356,35 @@ test("single Goal target has a real next action and rejects unassigned target ch
     unassigned.verification[0].id = "outside-task";
     write(rel(project, singleRef), `${JSON.stringify(unassigned, null, 2)}\n`);
     fail(project, ["plan", "validate", "--plan", singleRef], /assigned|Task|verification/i);
+  } finally { rmSync(project, { recursive: true, force: true }); }
+});
+
+test("active Milestone cannot be silently replaced by standalone Goal execution", () => {
+  const { project, goals, plan } = fixture();
+  try {
+    const goal = goals[0], singleRef = `${goal}.plan.json`;
+    const milestonePath = rel(project, milestoneRef);
+    write(milestonePath, readFileSync(milestonePath, "utf8").replace(`Execution Plan: ${planRef}\nStatus: active.`, "## Current Status\n\n- Status: active（next Goal is ready）"));
+    write(rel(project, goal), readFileSync(rel(project, goal), "utf8").replace(`Execution Plan: ${planRef}`, `Execution Plan: ${singleRef}`));
+    write(rel(project, singleRef), `${JSON.stringify({ version: 1, target: { kind: "goal", path: goal }, goals: [{ ...plan.goals[0], milestoneItem: undefined }] }, null, 2)}\n`);
+    const parent = call(project, ["execute", "next", "--milestone", milestoneRef]);
+    assert.equal(parent.action, "replan");
+    assert.deepEqual(parent.requiredEvidence, [milestoneRef]);
+    const child = call(project, ["execute", "next", "--goal", goal]);
+    assert.equal(child.action, "replan");
+    assert.deepEqual(child.requiredEvidence, [milestoneRef]);
+    assert.equal(child.needUser, null);
+    assert.equal(call(project, ["orient", "next", "--goal", goal]).action, "replan");
+    fail(project, ["run", "prepare", "--goal", goal, "--plan", singleRef, "--dry-run"], /active Milestone.*goal-slice/i);
+    assert.equal(call(project, ["execute", "next", "--goal", goal, "--goal-slice"]).action, "prepare-run");
+    assert.equal(call(project, ["run", "prepare", "--goal", goal, "--plan", singleRef, "--goal-slice", "--dry-run"]).manifestVersion, 2);
+    call(project, ["run", "prepare", "--goal", goal, "--plan", singleRef, "--goal-slice"]);
+    const run = runDirs(project)[0];
+    write(rel(project, "src/parse.mjs"), "export const parse = (text) => Number(text);\n");
+    for (const node of ["parse-code", "parse-check"]) review(project, run, node, receipt(project, run, node));
+    call(project, ["goal", "complete", "--goal", goal, "--run", run, ...checkpointArgs(project, run)]);
+    assert.equal(call(project, ["execute", "next", "--goal", goal, "--goal-slice"]).action, "done");
+    assert.equal(call(project, ["execute", "next", "--goal", goal]).action, "replan", "Closing one Goal cannot finish the active parent Milestone");
   } finally { rmSync(project, { recursive: true, force: true }); }
 });
 
@@ -685,7 +718,7 @@ test("unplanned Runs retain v1 manifest behavior", () => {
   try {
     const goalText = readFileSync(rel(project, goals[0]), "utf8").replace(`Execution Plan: ${planRef}\n`, "");
     write(rel(project, goals[0]), goalText);
-    call(project, ["run", "prepare", "--goal", goals[0]]);
+    call(project, ["run", "prepare", "--goal", goals[0], "--goal-slice"]);
     const run = runDirs(project)[0];
     assert.equal(json(rel(project, `${run}/manifest.json`)).manifestVersion, 1);
     assert.equal(json(rel(project, `${run}/status.json`)).manifestVersion, 1);

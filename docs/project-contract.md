@@ -70,6 +70,11 @@ exactly those Goal paths. Its target contract hash binds declarative row
 fields while excluding mutable Status cells.
 
 The controller repeats target-scoped `execute next` until whole-target `done`.
+An active Milestone keeps its listed Goals in that target scope. A missing
+Milestone plan is a `replan` action for the Milestone, not authorization to
+switch to standalone Goal execution. Standalone `execute next --goal` and
+`run prepare --goal` require `--goal-slice` for a Goal listed in an active
+Milestone; use it only when the user explicitly selects the narrower target.
 Its stable fields are `action`, `target`, `goal`, `run`, `node`, `reason`,
 `checkpointRevision`, `requiredEvidence`, and `needUser`. `target` is a
 `{kind, path}` object; `goal`, `run`, `node`, and `reason` are strings;

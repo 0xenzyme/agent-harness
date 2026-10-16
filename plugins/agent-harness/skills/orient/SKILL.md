@@ -29,6 +29,9 @@ named by `Execution Plan:` and report the whole target's next action, including
 pending sync or review. `done` means the selected Goal or Milestone is complete;
 `reconcile` with `needUser: null` reports a non-user blocker, while
 `need-user` carries a concrete decision.
+When the accepted target is a Milestone, an absent plan is a `replan` task for
+that Milestone, not permission to route to a listed child Goal. Use
+`--goal-slice` only after the user explicitly narrows the target to one Goal.
 A ready human Task with satisfied mapped items and concrete Evidence routes to
 `verify-node` for receipt capture; ask only when the accepted record is absent.
 

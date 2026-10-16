@@ -13,6 +13,15 @@ When a Milestone `Goal List` contains concrete Doc rows, the plan must cover
 exactly those Goal paths once each. The bound target contract hashes Goal
 name, Doc, priority, dependency and gate fields; it excludes mutable Status
 cells, so Goal closeout can update Status without invalidating the plan.
+An active Milestone with a listed Goal remains the execution target. If its
+adjacent plan is absent, `execute next --milestone` returns `replan`; the
+controller binds that plan before running a child. `execute next --goal` and
+standalone `run prepare --goal` route back to the active Milestone by default,
+including when the child has its own plan. `--goal-slice` permits those Goal
+commands only when the user explicitly narrows the accepted scope to that Goal.
+After each Goal closes, query the Milestone target again until its stage checks
+and synchronized completion return `done`. Optional follow-up verification does
+not block a dependency-ready Goal.
 For a single-Goal target, optional root `verification` entries must each be
 identical to a check in that Goal's Task `verification`; the controller does
 not leave a final check unassigned. Milestone root `verification` is required.

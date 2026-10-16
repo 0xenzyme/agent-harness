@@ -249,6 +249,11 @@ Task 依赖编译为 Run DAG，并限制节点执行。
 Milestone 的 `Goal List` 若列出具体 Doc 行，计划必须恰好覆盖这些 Goal 路径。
 目标合同哈希绑定 Goal 名称、Doc、priority、dependency 和 gate，排除可变
 Status cell。
+Goal 若列在 active Milestone 中，`execute next --goal` 默认返回指向该
+Milestone 的 `replan`，独立的 `run prepare --goal` 会被拒绝。先绑定
+Milestone 旁的总计划，随后持续使用 `execute next --milestone`，包括各 Goal
+收口之后。只有用户明确把已接受范围缩为单个 Goal，才对上述 Goal 命令加
+`--goal-slice`。Milestone 缺少计划是该 Milestone 的 `replan`，不需要用户再决策。
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs plan validate --cwd /path/to/project --plan harness/goals/example.md.plan.json --json

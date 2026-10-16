@@ -112,6 +112,15 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
 For an accepted target, repeatedly call `execute next --goal <goal-file>` or
 `execute next --milestone <milestone-file>`. Act on the returned action, then
 read the next action again until it is `done` for the entire selected target.
+Keep the user's accepted target fixed across Goal closeouts and later turns. If
+the accepted target is a Milestone and `execute next --milestone` returns
+`replan` because its plan is absent, create and bind the Milestone-adjacent
+plan; do not replace the target with a child Goal. A Goal listed in an active
+Milestone routes back to that Milestone by default. `--goal-slice` is only for
+an explicit user instruction narrowing the accepted scope to that one Goal.
+After each child Goal closes, query `execute next --milestone` again before
+reporting completion. Optional checks or improvements outside required
+acceptance are separate follow-up work; they do not pause ready Milestone work.
 `orient next` with the target uses the same decision logic for read-only routing.
 Do not end a turn with a pure “continue?” question when an accepted next step
 is executable. Do not infer parent completion from a completed node or Run.

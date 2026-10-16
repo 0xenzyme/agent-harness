@@ -46,6 +46,10 @@ For one-entry execution, both host capability and current authorization must
 permit a native runtime Goal or delegation. The controller loops over
 `execute next` until the selected Goal or Milestone is complete, implementing
 ready nodes in the foreground when delegation is unavailable or unauthorized.
+Keep the accepted Milestone as the target across child Goal closeouts. A missing
+Milestone plan calls for binding that plan; it does not narrow the target to a
+child Goal. `--goal-slice` requires explicit user direction to work on only one
+Goal listed in an active Milestone.
 It does not create a background scheduler or new visible chat. One-shot setup
 is permitted only when already authorized; activation never edits `AGENTS.md`
 automatically.

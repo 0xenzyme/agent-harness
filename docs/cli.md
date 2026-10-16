@@ -254,6 +254,12 @@ dependencies become the Run DAG and gate node execution.
 If a Milestone `Goal List` has concrete Doc rows, the plan covers exactly
 those Goal paths. Its contract hash binds declarative row fields (Goal name,
 Doc, priority, dependencies and gate) while excluding mutable Status cells.
+For a Goal listed in an active Milestone, `execute next --goal` returns
+`replan` toward the Milestone and standalone `run prepare --goal` is rejected.
+Bind the Milestone-adjacent plan and keep using `execute next --milestone`
+through Goal closeouts. Add `--goal-slice` to those Goal commands only when the
+user explicitly narrows the accepted scope to that Goal. A missing Milestone
+plan remains a Milestone `replan`, without requiring a user decision.
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs plan validate --cwd /path/to/project --plan harness/goals/example.md.plan.json --json

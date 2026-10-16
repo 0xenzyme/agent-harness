@@ -2,6 +2,9 @@
 
 For a planned Milestone, add `Execution Plan: <target-filename>.plan.json`
 beside this header and create that plan adjacent to the Milestone file.
+Once this Milestone is accepted as the execution target, keep it selected
+through all Goal closeouts. A missing plan means bind the Milestone plan;
+it does not turn listed Goals into separate execution targets.
 
 ## Current Status
 
