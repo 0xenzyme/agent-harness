@@ -79,9 +79,10 @@ Harness 使用三条执行路径：
 - `host-direct-postflight`：host 完成简单任务后，只验证并同步执行前已经存在的 Task、Goal 或 status。
 - `durable-harness`：跨 task 恢复、audit、milestone/DAG、multi-worker、persistent state sync 或 high-risk 工作使用 repository Goal/Run。
 
-长时间的 controller 工作优先使用 runtime outcome 保存当前结果，用 transient plan
-维护即时步骤。Harness 不镜像每一次 plan 更新，只在 durable boundary 或 postflight
-closeout 保存项目事实。
+当前 host 暴露这些能力时，长时间的 controller 工作用 runtime outcome 保存当前结果，
+用 transient plan 维护即时步骤。没有这些表面的 host 把已接受的结果留在当前会话。
+Harness 不镜像每一次 plan 更新，只在 durable boundary 或 postflight closeout
+保存项目事实。
 
 这些 runtime 能力是可选的，不按模型名称猜测。旧模型或较小 runtime 没有 Goal、Plan、
 subagent 或 steering 时，回退到当前会话和短 checklist；CLI 仍负责验证路径、
@@ -176,6 +177,11 @@ state sync 或 high-risk 工作进入 `harness-rule:durable-tier-boundary`。详
 
 ![Agent Harness adapter boundary](docs/assets/readme/adapter-model.svg)
 
+同一边界的动态面板：当前 host 可以进入三条执行路径中的一条，只有 durable
+工作进入 Plugin、Adapter 和 Artifacts。面板上的状态翻转和 check 计数是示意。
+[打开动态面板](docs/assets/readme/live-architecture/architecture.html)
+· [mp4](docs/assets/readme/live-architecture/architecture.mp4)。
+
 Agent Harness 把稳定协议与项目事实分开：
 
 ```text
@@ -261,7 +267,7 @@ evidence，直到 control lane 完成验证。Completion 需要可检查的 evid
 
 ## 仓库与验证
 
-这个仓库同时是 Agent Harness source project 和 Codex local marketplace：
+这个仓库是 Agent Harness source project，也是 Codex 和 Grok 的本地 marketplace：
 
 - `.agents/plugins/marketplace.json` 暴露本地 Codex plugin。
 - `.grok-plugin/marketplace.json` 把同一个 plugin 暴露给 Grok。

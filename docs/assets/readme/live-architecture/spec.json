@@ -1,0 +1,38 @@
+{
+  "theme": "terminal-dark",
+  "canvas": "4:5",
+  "lang": "en",
+  "title": "AGENT HARNESS · ARCHITECTURE",
+  "titlebar": "agent-harness — control plane",
+  "rows": [
+    [
+      {"name": "Codex", "lines": ["first host pack", "outcome when exposed"], "color": "cy", "lane": {"busy": "exposed", "done": ["session"], "log": ["runtime outcome ready"]}},
+      {"name": "Cursor", "lines": ["goal when exposed", "else this chat"], "color": "bl", "lane": {"busy": "exposed", "done": ["chat"], "log": ["foreground fallback"]}},
+      {"name": "Grok", "lines": ["no outcome id", "todo_write plan"], "color": "pu", "lane": {"busy": "session", "done": ["todos"], "log": ["kept in this session"]}}
+    ],
+    [
+      {"name": "host-direct", "lines": ["ordinary work", "no lifecycle"]},
+      {"name": "postflight", "lines": ["existing state", "one closeout"]},
+      {"name": "durable", "lines": ["goal and run", "plan + checkpoint"], "lane": {"busy": "execute next", "done": ["synced"], "log": ["state sync recorded"]}}
+    ],
+    [
+      {"name": "Plugin", "lines": ["stable protocol", "skills and CLI"]},
+      {"name": "Adapter", "lines": ["local policy", "paths and language"]},
+      {"name": "Artifacts", "lines": ["goals and runs", "evidence and sync"]}
+    ]
+  ],
+  "rail": {
+    "name": "HUMAN GATE",
+    "sub": "pause for a decision",
+    "side": "right",
+    "items": [
+      {"name": "direction unclear", "adv": ["ask the owner", "do not guess scope"], "row": 1},
+      {"name": "credentials", "adv": ["paid API or prod", "stop before access"], "row": 2},
+      {"name": "destructive act", "adv": ["outside accepted", "scope stays closed"], "row": 2}
+    ]
+  },
+  "counters": [{"id": "checks", "label": "checks", "start": 4, "rate": 0.2}],
+  "log": {"title": "controller log", "rows": 4},
+  "note": "lane flips and check counts are illustrative",
+  "credit": "Agent Harness 0.13.0 architecture · counters illustrative"
+}

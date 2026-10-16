@@ -1,0 +1,946 @@
+{
+ "meta": {
+  "title": "AGENT HARNESS · ARCHITECTURE",
+  "lang": "en"
+ },
+ "canvas": {
+  "preset": "4:5",
+  "duration": 30,
+  "fps": 30,
+  "preroll": 12
+ },
+ "theme": {
+  "preset": "terminal-dark",
+  "fontSize": 21,
+  "lineHeight": 30,
+  "colors": {
+   "mute": "#aab1c0",
+   "rd": "#f07178"
+  }
+ },
+ "machines": {
+  "checks": {
+   "type": "counter",
+   "start": 4,
+   "rate": 0.2,
+   "format": "comma"
+  },
+  "codex_l": {
+   "type": "lane",
+   "period": 7.0,
+   "run": 4.8,
+   "off": 0.0,
+   "busy": "exposed",
+   "done": [
+    "session"
+   ],
+   "phase": 0,
+   "log": {
+    "who": "codex",
+    "c": "cy",
+    "msgs": [
+     [
+      "runtime outcome ready",
+      ""
+     ]
+    ]
+   }
+  },
+  "cursor_l": {
+   "type": "lane",
+   "period": 8.0,
+   "run": 5.4,
+   "off": 0.7,
+   "busy": "exposed",
+   "done": [
+    "chat"
+   ],
+   "phase": 1,
+   "log": {
+    "who": "cursor",
+    "c": "bl",
+    "msgs": [
+     [
+      "foreground fallback",
+      ""
+     ]
+    ]
+   }
+  },
+  "grok_l": {
+   "type": "lane",
+   "period": 9.0,
+   "run": 6.1,
+   "off": 1.4,
+   "busy": "session",
+   "done": [
+    "todos"
+   ],
+   "phase": 2,
+   "log": {
+    "who": "grok",
+    "c": "pu",
+    "msgs": [
+     [
+      "kept in this session",
+      ""
+     ]
+    ]
+   }
+  },
+  "durable_l": {
+   "type": "lane",
+   "period": 9.5,
+   "run": 6.5,
+   "off": 1.7,
+   "busy": "execute next",
+   "done": [
+    "synced"
+   ],
+   "phase": 2,
+   "log": {
+    "who": "durable",
+    "c": "gr",
+    "msgs": [
+     [
+      "state sync recorded",
+      ""
+     ]
+    ]
+   }
+  },
+  "rail": {
+   "type": "triggers",
+   "color": "pu",
+   "period": 4.5,
+   "on": 3.0,
+   "t0": -1.6,
+   "callsStart": 1,
+   "tokens": {
+    "start": 129,
+    "step": 93,
+    "unit": "k"
+   },
+   "items": [
+    {
+     "name": "direction unclear",
+     "adv": [
+      "ask the owner",
+      "do not guess scope"
+     ]
+    },
+    {
+     "name": "credentials",
+     "adv": [
+      "paid API or prod",
+      "stop before access"
+     ]
+    },
+    {
+     "name": "destructive act",
+     "adv": [
+      "outside accepted",
+      "scope stays closed"
+     ]
+    }
+   ],
+   "onText": "advising",
+   "offText": "on call",
+   "log": {
+    "who": "human gate",
+    "c": "pu",
+    "start": {
+     "m": "{name} · woken"
+    },
+    "end": {
+     "m": "{name} · done, back on call"
+    }
+   }
+  }
+ },
+ "elements": [
+  {
+   "type": "box",
+   "x": 836,
+   "y": 200,
+   "w": 324,
+   "h": 955,
+   "color": "pu",
+   "pad": [
+    13,
+    7,
+    7
+   ],
+   "lines": [
+    {
+     "t": "HUMAN GATE",
+     "c": "pu",
+     "b": 1
+    },
+    {
+     "t": "pause for a decision",
+     "c": "pu"
+    },
+    "",
+    {
+     "t": "last advice:",
+     "c": "dim",
+     "align": "left",
+     "indent": 8
+    },
+    {
+     "runs": [
+      {
+       "v": "rail.adv0",
+       "c": "pu",
+       "b": 1
+      }
+     ],
+     "align": "left",
+     "indent": 8
+    },
+    {
+     "runs": [
+      {
+       "v": "rail.adv1",
+       "c": "pu",
+       "b": 1
+      }
+     ],
+     "align": "left",
+     "indent": 8
+    },
+    {
+     "items": [
+      {
+       "w": 182,
+       "runs": [
+        {
+         "t": "calls",
+         "c": "dim"
+        }
+       ]
+      },
+      {
+       "w": 91,
+       "align": "right",
+       "runs": [
+        {
+         "v": "rail.calls",
+         "c": "pu",
+         "b": 1
+        }
+       ]
+      }
+     ],
+     "indent": 8
+    },
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    {
+     "trigger": [
+      "rail",
+      0
+     ]
+    },
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    {
+     "trigger": [
+      "rail",
+      1
+     ]
+    },
+    {
+     "trigger": [
+      "rail",
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "type": "text",
+   "x": 0,
+   "w": 1200,
+   "y": 84,
+   "align": "center",
+   "size": 24,
+   "c": "wh",
+   "b": 1,
+   "t": "AGENT HARNESS · ARCHITECTURE"
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     158,
+     375
+    ],
+    [
+     158,
+     490
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 1.7,
+    "offsets": [
+     0.0,
+     0.55
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     416,
+     375
+    ],
+    [
+     416,
+     490
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 2.0,
+    "offsets": [
+     0.2,
+     0.75
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     674,
+     375
+    ],
+    [
+     674,
+     490
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 2.3,
+    "offsets": [
+     0.4,
+     0.9500000000000001
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     158,
+     490
+    ],
+    [
+     674,
+     490
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 2.6,
+    "offsets": [
+     0.1,
+     0.65
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     158,
+     490
+    ],
+    [
+     158,
+     605
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 1.9,
+    "offsets": [
+     0.3,
+     0.8500000000000001
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     416,
+     490
+    ],
+    [
+     416,
+     605
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 2.2,
+    "offsets": [
+     0.5,
+     1.05
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     674,
+     490
+    ],
+    [
+     674,
+     605
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 2.5,
+    "offsets": [
+     0.15,
+     0.7000000000000001
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     674,
+     780
+    ],
+    [
+     674,
+     900
+    ],
+    [
+     413,
+     900
+    ],
+    [
+     413,
+     1010
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 2.8,
+    "offsets": [
+     0.25,
+     0.8
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     254,
+     1082
+    ],
+    [
+     306,
+     1082
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 2.1,
+    "offsets": [
+     0.0,
+     0.55
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "path",
+   "points": [
+    [
+     520,
+     1082
+    ],
+    [
+     572,
+     1082
+    ]
+   ],
+   "color": "line",
+   "r": 14,
+   "width": 2,
+   "flow": {
+    "period": 2.4,
+    "offsets": [
+     0.35,
+     0.9
+    ],
+    "color": "bl"
+   }
+  },
+  {
+   "type": "rule",
+   "x": 34,
+   "y": 112,
+   "w": 1132
+  },
+  {
+   "type": "text",
+   "x": 0,
+   "w": 1200,
+   "y": 1456,
+   "align": "center",
+   "size": 13,
+   "c": "dim",
+   "t": "lane flips and check counts are illustrative"
+  },
+  {
+   "type": "text",
+   "x": 34,
+   "w": 1132,
+   "y": 1424,
+   "runs": [
+    {
+     "t": "checks ",
+     "c": "dim"
+    },
+    {
+     "t": "[",
+     "c": "gr",
+     "b": 1
+    },
+    {
+     "v": "checks",
+     "c": "gr",
+     "b": 1
+    },
+    {
+     "t": "]",
+     "c": "gr",
+     "b": 1
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 40,
+   "y": 200,
+   "w": 236,
+   "h": 175,
+   "color": "cy",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "Codex",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "first host pack",
+     "c": "mute"
+    },
+    {
+     "t": "outcome when",
+     "c": "mute"
+    },
+    {
+     "t": "exposed",
+     "c": "mute"
+    },
+    {
+     "runs": [
+      {
+       "v": "codex_l"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 298,
+   "y": 200,
+   "w": 236,
+   "h": 175,
+   "color": "bl",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "Cursor",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "goal when",
+     "c": "mute"
+    },
+    {
+     "t": "exposed",
+     "c": "mute"
+    },
+    {
+     "t": "else this chat",
+     "c": "mute"
+    },
+    {
+     "runs": [
+      {
+       "v": "cursor_l"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 556,
+   "y": 200,
+   "w": 236,
+   "h": 175,
+   "color": "pu",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "Grok",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "no outcome id",
+     "c": "mute"
+    },
+    {
+     "t": "todo_write plan",
+     "c": "mute"
+    },
+    {
+     "runs": [
+      {
+       "v": "grok_l"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 40,
+   "y": 605,
+   "w": 236,
+   "h": 175,
+   "color": "ye",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "host-direct",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "ordinary work",
+     "c": "mute"
+    },
+    {
+     "t": "no lifecycle",
+     "c": "mute"
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 298,
+   "y": 605,
+   "w": 236,
+   "h": 175,
+   "color": "bl",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "postflight",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "existing state",
+     "c": "mute"
+    },
+    {
+     "t": "one closeout",
+     "c": "mute"
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 556,
+   "y": 605,
+   "w": 236,
+   "h": 175,
+   "color": "gr",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "durable",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "goal and run",
+     "c": "mute"
+    },
+    {
+     "t": "plan +",
+     "c": "mute"
+    },
+    {
+     "t": "checkpoint",
+     "c": "mute"
+    },
+    {
+     "runs": [
+      {
+       "v": "durable_l"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 40,
+   "y": 1010,
+   "w": 214,
+   "h": 145,
+   "color": "pu",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "Plugin",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "protocol",
+     "c": "mute"
+    },
+    {
+     "t": "skills + CLI",
+     "c": "mute"
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 306,
+   "y": 1010,
+   "w": 214,
+   "h": 145,
+   "color": "ye",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "Adapter",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "local policy",
+     "c": "mute"
+    },
+    {
+     "t": "paths, language",
+     "c": "mute"
+    }
+   ]
+  },
+  {
+   "type": "box",
+   "x": 572,
+   "y": 1010,
+   "w": 214,
+   "h": 145,
+   "color": "bl",
+   "pad": [
+    13,
+    14
+   ],
+   "lines": [
+    {
+     "t": "Artifacts",
+     "c": "fg",
+     "b": 1
+    },
+    {
+     "t": "goals and runs",
+     "c": "mute"
+    },
+    {
+     "t": "evidence, sync",
+     "c": "mute"
+    }
+   ]
+  },
+  {
+   "type": "tarrow",
+   "machine": "rail",
+   "i": 0,
+   "from": [
+    796,
+    678
+   ],
+   "to": [
+    832,
+    678
+   ]
+  },
+  {
+   "type": "tarrow",
+   "machine": "rail",
+   "i": 1,
+   "from": [
+    796,
+    1068
+   ],
+   "to": [
+    832,
+    1068
+   ]
+  },
+  {
+   "type": "tarrow",
+   "machine": "rail",
+   "i": 2,
+   "from": [
+    796,
+    1098
+   ],
+   "to": [
+    832,
+    1098
+   ]
+  },
+  {
+   "type": "log",
+   "x": 40,
+   "y": 1243,
+   "w": 1120,
+   "rows": 4,
+   "padTop": 16,
+   "padBottom": 29,
+   "padLeft": 20,
+   "title": "controller log",
+   "titleX": 38,
+   "titleW": 216,
+   "cols": [
+    {
+     "key": "time",
+     "x": 0
+    },
+    {
+     "key": "who",
+     "x": 123
+    },
+    {
+     "key": "m",
+     "x": 273
+    },
+    {
+     "key": "g",
+     "x": 779
+    }
+   ]
+  }
+ ],
+ "clock": {
+  "start": "23:48:04",
+  "rate": 3
+ },
+ "titlebar": {
+  "text": "agent-harness — control plane"
+ },
+ "credit": {
+  "text": "Agent Harness 0.13.0 architecture · counters illustrative",
+  "y": 1484,
+  "size": 12
+ }
+}

@@ -82,9 +82,11 @@ Harness uses three execution paths:
 - `host-direct-postflight`: after the host completes simple work, verify and update only Task, Goal, or status state that already existed before execution.
 - `durable-harness`: cross-task recovery, audit, milestone/DAG, multi-worker, persistent state sync, or high-risk work uses a repository Goal/Run.
 
-Long-running controller work should use a runtime outcome for the current
-result and a transient plan for short-lived steps. Harness does not mirror every plan
-transition; it records project facts at durable boundaries or postflight closeout.
+When the current host exposes them, long-running controller work keeps the
+current result in a runtime outcome and short-lived steps in a transient plan.
+Hosts without those surfaces keep the accepted outcome in the current session.
+Harness does not mirror every plan transition; it records project facts at
+durable boundaries or postflight closeout.
 
 These runtime capabilities are optional and are detected from the current host,
 not inferred from a model name. Older models or smaller runtimes fall back to
@@ -193,6 +195,12 @@ multi-worker, persistent state-sync, or high-risk work crosses the
 
 ![Agent Harness adapter boundary](docs/assets/readme/adapter-model.svg)
 
+The same boundary as a live panel: any current host can take one of the three
+execution paths, and only durable work enters Plugin, Adapter, and Artifacts.
+Lane flips and the check counter on that panel are illustrative.
+[Open the live panel](docs/assets/readme/live-architecture/architecture.html)
+· [mp4](docs/assets/readme/live-architecture/architecture.mp4).
+
 Agent Harness separates stable protocol from local project facts:
 
 ```text
@@ -287,8 +295,8 @@ the [Capability Matrix](docs/HARNESSES.md).
 
 ## Repository And Validation
 
-This repository is both the Agent Harness source project and a Codex local
-marketplace:
+This repository is the Agent Harness source project and a local marketplace
+for Codex and Grok:
 
 - `.agents/plugins/marketplace.json` exposes the local Codex plugin.
 - `.grok-plugin/marketplace.json` exposes the same plugin to Grok.
