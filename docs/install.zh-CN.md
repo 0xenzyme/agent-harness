@@ -49,6 +49,17 @@ node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd /path/
 覆盖。个人全局安装可用 `~/.agents/skills/`；不要写入 Cursor 保留目录
 `~/.cursor/skills-cursor/`。
 
+只卸载这些 skill 副本，不删除项目数据：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd /path/to/project
+```
+
+`skills uninstall` 删除 `.agents/skills/` 下可识别的 `orient`、`intake`、
+`init`、`execute` 目录，以及 `.agents/references/` 里仍与安装字节一致的协议
+文件。`--dry-run` 和 `--json` 只预览。它不删除 `harness/`、`.harness/` 或其他
+项目数据。同名的外来 skill 和已改过的 reference 会保留。
+
 然后对当前 host 输入：
 
 ```text

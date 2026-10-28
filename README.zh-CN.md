@@ -44,8 +44,16 @@ node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd <proje
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd <project>
 ```
 
+只卸载 skill，不删除项目数据：
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd <project>
+```
+
 技能默认装到下游项目的 `.agents/skills/`。这是跨客户端发现约定，不是每个
-host 的唯一目录。完整步骤见[安装说明](docs/install.zh-CN.md)。
+host 的唯一目录。`skills uninstall` 删除这些 skill 副本，以及字节仍一致的
+协议 reference 副本，并保留 `harness/` 和 `.harness/`。完整步骤见
+[安装说明](docs/install.zh-CN.md)。
 
 ### 3. Codex marketplace（可选）
 

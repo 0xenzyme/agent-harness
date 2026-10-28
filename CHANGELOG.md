@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `skills uninstall` to remove installed public skill copies and byte-identical protocol references without deleting `harness/` or `.harness/` project data.
 - Preserve exact verification logs and seal completed source-input hashes for portable historical acceptance.
 - Resolve archived completed tasks through the configured archive without keeping terminal rows in the active index.
 - Add explicit verification exclusions, ignored-input checks, legacy `run seal` recovery and separate current-source freshness reporting.

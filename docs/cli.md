@@ -56,6 +56,15 @@ protocol references to `.agents/references/`. Preview with `--dry-run --json`.
 This is the default skill-discovery path. Codex and Grok marketplace installs
 are optional.
 
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd /path/to/project
+```
+
+`skills uninstall` removes the recognized public skill directories and
+byte-identical protocol reference copies. `--dry-run` and `--json` preview
+only. Project data under `harness/` and `.harness/` stays in place, as do
+foreign skills and edited reference files.
+
 The same `init` options work for a fixed contract. `--task-index` sets the
 configured task file and `--idea-inbox` creates an optional Markdown inbox;
 the paths are written to `.harness/config.json` and are checked for containment.

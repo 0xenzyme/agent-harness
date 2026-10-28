@@ -506,6 +506,7 @@ const messages = {
     usage: `Usage:
   agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--idea-inbox PATH] [--project-name NAME] [--force] [--lang CODE]
   agent-harness skills install [--cwd PATH] [--dry-run] [--force] [--json]
+  agent-harness skills uninstall [--cwd PATH] [--dry-run] [--json]
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
@@ -565,6 +566,7 @@ const messages = {
     usage: `用法:
   agent-harness init [--cwd PATH] [--contract fixed|adapter] [--task-index PATH] [--idea-inbox PATH] [--project-name NAME] [--force] [--lang CODE]
   agent-harness skills install [--cwd PATH] [--dry-run] [--force] [--json]
+  agent-harness skills uninstall [--cwd PATH] [--dry-run] [--json]
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
@@ -1581,6 +1583,172 @@ function skillsInstall(args) {
     cpSync(item.from, item.dest, { recursive: true });
     console.log(`Installed ${item.toRel}`);
   }
+}
+
+function skillFrontmatter(text) {
+  const match = String(text).match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  return match?.[1] || "";
+}
+
+function isHarnessSkillCopy(dest, name) {
+  let destStat;
+  try {
+    destStat = lstatSync(dest);
+  } catch {
+    return false;
+  }
+  if (destStat.isSymbolicLink() || !destStat.isDirectory()) return false;
+  const skillFile = join(dest, "SKILL.md");
+  let skillStat;
+  try {
+    skillStat = lstatSync(skillFile);
+  } catch {
+    return false;
+  }
+  if (skillStat.isSymbolicLink() || !skillStat.isFile()) return false;
+  let text = "";
+  try {
+    text = readFileSync(skillFile, "utf8");
+  } catch {
+    return false;
+  }
+  const frontmatter = skillFrontmatter(text);
+  const nameMatch = frontmatter.match(/^name:\s*(\S+)\s*$/m);
+  if (!nameMatch || nameMatch[1] !== name) return false;
+  return /Agent Harness|\bHarness\b/.test(frontmatter);
+}
+
+function listRegularFiles(rootDir) {
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) walk(path);
+      else if (entry.isFile()) files.push(path);
+    }
+  };
+  if (existsSync(rootDir)) walk(rootDir);
+  return files;
+}
+
+function sameFileBytes(left, right) {
+  let leftStat;
+  let rightStat;
+  try {
+    leftStat = lstatSync(left);
+    rightStat = lstatSync(right);
+  } catch {
+    return false;
+  }
+  if (leftStat.isSymbolicLink() || rightStat.isSymbolicLink()) return false;
+  if (!leftStat.isFile() || !rightStat.isFile() || leftStat.size !== rightStat.size) return false;
+  return readFileSync(left).equals(readFileSync(right));
+}
+
+function installDest(projectRoot, toRel) {
+  const dest = resolve(projectRoot, toRel);
+  const relativeDest = relative(projectRoot, dest).split("\\").join("/");
+  if (!relativeDest || isAbsolute(relativeDest) || relativeDest.startsWith("..")) {
+    throw new Error(`Skill uninstall path escapes project root: ${toRel}`);
+  }
+  if (relativeDest === "harness" || relativeDest.startsWith("harness/") || relativeDest === ".harness" || relativeDest.startsWith(".harness/")) {
+    throw new Error(`Skill uninstall refuses project data path: ${toRel}`);
+  }
+  return { dest, toRel: relativeDest };
+}
+
+function installPathExists(dest) {
+  try {
+    lstatSync(dest);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function skillsUninstallPlan(projectRoot) {
+  const items = [];
+  for (const item of skillsInstallPlan()) {
+    if (item.kind === "skill") {
+      const located = installDest(projectRoot, item.toRel);
+      const action = !installPathExists(located.dest)
+        ? "absent"
+        : isHarnessSkillCopy(located.dest, item.name) ? "remove" : "skip-foreign";
+      items.push({ kind: item.kind, name: item.name, path: located.toRel, dest: located.dest, action });
+      continue;
+    }
+    for (const sourceFile of listRegularFiles(item.from)) {
+      const rel = relative(item.from, sourceFile).split("\\").join("/");
+      const located = installDest(projectRoot, `.agents/references/${rel}`);
+      const action = !installPathExists(located.dest)
+        ? "absent"
+        : sameFileBytes(sourceFile, located.dest) ? "remove" : "skip-preserved";
+      items.push({ kind: "reference", name: rel, path: located.toRel, dest: located.dest, action });
+    }
+  }
+  return items;
+}
+
+function removeEmptyInstallDir(projectRoot, relPath) {
+  const located = installDest(projectRoot, relPath);
+  if (!installPathExists(located.dest)) return;
+  const stat = lstatSync(located.dest);
+  if (stat.isSymbolicLink() || !stat.isDirectory() || readdirSync(located.dest).length > 0) return;
+  assertContainedPath(projectRoot, located.dest, "Skill uninstall directory");
+  rmSync(located.dest, { recursive: false });
+}
+
+function skillsUninstall(args) {
+  const projectRoot = resolve(targetCwd(args));
+  const removals = skillsUninstallPlan(projectRoot).map((item) => {
+    if (item.action !== "remove") return item;
+    assertContainedPath(projectRoot, item.dest, "Skill uninstall path");
+    return item;
+  });
+
+  if (args.json) {
+    console.log(JSON.stringify({
+      ok: true,
+      dryRun: Boolean(args.dryRun),
+      preservesProjectData: true,
+      untouched: ["harness/", ".harness/"],
+      removals: removals.map((item) => ({
+        kind: item.kind,
+        name: item.name,
+        path: item.path,
+        action: item.action === "remove" ? "would-remove" : item.action
+      }))
+    }, null, 2));
+    return;
+  }
+
+  for (const item of removals) {
+    if (item.action !== "remove") {
+      if (!args.json && item.action === "skip-foreign") {
+        console.log(`Skip ${item.path}; it is not an Agent Harness skill`);
+      } else if (!args.json && item.action === "skip-preserved") {
+        console.log(`Preserved ${item.path}; it differs from the installed reference`);
+      }
+      continue;
+    }
+    if (args.dryRun) {
+      if (!args.json) console.log(`Would remove ${item.path}`);
+      continue;
+    }
+    const stat = lstatSync(item.dest);
+    if (stat.isSymbolicLink()) {
+      throw new Error(`Skill uninstall refuses to delete a symlink: ${item.path}`);
+    }
+    rmSync(item.dest, { recursive: stat.isDirectory() });
+    if (!args.json) console.log(`Removed ${item.path}`);
+  }
+
+  if (!args.dryRun) {
+    removeEmptyInstallDir(projectRoot, ".agents/skills");
+    removeEmptyInstallDir(projectRoot, ".agents/references");
+  }
+  if (!args.json) console.log("Project data was left unchanged.");
 }
 
 function configImport(args) {
@@ -7497,6 +7665,8 @@ function main() {
       init(args);
     } else if (command === "skills" && subcommand === "install") {
       skillsInstall(args);
+    } else if (command === "skills" && subcommand === "uninstall") {
+      skillsUninstall(args);
     } else if (command === "doctor") {
       doctor(args);
     } else if (command === "print-contract") {

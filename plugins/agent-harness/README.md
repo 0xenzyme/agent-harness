@@ -26,6 +26,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd <proje
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd <project>
 ```
 
+Remove the installed skill copies without deleting project data:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd <project>
+```
+
 ## Usage
 
 Ask the current host to use Harness, or call a skill when the route is already known:

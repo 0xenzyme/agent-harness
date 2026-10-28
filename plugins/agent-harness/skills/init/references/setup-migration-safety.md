@@ -8,3 +8,8 @@ Canonical output writes current config fields. Read documented legacy aliases
 for one migration boundary and fail when canonical and legacy values conflict.
 Validate every planned write against the project root, its configured root, and
 the nearest existing parent's realpath before writing any file.
+
+`skills uninstall` removes recognized public skill copies and byte-identical
+protocol reference copies from `.agents/`. It does not delete Goal indexes,
+config, status, Specs, Goals, Runs, or other project data. Preview it with
+`--dry-run --json`.

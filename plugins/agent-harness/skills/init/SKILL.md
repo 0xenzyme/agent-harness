@@ -37,6 +37,18 @@ node <plugin-root>/scripts/agent-harness.mjs config import --cwd <project> --tas
 
 5. Every planned write must pass project-root, configured-root, absolute/`..`,
    and existing-parent realpath/symlink containment before any file is written.
+6. Uninstall installed public skills only when the user asks to remove the
+   skill copies:
+
+```bash
+node <plugin-root>/scripts/agent-harness.mjs skills uninstall --cwd <project>
+```
+
+   Preview with `--dry-run --json`. This removes recognized `orient`,
+   `intake`, `init`, and `execute` copies under `.agents/skills/` and
+   byte-identical protocol copies under `.agents/references/`. It does not
+   delete `harness/` or `.harness/` project data. Foreign skills and changed
+   reference files stay in place.
 
 Do not overwrite existing artifacts without explicit authority, edit
 `AGENTS.md` from an activation preview, start implementation, create workers,

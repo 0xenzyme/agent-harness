@@ -53,6 +53,19 @@ preview and `--force` to replace. Personal global installs may use
 `~/.agents/skills/`; do not write into Cursor's reserved
 `~/.cursor/skills-cursor/`.
 
+Remove those installed copies without deleting project data:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd /path/to/project
+```
+
+`skills uninstall` removes recognized `orient`, `intake`, `init`, and
+`execute` directories under `.agents/skills/`, plus protocol files under
+`.agents/references/` that still match the installed bytes. `--dry-run` and
+`--json` only preview. It does not delete `harness/`, `.harness/`, or any
+other project data. A same-named foreign skill and a changed reference file
+stay in place.
+
 Then ask the current host:
 
 ```text

@@ -45,8 +45,16 @@ node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd <proje
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd <project>
 ```
 
+Remove the installed skills without deleting project data:
+
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd <project>
+```
+
 Skills install into the downstream project's `.agents/skills/` directory. That
-is the cross-client discovery convention, not every host's only path. See
+is the cross-client discovery convention, not every host's only path.
+`skills uninstall` removes those skill copies and byte-identical protocol
+reference copies. It leaves `harness/` and `.harness/` in place. See
 [Install](docs/install.md).
 
 ### 3. Optional Codex marketplace
