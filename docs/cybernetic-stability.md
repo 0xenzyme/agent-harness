@@ -8,7 +8,7 @@ invariants in [HARNESSES.md](HARNESSES.md), rather than a separate family of
 micro-rules.
 
 For each durable Run, compare the accepted Goal with current observations,
-record ready DAG nodes and ownership, verify candidate results, apply required
+record ready orchestration nodes and ownership, verify candidate results, apply required
 gates, and synchronize bounded current status plus durable Goal/Run evidence.
 Pause when evidence cannot validate the accepted objective or new authority is
 required.

@@ -75,7 +75,7 @@ Use harness:orient to inspect this project.
 The four public skills are `harness:orient`, `harness:intake`, `harness:init`,
 and `harness:execute`. Ordinary clear change/build requests use the current
 host directly; execute is for durable recovery, audit, persistent state sync,
-milestones, DAGs, multi-worker work, high-risk control, or explicit bounded
+milestones, orchestration, multi-worker work, high-risk control, or explicit bounded
 postflight sync to state that already existed. Long-running controller work
 uses runtime outcome and transient plan when those capabilities are exposed.
 

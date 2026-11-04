@@ -10,8 +10,10 @@ goal handoffs, and loop engineering.
 Agent Harness exists to reduce the human's task-routing burden after product
 direction, constraints, and true pause conditions are accepted. In downstream
 projects, the installed harness should turn accepted roadmap or milestone
-direction into explicit stage maps, executable goals, run DAGs, worker
-execution, verification, and state sync.
+direction into explicit stage maps, executable goals, run orchestration, worker
+execution, verification, and state sync. Delivery is the primary outcome;
+evidence and process artifacts should be proportionate to verification, recovery,
+and explicit audit needs rather than becoming extra deliverables.
 
 When developing this repository, preserve that promise: the harness should not
 stop at the first locally satisfiable artifact if the accepted user intent is a
@@ -40,3 +42,9 @@ checkable.
 - Plugin core defines protocol; project adapters define project-specific
   overrides; documentation artifacts record project facts and execution
   evidence.
+- New durable Runs require an explicit plan, manifest v2, and an enforced
+  checkpoint. Existing manifest v1 Runs remain readable and recoverable;
+  `--legacy` is reserved for explicit migration compatibility.
+- Target Delivery Contracts own outcomes, global hard constraints, whole-target
+  verification, delivery authority, and final reporting. Nodes inherit them and
+  add only local scope, constraints, and checks.

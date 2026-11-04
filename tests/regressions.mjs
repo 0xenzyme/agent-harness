@@ -47,7 +47,7 @@ function goalName(project, fragment = "") {
 }
 
 function prepare(project, goalRel) {
-  run(["run", "prepare", "--cwd", project, "--goal", goalRel]);
+  run(["run", "prepare", "--legacy", "--cwd", project, "--goal", goalRel]);
   const names = readdirSync(join(project, ".harness/runs")).filter((name) => !name.startsWith("."));
   assert(names.length > 0, "run prepare must create a Run directory");
   const name = names.sort().at(-1);
@@ -57,7 +57,7 @@ function prepare(project, goalRel) {
 function recordReadyNodes(project, runRel) {
   let status = JSON.parse(run(["run", "status", "--cwd", project, "--run", runRel, "--json"]));
   while (!status.executionDag.allNodesCompleted) {
-    assert(status.executionDag.readyNodes.length > 0, "prepared DAG must expose a ready node");
+    assert(status.executionDag.readyNodes.length > 0, "prepared orchestration must expose a ready node");
     for (const node of status.executionDag.readyNodes) {
       run(["run", "node", "record", "--cwd", project, "--run", runRel, "--node", node, "--phase", "completed", "--summary", "regression node", "--verification", "regression verification"]);
     }
@@ -69,7 +69,7 @@ function synchronizeGoal(project, goalRel, runRel) {
   const goalPath = join(project, goalRel);
   const content = readFileSync(goalPath, "utf8")
     .replace("- Accepted-state records: `TBD`", "- Accepted-state records: `harness/tasks.md` and this Goal were synchronized.")
-    .replace("- Run evidence: `TBD`", `- Run evidence: \`${runRel}\` records the completed DAG and verification.`)
+    .replace("- Run evidence: `TBD`", `- Run evidence: \`${runRel}\` records the completed orchestration and verification.`)
     .replace("- Bounded status update: `TBD`", "- Bounded status update: `harness/status.md` reflects the accepted result.");
   writeFileSync(goalPath, content);
 }
@@ -156,8 +156,8 @@ try {
   const dag = json(dagPath);
   dag.nodes[0].result = "dag.json";
   writeFileSync(dagPath, JSON.stringify(dag, null, 2) + "\n");
-  assert(/reserved|changed|contract|dag/i.test(fails(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", dag.nodes[0].id, "--phase", "completed", "--summary", "bad", "--verification", "bad"], runProject)), "forged DAG artifact paths must fail closed");
-  assert(readFileSync(join(runDir, "status.json"), "utf8") === statusBefore, "rejected DAG mutation must not write Run status");
+  assert(/reserved|changed|contract|dag/i.test(fails(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", dag.nodes[0].id, "--phase", "completed", "--summary", "bad", "--verification", "bad"], runProject)), "forged orchestration artifact paths must fail closed");
+  assert(readFileSync(join(runDir, "status.json"), "utf8") === statusBefore, "rejected orchestration mutation must not write Run status");
   writeFileSync(dagPath, dagBefore);
   const manifestPath = join(runDir, "manifest.json");
   const manifestBefore = readFileSync(manifestPath, "utf8");
@@ -169,7 +169,7 @@ try {
   forgedStatus.verificationSummary = "forged completion";
   writeFileSync(join(runDir, "status.json"), JSON.stringify(forgedStatus, null, 2) + "\n");
   const forgedMaintenance = JSON.parse(run(["maintain", "tasks", "--cwd", runProject, "--json"], runProject));
-  assert(!forgedMaintenance.proposed.actions.some((action) => action.kind === "task-completion"), "forged completed status must not drive Task completion without DAG evidence");
+  assert(!forgedMaintenance.proposed.actions.some((action) => action.kind === "task-completion"), "forged completed status must not drive Task completion without orchestration evidence");
   writeFileSync(join(runDir, "status.json"), statusBefore);
 
   const checkpointProject = createProject("agent-harness-checkpoint", ["Checkpoint recovery"]);
@@ -202,7 +202,7 @@ try {
   assert(checkpointManifest.checkpoint.policy === "enforced" && checkpointManifest.checkpoint.path === "checkpoint.json"
     && checkpointManifest.checkpoint.stages.join(",") === "diagnosis,delivery", "manifest must bind checkpoint policy/path/stage vocabulary without hashing mutable content");
   assert(checkpointStatus.checkpoint === "checkpoint.json" && checkpointStatus.files.includes("checkpoint.json"), "status must reference the independent checkpoint artifact");
-  assert(JSON.parse(run(["run", "validate", "--cwd", checkpointProject, "--run", checkpointRun, "--json"], checkpointProject)).ok, "fresh enforced Run must validate across Goal/manifest/status/DAG/checkpoint");
+  assert(JSON.parse(run(["run", "validate", "--cwd", checkpointProject, "--run", checkpointRun, "--json"], checkpointProject)).ok, "fresh enforced Run must validate across Goal/manifest/status/orchestration/checkpoint");
 
   run([
     "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
@@ -235,7 +235,7 @@ try {
   run([
     "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
     "--expected-revision", "1", "--control-state", "active",
-    "--next-action", "execute ready DAG node: execution", "--pause-reason", "null",
+    "--next-action", "execute ready orchestration node: execution", "--pause-reason", "null",
     "--current-stage", "delivery", "--last-completed-stage", "diagnosis",
     "--prohibited-actions", "[]", "--reconciliation-required", "false",
     "--evidence-reference", "evidence/deployment-readback.json",
@@ -277,7 +277,7 @@ try {
   assert(/completed checkpoint requires/i.test(fails([
     "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", replacementRun,
     "--expected-revision", "0", "--control-state", "completed", "--next-action", "close Run"
-  ], checkpointProject)), "checkpoint completion must require terminal DAG evidence");
+  ], checkpointProject)), "checkpoint completion must require terminal orchestration evidence");
   run([
     "run", "checkpoint", "update", "--cwd", checkpointProject, "--run", checkpointRun,
     "--expected-revision", "4", "--control-state", "superseded",

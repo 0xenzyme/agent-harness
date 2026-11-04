@@ -6,12 +6,12 @@ project-neutral.
 
 Completion gates are durable Goal/Run gates. Ordinary host-direct work and
 bounded postflight-only updates do not inherit them. A prepared enforced Run
-still requires its DAG, checklist, gate, and evidence contract.
+still requires its orchestration, checklist, gate, and evidence contract.
 
 Before any write, resolve the configured project root and target root, reject
 absolute or `..` paths, then validate the nearest existing parent's realpath so
 symlinks cannot escape. Goal paths stay under `paths.goals`, specs under
-`paths.specs`, Run arguments under `paths.runs`, and DAG artifacts under their
+`paths.specs`, Run arguments under `paths.runs`, and orchestration artifacts under their
 Run.
 
 Canonical config writes `contract`, canonical `paths`, `artifactPolicy`,
@@ -22,7 +22,7 @@ finite `checkpoint.stages` and `checkpoint.adapterDimensions`,
 Read legacy aliases for one migration boundary and fail when old and new values
 conflict.
 
-Durable Runs record DAG ready state, ownership, verification,
+Durable Runs record orchestration ready state, ownership, verification,
 candidate evidence, and accepted gate/state-sync results. Scheduling and model
 selection belong to the host.
 

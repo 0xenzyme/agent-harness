@@ -132,6 +132,24 @@ function completeSingle({ project, goal, ref }) {
   return run;
 }
 
+test("planned nodes inherit the target delivery contract and keep local constraints", () => {
+  const f = singleFixture(), { project, goal, ref } = f;
+  try {
+    f.plan.goals[0].tasks[0].constraints = ["Preserve the existing parser API."];
+    write(rel(project, ref), JSON.stringify(f.plan));
+    call(project, ["plan", "validate", "--plan", ref]);
+    call(project, ["run", "prepare", "--goal", goal, "--plan", ref]);
+    const run = runDirs(project)[0];
+    const dag = json(rel(project, `${run}/dag.json`));
+    assert.deepEqual(dag.nodes[0].constraints, ["Preserve the existing parser API."]);
+    const prompt = readFileSync(rel(project, `${run}/agents/parse-code/prompt.md`), "utf8");
+    assert.match(prompt, /## Inherited Delivery Contract/);
+    assert.match(prompt, /## Node-Specific Hard Constraints/);
+    assert.match(prompt, /Preserve the existing parser API\./);
+    assert.match(prompt, /Global hard constraints:/);
+  } finally { rmSync(project, { recursive: true, force: true }); }
+});
+
 test("tracked completion survives Git-only checkout, archive and later source changes", () => {
   const f = singleFixture(), { project, goal } = f;
   const checkout = mkdtempSync(join(tmpdir(), "harness-portable-checkout-"));
@@ -452,7 +470,7 @@ test("legacy fixed Goals retain arbitrary in-repository Spec references", () => 
     call(project, ["goal", "create", "--task", "Legacy source", "--spec", "notes/legacy-spec.md", "--work-mode", "local"]);
     const goal = `harness/goals/${readdirSync(rel(project, "harness/goals")).find((name) => name.endsWith(".md"))}`;
     assert.equal(call(project, ["goal", "validate", "--goal", goal]).ok, true);
-    call(project, ["run", "prepare", "--goal", goal]);
+    call(project, ["run", "prepare", "--legacy", "--goal", goal]);
     assert.equal(json(rel(project, `${runDirs(project)[0]}/manifest.json`)).manifestVersion, 1);
   } finally { rmSync(project, { recursive: true, force: true }); }
 });
@@ -718,7 +736,7 @@ test("unplanned Runs retain v1 manifest behavior", () => {
   try {
     const goalText = readFileSync(rel(project, goals[0]), "utf8").replace(`Execution Plan: ${planRef}\n`, "");
     write(rel(project, goals[0]), goalText);
-    call(project, ["run", "prepare", "--goal", goals[0], "--goal-slice"]);
+    call(project, ["run", "prepare", "--legacy", "--goal", goals[0], "--goal-slice"]);
     const run = runDirs(project)[0];
     assert.equal(json(rel(project, `${run}/manifest.json`)).manifestVersion, 1);
     assert.equal(json(rel(project, `${run}/status.json`)).manifestVersion, 1);

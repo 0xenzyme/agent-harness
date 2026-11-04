@@ -8,4 +8,4 @@ Promotion requires clear objective, constraints, non-goals, verification, and
 pause conditions. Ordinary accepted change/build returns to the current host directly and
 may postflight-sync this existing Task after verification; use durable Harness
 execution before work only when recovery, audit, persistent state sync,
-milestone/DAG, multi-worker, or high-risk control is required.
+milestone/orchestration, multi-worker, or high-risk control is required.

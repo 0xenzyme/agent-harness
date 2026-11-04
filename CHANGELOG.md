@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- New durable Runs require an explicit validated plan, manifest v2 and an enforced checkpoint; existing v1 Runs remain readable and `--legacy` is reserved for migration compatibility.
+- Propagate the target Delivery Contract and global hard constraints into every node prompt, with optional plan-level node constraints and whole-target verification expectations.
+- Rename Run DAG surfaces to orchestration and keep durable evidence proportionate to delivery, recovery and explicit audit needs.
 - Added `skills uninstall` to remove installed public skill copies and byte-identical protocol references without deleting `harness/` or `.harness/` project data.
 - Preserve exact verification logs and seal completed source-input hashes for portable historical acceptance.
 - Resolve archived completed tasks through the configured archive without keeping terminal rows in the active index.

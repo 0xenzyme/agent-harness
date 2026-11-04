@@ -15,6 +15,15 @@ Status: draft
 
 -
 
+## Delivery Contract
+
+- Delivered outcome: `<user-visible result>`
+- Global hard constraints: `<what must not break or change>`
+- Whole-target verification: `<how the complete result and constraints are checked>`
+- Delivery authority: `<allowed and forbidden commit, push, release, reply, or other external actions>`
+- Final report: result, key changes, whole-target and constraint verification,
+  actual delivery state, `Need user`, and `Remaining`.
+
 ## Durable Control Invariants
 
 - `harness-rule:path-containment`

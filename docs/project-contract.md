@@ -1,7 +1,7 @@
 # Agent Harness Project Contract
 
 Agent Harness is the durable project control plane around a coding-agent host.
-It preserves configured artifact roots, repository Goals/Runs/DAGs,
+It preserves configured artifact roots, repository Goals/Runs/orchestration,
 candidate-versus-accepted evidence, controller gates, authoritative completion
 state, and state sync.
 The host owns ordinary execution, delegation, concurrency, cancellation,
@@ -23,7 +23,7 @@ Fixed-contract Spec references remain project-local unless `paths.specs` is
 explicitly configured. The optional Milestone root defaults to
 `harness/milestones/`; fixed `init` does not gain a required directory.
 
-All configured writes and Goal/Spec/Run/DAG references must stay inside their
+All configured writes and Goal/Spec/Run/orchestration references must stay inside their
 configured project roots after lexical and existing-parent realpath checks.
 Legacy aliases remain readable for one migration boundary, canonical output
 writes current fields, and conflicts fail.
@@ -35,7 +35,7 @@ The three execution paths are `host-direct`, `host-direct-postflight`, and
 the current host directly without lifecycle artifacts. Simple completed work
 linked to state that already existed may use bounded postflight sync. Use durable
 `harness:execute` for recovery, audit, persistent state sync, milestone
-acceptance, Run/DAG, multiple workers, or high-risk control.
+acceptance, Run/orchestration, multiple workers, or high-risk control.
 `harness:orient`, `harness:intake`, and `harness:init` cover read-only
 state, unaccepted capture, and setup respectively. Shaping and asking are
 ordinary actions; proposal competition is explicit and advanced.
@@ -54,8 +54,12 @@ worktree or host-specific starting checkout state.
 
 ## Completion And Run Evidence
 
-An accepted one-entry Goal or Milestone can reference a versioned adjacent
-`<target-filename>.plan.json` through `Execution Plan:`. The
+An accepted one-entry Goal or Milestone references a versioned adjacent
+`<target-filename>.plan.json` through `Execution Plan:`. Its Delivery Contract
+defines the outcome, global hard constraints, whole-target verification,
+delivery authority, and final report. Nodes inherit that contract and may add
+local `constraints`; acceptance proves both the result and constraint
+non-breakage. The
 [planned execution reference](../plugins/agent-harness/references/planned-execution.md)
 defines version 1 plan and receipt fields. Validation enforces configured-root
 containment. Every Goal in a Milestone plan references the Milestone-adjacent
@@ -63,8 +67,9 @@ plan; only a standalone Goal references its own adjacent plan. The validator che
 complete acceptance/gate mapping, unique Goal and Task IDs,
 existing dependencies, and acyclic Goal and Task graphs. Goal dependencies
 gate per-Goal Run preparation; Task dependencies compile into the planned Run
-DAG. Planned Runs use manifest v2 and enforced checkpoints. Existing manifest
-v1 and unplanned Runs retain legacy behavior and are not rebound.
+orchestration. New durable Runs require a plan, manifest v2, and enforced
+checkpoints. Existing manifest v1 Runs remain readable and recoverable;
+`--legacy` is reserved for explicit migration compatibility.
 If a Milestone Goal List contains concrete Doc rows, the plan must cover
 exactly those Goal paths. Its target contract hash binds declarative row
 fields while excluding mutable Status cells.
@@ -134,7 +139,7 @@ Status projects the current target; later accepted work may replace that
 bounded projection without reopening historical completed Goals or Milestones.
 
 Task/Goal is the accepted-state authority and uses `active`, `completed`, or
-`blocked`. `blocked` is resumable and non-complete. A Run records DAG
+`blocked`. `blocked` is resumable and non-complete. A Run records orchestration
 dependencies, ready nodes, ownership, verification, gates, and candidate or
 accepted evidence. The configured status file is a bounded projection and does
 not define completion.
@@ -190,7 +195,7 @@ and Run deletion requires `prune --apply`, `local-only` policy, terminal state,
 expired retention, containment, and durable State Sync Notes.
 
 Prepared Runs include a manifest that binds the Goal/Spec execution contract and
-DAG shape at preparation time. Node and Run mutation is lock-protected and
+orchestration shape at preparation time. Node and Run mutation is lock-protected and
 atomically written. Status-only legacy Run directories remain inspectable but
 are `unmanaged`: they cannot drive automatic Task completion or pruning.
 Completed Run evidence must reference the exact Run path from the Goal, and a
@@ -211,7 +216,7 @@ evidence and never replaces authoritative Task/Goal completion.
 
 Postflight sync updates existing state only with fresh verification, observed
 outcome, and remaining gap. It does not create
-a Goal, Run, DAG, gate, or status artifact solely for bookkeeping.
+a Goal, Run, orchestration, gate, or status artifact solely for bookkeeping.
 
 
 ### Historical completion and portable evidence

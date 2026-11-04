@@ -1,19 +1,25 @@
 # Worker Prompt Template
 
-Use only for a runtime-selected DAG execution node.
+Use only for a runtime-selected orchestration execution node.
 
 ## Identity
 
 - Controller: `{controller}`
 - Goal: `{goal}`
 - Run: `{run}`
-- DAG node: `{node}`
+- orchestration node: `{node}`
 - Execution cwd: `{execution_cwd}`
 - Execution branch: `{execution_branch}`
 - Ownership: `{allowed_scope}`
 - Forbidden scope: `{forbidden_scope}`
 - Validation: `{validation}`
 - Stop conditions: `{stop_conditions}`
+- Node-specific hard constraints: `{node_constraints}`
+
+Inherit the target's complete Delivery Contract and global hard constraints.
+Do not repeat or replace them here; apply the constraints above only to this
+node. Verify both the requested node result and non-breakage of inherited and
+node-specific constraints.
 
 The host owns scheduling, delegation, concurrency, cancellation, and
 model selection. Harness records dependencies, ready state, ownership,

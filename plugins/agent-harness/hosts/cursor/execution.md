@@ -15,7 +15,7 @@ needs Cursor's native directory, copy or symlink those skill folders to
 | `transientPlan` | Session todos / plan UI when exposed | Keep steps in the current chat. Do not mirror every todo into Git. |
 | `delegation` | Task / Cloud Agent / subagent when the session exposes them | Foreground execution in the current chat. |
 | `isolation` | Locked worktree or a separate agent cwd | Sequential writers only. |
-| `resultPacket` | DAG node record plus the Execution Result Packet | Incomplete packets stay candidate evidence. |
+| `resultPacket` | orchestration node record plus the Execution Result Packet | Incomplete packets stay candidate evidence. |
 
 ## Path Aliases
 

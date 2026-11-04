@@ -119,7 +119,7 @@ function presentation() {
   includes("CHANGELOG.md", `## ${version} -`);
   assert(Array.isArray(plugin.interface.defaultPrompt) && plugin.interface.defaultPrompt.every((item) => typeof item === "string"), "defaultPrompt must be a string array");
   assert(!existsSync(join(repoRoot, "README.en.md")), "English README must be README.md, not README.en.md");
-  const pkgDescription = "Adapter-driven control plane for coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync.";
+  const pkgDescription = "Adapter-driven control plane for coding-agent work: tasks, goals, run orchestration, gates, verification, and state sync.";
   assert(pkg.description === pkgDescription, "package.json description must match the GitHub presentation positioning line");
   includes("docs/github-presentation.md", pkgDescription);
   for (const file of ["README.md", "README.zh-CN.md"]) {

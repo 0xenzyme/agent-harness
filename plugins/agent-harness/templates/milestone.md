@@ -30,6 +30,15 @@ Out:
 
 -
 
+## Delivery Contract
+
+- Delivered outcome: `<whole-stage user-visible result>`
+- Global hard constraints: `<inherited by every Goal and Task>`
+- Whole-target verification: `<stage checks beyond individual Goal checks>`
+- Delivery authority: `<allowed and forbidden external actions>`
+- Final report: result, key changes, stage and constraint verification, actual
+  delivery state, `Need user`, and `Remaining`.
+
 ## Required Specs
 
 -
@@ -55,7 +64,7 @@ and their logs live inside the Milestone anchor Run.
 Every planned Goal maps to exactly one item in this section through its
 `milestoneItem` reference. Replace placeholders before plan validation.
 
-## DAG
+## Orchestration
 
 ```text
 spec gate

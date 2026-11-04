@@ -10,7 +10,8 @@ For a standalone planned Goal, add `Execution Plan: <goal-filename>.plan.json`
 beside the header and create the plan adjacent to this Goal file. For a Goal
 inside a planned Milestone, use the same `Execution Plan:` path as its parent
 Milestone; that plan is adjacent to the Milestone file, not this Goal file.
-Unplanned Goals leave the field absent and retain legacy Run behavior.
+New durable Runs require a bound plan. Existing unplanned manifest v1 Runs
+remain readable and recoverable, but are not the new execution path.
 
 ## Source Task
 
@@ -105,6 +106,15 @@ ordinary direct or postflight-only work outside this durable lifecycle.
 ## Non-Goals
 
 - Do not exceed accepted scope or recorded authority.
+
+## Delivery Contract
+
+- Delivered outcome: `<user-visible result>`
+- Global hard constraints: `<what every node must preserve>`
+- Whole-target verification: `<how the complete result and constraints are checked>`
+- Delivery authority: `<allowed and forbidden commit, push, release, reply, or other external actions>`
+- Final report: result, key changes, whole-target and constraint verification,
+  actual delivery state, `Need user`, and `Remaining`.
 
 ## Verification
 

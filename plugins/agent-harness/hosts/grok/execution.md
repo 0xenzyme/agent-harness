@@ -15,7 +15,7 @@ on `.codex-plugin` or `agents/openai.yaml`.
 | `transientPlan` | `todo_write` when the session exposes it | Keep steps in the current session. Do not mirror every todo into Git. |
 | `delegation` | `spawn_subagent` when the session exposes it | Foreground execution in the current session. |
 | `isolation` | `spawn_subagent` with `isolation` set to `worktree` | Sequential writers only. |
-| `resultPacket` | DAG node record plus the Execution Result Packet | Incomplete packets stay candidate evidence. |
+| `resultPacket` | orchestration node record plus the Execution Result Packet | Incomplete packets stay candidate evidence. |
 
 ## Path Aliases
 
@@ -35,7 +35,7 @@ Use the canonical paths `host-direct`, `host-direct-postflight`, and
 - Worker selection, concurrency, cancellation, and model/effort belong to the
   Grok runtime. Harness records ready nodes, ownership, verification, and
   candidate evidence.
-- The `workflow` tool is not the Harness DAG runner. Use it only when the user
+- The `workflow` tool is not the Harness orchestration runner. Use it only when the user
   explicitly asks to run a workflow.
 - Do not register a default reviewer under `plugins/agent-harness/agents/`.
   An optional reviewer stays opt-in and inherits the parent model and effort.

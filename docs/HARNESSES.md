@@ -1,7 +1,7 @@
 # Agent Harness Capability Matrix
 
 Agent Harness supplies durable project control that a coding-agent host does
-not: configured artifact roots, repository Goals/Runs/DAGs, authoritative
+not: configured artifact roots, repository Goals/Runs/orchestration, authoritative
 completion state, candidate-versus-accepted evidence, controller gates, and
 state sync.
 
@@ -29,11 +29,15 @@ Configured completion gates are durable Goal/Run gates; they do not promote
 ordinary direct or postflight-only work into a Run.
 
 For an accepted one-entry Goal or Milestone, the controller repeatedly uses
-target-scoped `execute next` through whole-target completion. The adjacent
-`<target-filename>.plan.json`, referenced by `Execution Plan:`, declares Goal
-and Task dependencies. Planned Runs use manifest v2 and enforced checkpoints;
-manifest v1 remains a legacy unplanned path. Member Goals reference the
-Milestone-adjacent plan, while a standalone Goal uses its own adjacent plan.
+target-scoped `execute next` through whole-target completion. The target
+Delivery Contract defines outcome, global hard constraints, whole-target
+verification, delivery authority, and final reporting; nodes inherit it and add
+only local constraints and checks. The adjacent `<target-filename>.plan.json`,
+referenced by `Execution Plan:`, declares Goal and Task dependencies. New durable
+Runs require a plan, manifest v2, and enforced checkpoints. Existing manifest
+v1 Runs remain readable and recoverable; `--legacy` is migration-only. Member
+Goals reference the Milestone-adjacent plan, while a standalone Goal uses its
+own adjacent plan.
 Accepted human evidence routes to `verify-node` for receipt capture;
 `need-user` asks only for a missing concrete decision. Candidate receipts require
 controller review of validation logs and fresh input hashes; pending project

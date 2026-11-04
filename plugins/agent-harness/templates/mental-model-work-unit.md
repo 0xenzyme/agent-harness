@@ -3,7 +3,7 @@
 This model answers what one harness-managed unit of work is.
 
 ```text
-Goal with Tasks + status + spec + DAG + run + gate
+Goal with Tasks + status + spec + orchestration + run + gate
 ```
 
 ## Components
@@ -12,7 +12,7 @@ Goal with Tasks + status + spec + DAG + run + gate
 - tasks:
 - status:
 - spec:
-- DAG:
+- orchestration:
 - run:
 - gate:
 - route explanation:

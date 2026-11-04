@@ -9,12 +9,13 @@
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
 Agent Harness is an adapter-driven control plane for coding-agent work.
-It turns accepted direction into scoped execution, verifiable evidence,
-and synchronized project state—without making the human route every task.
-Codex is the first host pack, not the only runtime.
+It turns accepted direction into delivered, verified outcomes without making
+the human route every task. Evidence and synchronized project state support
+delivery; they are not additional deliverables. Codex is the first host pack,
+not the only runtime.
 
 ```text
-Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
+Roadmap -> Milestone -> Goal -> Task -> Run -> Delivery
 ```
 
 [Quick Start](#use-with-a-coding-agent) · [How It Works](#how-it-works) ·
@@ -88,7 +89,7 @@ Harness uses three execution paths:
 
 - `host-direct`: ordinary work stays entirely in the current host and creates no Harness lifecycle.
 - `host-direct-postflight`: after the host completes simple work, verify and update only Task, Goal, or status state that already existed before execution.
-- `durable-harness`: cross-task recovery, audit, milestone/DAG, multi-worker, persistent state sync, or high-risk work uses a repository Goal/Run.
+- `durable-harness`: cross-task recovery, audit, milestone/orchestration, multi-worker, persistent state sync, or high-risk work uses a repository Goal/Run.
 
 When the current host exposes them, long-running controller work keeps the
 current result in a runtime outcome and short-lived steps in a transient plan.
@@ -116,10 +117,16 @@ pause. It asks for a concrete human decision at a real authority or direction
 gate; a completed leaf does not end the stage. See [usage](docs/usage.md),
 [CLI](docs/cli.md), and the [plan and receipt contract](plugins/agent-harness/references/planned-execution.md).
 
-Planned Runs use manifest v2 and enforced checkpoints. Existing unplanned
-manifest v1 Runs remain on their legacy path. Native runtime Goals and worker
-delegation require host support and authorization; foreground execution is the
-fallback. This controller loop runs in the current session without a scheduler.
+The target Delivery Contract names the outcome, global hard constraints,
+whole-target verification, delivery authority, and final report. Nodes inherit
+that contract and add only local scope, constraints, and checks. Acceptance
+covers both the requested result and non-breakage of its constraints.
+
+New durable Runs require an explicit plan, manifest v2, and an enforced
+checkpoint. Existing manifest v1 Runs remain readable and recoverable;
+`--legacy` is only an explicit migration/compatibility escape. Native runtime
+Goals and worker delegation require host support and authorization; foreground
+execution is the fallback. This controller loop runs without a scheduler.
 
 
 Completed planned targets preserve exact logs and a hashed source-input snapshot.
@@ -136,10 +143,10 @@ owns the repeatable execution mechanics inside the project adapter:
 
 - discover roadmap, milestone, spec, Goal, Task, and Run state;
 - turn a request such as `complete M5` into explicit completion items;
-- prepare Goals and execution DAGs instead of stopping at the next small spec;
-- record worker ownership, DAG state, and candidate evidence while the host
+- prepare Goals and execution orchestration instead of stopping at the next small spec;
+- record worker ownership, orchestration state, and candidate evidence while the host
   schedules work when that capability is exposed;
-- bind prepared Runs to a Goal/Spec/DAG manifest and protect state with atomic concurrent recording;
+- bind prepared Runs to a Goal/Spec/orchestration manifest and protect state with atomic concurrent recording;
 - give explicitly `enforced` managed Runs an independent revision-safe
   `checkpoint.json`; contract drift and uncertain external state fail closed,
   while default-disabled Runs and fast paths gain no ceremony;
@@ -192,9 +199,9 @@ source-spec item such as `M5-S0` cannot silently close the parent `M5` while
 implementation work remains.
 
 Canonical domain invariants bound durable control: configured path containment,
-Run/DAG ownership, candidate-versus-accepted evidence, authoritative
+Run/orchestration ownership, candidate-versus-accepted evidence, authoritative
 completion, and state sync. Ordinary clear change/build uses the current host
-directly; existing simple state gets postflight sync only; recovery, audit, milestone/DAG,
+directly; existing simple state gets postflight sync only; recovery, audit, milestone/orchestration,
 multi-worker, persistent state-sync, or high-risk work crosses the
 `harness-rule:durable-tier-boundary`. See the
 [Capability Matrix](docs/HARNESSES.md).

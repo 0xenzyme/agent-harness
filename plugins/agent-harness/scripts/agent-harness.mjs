@@ -87,16 +87,16 @@ const terminalCheckpointControlStates = new Set(["superseded", "completed"]);
 const secretLikeCheckpointKey = /(?:secret|token|password|passwd|credential|private.?key|api.?key|authorization|cookie)/i;
 const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
 const contextFocusRoutingGuidance = `\`harness-rule:project-neutral-core\`: Normalize the durable target to ${contextFocusIntentTargets}; adapters own downstream paths and facts while plugin core remains project-neutral.`;
-const executeContextFocusGuidance = "`harness-rule:path-containment`: configured writes, Goal/Spec references, Run arguments, and DAG artifacts stay inside configured roots after lexical and existing-parent realpath checks.";
+const executeContextFocusGuidance = "`harness-rule:path-containment`: configured writes, Goal/Spec references, Run arguments, and orchestration artifacts stay inside configured roots after lexical and existing-parent realpath checks.";
 const authoritativeCompletionGuidance = "`harness-rule:authoritative-completion-state`: Task/Goal is the accepted-state authority with active, completed, or blocked phase; blocked is resumable and non-complete, Run stores evidence, and status is a bounded projection.";
 const cyberneticStabilityGuidance = "`harness-rule:state-sync-evidence`: durable completion includes verified State Sync Notes and synchronization of the configured Goal, Task, Run, gate, and bounded status records.";
 const degradedExecutionProvenanceGuidance = "`harness-rule:candidate-accepted-evidence`: execution and worker output remains candidate evidence until the accepted-state owner verifies and records it.";
 const controllerCancellationBoundaryGuidance = "`harness-rule:run-dag-ownership`: Harness records ready nodes, dependencies, ownership, verification, and candidate evidence; the host owns scheduling, delegation, concurrency, and cancellation.";
 const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
-const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses the current host directly; already tracked simple work may use one bounded postflight sync; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, DAGs, multiple workers, or high-risk control.";
+const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses the current host directly; already tracked simple work may use one bounded postflight sync; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, orchestration, multiple workers, or high-risk control.";
 const checkpointRecoveryGuidance = "`harness-rule:checkpoint-recovery`: explicitly enforced managed Runs use an independent revision-safe checkpoint; contract drift and uncertain external state fail closed, while disabled and legacy paths keep existing behavior.";
 const hostExecutionGuidance = "For accepted long-running controller work, establish or reuse a compatible runtime outcome and use the host transient plan for current multi-step progress when those capabilities are exposed. Controller means outcome owner and accepted-state owner; only explicit review-only or gate-only direction prohibits foreground implementation.";
-const postflightSyncGuidance = "Postflight sync verifies completed work and updates existing tracked state only. It creates no Goal, Run, DAG, gate, or status artifact solely for bookkeeping, and durable completion gates do not apply unless a durable Goal/Run is being closed.";
+const postflightSyncGuidance = "Postflight sync verifies completed work and updates existing tracked state only. It creates no Goal, Run, orchestration, gate, or status artifact solely for bookkeeping, and durable completion gates do not apply unless a durable Goal/Run is being closed.";
 
 function commentaryPolicyDetails(config = {}) {
   const configured = config.communication?.commentary;
@@ -224,7 +224,7 @@ function parseArgs(argv) {
     "reconciliationRequired",
     "reconciliation-required"
   ]);
-  const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "apply", "dryRun", "dry-run", "force", "goalSlice", "goal-slice", "help", "json", "record"]);
+  const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "apply", "dryRun", "dry-run", "force", "goalSlice", "goal-slice", "help", "json", "legacy", "record"]);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -534,7 +534,7 @@ const messages = {
   agent-harness plan inputs --plan PATH [--json]
   agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
   agent-harness run seal --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run prepare --goal <goal-file> [--plan PATH] [--goal-slice] [--cwd PATH] [--dry-run] [--json]
+  agent-harness run prepare --goal <goal-file> [--plan PATH|--legacy] [--goal-slice] [--cwd PATH] [--dry-run] [--json]
   agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
@@ -594,7 +594,7 @@ const messages = {
   agent-harness plan inputs --plan PATH [--json]
   agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
   agent-harness run seal --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run prepare --goal <goal-file> [--plan PATH] [--goal-slice] [--cwd PATH] [--dry-run] [--json]
+  agent-harness run prepare --goal <goal-file> [--plan PATH|--legacy] [--goal-slice] [--cwd PATH] [--dry-run] [--json]
   agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
   agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
@@ -2114,7 +2114,7 @@ If \`${configPath}\` exists, read it before substantial project work.
 ${adapterPath ? `- For \`contract: "adapter"\`, read the project adapter at \`${adapterPath}\` before goal, run, or implementation work.\n` : ""}- Read the configured task index at \`${taskIndex}\` and status file at \`${statusPath}\` before choosing or executing tasks.
 ${ideaInbox ? `- For intake capture, use the configured idea inbox at \`${ideaInbox}\`; inbox entries are unaccepted candidates.\n` : ""}
 ${specsPath ? `- Read relevant specs under \`${specsPath}\` and goals under \`${goalsPath}\` before implementation.\n` : `- Read relevant goals under \`${goalsPath}\` before implementation.\n`}- For orientation or next-action requests, summarize current status and task state first; do not start implementation unless the user asks.
-- Use \`agent-harness doctor --cwd .\`, \`agent-harness orient next --cwd .\`, \`agent-harness goal create --cwd . --task "<task>"\`, and \`agent-harness run prepare --cwd . --goal <goal-file>\` when they fit the task.
+- Use \`agent-harness doctor --cwd .\`, \`agent-harness orient next --cwd .\`, \`agent-harness goal create --cwd . --task "<task>"\`, and, after binding the minimal plan, \`agent-harness plan validate --cwd . --plan <target-file>.plan.json\` and \`agent-harness run prepare --cwd . --goal <goal-file> --plan <target-file>.plan.json\` when they fit the task. New durable Runs require an explicit plan; do not use \`--legacy\` except for migration compatibility.
 - Preserve existing project instructions. Pause before product-direction decisions, \`AGENTS.md\` changes, credentials, paid APIs, production access, destructive operations, branch/worktree changes, delivery steps above the active goal policy, deploy, release, daemons, watchers, or background automation.
 `;
 }
@@ -2277,8 +2277,8 @@ function recommendationForTask(task, context, reason) {
       return {
         ...base,
         route: "goal-ready",
-        startPrompt: `Validate existing goal for: ${task.title}`,
-        goalCommand: `agent-harness goal validate --cwd . --goal ${shellQuote(existingGoalPath)} && agent-harness run prepare --cwd . --goal ${shellQuote(existingGoalPath)}`
+        startPrompt: `Validate the existing goal and its minimal execution plan for: ${task.title}`,
+        goalCommand: `agent-harness goal validate --cwd . --goal ${shellQuote(existingGoalPath)} && agent-harness plan validate --cwd . --plan ${shellQuote(`${existingGoalPath}.plan.json`)} && agent-harness run prepare --cwd . --goal ${shellQuote(existingGoalPath)} --plan ${shellQuote(`${existingGoalPath}.plan.json`)}`
       };
     }
     return {
@@ -4231,7 +4231,7 @@ Use \`current-session\`.
 - Execution slot: \`N/A\`
 - Remote-control worktree: \`no\`
 
-## Execution DAG
+## Execution Orchestration
 
 Use \`run prepare\` to generate \`dag.json\`, \`dag.md\`, and per-node
 \`agents/<node>/prompt.md\` files. The host owns worker selection,
@@ -4277,6 +4277,14 @@ ${requiredGateLines}
 - Do not launch workers or perform external side effects outside the accepted scope unless separately requested.
 - Do not make destructive changes without explicit user approval.
 - Do not add project-specific assumptions to the core harness contract.
+
+## Delivery Contract
+
+- Delivered outcome: \`${acceptance}\`
+- Global hard constraints: preserve the accepted Scope, Non-Goals, adapter boundaries, and explicit compatibility requirements; add task-specific non-breakage constraints before planning.
+- Whole-target verification: run the smallest checks that prove both the complete result and its hard constraints; node checks alone are insufficient when an integration check is needed.
+- Delivery authority: no commit, push, release, deploy, publish, reply, or other external side effect unless the accepted scope explicitly authorizes it.
+- Final report: delivered result, key changes, whole-target and constraint verification, actual delivery state, \`Need user\`, and \`Remaining\`.
 
 ## Context
 
@@ -5583,7 +5591,7 @@ function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole, c
 }
 
 function nodeStatusPath(runDir, node) {
-  return artifactPath(runDir, node.status, `DAG node '${node.id}' status`);
+  return artifactPath(runDir, node.status, `orchestration node '${node.id}' status`);
 }
 
 function readNodeStatus(runDir, node) {
@@ -5616,40 +5624,40 @@ function normalizedArtifactReference(value) {
 
 function validateExecutionDagDefinition(runDir, dag) {
   if (!dag || typeof dag !== "object" || Array.isArray(dag)) {
-    throw new Error("DAG must be an object.");
+    throw new Error("orchestration must be an object.");
   }
-  if (!Array.isArray(dag.nodes)) throw new Error("DAG nodes must be an array.");
+  if (!Array.isArray(dag.nodes)) throw new Error("orchestration nodes must be an array.");
   const ids = new Set();
   const paths = new Map();
   const nodeById = new Map();
   for (const node of dag.nodes) {
     if (!node || typeof node.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(node.id)) {
-      throw new Error("Every DAG node requires a unique safe id.");
+      throw new Error("Every orchestration node requires a unique safe id.");
     }
-    if (ids.has(node.id)) throw new Error(`DAG contains duplicate node id: ${node.id}`);
+    if (ids.has(node.id)) throw new Error(`orchestration contains duplicate node id: ${node.id}`);
     ids.add(node.id);
     nodeById.set(node.id, node);
     if (!Array.isArray(node.dependencies) || new Set(node.dependencies).size !== node.dependencies.length) {
-      throw new Error(`DAG node '${node.id}' dependencies must be a unique array.`);
+      throw new Error(`orchestration node '${node.id}' dependencies must be a unique array.`);
     }
     for (const dependency of node.dependencies) {
       if (typeof dependency !== "string" || !ids.has(dependency)) {
         // Dependency may refer to a node listed later; defer the existence check.
-        if (typeof dependency !== "string") throw new Error(`DAG node '${node.id}' has an invalid dependency.`);
+        if (typeof dependency !== "string") throw new Error(`orchestration node '${node.id}' has an invalid dependency.`);
       }
     }
     for (const key of ["prompt", "status", "result"]) {
       if (typeof node[key] !== "string" || !node[key].trim()) {
-        throw new Error(`DAG node '${node.id}' requires a ${key} path.`);
+        throw new Error(`orchestration node '${node.id}' requires a ${key} path.`);
       }
-      const absolute = artifactPath(runDir, node[key], `DAG node '${node.id}' ${key}`);
+      const absolute = artifactPath(runDir, node[key], `orchestration node '${node.id}' ${key}`);
       const reference = normalizedArtifactReference(node[key]);
       if (reservedRunArtifactPaths.has(reference) || reference.startsWith("logs/")) {
-        throw new Error(`DAG node '${node.id}' ${key} collides with a reserved Run artifact: ${node[key]}`);
+        throw new Error(`orchestration node '${node.id}' ${key} collides with a reserved Run artifact: ${node[key]}`);
       }
       const existing = paths.get(reference);
       if (existing && existing !== `${node.id}:${key}`) {
-        throw new Error(`DAG artifact path is reused by ${existing} and ${node.id}:${key}: ${node[key]}`);
+        throw new Error(`orchestration artifact path is reused by ${existing} and ${node.id}:${key}: ${node[key]}`);
       }
       paths.set(reference, `${node.id}:${key}`);
       // Resolve now so an existing symlink or parent escape fails before any write.
@@ -5660,7 +5668,7 @@ function validateExecutionDagDefinition(runDir, dag) {
   for (const node of dag.nodes) {
     for (const dependency of node.dependencies) {
       if (!nodeById.has(dependency)) {
-        throw new Error(`DAG node '${node.id}' depends on unknown node '${dependency}'.`);
+        throw new Error(`orchestration node '${node.id}' depends on unknown node '${dependency}'.`);
       }
     }
   }
@@ -5668,7 +5676,7 @@ function validateExecutionDagDefinition(runDir, dag) {
   const visiting = new Set();
   const visited = new Set();
   const visit = (id) => {
-    if (visiting.has(id)) throw new Error(`DAG dependency cycle detected at '${id}'.`);
+    if (visiting.has(id)) throw new Error(`orchestration dependency cycle detected at '${id}'.`);
     if (visited.has(id)) return;
     visiting.add(id);
     for (const dependency of nodeById.get(id).dependencies) visit(dependency);
@@ -5690,10 +5698,10 @@ function executionDagSnapshot(dag, runDir) {
     const status = readNodeStatus(runDir, node);
     const phase = status.phase || "prepared";
     if (!validRunNodePhases.has(phase)) {
-      throw new Error(`DAG node '${node.id}' has invalid phase: ${phase}.`);
+      throw new Error(`orchestration node '${node.id}' has invalid phase: ${phase}.`);
     }
     if (status.node && status.node !== node.id) {
-      throw new Error(`DAG node status mismatch: expected '${node.id}', found '${status.node}'.`);
+      throw new Error(`orchestration node status mismatch: expected '${node.id}', found '${status.node}'.`);
     }
     nodeStatuses[node.id] = {
       phase,
@@ -5755,7 +5763,7 @@ function executionDagSnapshot(dag, runDir) {
 }
 
 function readExecutionDag(runDir) {
-  const dagPath = artifactPath(runDir, "dag.json", "DAG path");
+  const dagPath = artifactPath(runDir, "dag.json", "orchestration path");
   if (!existsSync(dagPath)) {
     return null;
   }
@@ -5800,6 +5808,7 @@ function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent,
     "Conversation Route",
     "Scope",
     "Non-Goals",
+    ...(plannedRun && extractSection(goalContent, "Delivery Contract").trim() ? ["Delivery Contract"] : []),
     "Verification",
     "Completion Conditions",
     "Pause Conditions"
@@ -5874,7 +5883,7 @@ function dagManifestProjection(dag) {
 }
 
 function buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specContent, context, dag, createdAt }) {
-  const dagText = readFileSync(artifactPath(runDir, "dag.json", "DAG path"), "utf8");
+  const dagText = readFileSync(artifactPath(runDir, "dag.json", "orchestration path"), "utf8");
   const manifestVersion = dag.executionPlan ? 2 : runManifestVersion;
   const goalContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { plannedRun: manifestVersion === 2 });
   const checkpointPolicy = extractCheckpointPolicyRaw(goalContent);
@@ -5914,7 +5923,7 @@ function buildInitialCheckpoint({ cwd, runDir, goalPath, dag, createdAt }) {
     controlState: "active",
     currentStage: null,
     lastCompletedStage: null,
-    nextAction: ready.length === 1 ? `execute ready DAG node: ${ready[0]}` : "inspect the prepared Run DAG",
+    nextAction: ready.length === 1 ? `execute ready orchestration node: ${ready[0]}` : "inspect the prepared Run orchestration",
     pauseReason: null,
     reconciliationRequired: false,
     requiredEvidence: [],
@@ -5980,7 +5989,7 @@ function runManifestState(runDir, status = {}) {
       return { managed: false, manifest, error: "status.json conflicts with disabled checkpoint policy." };
     }
     if (Array.isArray(status.files) && status.files.includes("dag.json")) {
-      const dagPath = artifactPath(runDir, "dag.json", "DAG path");
+      const dagPath = artifactPath(runDir, "dag.json", "orchestration path");
       if (!existsSync(dagPath) || hashText(readFileSync(dagPath, "utf8")) !== manifest.dag.sha256) {
         return { managed: false, manifest, error: "Run manifest does not match dag.json." };
       }
@@ -6039,15 +6048,15 @@ function managedRunEvidence(cwd, run, runsRelPath, { requireCompletedDag = false
   }
   if (requireCompletedDag) {
     if (!dagState.allNodesCompleted || dagState.runningNodes.length || dagState.blockedNodes.length) {
-      return { ok: false, reason: "Run DAG is not fully completed." };
+      return { ok: false, reason: "Run orchestration is not fully completed." };
     }
     for (const node of dag.nodes) {
       const nodeStatus = readNodeStatus(runAbs, node);
       if (nodeStatus.phase !== "completed" || missingEvidence(nodeStatus.verificationSummary)) {
-        return { ok: false, reason: `Run DAG node '${node.id}' lacks completed verification evidence.` };
+        return { ok: false, reason: `Run orchestration node '${node.id}' lacks completed verification evidence.` };
       }
-      if (!existsSync(artifactPath(runAbs, node.result, `DAG node '${node.id}' result`))) {
-        return { ok: false, reason: `Run DAG node '${node.id}' result evidence is missing.` };
+      if (!existsSync(artifactPath(runAbs, node.result, `orchestration node '${node.id}' result`))) {
+        return { ok: false, reason: `Run orchestration node '${node.id}' result evidence is missing.` };
       }
     }
     if (missingEvidence(status.verificationSummary)) {
@@ -6059,7 +6068,7 @@ function managedRunEvidence(cwd, run, runsRelPath, { requireCompletedDag = false
 
 function assertPreparedRunContract({ cwd, context, runDir, status, goalPath, goalContent, specRel, specContent, dag }) {
   if (!dag) {
-    throw new Error("Completed Runs require a readable execution DAG (dag.json).");
+    throw new Error("Completed Runs require a readable execution orchestration (dag.json).");
   }
   const state = runManifestState(runDir, status);
   if (!state.managed) {
@@ -6077,12 +6086,12 @@ function assertPreparedRunContract({ cwd, context, runDir, status, goalPath, goa
   if (hashText(JSON.stringify(currentContract)) !== manifest.goalContractHash) {
     throw new Error("Goal or Spec execution contract changed after Run preparation; prepare a new Run.");
   }
-  const dagText = readFileSync(artifactPath(runDir, "dag.json", "DAG path"), "utf8");
+  const dagText = readFileSync(artifactPath(runDir, "dag.json", "orchestration path"), "utf8");
   if (hashText(dagText) !== manifest.dag.sha256) {
     throw new Error("dag.json changed after Run preparation; prepare a new Run.");
   }
   if (hashText(JSON.stringify(dagManifestProjection(dag))) !== hashText(JSON.stringify(manifest.dag.projection))) {
-    throw new Error("DAG execution contract changed after Run preparation; prepare a new Run.");
+    throw new Error("orchestration execution contract changed after Run preparation; prepare a new Run.");
   }
   planned.validateBinding(cwd, context, manifest);
   return manifest;
@@ -6101,7 +6110,7 @@ function buildDagMarkdown({ cwd, runDir, dag }) {
     .map((layer, index) => `${index + 1}. ${formatNodeList(layer)}`)
     .join("\n");
 
-  return `# Execution DAG
+  return `# Execution Orchestration
 
 Run: \`${relRunDir}\`
 Launch policy: \`${dag.launchPolicy}\`
@@ -6143,17 +6152,26 @@ function buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }) {
   const relRunDir = displayPath(cwd, runDir);
   const relGoal = displayPath(cwd, goalPath);
   const dependencies = node.dependencies?.length ? node.dependencies.join(", ") : "none";
+  const contractPaths = [...new Set([dag.executionPlan?.target?.path ? resolve(cwd, dag.executionPlan.target.path) : goalPath, goalPath])];
+  const deliveryContract = contractPaths
+    .filter(path => existsSync(path))
+    .map(path => extractSection(readFileSync(path, "utf8"), "Delivery Contract").trim())
+    .filter(Boolean)
+    .join("\n\n") || "Read the accepted Goal, Spec, and Milestone delivery contracts and preserve every global hard constraint.";
+  const nodeConstraints = node.task?.constraints?.length
+    ? node.task.constraints.map(item => `- ${item}`).join("\n")
+    : "None beyond the inherited Delivery Contract.";
 
   return `# Agent Node Prompt: ${node.label}
 
 Run: \`${relRunDir}\`
 Goal: \`${relGoal}\`
-DAG node: \`${node.id}\`
+orchestration node: \`${node.id}\`
 Depends on: \`${dependencies}\`
 Mode: \`${node.mode}\`
 Commentary policy: \`${dag.communication.commentary}\`
 
-You are an execution worker for one DAG node, not the controller thread.
+You are an execution worker for one orchestration node, not the controller thread.
 Your output is candidate evidence only. The controller is the only lane that
 may accept state, update accepted Goal, Task, status, run, or gate records, or mark work
 complete.
@@ -6170,6 +6188,20 @@ complete.
 ## Ownership
 
 ${node.ownership}
+
+## Inherited Delivery Contract
+
+${deliveryContract}
+
+Apply every global hard constraint; do not replace them with the node contract.
+
+## Node-Specific Hard Constraints
+
+${nodeConstraints}
+
+Verify both the requested node result and non-breakage of inherited and
+node-specific constraints. Return only a compact candidate result to the
+controller, not a separate user-facing delivery report.
 
 ## Expected Output
 
@@ -6235,13 +6267,13 @@ Deferred items:
 }
 
 function writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag, createdAt }) {
-  atomicWriteFile(artifactPath(runDir, "dag.json", "DAG path"), `${JSON.stringify(dag, null, 2)}\n`);
-  atomicWriteFile(artifactPath(runDir, "dag.md", "DAG documentation path"), buildDagMarkdown({ cwd, runDir, dag }));
+  atomicWriteFile(artifactPath(runDir, "dag.json", "orchestration path"), `${JSON.stringify(dag, null, 2)}\n`);
+  atomicWriteFile(artifactPath(runDir, "dag.md", "orchestration documentation path"), buildDagMarkdown({ cwd, runDir, dag }));
 
   for (const node of dag.nodes) {
-    const agentDir = artifactPath(runDir, join("agents", node.id), `DAG node '${node.id}' directory`);
+    const agentDir = artifactPath(runDir, join("agents", node.id), `orchestration node '${node.id}' directory`);
     mkdirSync(agentDir, { recursive: true });
-    atomicWriteFile(artifactPath(runDir, node.prompt, `DAG node '${node.id}' prompt`), buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }));
+    atomicWriteFile(artifactPath(runDir, node.prompt, `orchestration node '${node.id}' prompt`), buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }));
     atomicWriteFile(nodeStatusPath(runDir, node), `${JSON.stringify({
       node: node.id,
       label: node.label,
@@ -6335,7 +6367,7 @@ Phase: prepared
 Goal: \`${relGoal}\`
 Spec: \`${specDisplay}\`
 Run directory: \`${relRunDir}\`
-Prepared contract: \`manifest.json\` binds this Goal/Spec and DAG; changes after preparation require a new Run.
+Prepared contract: \`manifest.json\` binds this Goal/Spec and orchestration; changes after preparation require a new Run.
 Harness contract: \`${context.contract}\`
 Commentary policy: \`${context.communication.commentary}\` (\`${context.communication.source}\`)
 Report cadence: \`${context.communication.reportCadence}\`
@@ -6493,7 +6525,7 @@ Goal: \`${relGoal}\`
 ## Policy
 
 - Treat \`dag.json\` as the source of execution order. This file explains how to
-  split work; it does not override DAG dependencies or controller gates.
+  split work; it does not override orchestration dependencies or controller gates.
 - This prepared Run is durable and must not be downgraded to ordinary direct execution.
 - ${cyberneticStabilityGuidance}
 - \`small\`: the runtime may keep implementer work in the current lane or delegate it; gate-only remains read-only.
@@ -6527,7 +6559,12 @@ function runPrepare(args) {
   }
 
   const goalContent = readFileSync(goalPath, "utf8");
-  if ((args.plan || extractInlinePath(goalContent, "Execution Plan")) && !args._projectLockHeld && !args.dryRun) {
+  const planReference = args.plan || extractInlinePath(goalContent, "Execution Plan");
+  if (args.legacy && planReference) throw new Error("--legacy cannot be combined with an execution plan.");
+  if (!args.legacy && !planReference) {
+    throw new Error("New durable Runs require an explicit execution plan and manifest v2. Bind <goal-file>.plan.json, validate it, and retry with --plan. Existing manifest v1 Runs remain readable and recoverable; use --legacy only for explicit migration compatibility.");
+  }
+  if (planReference && !args._projectLockHeld && !args.dryRun) {
     const controlRoot = dirname(configuredPath(cwd, context.paths.config || ".harness/config.json", "Project config"));
     return withRunLock(controlRoot, () => runPrepare({ ...args, _projectLockHeld: true }));
   }
@@ -6661,7 +6698,7 @@ function runPrepare(args) {
   if (args.json) { console.log(JSON.stringify({ ok: true, run: displayPath(cwd, runDir), goal: displayPath(cwd, goalPath), manifestVersion: manifest.manifestVersion, checkpointRevision: checkpointPolicy === "enforced" ? 0 : null, readyNodes: executionDagState.readyNodes }, null, 2)); return; }
   console.log(`Prepared run packet: ${displayPath(cwd, runDir)}`);
   console.log(`Prompt: ${displayPath(cwd, join(runDir, "prompt.md"))}`);
-  console.log(`DAG: ${displayPath(cwd, join(runDir, "dag.md"))}`);
+  console.log(`orchestration: ${displayPath(cwd, join(runDir, "dag.md"))}`);
   console.log(`Ready nodes: ${executionDagState.readyNodes.join(", ") || "none"}`);
   console.log("Next: hand ready nodes to the host; record ownership, verification, and candidate evidence in this Run.");
 }
@@ -6840,7 +6877,7 @@ function checkpointCoreErrors({ cwd, runDir, status, manifest, checkpoint, conte
   if (requireTerminalConsistency && checkpoint.controlState === "completed") {
     const dag = readExecutionDag(runDir);
     const dagState = dag ? executionDagSnapshot(dag, runDir) : null;
-    if (!dagState?.allNodesCompleted || dagState.runningNodes.length || dagState.blockedNodes.length) errors.push("completed checkpoint requires a terminal completed Run DAG.");
+    if (!dagState?.allNodesCompleted || dagState.runningNodes.length || dagState.blockedNodes.length) errors.push("completed checkpoint requires a terminal completed Run orchestration.");
   }
   return errors;
 }
@@ -7229,7 +7266,7 @@ function runNodeRecord(args) {
     throw new Error("Missing --summary <text>");
   }
   if (args.phase === "completed" && missingEvidence(args.verification)) {
-    throw new Error("Completed DAG nodes require --verification evidence.");
+    throw new Error("Completed orchestration nodes require --verification evidence.");
   }
 
   const runDir = configuredRunDir(cwd, context, args.run);
@@ -7248,20 +7285,20 @@ function runNodeRecord(args) {
   }
   const node = dag.nodes.find((candidate) => candidate.id === args.node);
   if (!node) {
-    throw new Error(`Unknown DAG node: ${args.node}`);
+    throw new Error(`Unknown orchestration node: ${args.node}`);
   }
 
   const before = executionDagSnapshot(dag, runDir);
   const dependencies = node.dependencies || [];
   const incompleteDependencies = dependencies.filter((dependency) => !before.completedNodes.includes(dependency));
   if ((args.phase === "running" || args.phase === "completed") && incompleteDependencies.length) {
-    throw new Error(`Execution DAG node '${node.id}' cannot ${args.phase === "running" ? "start" : "complete"} before dependencies: ${incompleteDependencies.join(", ")}`);
+    throw new Error(`Execution Orchestration node '${node.id}' cannot ${args.phase === "running" ? "start" : "complete"} before dependencies: ${incompleteDependencies.join(", ")}`);
   }
   if (args.phase === "running" && !before.readyNodes.includes(node.id)) {
-    throw new Error(`Execution DAG node '${node.id}' is not ready to start.`);
+    throw new Error(`Execution Orchestration node '${node.id}' is not ready to start.`);
   }
   if (args.phase === "running" && before.runningNodes.length && missingEvidence(args.isolationEvidence)) {
-    throw new Error(`Starting DAG node '${node.id}' while ${before.runningNodes.join(", ")} is running requires --isolation-evidence <separate-worktree-or-non-overlap-proof>.`);
+    throw new Error(`Starting orchestration node '${node.id}' while ${before.runningNodes.join(", ")} is running requires --isolation-evidence <separate-worktree-or-non-overlap-proof>.`);
   }
 
   const runStatus = JSON.parse(readFileSync(runStatusPath, "utf8"));
@@ -7282,10 +7319,10 @@ function runNodeRecord(args) {
   const previousNodeStatus = readNodeStatus(runDir, node);
   const currentRunPhase = runStatus.phase || runStatus.status || "";
   if (currentRunPhase === "completed") {
-    throw new Error("Completed Runs cannot record additional DAG node transitions.");
+    throw new Error("Completed Runs cannot record additional orchestration node transitions.");
   }
   if (previousNodeStatus.phase === "completed" && args.phase !== "completed") {
-    throw new Error(`Completed DAG node '${node.id}' cannot move back to ${args.phase}.`);
+    throw new Error(`Completed orchestration node '${node.id}' cannot move back to ${args.phase}.`);
   }
   const nodeStatus = {
     ...previousNodeStatus,
@@ -7300,8 +7337,8 @@ function runNodeRecord(args) {
     isolationEvidence: args.isolationEvidence || previousNodeStatus.isolationEvidence || "sequential",
     result: node.result
   };
-  const resultPath = artifactPath(runDir, node.result, `DAG node '${node.id}' result`);
-  const resultContent = `# DAG Node ${titleCase(args.phase)}: ${node.id}
+  const resultPath = artifactPath(runDir, node.result, `orchestration node '${node.id}' result`);
+  const resultContent = `# orchestration Node ${titleCase(args.phase)}: ${node.id}
 
 Updated: ${now}
 Run: \`${displayPath(cwd, runDir)}\`
@@ -7353,7 +7390,7 @@ ${args.verification || "Not recorded."}
     return;
   }
 
-  console.log(`Recorded DAG node ${args.phase}: ${node.id}`);
+  console.log(`Recorded orchestration node ${args.phase}: ${node.id}`);
   console.log(`Status: ${displayPath(cwd, nodeStatusPath(runDir, node))}`);
   console.log(`Result: ${displayPath(cwd, resultPath)}`);
   console.log(`Ready nodes: ${nextDagState.readyNodes.join(", ") || "none"}`);
@@ -7429,21 +7466,21 @@ function runRecord(args) {
   }
   if (args.phase === "completed") {
     if (!dag || !dagState) {
-      throw new Error("Completed Runs require a readable execution DAG (dag.json).");
+      throw new Error("Completed Runs require a readable execution orchestration (dag.json).");
     }
     if (!dag.nodes.length) {
-      throw new Error("Completed Runs require an execution DAG with at least one node.");
+      throw new Error("Completed Runs require an execution orchestration with at least one node.");
     }
     if (dagState.runningNodes.length || dagState.blockedNodes.length || !dagState.allNodesCompleted) {
-      throw new Error(`Completed Runs require every execution DAG node to be completed; running: ${dagState.runningNodes.join(", ") || "none"}, blocked: ${dagState.blockedNodes.join(", ") || "none"}, ready: ${dagState.readyNodes.join(", ") || "none"}, waiting: ${dagState.waitingNodes.join(", ") || "none"}.`);
+      throw new Error(`Completed Runs require every execution orchestration node to be completed; running: ${dagState.runningNodes.join(", ") || "none"}, blocked: ${dagState.blockedNodes.join(", ") || "none"}, ready: ${dagState.readyNodes.join(", ") || "none"}, waiting: ${dagState.waitingNodes.join(", ") || "none"}.`);
     }
     const incompleteEvidenceNodes = dag.nodes.filter((node) => {
       const nodeStatus = readNodeStatus(runDir, node);
       return nodeStatus.phase === "completed"
-        && (missingEvidence(nodeStatus.verificationSummary) || !existsSync(nodeStatusPath(runDir, node)) || !existsSync(artifactPath(runDir, node.result, `DAG node '${node.id}' result`)));
+        && (missingEvidence(nodeStatus.verificationSummary) || !existsSync(nodeStatusPath(runDir, node)) || !existsSync(artifactPath(runDir, node.result, `orchestration node '${node.id}' result`)));
     });
     if (incompleteEvidenceNodes.length) {
-      throw new Error(`Completed Runs require verification and result evidence for every completed DAG node; missing: ${incompleteEvidenceNodes.map((node) => node.id).join(", ")}.`);
+      throw new Error(`Completed Runs require verification and result evidence for every completed orchestration node; missing: ${incompleteEvidenceNodes.map((node) => node.id).join(", ")}.`);
     }
     if (dag.goalPath && normalizePathReference(dag.goalPath) !== normalizePathReference(status.goalPath)) {
       throw new Error("Completed Runs require dag.json and status.json to reference the same Goal.");
@@ -7639,7 +7676,7 @@ function runStatus(args) {
     console.log(`Checkpoint next action: ${checkpointState.checkpoint?.nextAction || "not recorded"}`);
   }
   if (dagState) {
-    console.log(`DAG enforcement: ${dagState.enforcement || "unknown"}`);
+    console.log(`orchestration enforcement: ${dagState.enforcement || "unknown"}`);
     console.log(`Ready nodes: ${dagState.readyNodes.join(", ") || "none"}`);
     console.log(`Running nodes: ${dagState.runningNodes.join(", ") || "none"}`);
     console.log(`Waiting nodes: ${dagState.waitingNodes.join(", ") || "none"}`);

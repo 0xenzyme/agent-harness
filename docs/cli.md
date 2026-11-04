@@ -259,7 +259,7 @@ Milestone plan references that Milestone-adjacent plan; only a standalone Goal
 uses its own adjacent plan. Validation checks configured path containment,
 duplicate or missing IDs, cycles, acceptance and gate coverage, and the two
 dependency levels. Goal dependencies gate preparation of per-Goal Runs; Task
-dependencies become the Run DAG and gate node execution.
+dependencies become the Run orchestration and gate node execution.
 If a Milestone `Goal List` has concrete Doc rows, the plan covers exactly
 those Goal paths. Its contract hash binds declarative row fields (Goal name,
 Doc, priority, dependencies and gate) while excluding mutable Status cells.
@@ -292,16 +292,19 @@ null). Actions are `execute-node`, `wait`,
 decision. Target-scoped `orient next` shares this read-only decision.
 `complete-milestone` includes the anchor `run` and `checkpointRevision`.
 
-Planned Runs use manifest v2 with an enforced checkpoint. Manifest v1 and
-unplanned Runs retain their legacy behavior. Planned `run node record` calls
-for `running` and `blocked` require `--expected-revision`; node review and
-Goal completion use the same checkpoint revision discipline. Inspect the
-current revision before each mutation. Mutating commands support `--dry-run`
-previews and `--json` output.
+New durable Runs require an explicit plan, manifest v2, and an enforced
+checkpoint. Existing manifest v1 Runs remain readable and recoverable;
+`run prepare --legacy` is reserved for explicit migration compatibility and is
+not the skill execution path. Planned `run node record` calls for `running` and
+`blocked` require `--expected-revision`; node review and Goal completion use
+the same checkpoint revision discipline. Inspect the current revision before
+each mutation. Mutating commands support `--dry-run` previews and `--json` output.
 The plan itself uses `version: 1`. Its `goals[].tasks[]` entries declare
 `type: implementation|verification|human`, `ownership.read` and
-`ownership.write`, acceptance references `{path, section, item}`, and
-mandatory `verification[]` checks `{id, command, inputs, exclude?, manual?}`.
+`ownership.write`, acceptance references `{path, section, item}`, optional local
+`constraints`, and mandatory `verification[]` checks
+`{id, command, inputs, exclude?, manual?}`. All Tasks inherit the target
+Delivery Contract and its global hard constraints.
 `goal create --plan PATH` is optional for new planned Goals and defaults their
 checkpoint policy to enforced. Existing Goals must explicitly have
 `Checkpoint Policy: enforced` before planned Run preparation.
@@ -407,12 +410,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/t
 Prepare a run packet from a goal:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --plan harness/goals/YYYY-MM-DD-task-title.md.plan.json
 ```
 
 Prepared run packets include `manifest.json`, `dag.json`, `dag.md`, and
 `agents/<node>/prompt.md`. `manifest.json` binds the prepared Goal/Spec
-execution contract and DAG shape; changing those inputs after preparation is
+execution contract and orchestration shape; changing those inputs after preparation is
 rejected and requires a new Run. Harness records ready nodes, ownership, verification,
 and candidate evidence; the host owns worker selection, delegation,
 concurrency, and cancellation. `run prepare` does not start workers or pin
@@ -480,15 +483,17 @@ Clearing reconciliation also requires `--evidence-reference`, `--observed-at`,
 and `--observed-source`. Goal/Spec contract drift only permits the old Run to
 enter `replan-required`; after a replacement Run is prepared and validated it
 may become `superseded`. Never rebind the old manifest. A `completed`
-checkpoint requires a terminal DAG but does not complete the Goal. Multiple
+checkpoint requires a terminal orchestration but does not complete the Goal. Multiple
 active checkpoints make `orient next` pause until `--run` selects one.
 
 Record a node start before launch, then record its result. Node IDs are generated
 per task size; inspect `run status --json` (or `dag.json`) before copying a command.
-For the current default medium/large DAG, the IDs are `execution` and
+For the current default medium/large orchestration, the IDs are `execution` and
 `verification`; a second concurrent writer requires `--isolation-evidence`:
-The examples below show the legacy unplanned Run path; planned `running` and
-`blocked` records require `--expected-revision` as shown above.
+The examples below show an existing legacy unplanned Run. Preparing such a Run
+requires the explicit migration-only `--legacy` flag; new skill execution uses a
+plan instead. Planned `running` and `blocked` records require
+`--expected-revision` as shown above.
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase running --summary "Starting accepted implementation"
@@ -509,8 +514,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 `run record` refreshes accepted Run evidence in `status.json` and the Run log.
 Node and Run records use an exclusive Run lock and atomic artifact writes, so
 concurrent record commands cannot produce partial JSON or overwrite a log.
-Completed Runs require verification, every generated DAG node to be completed
-(including advisory/small DAGs), required checklist items, durable gates, and
+Completed Runs require verification, every generated orchestration node to be completed
+(including advisory/small orchestration), required checklist items, durable gates, and
 synchronized authoritative Task/Goal state with concrete State Sync Notes. The
 Goal must reference the exact Run path; a blocked Goal cannot complete a Run.
 
@@ -520,7 +525,7 @@ cooperative controller signal, not proof that a worker runtime stopped.
 Configured `gates.requiredForCompletion` and `gates.blocking` apply to durable
 Goal/Run completion. They do not require ordinary host-direct work or bounded
 postflight-only state updates to create a Run. Once a Run is prepared,
-postflight wording cannot bypass its DAG, gates, or evidence.
+postflight wording cannot bypass its orchestration, gates, or evidence.
 
 The CLI records durable state; it does not implement host runtime outcome or
 transient plan. Skills bind long-running controller work to the host's native

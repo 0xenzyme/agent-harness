@@ -253,7 +253,7 @@ Milestone 内每个 Goal 引用 Milestone 旁的同一计划；独立 Goal 才�
 旁边的计划。
 验证检查配置路径边界、重复或缺失 ID、环、
 acceptance/gate 覆盖率和两级依赖。Goal 依赖限制各 Goal 的 Run 准备；
-Task 依赖编译为 Run DAG，并限制节点执行。
+Task 依赖编译为 Run 编排，并限制节点执行。
 Milestone 的 `Goal List` 若列出具体 Doc 行，计划必须恰好覆盖这些 Goal 路径。
 目标合同哈希绑定 Goal 名称、Doc、priority、dependency 和 gate，排除可变
 Status cell。
@@ -283,16 +283,19 @@ node plugins/agent-harness/scripts/agent-harness.mjs run node inputs --cwd /path
 阻塞；`need-user` 指向具体决策。带目标的 `orient next` 使用同一只读决策。
 `complete-milestone` 包含锚点 `run` 和 `checkpointRevision`。
 
-计划内 Run 使用 manifest v2 和 enforced checkpoint。manifest v1 与
-未计划 Run 保留旧行为。计划内 `run node record` 的 `running`、`blocked`
+新的 durable Run 必须有显式计划，使用 manifest v2 和 enforced checkpoint。
+已有 manifest v1 Run 仍可读取和恢复；`run prepare --legacy` 只用于显式迁移兼容，
+不是 skill 的执行路径。计划内 `run node record` 的 `running`、`blocked`
 操作必须带 `--expected-revision`；node review 和 Goal completion 同样
 受 checkpoint revision 约束。每次修改前读取当前 revision。修改命令支持
 `--dry-run` 预览及 `--json` 输出。
 计划自身为 `version: 1`。`goals[].tasks[]` 声明
 `type: implementation|verification|human`、`ownership.read`、
-`ownership.write`、`{path, section, item}` acceptance 引用，以及必填
-`verification[]` 检查 `{id, command, inputs, exclude?, manual?}`。新建计划内 Goal
-可选 `goal create --plan PATH`，默认使用 enforced checkpoint；已有 Goal
+`ownership.write`、`{path, section, item}` acceptance 引用、可选的局部
+`constraints`，以及必填 `verification[]` 检查
+`{id, command, inputs, exclude?, manual?}`。所有 Task 自动继承目标
+Delivery Contract 和全局硬约束。新建计划内 Goal 可选
+`goal create --plan PATH`，默认使用 enforced checkpoint；已有 Goal
 准备计划内 Run 前须明确设定 `Checkpoint Policy: enforced`。
 单 Goal 目标可选的根 `verification`，每项都必须与某个 Task check 完全相同；
 Milestone 必须有根 `verification`。
@@ -387,12 +390,12 @@ node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/t
 从 goal 准备 run packet：
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --plan harness/goals/YYYY-MM-DD-task-title.md.plan.json
 ```
 
 准备好的 run packet 会包含 `manifest.json`、`dag.json`、`dag.md` 和
 `agents/<node>/prompt.md`。`manifest.json` 绑定准备时的 Goal/Spec 执行合同与
-DAG 形状；准备后修改这些输入会被拒绝，必须重新准备 Run。Harness 记录 ready nodes、ownership、verification
+编排形状；准备后修改这些输入会被拒绝，必须重新准备 Run。Harness 记录 ready nodes、ownership、verification
 和 candidate evidence；host 负责 worker selection、delegation、
 concurrency 与 cancellation。`run prepare` 不启动 worker，也不固定 model/
 effort。Task/Goal 保持为 accepted-state authority；Run packet 保存 execution 和
@@ -454,15 +457,16 @@ node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint update --cwd
 清除 reconciliation 必须同时提供 `--evidence-reference`、`--observed-at` 和
 `--observed-source`。Goal/Spec contract drift 时，旧 Run 只允许进入
 `replan-required`，准备并验证 replacement Run 后再写 `superseded`；不得重绑旧
-manifest。`completed` checkpoint 要求 DAG 已 terminal，但不会自动完成 Goal。
+manifest。`completed` checkpoint 要求 编排已 terminal，但不会自动完成 Goal。
 多个 active checkpoint 会使 `orient next` 暂停选择，必须显式 `--run`。
 
 启动前先记录 node `running`，再记录结果。Node ID 按 task size 生成；先查看
-`run status --json`（或 `dag.json`）。当前默认 medium/large DAG 使用
+`run status --json`（或 `dag.json`）。当前默认 medium/large 编排使用
 `execution` 和 `verification`，第二个并发 writer 必须提供
 `--isolation-evidence`：
-以下是未计划的旧 Run 示例；计划内 `running` 和 `blocked` 记录必须带
-`--expected-revision`，如上所示。
+以下是已有未计划旧 Run 的示例。准备这类 Run 必须显式使用迁移兼容参数
+`--legacy`；新的 skill 执行一律使用计划。计划内 `running` 和 `blocked`
+记录必须带 `--expected-revision`，如上所示。
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase running --summary "Starting accepted implementation"
@@ -482,8 +486,8 @@ node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/p
 `run record` 会刷新 `status.json` 和 Run log 中的 accepted Run evidence。
 Node 和 Run 记录使用排他的 Run lock 与原子 artifact 写入，并发记录不会产生
 半截 JSON 或覆盖同一个 log。
-completed Run 要求 verification、所有生成的 DAG node（包括 advisory/small
-DAG）均为 completed、required checklist items、durable gates，以及带有具体
+completed Run 要求 verification、所有生成的 编排node（包括 advisory/small
+编排）均为 completed、required checklist items、durable gates，以及带有具体
 State Sync Notes 的 authoritative Task/Goal state。Goal 必须引用精确的 Run
 路径；blocked Goal 不能完成 Run。
 
@@ -492,7 +496,7 @@ controller signal，不是 worker runtime 已停止的证明。
 
 配置的 `gates.requiredForCompletion` 和 `gates.blocking` 只约束 durable
 Goal/Run completion。普通 host-direct 工作和轻量 postflight-only 状态更新不需要
-因此创建 Run。一旦 Run 已 prepared，不能用 postflight 表述绕过 DAG、gate 或
+因此创建 Run。一旦 Run 已 prepared，不能用 postflight 表述绕过 编排、gate 或
 evidence。
 
 CLI 记录 durable state，不实现 host runtime outcome 或 transient plan。Skill

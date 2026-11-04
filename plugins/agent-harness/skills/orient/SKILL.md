@@ -45,7 +45,7 @@ A ready human Task with satisfied mapped items and concrete Evidence routes to
    - `host-direct` for ordinary clear work with no state-sync obligation;
    - `host-direct-postflight` when simple work only needs a bounded update to
      state that already existed;
-   - `durable-harness` for recovery, audit, milestone acceptance, DAGs,
+   - `durable-harness` for recovery, audit, milestone acceptance, orchestration,
      multiple workers, persistent state sync, or high risk.
 5. Map durable and postflight paths to `harness:execute`; map setup, capture,
    and read-only state to `harness:init`, `harness:intake`, and

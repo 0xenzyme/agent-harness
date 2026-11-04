@@ -9,6 +9,15 @@ and [candidate receipt schema](../schemas/candidate-evidence.schema.json) give
 the JSON shapes. `plan validate` also checks configured roots, document items,
 coverage, unique IDs, missing dependencies, and cycles; JSON Schema alone
 cannot establish those repository facts.
+
+The target's `Delivery Contract` names the delivered outcome, global hard
+constraints, whole-target verification, delivery authority, and final report.
+Every Task inherits those constraints. A Task may declare optional local
+`constraints`; it does not repeat or replace the target contract. Keep the plan
+minimal: use only independently owned or verifiable Tasks, and add a final
+verification Task when node checks cannot prove the complete result and its
+constraints. Node receipts go to the controller; the user receives one final
+result-first report rather than per-node narrative reports.
 When a Milestone `Goal List` contains concrete Doc rows, the plan must cover
 exactly those Goal paths once each. The bound target contract hashes Goal
 name, Doc, priority, dependency and gate fields; it excludes mutable Status
@@ -87,8 +96,10 @@ Put the following JSON in `harness/goals/example.md.plan.json`:
 The plan's `version` is 1; a Run prepared from it uses manifest v2 and an
 enforced checkpoint. `goal create --plan PATH` is the planned creation route
 and defaults its new Goal to enforced checkpointing. For an existing Goal,
-set `Checkpoint Policy: enforced` before `run prepare --plan`. An unplanned
-Run may still use manifest v1; its existing path remains readable.
+set `Checkpoint Policy: enforced` before `run prepare --plan`. New durable Runs
+require an explicit plan and manifest v2. Existing manifest v1 Runs remain
+readable and recoverable; `run prepare --legacy` is reserved for explicit
+migration/compatibility work and is not the skill's execution path.
 
 ## Inputs and receipt
 

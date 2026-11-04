@@ -9,11 +9,13 @@ generic exploration, implementation, and verification phases into separate
 workers by default; delegate only when the host finds it useful or durable
 ownership/dependency evidence requires it.
 
-For every DAG node record its Goal/Run, dependencies, ready state, ownership,
-allowed and forbidden scope, execution cwd, verification, stop conditions, and
-candidate result artifact. Do not launch a dependent node before its recorded
-dependencies complete. Concurrent writers require separate locked worktrees or
-proven non-overlapping ownership.
+Every node inherits the target Delivery Contract and global hard constraints.
+For every orchestration node record only its Goal/Run, dependencies, ready state,
+ownership, allowed and forbidden scope, execution cwd, node-specific constraints,
+verification, stop conditions, and candidate result artifact. Do not duplicate
+the full target prompt into each node. Do not launch a dependent node before its
+recorded dependencies complete. Concurrent writers require separate locked
+worktrees or proven non-overlapping ownership.
 
 Workers never update accepted Goal, Task, status, Run, or gate state. They
 return changed files, verification, risks, State Sync

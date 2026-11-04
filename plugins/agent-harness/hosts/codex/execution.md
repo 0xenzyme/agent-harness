@@ -11,7 +11,7 @@ lives in `references/host-execution.md` and `references/host-capabilities.md`.
 | `transientPlan` | Native Plan / `update_plan` when exposed | Keep steps in the current thread. Do not mirror every Plan update into Git. |
 | `delegation` | Thread / subagent runtime | Foreground execution in the current thread. |
 | `isolation` | Locked worktree plus recorded non-overlap | Sequential writers only. |
-| `resultPacket` | DAG node record and Execution Result Packet | Incomplete packets stay candidate evidence. |
+| `resultPacket` | orchestration node record and Execution Result Packet | Incomplete packets stay candidate evidence. |
 
 ## Path Aliases
 

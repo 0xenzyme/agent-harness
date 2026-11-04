@@ -68,7 +68,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd /pat
 
 四个公开 skill 是 `harness:orient`、`harness:intake`、`harness:init` 和
 `harness:execute`。普通、明确的 change/build 请求由当前 host 直接执行；
-execute 用于 recovery、audit、persistent state sync、milestone、DAG、
+execute 用于 recovery、audit、persistent state sync、milestone、编排、
 multi-worker、high-risk durable control，或对执行前已有状态做显式 bounded
 postflight sync。长时间 controller 工作在 host 暴露能力时使用 runtime
 outcome 和 transient plan。

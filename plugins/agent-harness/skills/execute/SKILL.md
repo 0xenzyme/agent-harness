@@ -5,11 +5,21 @@ description: Execute accepted long-running controller or durable Harness work, o
 
 # Harness Execute
 
+Delivery comes first. Choose the lightest execution path that can deliver and
+verify the accepted result. Process artifacts support delivery, recovery, or an
+explicit audit requirement; they are not deliverables in themselves.
+
 Use this skill when accepted work needs durable recovery, audit, milestone
-acceptance, a Run/DAG, multiple workers, persistent state sync, or high-risk
-control, or when already completed simple work needs bounded postflight sync to
-existing Harness state. A clear ordinary change/build request uses the current
-host directly without this skill.
+acceptance, Run orchestration, multiple workers, persistent state sync, or
+high-risk control, or when already completed simple work needs bounded
+postflight sync to existing Harness state. A clear ordinary change/build request
+uses the current host directly without this skill.
+
+Direct work needs only the delivered result and real verification. Do not create
+a Goal, Run, orchestration, gate, or status record, copy session logs, or write a
+process summary for it. Durable evidence is proportional to the need to verify
+delivery, resume interrupted work, or satisfy an explicit gate; do not duplicate
+native plans, transcripts, or worker narratives into repository artifacts.
 
 Read [Completion Evidence](references/completion-evidence.md) before accepting
 or recording durable completion.
@@ -20,14 +30,38 @@ runtime outcome, transient plan, or delegation.
 Read [Artifact Lifecycle](../../references/artifact-lifecycle.md) before
 compacting task state or pruning Runs.
 Read [Worker Runner Contract](../../references/worker-runner-contract.md) before
-delegating any DAG node or worker.
+delegating any orchestration node or worker.
 Read [Planned Execution Contract](../../references/planned-execution.md) before
 validating a plan or accepting a planned candidate receipt.
+
+## Delivery and Orchestration Contract
+
+Keep the structure compact. Do not turn a task prompt into a long procedure or
+repeat the full target contract in every node.
+
+- The target Goal/Milestone owns five things: the delivered outcome, global hard
+  constraints, whole-target verification, delivery authority, and the final
+  report. Record them in `Delivery Contract` or the corresponding accepted Spec.
+- Nodes inherit all global constraints automatically. A node adds only its
+  dependencies, owned read/write scope, node-specific constraints, acceptance
+  mapping, and verification checks. Optional plan `constraints` are local to that
+  Task; they never replace target constraints.
+- Acceptance checks both positive outcomes and non-breakage: the requested
+  result works, and routes, integrations, compatibility, permissions, dependencies,
+  and other declared hard constraints remain intact.
+- Node returns are compact controller inputs, not user-facing reports: result,
+  changed files, checks and results, affected constraints, State Sync Notes,
+  remaining work, and any real user decision.
+- The controller gives one final result-first report: delivered outcome, key
+  changes, whole-target and constraint verification, actual external/delivery
+  state, `Need user`, and `Remaining`. Do not require a separate report artifact
+  unless the accepted target explicitly requests one.
 
 ## Workflow
 
 1. Classify the request:
-   - `host-direct`: stop Harness execution; let the current host execute and verify.
+   - `host-direct`: stop Harness execution; let the current host execute, verify,
+     and deliver without lifecycle artifacts or durable evidence requirements.
    - `host-direct-postflight`: verify completed work and update existing
      state only; create no lifecycle artifacts and do not apply durable
      completion gates.
@@ -57,45 +91,50 @@ validating a plan or accepting a planned candidate receipt.
    runtime outcome when the host exposes `runtimeOutcome`. Use the host
    transient plan for multi-step work. Do not emulate
    missing runtime capabilities with extra repository artifacts.
-6. Validate or create the repository Goal, then prepare a Run when durable
-   execution is required:
+6. Validate or create the repository Goal, then create or bind the smallest
+   useful execution plan and prepare a planned Run:
 
 ```bash
 node <plugin-root>/scripts/agent-harness.mjs goal validate --cwd <project> --goal <goal-file>
-node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file>
+node <plugin-root>/scripts/agent-harness.mjs plan validate --cwd <project> --plan <target-file>.plan.json
+node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal <goal-file> --plan <target-file>.plan.json
 ```
 
-   For an accepted one-entry Goal or Milestone, validate its versioned plan at
-   `<target-filename>.plan.json` and prepare each eligible Goal with `--plan`.
-   The target document's `Execution Plan:` line references that adjacent plan.
-   Every Goal in a Milestone plan references the Milestone-adjacent plan;
-   only a standalone single-Goal plan sits beside its Goal.
-   If a Milestone Goal List has concrete Doc rows, the plan must cover those
-   Goal paths exactly. Declarative row fields are bound, but Status may change.
-   The plan has `version: 1`, a `{kind, path}` target, Goals with Task arrays,
-   explicit ownership and acceptance references, and mandatory verification
-   checks with `id`, `command`, and `inputs`.
-   A single-Goal plan's optional root checks must exactly match assigned Task
-   checks; a Milestone plan requires its own root checks.
-   A planned Run uses manifest v2 and an enforced checkpoint; the existing
-   unplanned path and manifest v1 remain legacy paths. Goal dependencies gate
-   Run preparation; Task dependencies gate node execution.
+   Generate the plan from the accepted target rather than asking the user to
+   hand-write JSON. Do not infer write ownership or verification inputs from
+   vague prose; derive them from accepted scope or resolve a concrete gap.
+   Use the fewest Tasks that preserve independent ownership, dependencies, and
+   verification. Do not add generic explorer, implementer, or reviewer nodes.
+   Add a final verification Task when implementation-node checks cannot prove
+   the whole result or its hard constraints. A Milestone also requires distinct
+   root stage verification.
+   The target document's `Execution Plan:` line references its adjacent plan.
+   Every Goal in a Milestone references the Milestone-adjacent plan; only a
+   standalone single-Goal plan sits beside its Goal. Bind planned Goals to
+   `Checkpoint Policy: enforced`.
+   New durable Runs require manifest v2 and an explicit plan. Existing manifest
+   v1 Runs remain readable and recoverable; `--legacy` is only an explicit
+   migration/compatibility escape and is not a skill execution path.
+   Goal dependencies gate Run preparation; Task dependencies gate node execution.
 
-7. Give ready DAG nodes to the host when `delegation` is available. Harness
-   does not start workers, choose concurrency, cancel runtimes, or pin
-   model/effort by default. Record
-   node ownership, verification, and candidate evidence before dependents run.
-   Do not launch a dependent node before its recorded dependencies complete.
+7. Give ready orchestration nodes to the host when `delegation` is available.
+   Harness does not start workers, choose concurrency, cancel runtimes, or pin
+   model/effort by default. Supply the inherited target constraints and only the
+   node's additional contract. Record node ownership, verification, and
+   candidate evidence before dependents run. Do not launch a dependent node
+   before its recorded dependencies complete.
    Workers return candidate evidence and State Sync Notes; only the controller
    writes accepted Goal, Task, status, Run, or gate state.
    A `reconciliation-required` checkpoint permits authoritative inspection
    only. Contract drift moves the old Run through `replan-required` to a
    validated replacement and `superseded`; never rebind its manifest.
-8. Verify the accepted scope and durable required gates. Worker output remains
-   candidate evidence until the accepted-state owner validates it.
-   Before acceptance, challenge scope coverage, stale evidence, missing
-   dependencies, path ownership, required checklist items, and whether the
-   user's Milestone/Goal objective is larger than the local artifact.
+8. Verify the accepted scope, hard constraints, and durable required gates.
+   Worker output remains candidate evidence until the accepted-state owner
+   validates it. Before acceptance, challenge scope coverage, stale evidence,
+   missing dependencies, path ownership, required checklist items,
+   non-breakage of global constraints, and whether the user's Milestone/Goal
+   objective is larger than the local artifact. Node checks do not replace
+   whole-target verification.
 9. Confirm authoritative Task/Goal phase, verification, required gates, and
    State Sync Notes. `blocked` is resumable and non-complete; Run state is
    evidence and status is a bounded projection.
@@ -104,8 +143,9 @@ node <plugin-root>/scripts/agent-harness.mjs run prepare --cwd <project> --goal 
    a separate explicit destructive action and never follows from state sync.
    Completion evidence must name changed files, commands/results, gate evidence,
    State Sync Notes, remaining work, and any true user decision.
-11. Close with changed output, verification, accepted phase, `Need user`, and
-    `Remaining`.
+11. Close with the delivered result first, then key changes, whole-target and
+   hard-constraint verification, actual external/delivery state, `Need user`,
+   and `Remaining`. Do not substitute process history for the delivery result.
 
 ## One-Entry Controller Loop
 
@@ -176,7 +216,7 @@ already authorized.
 ## Domain Invariants
 
 - `harness-rule:path-containment`: every configured write, Goal/Spec reference,
-  Run argument, and DAG artifact stays inside its configured project root,
+  Run argument, and orchestration artifact stays inside its configured project root,
   including existing-parent realpath and symlink checks.
 - `harness-rule:run-dag-ownership`: a Run records ready nodes, dependencies,
   ownership, verification, and candidate evidence; scheduling belongs to the host.
@@ -195,7 +235,7 @@ already authorized.
   plugin core stays project-neutral.
 - `harness-rule:durable-tier-boundary`: ordinary clear change/build uses the
   current host directly; already recorded simple work may use postflight-only
-  sync; durable ceremony is reserved for recovery, audit, milestone/DAG,
+  sync; durable ceremony is reserved for recovery, audit, milestone/orchestration,
   multi-worker, persistent state sync, or high-risk control.
 - `harness-rule:checkpoint-recovery`: explicitly enforced managed Runs use an
   independent revision-safe checkpoint; uncertain external state and contract
@@ -205,7 +245,7 @@ already authorized.
 
 - Do not infer authorization for credentials, production access, destructive
   operations, daemons, release, deploy, publish, or other external side effects.
-- Do not mark durable work complete without required verification, gates, DAG
+- Do not mark durable work complete without required verification, gates, orchestration
   evidence, and state sync.
 - Do not apply durable gates to direct or postflight-only work, and do not use
   postflight wording to bypass an existing enforced Run.

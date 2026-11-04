@@ -340,13 +340,13 @@ try {
   assert(/State Sync Notes|required section/i.test(fails(["goal", "validate", "--cwd", runProject, "--goal", goalRel, "--json"])), "goal validation must require the State Sync Notes section");
   writeFileSync(generatedGoalPath, generatedGoal);
   assert(!generatedGoal.includes("## Delivery State"), "generated Goals must use accepted state and evidence without a Delivery State section");
-  const legacyGoal = generatedGoal.replace("## Execution DAG", `## Delivery State
+  const legacyGoal = generatedGoal.replace("## Execution orchestration", `## Delivery State
 
 - Delivery intent: \`legacy\`
 - Target delivery state: \`pushed\`
 - Push authorized: \`yes\`
 
-## Execution DAG`);
+## Execution orchestration`);
   writeFileSync(generatedGoalPath, legacyGoal);
   const legacyGoalValidation = JSON.parse(run(["goal", "validate", "--cwd", runProject, "--goal", goalRel, "--json"]));
   assert(legacyGoalValidation.ok && !("deliveryPolicy" in legacyGoalValidation.goal), "legacy Goal delivery sections must remain readable but stay outside current validation output");
@@ -354,15 +354,16 @@ try {
     /## Scope\r?\n[\s\S]*?\r?\n## Non-Goals/,
     "## Scope\n\n- Implement the accepted behavior.\n- Preserve compatibility.\n- Add regression coverage.\n- Update durable evidence.\n\n## Non-Goals"
   ));
-  run(["run", "prepare", "--cwd", runProject, "--goal", goalRel]);
+  assert(/require an explicit execution plan/i.test(fails(["run", "prepare", "--cwd", runProject, "--goal", goalRel])), "new durable Runs must reject the implicit legacy orchestration path");
+  run(["run", "prepare", "--legacy", "--cwd", runProject, "--goal", goalRel]);
   const runName = readdirSync(join(runProject, ".harness/runs")).find((name) => !name.startsWith("."));
   const runRel = `.harness/runs/${runName}`;
   const status = json(join(runProject, runRel, "status.json"));
   for (const field of ["deliveryState", "deliveryPolicy", "startHead", "startBranch", "startUpstream", "startDirtyState"]) {
     assert(!(field in status), `new Run status must omit legacy field ${field}`);
   }
-  assert(status.executionDag.readyNodes.length > 0, "DAG must record readyNodes");
-  assert(JSON.stringify(status.executionDag.parallelLayers) === JSON.stringify([["execution"], ["verification"]]), "medium durable DAG must keep only execution and verification boundaries");
+  assert(status.executionDag.readyNodes.length > 0, "orchestration must record readyNodes");
+  assert(JSON.stringify(status.executionDag.parallelLayers) === JSON.stringify([["execution"], ["verification"]]), "medium durable orchestration must keep only execution and verification boundaries");
   const runStatusPath = join(runProject, runRel, "status.json");
   const legacyStatus = {
     ...status,
@@ -379,18 +380,18 @@ try {
   let currentRunStatus = legacyRead;
   while (!currentRunStatus.executionDag.allNodesCompleted) {
     const readyNodes = currentRunStatus.executionDag.readyNodes;
-    assert(readyNodes.length > 0, "durable DAG must make progress while incomplete");
+    assert(readyNodes.length > 0, "durable orchestration must make progress while incomplete");
     for (const node of readyNodes) {
-      assert(currentRunStatus.executionDag.nodeStatus[node].ownership, "DAG snapshot must record ownership");
+      assert(currentRunStatus.executionDag.nodeStatus[node].ownership, "orchestration snapshot must record ownership");
       run(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", node, "--phase", "completed", "--summary", "candidate", "--verification", "node check"]);
     }
     currentRunStatus = JSON.parse(run(["run", "status", "--cwd", runProject, "--run", runRel, "--json"]));
   }
-  assert(currentRunStatus.executionDag.nodeStatus.execution.verification === "node check", "normal DAG node recording must retain verification evidence");
+  assert(currentRunStatus.executionDag.nodeStatus.execution.verification === "node check", "normal orchestration node recording must retain verification evidence");
 
   const syncReadyGoal = readFileSync(generatedGoalPath, "utf8")
     .replace("- Accepted-state records: `TBD`", "- Accepted-state records: `harness/tasks.md` and this Goal were synchronized.")
-    .replace("- Run evidence: `TBD`", `- Run evidence: \`${runRel}\` records the completed DAG and verification.`)
+    .replace("- Run evidence: `TBD`", `- Run evidence: \`${runRel}\` records the completed orchestration and verification.`)
     .replace("- Bounded status update: `TBD`", "- Bounded status update: `harness/status.md` reflects the accepted result.");
   writeFileSync(generatedGoalPath, syncReadyGoal);
   const recorded = JSON.parse(run(["run", "record", "--cwd", runProject, "--run", runRel, "--phase", "completed", "--summary", "validated", "--verification", "smoke passed", "--json"]));
@@ -419,13 +420,13 @@ try {
   dag.nodes[0].result = "../../../../outside-result.md";
   writeFileSync(dagPath, `${JSON.stringify(dag, null, 2)}\n`);
   const externalResult = join(runProject, "outside-result.md");
-  assert(/relative|inside|Artifact|result/i.test(fails(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", dag.nodes[0].id, "--phase", "completed", "--summary", "bad", "--verification", "bad"])), "malicious DAG artifact path must fail");
-  assert(!existsSync(externalResult), "malicious DAG must produce zero external writes");
+  assert(/relative|inside|Artifact|result/i.test(fails(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", dag.nodes[0].id, "--phase", "completed", "--summary", "bad", "--verification", "bad"])), "malicious orchestration artifact path must fail");
+  assert(!existsSync(externalResult), "malicious orchestration must produce zero external writes");
   dag.nodes[0].result = `agents/${dag.nodes[0].id}/result.md`;
   dag.nodes[0].status = "../../../../outside-status.json";
   writeFileSync(dagPath, `${JSON.stringify(dag, null, 2)}\n`);
-  assert(/relative|inside|Artifact|status/i.test(fails(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", dag.nodes[0].id, "--phase", "completed", "--summary", "bad", "--verification", "bad"])), "malicious DAG status path must fail");
-  assert(!existsSync(join(runProject, "outside-status.json")), "malicious DAG status must produce zero external writes");
+  assert(/relative|inside|Artifact|status/i.test(fails(["run", "node", "record", "--cwd", runProject, "--run", runRel, "--node", dag.nodes[0].id, "--phase", "completed", "--summary", "bad", "--verification", "bad"])), "malicious orchestration status path must fail");
+  assert(!existsSync(join(runProject, "outside-status.json")), "malicious orchestration status must produce zero external writes");
 
   run(["init", "--cwd", specContainmentProject, "--contract", "adapter"]);
   write(join(specContainmentProject, "harness/tasks.md"), "# Goals\n\n## Now\n\n- [ ] Spec containment guard\n");
@@ -433,7 +434,7 @@ try {
   run(["goal", "create", "--cwd", specContainmentProject, "--task", "Spec containment guard", "--spec", "harness/specs/accepted.md", "--work-mode", "local"]);
   const specGoalName = readdirSync(join(specContainmentProject, "harness/goals")).find((name) => name.endsWith(".md"));
   const specGoalRel = `harness/goals/${specGoalName}`;
-  run(["run", "prepare", "--cwd", specContainmentProject, "--goal", specGoalRel]);
+  run(["run", "prepare", "--legacy", "--cwd", specContainmentProject, "--goal", specGoalRel]);
   const specRunName = readdirSync(join(specContainmentProject, ".harness/runs")).find((name) => !name.startsWith("."));
   const specRunRel = `.harness/runs/${specRunName}`;
   write(join(specContainmentProject, "harness/tasks.md"), "# Goals\n\n## Now\n\n- [ ] Spec containment guard\n- [ ] Adapter no spec prepare\n");
@@ -441,7 +442,7 @@ try {
   const noSpecGoalName = readdirSync(join(specContainmentProject, "harness/goals")).find((name) => name.includes("adapter-no-spec-prepare"));
   assert(noSpecGoalName, "adapter --allow-no-spec must create a Goal");
   const noSpecGoalRel = `harness/goals/${noSpecGoalName}`;
-  run(["run", "prepare", "--cwd", specContainmentProject, "--goal", noSpecGoalRel]);
+  run(["run", "prepare", "--legacy", "--cwd", specContainmentProject, "--goal", noSpecGoalRel]);
   const noSpecRunName = readdirSync(join(specContainmentProject, ".harness/runs")).find((name) => name !== specRunName && !name.startsWith("."));
   assert(noSpecRunName, "adapter --allow-no-spec Goal must prepare a Run without a spec path error");
   const specGoalPath = join(specContainmentProject, specGoalRel);
@@ -461,7 +462,7 @@ try {
     run(["goal", "create", "--cwd", guardProject, "--task", "Completion guard", "--allow-no-spec", "--work-mode", "local"]);
     const guardGoalName = readdirSync(join(guardProject, "harness/goals")).find((name) => name.endsWith(".md"));
     const guardGoalRel = `harness/goals/${guardGoalName}`;
-    run(["run", "prepare", "--cwd", guardProject, "--goal", guardGoalRel]);
+    run(["run", "prepare", "--legacy", "--cwd", guardProject, "--goal", guardGoalRel]);
     const guardRunName = readdirSync(join(guardProject, ".harness/runs")).find((name) => !name.startsWith("."));
     const guardRunRel = `.harness/runs/${guardRunName}`;
     const guardRunDir = join(guardProject, guardRunRel);
@@ -473,13 +474,13 @@ try {
     const guardGoalBefore = readFileSync(guardGoalPath, "utf8");
     const guardLogsDir = join(guardRunDir, "logs");
     rmSync(guardDagPath);
-    assert(/execution DAG|dag.json/i.test(fails(["run", "record", "--cwd", guardProject, "--run", guardRunRel, "--phase", "completed", "--summary", "missing dag", "--verification", "guard"])), "completed Run must fail closed when dag.json is missing");
-    assert(readFileSync(guardStatusPath, "utf8") === guardStatusBefore && readdirSync(guardLogsDir).length === 0, "missing DAG completion rejection must produce zero writes");
+    assert(/execution orchestration|dag.json/i.test(fails(["run", "record", "--cwd", guardProject, "--run", guardRunRel, "--phase", "completed", "--summary", "missing dag", "--verification", "guard"])), "completed Run must fail closed when dag.json is missing");
+    assert(readFileSync(guardStatusPath, "utf8") === guardStatusBefore && readdirSync(guardLogsDir).length === 0, "missing orchestration completion rejection must produce zero writes");
     writeFileSync(guardDagPath, guardDagBefore);
     let guardProgress = JSON.parse(run(["run", "status", "--cwd", guardProject, "--run", guardRunRel, "--json"]));
     while (!guardProgress.executionDag.allNodesCompleted) {
       const ready = guardProgress.executionDag.readyNodes;
-      assert(ready.length > 0, "completion guard DAG must expose a ready node while completing the fixture");
+      assert(ready.length > 0, "completion guard orchestration must expose a ready node while completing the fixture");
       for (const nodeId of ready) {
         run(["run", "node", "record", "--cwd", guardProject, "--run", guardRunRel, "--node", nodeId, "--phase", "completed", "--summary", "fixture node", "--verification", "fixture verification"]);
       }
@@ -491,24 +492,24 @@ try {
     assert(readFileSync(guardStatusPath, "utf8") === guardCompletedStatusBefore && readdirSync(guardLogsDir).length === 0, "missing Goal completion rejection must produce zero writes");
     writeFileSync(guardGoalPath, guardGoalBefore);
 
-    run(["run", "prepare", "--cwd", guardProject, "--goal", guardGoalRel]);
+    run(["run", "prepare", "--legacy", "--cwd", guardProject, "--goal", guardGoalRel]);
     const blockedRunName = readdirSync(join(guardProject, ".harness/runs")).find((name) => name !== guardRunName && !name.startsWith("."));
     const blockedRunRel = `.harness/runs/${blockedRunName}`;
     const blockedRunDir = join(guardProject, blockedRunRel);
     const blockedDag = json(join(blockedRunDir, "dag.json"));
     const firstGuardNode = blockedDag.nodes[0];
     const blockedStatus = json(join(blockedRunDir, "status.json"));
-    assert(blockedStatus.executionDag.enforced === false || blockedStatus.executionDag.enforced === true, "completion guard Run must expose DAG enforcement state");
+    assert(blockedStatus.executionDag.enforced === false || blockedStatus.executionDag.enforced === true, "completion guard Run must expose orchestration enforcement state");
     run(["run", "node", "record", "--cwd", guardProject, "--run", blockedRunRel, "--node", firstGuardNode.id, "--phase", "blocked", "--summary", "blocked node"]);
     const blockedLogOne = JSON.parse(run(["run", "record", "--cwd", guardProject, "--run", blockedRunRel, "--phase", "blocked", "--summary", "blocked one", "--json"]));
     const blockedLogTwo = JSON.parse(run(["run", "record", "--cwd", guardProject, "--run", blockedRunRel, "--phase", "blocked", "--summary", "blocked two", "--json"]));
     assert(blockedLogOne.log !== blockedLogTwo.log && existsSync(join(guardProject, blockedLogOne.log)) && existsSync(join(guardProject, blockedLogTwo.log)), "same-second Run records must use unique log paths");
-    assert(/every execution DAG node|blocked/i.test(fails(["run", "record", "--cwd", guardProject, "--run", blockedRunRel, "--phase", "completed", "--summary", "blocked dag", "--verification", "guard"])), "completed Run must reject blocked nodes even for advisory DAGs");
+    assert(/every execution orchestration node|blocked/i.test(fails(["run", "record", "--cwd", guardProject, "--run", blockedRunRel, "--phase", "completed", "--summary", "blocked dag", "--verification", "guard"])), "completed Run must reject blocked nodes even for advisory orchestrations");
     run(["run", "node", "record", "--cwd", guardProject, "--run", blockedRunRel, "--node", firstGuardNode.id, "--phase", "completed", "--summary", "unblocked node", "--verification", "node guard"]);
     const nodeStatusPath = join(blockedRunDir, firstGuardNode.status);
     const nodeStatusBefore = readFileSync(nodeStatusPath, "utf8");
-    assert(/Completed DAG node|completed Run/i.test(fails(["run", "node", "record", "--cwd", guardProject, "--run", blockedRunRel, "--node", firstGuardNode.id, "--phase", "blocked", "--summary", "regression"])), "completed DAG nodes must not transition back to blocked");
-    assert(readFileSync(nodeStatusPath, "utf8") === nodeStatusBefore, "terminal DAG transition rejection must produce zero node writes");
+    assert(/Completed orchestration node|completed Run/i.test(fails(["run", "node", "record", "--cwd", guardProject, "--run", blockedRunRel, "--node", firstGuardNode.id, "--phase", "blocked", "--summary", "regression"])), "completed orchestration nodes must not transition back to blocked");
+    assert(readFileSync(nodeStatusPath, "utf8") === nodeStatusBefore, "terminal orchestration transition rejection must produce zero node writes");
   } finally { rmSync(guardProject, { recursive: true, force: true }); }
 
   const zhDoctor = run(["doctor", "--cwd", runProject, "--lang", "zh-CN"], { env: { LANG: "zh_CN.UTF-8", LC_ALL: "zh_CN.UTF-8" } });

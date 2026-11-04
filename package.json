@@ -2,7 +2,7 @@
   "name": "agent-harness",
   "version": "0.13.0",
   "private": true,
-  "description": "Adapter-driven control plane for coding-agent work: tasks, goals, run DAGs, gates, verification, and state sync.",
+  "description": "Adapter-driven control plane for coding-agent work: tasks, goals, run orchestration, gates, verification, and state sync.",
   "type": "module",
   "bin": {
     "agent-harness": "./plugins/agent-harness/scripts/agent-harness.mjs"

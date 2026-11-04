@@ -1,7 +1,7 @@
 # Gate Results
 
 A gate result cites the accepted objective, candidate inputs, fresh verification,
-required checklist items, Run/DAG ownership evidence, authoritative Task/Goal
+required checklist items, Run/orchestration ownership evidence, authoritative Task/Goal
 phase, and State Sync Notes. The accepted-state owner records `accepted`,
 `request-fix`, or `blocked` with concrete evidence.
 

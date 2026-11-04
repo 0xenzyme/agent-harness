@@ -5,7 +5,7 @@ Controller means outcome owner and accepted-state owner; it does not imply
 or gate-only direction makes the controller non-editing.
 
 The controller communicates durable target, accepted scope, configured roots,
-Run/DAG node, ownership, verification, stop conditions, accepted-state owner,
+Run/orchestration node, ownership, verification, stop conditions, accepted-state owner,
 authoritative phase, and state-sync obligations. It does not choose a default worker
 surface or pin model/effort.
 

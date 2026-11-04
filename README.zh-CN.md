@@ -9,11 +9,12 @@
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
 Agent Harness 是面向 coding agent 的 adapter-driven control plane。
-它把已经确认的方向转成边界明确的执行、可验证的 evidence 和同步后的项目状态，
-减少人持续充当 task router 的负担。Codex 是第一个 host pack，不是唯一运行时。
+它把已经确认的方向转成可交付、可验证的结果，减少人持续充当 task router 的负担。
+交付是第一位的；evidence 和项目状态同步用于支撑交付，而不是额外的交付物。
+Codex 是第一个 host pack，不是唯一运行时。
 
 ```text
-Roadmap -> Milestone -> Goal -> Task -> Run -> Evidence -> State Sync
+Roadmap -> Milestone -> Goal -> Task -> Run -> Delivery
 ```
 
 [快速开始](#在项目中怎么用) · [工作方式](#工作方式) ·
@@ -85,7 +86,7 @@ Harness 使用三条执行路径：
 
 - `host-direct`：普通任务完全交给当前 host，不创建 Harness lifecycle。
 - `host-direct-postflight`：host 完成简单任务后，只验证并同步执行前已经存在的 Task、Goal 或 status。
-- `durable-harness`：跨 task 恢复、audit、milestone/DAG、multi-worker、persistent state sync 或 high-risk 工作使用 repository Goal/Run。
+- `durable-harness`：跨 task 恢复、audit、milestone/编排、multi-worker、persistent state sync 或 high-risk 工作使用 repository Goal/Run。
 
 当前 host 暴露这些能力时，长时间的 controller 工作用 runtime outcome 保存当前结果，
 用 transient plan 维护即时步骤。没有这些表面的 host 把已接受的结果留在当前会话。
@@ -108,9 +109,13 @@ evidence、gate 和 accepted state。
 单个节点完成不代表阶段完成。见[使用说明](docs/usage.zh-CN.md)、
 [CLI](docs/cli.zh-CN.md)和[计划与回执合同](plugins/agent-harness/references/planned-execution.md)。
 
-计划内 Run 使用 manifest v2 和 enforced checkpoint。已有未计划的
-manifest v1 Run 沿用旧路径。原生 runtime Goal 与 worker 委派都要求 host
-支持且已经获授权；否则在当前会话前台执行。这个循环不创建 scheduler。
+目标的 Delivery Contract 写明交付结果、全局硬约束、整体验证、交付权限和最终汇报。
+节点继承这份合同，只补充自己的范围、约束和检查。验收同时证明结果成立，并且没有破坏硬约束。
+
+新的 durable Run 必须有显式计划，使用 manifest v2 和 enforced checkpoint。
+已有 manifest v1 Run 仍可读取和恢复；`--legacy` 只用于显式迁移兼容。
+原生 runtime Goal 与 worker 委派都要求 host 支持且已经获授权；
+否则在当前会话前台执行。这个循环不创建 scheduler。
 
 
 已完成的计划目标保存精确日志和带 hash 的源码输入快照。历史验收可在任务归档及后续
@@ -124,9 +129,9 @@ Agent Harness 面向“人已经定完方向之后”的阶段。人仍然负责
 
 - 读取 roadmap、milestone、spec、Goal、Task 和 Run 状态；
 - 把 `完成 M5` 这样的请求展开成明确的 completion items；
-- 准备 Goal 和 execution DAG，而不是写完下一个小 spec 就停下；
-- 记录 worker ownership、DAG 和 candidate evidence；调度交给当前 host（在其暴露该能力时）；
-- 用 prepared Run manifest 绑定 Goal/Spec/DAG 合同，并在并发记录时保护原子状态；
+- 准备 Goal 和执行编排，而不是写完下一个小 spec 就停下；
+- 记录 worker ownership、编排状态和 candidate evidence；调度交给当前 host（在其暴露该能力时）；
+- 用 prepared Run manifest 绑定 Goal、Spec 和编排合同，并在并发记录时保护原子状态；
 - 对显式 `enforced` 的 managed Run 生成独立、revision-safe 的
   `checkpoint.json`；contract drift 或 external state 不确定时 fail closed，
   默认 `disabled` 的 Run 与 fast path 不增加 ceremony；
@@ -175,9 +180,9 @@ gate。
 source-spec item，不能在 implementation 尚未完成时静默关闭父级 `M5`。
 
 领域不变量把 durable control 保持在明确边界内：配置路径 containment、
-Run/DAG ownership、candidate/accepted evidence、authoritative completion 和
+Run/编排 ownership、candidate/accepted evidence、authoritative completion 和
 state sync。普通 clear change/build 由当前 host 直接执行；已有简单状态只在完成后做
-postflight sync；只有 recovery、audit、milestone/DAG、multi-worker、persistent
+postflight sync；只有 recovery、audit、milestone/编排、multi-worker、persistent
 state sync 或 high-risk 工作进入 `harness-rule:durable-tier-boundary`。详见
 [Capability Matrix](docs/HARNESSES.md)。
 

@@ -7,7 +7,7 @@ what changed in one run.
 The adapter formula is:
 
 ```text
-adapter contract = task with status + spec + DAG + goal + gate
+adapter contract = task with status + spec + orchestration + goal + gate
 ```
 
 ## Index
@@ -49,7 +49,7 @@ or normal post-activation workflows.
 The unit of work behind the adapter formula:
 
 ```text
-task with status + spec + DAG + goal + gate
+task with status + spec + orchestration + goal + gate
 ```
 
 ### Control Loop / Handoff Model

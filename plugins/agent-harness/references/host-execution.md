@@ -9,19 +9,23 @@ readable aliases for one migration window.
 
 ## Three Execution Paths
 
+Delivery comes first; evidence and state records support the result rather than
+becoming extra work by default.
+
 1. `host-direct`: ordinary clear, local, reversible work uses the current host
-   directly. Do not invoke Harness execution and do not create lifecycle
-   artifacts.
+   directly. Deliver the result and run its real verification. Do not invoke
+   Harness execution, create lifecycle artifacts, or copy logs and narratives
+   into repository evidence.
 2. `host-direct-postflight`: when simple work was already linked to an
    existing Harness Task, Goal, status item, or Run, the host executes
    normally and Harness performs one bounded verification and state-sync
    closeout.
-3. `durable-harness`: recovery, audit, milestone acceptance, DAG dependencies,
-   multiple workers, persistent state sync, or high-risk control uses a
-   repository Goal/Run and its evidence contract.
+3. `durable-harness`: recovery, audit, milestone acceptance, orchestration
+   dependencies, multiple workers, persistent state sync, or high-risk control
+   uses a repository Goal/Run and its proportionate evidence contract.
 
 An existing prepared enforced Run remains durable. It cannot be reclassified
-as postflight-only to bypass its DAG, checklist, gates, or evidence.
+as postflight-only to bypass its orchestration, checklist, gates, or evidence.
 
 ## Native Runtime Binding
 
@@ -65,7 +69,7 @@ or accepts evidence.
 
 Postflight sync updates existing state only. Record fresh verification, the
 observed result, and remaining gap. Do not
-create a Goal, Run, DAG, gate, or status record solely for bookkeeping.
+create a Goal, Run, orchestration, gate, or status record solely for bookkeeping.
 Adapter completion gates apply to durable Goal/Run completion, not to ordinary
 direct work or lightweight postflight-only synchronization.
 

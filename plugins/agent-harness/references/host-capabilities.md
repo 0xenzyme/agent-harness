@@ -7,7 +7,7 @@ maps these names to the tools that host actually exposes.
 | --- | --- | --- |
 | `runtimeOutcome` | Cross-turn outcome, success criteria, and continuation | Continue in the current session. Do not invent a runtime id. |
 | `transientPlan` | Short-lived multi-step progress | Keep steps in the current session. Do not mirror them into Git. |
-| `delegation` | Hand a ready DAG node to another worker or session | Stay in the foreground controller. |
+| `delegation` | Hand a ready orchestration node to another worker or session | Stay in the foreground controller. |
 | `isolation` | Parallel writers get a locked worktree or proven non-overlap | Do not run parallel writers. |
 | `resultPacket` | Inspectable worker return: files, verification, risks, State Sync Notes, remaining work | Treat narrative claims as incomplete candidate evidence. |
 

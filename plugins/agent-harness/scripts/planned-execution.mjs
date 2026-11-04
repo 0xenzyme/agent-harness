@@ -165,7 +165,7 @@ export function createPlannedExecution(s) {
     return {
       target: plan.target,
       ...(plan.target.kind === "milestone" ? { goalList: milestoneGoalRows(cwd, context, plan.target.path).map(({ status, ...row }) => row) } : {}),
-      sections: Object.fromEntries(["Objective", "Scope", "Non-Goals", "Required Specs", "Verification", "Completion Conditions", "Pause Conditions"].map(name => [name, s.extractSection(text, name).trim()])),
+      sections: Object.fromEntries(["Objective", "Scope", "Non-Goals", "Required Specs", "Verification", "Completion Conditions", "Pause Conditions", ...(s.extractSection(text, "Delivery Contract").trim() ? ["Delivery Contract"] : [])].map(name => [name, s.extractSection(text, name).trim()])),
       acceptance: [...mapSections].map(([name, label]) => [name, s.parseEvidenceItems(s.extractSection(text, name), label).map(i => ({ label: i.label, acceptance: i.acceptance, required: i.required }))])
     };
   }
@@ -204,10 +204,11 @@ export function createPlannedExecution(s) {
       const metadata = s.goalMetadata(cwd, documentPath(cwd, context, "goal", goal.path));
       if (metadata.specExists) content(cwd, metadata.specPath);
       for (const task of goal.tasks) {
-        object(task, ["id", "label", "dependsOn", "type", "ownership", "acceptance", "verification", "question"], "Planned Task");
+        object(task, ["id", "label", "dependsOn", "type", "ownership", "acceptance", "verification", "constraints", "question"], "Planned Task");
         if (!["implementation", "verification", "human"].includes(task.type)) throw new Error(`Task ${task.id} type must be implementation, verification or human.`);
         if (task.label !== undefined && (typeof task.label !== "string" || s.missingEvidence(task.label))) throw new Error("Task label must be a concrete string.");
         if (task.type === "human" && (typeof task.question !== "string" || s.missingEvidence(task.question))) throw new Error("Human Tasks need a concrete question.");
+        if (task.constraints !== undefined) strings(task.constraints, `Task ${task.id} constraints`, { nonempty: true });
         object(task.ownership, ["read", "write"], "Task ownership");
         strings(task.ownership.read, "Read ownership"); strings(task.ownership.write, "Write ownership");
         if (task.type !== "implementation" && task.ownership.write.length) throw new Error("Verification and human Tasks cannot own source writes.");
@@ -270,6 +271,7 @@ export function createPlannedExecution(s) {
       id: task.id, label: task.label || task.id,
       mode: task.type === "implementation" ? "implementer" : "read/execute",
       dependencies: task.dependsOn, ownership: JSON.stringify(task.ownership),
+      constraints: task.constraints || [],
       expectedOutput: "Candidate JSON receipt, validation logs, input hashes and State Sync Notes for controller review",
       stopConditions: task.question || "accepted scope conflict or concrete missing authority",
       prompt: `agents/${task.id}/prompt.md`, status: `agents/${task.id}/status.json`, result: `agents/${task.id}/result.md`,

@@ -9,7 +9,7 @@ accepted Goal, Task, Run, gate, and status state after validating this packet.
 | --- | --- | --- |
 | `Goal` | Repository Goal path supplied by the controller | Implied by `--run` Goal binding |
 | `Session` | Cursor chat, Task, or Cloud Agent id if the host exposes one | `--thread` |
-| `Node` | DAG node id from `dag.json` | `--node` |
+| `Node` | orchestration node id from `dag.json` | `--node` |
 | `Status` | running / completed / blocked | `--phase` |
 | `Changed files` | Files the worker edited | `--summary` or verification text |
 | `Validation` | Commands and pass/fail | `--verification` |
