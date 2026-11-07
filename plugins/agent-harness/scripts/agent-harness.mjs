@@ -3233,10 +3233,10 @@ synchronization before marking this Goal completed.
 
 ## Spec Acceptance Checklist
 
-Add checklist items here when the referenced spec has concrete acceptance
-criteria, required page/workflow coverage, or product-quality gates. Candidate
-implementation evidence is not accepted completion until relevant checklist
-items are satisfied.
+Map every item in the referenced spec checklist and any Goal-local items here
+exactly once in the Execution Plan. An empty Goal-local section does not replace
+source spec acceptance. Candidate implementation evidence is not accepted
+completion until all source and local checklist items are satisfied.
 
 ## Required Gate Evidence
 
@@ -3560,11 +3560,13 @@ function parseEvidenceItems(section, itemLabel) {
 function specAcceptanceChecklistDetails(goalContent, specContent = "") {
   const goalSection = extractSection(goalContent, "Spec Acceptance Checklist");
   const specSection = extractSection(specContent, "Spec Acceptance Checklist");
-  const section = goalSection || specSection;
   return {
-    source: goalSection ? "goal" : specSection ? "spec" : "",
-    section,
-    items: section ? parseEvidenceItems(section, "Item") : []
+    source: goalSection && specSection ? "goal+spec" : goalSection ? "goal" : specSection ? "spec" : "",
+    section: [goalSection, specSection].filter(Boolean).join("\n\n"),
+    items: [
+      ...(specSection ? parseEvidenceItems(specSection, "Item") : []),
+      ...(goalSection ? parseEvidenceItems(goalSection, "Item") : [])
+    ]
   };
 }
 
@@ -3634,8 +3636,8 @@ function stageCompletionSignalText(content) {
 function hasWholeStageSignal(content) {
   const text = stageCompletionSignalText(content);
   return /\b(?:whole|entire|full)\s+(?:milestone|stage)\b/i.test(text)
-    || /\b(?:complete|finish|推进完成|完成)\b[\s\S]{0,80}\b(?:M\d+|milestone\s+M\d+|stage\s+M\d+|roadmap\s+M\d+)\b/i.test(text)
-    || /\b(?:M\d+|milestone\s+M\d+|stage\s+M\d+|roadmap\s+M\d+)\b[\s\S]{0,80}\b(?:complete|done|completion|完成)\b/i.test(text);
+    || /\b(?:complete|finish|推进完成|完成)\b[\s\S]{0,80}\b(?:M\d+|milestone\s+M\d+|stage\s+M\d+|roadmap\s+M\d+)(?!-(?:S|D)\d+\b)\b/i.test(text)
+    || /\b(?:M\d+|milestone\s+M\d+|stage\s+M\d+|roadmap\s+M\d+)(?!-(?:S|D)\d+\b)\b[\s\S]{0,80}\b(?:complete|done|completion|完成)\b/i.test(text);
 }
 
 function stageCompletionRequiredLabels(goalContent, specContent = "") {
@@ -3675,12 +3677,9 @@ function stageCompletionMapDetails(goalContent, specContent = "") {
   const goalLegacyStageSection = extractSection(goalContent, "Stage Completion Map");
   const specLegacyStageSection = extractSection(specContent, "Stage Completion Map");
   const section = goalMilestoneSection || specMilestoneSection || goalLegacyStageSection || specLegacyStageSection;
-  const plannedTarget = Boolean(extractInlinePath(goalContent, "Execution Plan"));
-  const requiredLabels = plannedTarget
-    ? parseEvidenceItems(section, "Item").map(item => item.label)
-    : stageCompletionRequiredLabels(goalContent, specContent);
+  const requiredLabels = stageCompletionRequiredLabels(goalContent, specContent);
   return {
-    required: plannedTarget ? Boolean(section) : stageCompletionMapRequired(goalContent, specContent, requiredLabels),
+    required: stageCompletionMapRequired(goalContent, specContent, requiredLabels),
     requiredLabels,
     source: goalMilestoneSection
       ? "goal"

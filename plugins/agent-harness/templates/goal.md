@@ -65,6 +65,14 @@ Use `current-session`.
 Evidence names changed files and actual verification results. It never names
 hashes, copied logs, receipts or Run artifacts.
 
+Map every item in this checklist and the source Spec checklist exactly once.
+Keep source Spec items mapped and satisfied even when this section is empty.
+
+For parent `Implementation Phasing` completion, add a `Milestone Completion
+Map` covering every required stage outcome. An Execution Plan does not remove
+that requirement; an explicitly leaf-scoped Goal keeps its local acceptance
+contract.
+
 ## Required Gate Evidence
 
 - Gate: `<gate name>`

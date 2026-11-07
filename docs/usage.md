@@ -20,8 +20,9 @@ results in acceptance items. `execute next` continues until complete or a
 genuine pause condition occurs.
 
 Close satisfied Goals and the Milestone with `goal complete` or
-`milestone complete` plus `--verification`. Include each required check id and
-actual result. These commands update delivery state only.
+`milestone complete` plus `--verification`. Use one exact
+`<check-id>: <actual result>` entry per declared check, separated by semicolons
+or newlines. These commands update delivery state only.
 
 Do not create Runs, receipts, checkpoints, hashes, log copies or session
 transcripts for Harness. Resume with the host's session/history mechanisms.

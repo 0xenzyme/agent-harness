@@ -26,7 +26,9 @@ node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd <project
 node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd <project> --milestone <milestone> --json
 ```
 
-相邻计划声明依赖、ownership、验收映射和 `{id, command, manual?}` 检查。旧 `inputs`／`exclude` 字段只被忽略，不计算 hash；新计划省略它们。
+相邻计划声明依赖、ownership、验收映射和 `{id, command, manual?}` 检查。旧 `inputs`／`exclude` 字段只被忽略，不计算 hash；新计划省略它们。源 Spec 与 Goal 的每个 `Spec Acceptance Checklist` 条目都必须恰好映射一次；空 Goal checklist 不会遮蔽源 Spec 条目。
+
+完成父 `Implementation Phasing` 阶段时，即使绑定了 plan，也必须在 `Milestone Completion Map` 中覆盖每个阶段结果。明确限定叶子阶段的 Goal 保持局部切片契约。
 
 `execute next` 根据验收状态返回 `execute-node`、`verify-node`、`complete-goal`、`complete-milestone`、`need-user`、`reconcile`、`wait` 或 `done`。
 
@@ -35,11 +37,11 @@ node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd <project
 在 host 中实际实现并验证后，把简洁结果写入验收项，然后运行：
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "unit: 85 passed; build passed"
+node plugins/agent-harness/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "unit: 85 passed; build: passed"
 node plugins/agent-harness/scripts/agent-harness.mjs milestone complete --cwd <project> --milestone <milestone> --verification "integration: passed; whole-target constraints checked"
 ```
 
-摘要必须包含每个所需检查 id 及实际结果。Goal 完成核对验收覆盖、必需 gate 和状态同步。Milestone 完成要求全部 Goal 加自身 whole-target 检查，不重复子 Goal 检查。
+摘要按分号或换行分隔，每个声明的检查都要有精确的 `<check-id>: <实际结果>` 条目。裸 ID、ID 子串、空结果和占位结果都会被拒绝。Goal 完成核对验收覆盖、必需 gate 和状态同步。Milestone 完成要求全部 Goal 加自身 whole-target 检查，不重复子 Goal 检查。
 
 写入仅限 Goal/Milestone、任务索引和有界状态。已完成 Goal 的重复完成保持幂等。不会创建 Run、receipt、manifest、checkpoint、日志副本、内容 hash 或证据封存。
 

@@ -54,10 +54,16 @@ export function createDeliveryControl(s) {
       const metadata = s.goalMetadata(cwd, path(cwd, goal.path));
       const goalText = content(cwd, goal.path), specText = metadata.specExists ? content(cwd, metadata.specPath) : "";
       for (const [section, label] of mapSections) {
-        const source = s.extractSection(goalText, section) ? goal.path : metadata.specExists && s.extractSection(specText, section) ? metadata.specPath : "";
-        if (!source) continue;
-        for (const item of s.parseEvidenceItems(s.extractSection(content(cwd, source), section), label)) {
-          if (!mapped.has(JSON.stringify([source, section, item.label]))) throw new Error(`Acceptance mapping is missing: ${source} / ${section} / ${item.label}`);
+        const goalSection = s.extractSection(goalText, section);
+        const specSection = metadata.specExists ? s.extractSection(specText, section) : "";
+        const sources = section === "Spec Acceptance Checklist"
+          ? [[goal.path, goalSection], [metadata.specPath, specSection]]
+          : [[goalSection ? goal.path : metadata.specPath, goalSection || specSection]];
+        for (const [source, map] of sources) {
+          if (!source || !map) continue;
+          for (const item of s.parseEvidenceItems(map, label)) {
+            if (!mapped.has(JSON.stringify([source, section, item.label]))) throw new Error(`Acceptance mapping is missing: ${source} / ${section} / ${item.label}`);
+          }
         }
       }
     }
@@ -117,7 +123,11 @@ export function createDeliveryControl(s) {
   function verificationSummary(args, requirements) {
     if (typeof args.verification !== "string" || s.missingEvidence(args.verification)) throw new Error("Completion requires --verification with actual commands/review results and uncovered gaps.");
     if (!requirements.length) throw new Error("The accepted target must declare verification before completion.");
-    for (const required of requirements) if (!args.verification.includes(required.id)) throw new Error(`Verification summary must report the actual result for ${required.id}; the CLI does not infer that a command ran.`);
+    for (const required of requirements) {
+      const id = String(required.id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const result = args.verification.match(new RegExp(`(?:^|[;\\r\\n])\\s*(?:[-*]\\s+)?${id}\\s*:\\s*([^;\\r\\n]*)`));
+      if (!result || s.missingEvidence(result[1]) || result[1].trim() === String(required.id)) throw new Error(`Verification summary must report the actual result for ${required.id}; use '${required.id}: <actual result>' for every declared check.`);
+    }
     return args.verification.trim();
   }
   function withInline(text, key, value) {

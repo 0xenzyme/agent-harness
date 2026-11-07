@@ -46,6 +46,10 @@ Status: draft
   - Status: `pending`
   - Unblocker: `N/A`
 
+Map every source Spec item exactly once in the delivery plan and satisfy it
+with concrete evidence before Goal completion. Goal checklist items add local
+acceptance; they do not replace these source items.
+
 ## Required Gate Evidence
 
 - Gate: `<gate name>`

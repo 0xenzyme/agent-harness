@@ -33,7 +33,13 @@ node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd <project
 
 The adjacent plan declares dependencies, ownership, acceptance mappings and
 checks `{id, command, manual?}`. Legacy `inputs` and `exclude` fields are
-ignored without hashing. New plans omit them.
+ignored without hashing. New plans omit them. Map every `Spec Acceptance
+Checklist` item from both the source Spec and Goal exactly once; an empty Goal
+checklist does not hide source Spec items.
+
+Parent `Implementation Phasing` completion also requires every stage outcome in
+the `Milestone Completion Map`, even with a bound plan. Explicit leaf-stage
+Goals retain their local-slice contract.
 
 `execute next` returns `execute-node`, `verify-node`, `complete-goal`,
 `complete-milestone`, `need-user`, `reconcile`, `wait` or `done` as applicable.
@@ -45,14 +51,15 @@ After implementing and actually verifying in the host, write concise evidence
 to acceptance items. Then run:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "unit: 85 passed; build passed"
+node plugins/agent-harness/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "unit: 85 passed; build: passed"
 node plugins/agent-harness/scripts/agent-harness.mjs milestone complete --cwd <project> --milestone <milestone> --verification "integration: passed; whole-target constraints checked"
 ```
 
-The summary must include each required check id and its actual result. Goal
-completion checks acceptance coverage, required gates and state sync. Milestone
-completion requires all Goals plus its own whole-target checks; it does not
-repeat every child Goal check.
+Use one exact `<check-id>: <actual result>` entry per declared check, separated
+by semicolons or newlines. Bare IDs, substrings, empty results and placeholders
+are rejected. Goal completion checks acceptance coverage, required gates and
+state sync. Milestone completion requires all Goals plus its own whole-target
+checks; it does not repeat every child Goal check.
 
 Writes are limited to the accepted Goal/Milestone, task index and bounded
 status. Repeated completed-Goal closeout is idempotent. No Run, receipt,

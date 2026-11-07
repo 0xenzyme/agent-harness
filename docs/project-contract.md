@@ -18,7 +18,14 @@ fields remain readable but ignored; new configs omit them.
 An accepted Goal/Milestone references an adjacent `<target>.plan.json`.
 Version 1 declares target, Goals, dependencies, Tasks, ownership, acceptance
 references, optional constraints and verification `{id, command, manual?}`.
-Goal/Task graphs must be acyclic. Every acceptance item maps exactly once.
+Goal/Task graphs must be acyclic. Every acceptance item maps exactly once,
+including every `Spec Acceptance Checklist` item in both the source Spec and
+Goal. An empty or partial Goal checklist does not replace source Spec acceptance.
+
+A Goal that completes a parent `Implementation Phasing` stage needs a
+`Milestone Completion Map` containing every declared stage outcome. Binding an
+Execution Plan does not waive that requirement. A Goal explicitly scoped to a
+leaf stage retains its local-slice acceptance contract.
 
 The target Delivery Contract defines the outcome, global constraints,
 whole-target verification, external-action authority and final reporting.
@@ -35,9 +42,12 @@ The outcome owner verifies the actual result before updating existing
 Goal/Milestone, task-index and status records.
 
 `goal complete --verification <summary>` requires concrete acceptance evidence
-and summaries for its declared checks. `milestone complete` additionally
-requires every Goal and whole-target verification. The CLI validates recorded
-results; it does not run commands or infer success.
+and one exact `<check-id>: <actual result>` entry for every declared check.
+Separate entries with semicolons or newlines. Bare IDs, ID substrings, empty
+results and placeholder results do not satisfy this requirement.
+`milestone complete` additionally requires every Goal and whole-target
+verification. The CLI validates recorded results; it does not run commands or
+infer success.
 
 ## No Execution Archaeology
 

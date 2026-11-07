@@ -10,6 +10,12 @@ A plan is `<target>.plan.json` beside its Goal or Milestone. It declares:
 - verification commands or manual review descriptions;
 - whole-target verification for a Milestone.
 
+Map every source Spec and Goal `Spec Acceptance Checklist` item exactly once.
+An empty Goal checklist does not replace source Spec acceptance. Parent
+`Implementation Phasing` completion also requires every stage outcome in the
+`Milestone Completion Map`; an explicitly leaf-scoped Goal keeps its local
+acceptance contract.
+
 Checks have `id`, `command` and optional `manual`. They do not have `inputs`,
 `exclude`, hashes, logs, timestamps or snapshots. Source edits never invalidate
 a completed Goal or Milestone. Review new edits on their own merits.
@@ -22,12 +28,13 @@ acceptance item. Evidence must describe an outcome, not point to a Run receipt.
 Close an accepted Goal with:
 
 ```bash
-node <plugin-root>/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "npm test: 85 passed; build passed"
+node <plugin-root>/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "unit: 85 passed; build: passed"
 ```
 
-When every Goal is complete, run the Milestone checks and use
-`milestone complete --verification <summary>`. These commands update only
-configured Goal, task-index and status records. They create no Run, DAG,
+Use one exact `<check-id>: <actual result>` entry per declared check, separated
+by semicolons or newlines. When every Goal is complete, run the Milestone checks
+and use `milestone complete --verification <summary>`. These commands update
+only configured Goal, task-index and status records. They create no Run, DAG,
 receipt, checkpoint, copied log, content hash or evidence seal.
 
 Legacy Run files may remain in old projects as historical material. They are
