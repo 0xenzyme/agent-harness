@@ -1,45 +1,19 @@
 # Artifact Lifecycle
 
-Harness control artifacts have different lifetimes:
+Keep only delivery state:
 
-- status is a bounded replace-in-place current snapshot;
-- the active Goal index contains actionable work plus a configured recent-Done
-  window;
-- task archives, Goals, milestones, and owning-domain documents retain durable
-  conclusions;
-- Runs contain execution detail and may be tracked or local-only.
+- a bounded current status snapshot;
+- an actionable task index with a bounded recent-Done window;
+- Goals and Milestones with accepted outcomes, verification summaries,
+  remaining gaps and true decisions;
+- adapter-owned project documents.
 
-Configure `artifactPolicy` to declare Run tracking, retention, bounded status,
-task archive, and durable evidence paths. Policy limits are advisory until an
-explicit lifecycle command is used.
+Sessions, workers, full logs, terminals, transcripts and resume belong to the
+host or CI. Do not mirror them into Harness artifacts.
 
-`artifacts inspect` is always read-only. `artifacts compact` is preview-only
-unless `--record` is passed; recording writes exact task blocks to the archive
-before replacing the active index. `artifacts prune` is preview-only unless
-`--apply` is passed; apply is allowed only for `local-only` Runs, skips active
-or unmanaged Runs, honors retention and `keepLatest`, stays inside `paths.runs`,
-and requires a Goal that references the Run and contains State Sync Notes.
+Old Run directories may exist as historical data. Do not use them to route,
+complete, reopen or verify current work. Pruning an explicitly identified old
+local Run is a separate destructive operation, never part of state sync.
 
-Inspection classifies every Run entry as operational `active`, known
-`terminal`, or `unmanaged`. Legacy Markdown files, directories without a
-status record, invalid status records, and unknown phases are `unmanaged`; they
-remain preserved but do not inflate the operational active count. A legacy
-`status` field is accepted as a phase fallback for one migration boundary.
-
-For checkpoint-enforced Runs, `replan-required`, `reconciliation-required`,
-and every other nonterminal or invalid checkpoint remain operational `active`
-for retention purposes even when legacy Run phase says `blocked`. Pruning
-requires a structurally valid terminal checkpoint (`completed` or
-`superseded`) plus the existing terminal/evidence/containment gates.
-
-A local-only Run path is a locator, not durable evidence by itself. Before
-pruning, configured durable evidence must retain the accepted conclusion, verification
-summary, and any audit reference needed after the raw Run disappears.
-
-Completed planned Goals resolve their source task from the active index first,
-then from `artifactPolicy.tasks.archive` only when the active row is absent.
-The archive must contain exactly one matching done task; a Doc field must
-identify that Goal. Compaction does not reopen valid historical completion.
-Tracked Runs preserve exact receipt logs under `evidence/logs/` and a hashed
-completion snapshot. Keep these files with the Run; a readable log copy at an
-unbound path is insufficient. See [Planned Execution](planned-execution.md).
+Compaction archives completed task entries when configured limits are exceeded.
+It does not inspect source hashes or revalidate old execution evidence.

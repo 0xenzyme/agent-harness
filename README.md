@@ -2,43 +2,36 @@
 
 [简体中文](README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.13.0-0f766e)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.14.0-0f766e)](CHANGELOG.md)
 [![Codex Plugin](https://img.shields.io/badge/Codex-plugin-111827)](plugins/agent-harness/.codex-plugin/plugin.json)
 [![Protocol](https://img.shields.io/badge/protocol-checks-0369a1)](docs/HARNESSES.md)
 [![Smoke](https://img.shields.io/badge/smoke-checks-1d4ed8)](docs/HARNESSES.md)
 [![License](https://img.shields.io/badge/license-MIT-7c3aed)](LICENSE)
 
-Agent Harness is an adapter-driven control plane for coding-agent work.
-It turns accepted direction into delivered, verified outcomes without making
-the human route every task. Evidence and synchronized project state support
-delivery; they are not additional deliverables. Codex is the first host pack,
-not the only runtime.
+Agent Harness is an adapter-driven control plane for coding-agent work. It
+turns accepted direction into verified delivery without making the human route
+every task.
 
 ```text
-Roadmap -> Milestone -> Goal -> Task -> Run -> Delivery
+Roadmap -> Milestone -> Goal -> Task -> Verified delivery
 ```
 
 [Quick Start](#use-with-a-coding-agent) · [How It Works](#how-it-works) ·
 [Capability Matrix](docs/HARNESSES.md) · [Changelog](CHANGELOG.md) ·
-[v0.13.0 Notes](docs/releases/v0.13.0.md) ·
+[v0.14.0 Notes](docs/releases/v0.14.0.md) ·
 [Social Preview](docs/assets/github/social-preview.svg)
 
 ## Use With A Coding Agent
 
 ### 1. Ask the current host to use Harness
 
-Most users do not need to name a skill or run the CLI directly:
-
 ```text
 Use harness to check the next step in this project.
 Use harness to record this idea, but do not implement it yet: Add an import flow.
 Use harness to execute harness/goals/YYYY-MM-DD-task-title.md, verify it, and sync state.
-Use the current session as controller and carry the accepted spec through to completion; keep the outcome in the runtime outcome and current steps in the transient plan.
 ```
 
 ### 2. Adopt a project with the CLI
-
-When adding Harness to a repository:
 
 ```bash
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd <project> --contract adapter
@@ -46,288 +39,78 @@ node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd <proje
 node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd <project>
 ```
 
-Remove the installed skills without deleting project data:
+Skills install into `.agents/skills/`. `skills uninstall` removes installed
+skills and byte-identical references without deleting project data. Codex and
+Grok marketplace installation is optional; see [Install](docs/install.md) and
+[Plugins Directory](https://github.com/0xenzyme/agent-harness).
 
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd <project>
-```
-
-Skills install into the downstream project's `.agents/skills/` directory. That
-is the cross-client discovery convention, not every host's only path.
-`skills uninstall` removes those skill copies and byte-identical protocol
-reference copies. It leaves `harness/` and `.harness/` in place. See
-[Install](docs/install.md).
-
-### 3. Optional Codex marketplace
-
-Codex users can still install `harness` from the Plugins Directory
-(`agent-harness-local`). Register the local marketplace first:
-
-```bash
-codex plugin marketplace add <path-to-agent-harness-repo>
-```
-
-This registers marketplace metadata from the checkout; it does not install the plugin.
-
-Grok can install the same plugin from `.grok-plugin/marketplace.json`. See
-[Install](docs/install.md).
-
-### 4. Choose an explicit entry when needed
+### 3. Choose an explicit entry when needed
 
 | Situation | Public skill |
 | --- | --- |
-| Adopt Harness, import an existing Goal index, run doctor, or preview activation. | `harness:init` |
-| Inspect status, blockers, stale artifacts, or the next route without mutation. | `harness:orient` |
-| Capture or triage an idea, requirement, bug, or inbox note; adapters can record unaccepted candidates through `paths.ideaInbox`. | `harness:intake` |
-| Control durable work, or sync existing Harness state after the current host completes simple work. | `harness:execute` |
+| Adopt, import, doctor or preview activation | `harness:init` |
+| Inspect accepted outcomes and next actions | `harness:orient` |
+| Capture an unaccepted idea | `harness:intake` |
+| Deliver accepted Goals/Milestones or sync existing state | `harness:execute` |
 
-Ordinary clear change/build requests use the current host directly. Clarifying scope,
-asking a question, and creating a repository Goal are actions rather than extra routes;
-proposal competition is an explicitly chosen advanced read-only technique.
-
-Harness uses three execution paths:
-
-- `host-direct`: ordinary work stays entirely in the current host and creates no Harness lifecycle.
-- `host-direct-postflight`: after the host completes simple work, verify and update only Task, Goal, or status state that already existed before execution.
-- `durable-harness`: cross-task recovery, audit, milestone/orchestration, multi-worker, persistent state sync, or high-risk work uses a repository Goal/Run.
-
-When the current host exposes them, long-running controller work keeps the
-current result in a runtime outcome and short-lived steps in a transient plan.
-Hosts without those surfaces keep the accepted outcome in the current session.
-Harness does not mirror every plan transition; it records project facts at
-durable boundaries or postflight closeout.
-
-These runtime capabilities are optional and are detected from the current host,
-not inferred from a model name. Older models or smaller runtimes fall back to
-the current session and a short checklist; the CLI still validates paths,
-evidence, gates, and accepted state.
-
-## One entry for an accepted Goal or Milestone
-
-An accepted execution plan lives beside its target as
-`<target-filename>.plan.json`; the target names it in `Execution Plan:`.
-For a Milestone, every member Goal references the same Milestone-adjacent
-plan. A standalone Goal uses its own adjacent plan. The versioned plan
-declares Goal dependencies and each Goal's Task dependencies. The controller
-validates the plan, prepares eligible Goal Runs,
-reviews candidate receipts and fresh verification, synchronizes state, and
-repeats the next action until the entire selected Goal or Milestone is done.
-It stops only on whole-target completion, a true blocker, or an explicit user
-pause. It asks for a concrete human decision at a real authority or direction
-gate; a completed leaf does not end the stage. See [usage](docs/usage.md),
-[CLI](docs/cli.md), and the [plan and receipt contract](plugins/agent-harness/references/planned-execution.md).
-
-The target Delivery Contract names the outcome, global hard constraints,
-whole-target verification, delivery authority, and final report. Nodes inherit
-that contract and add only local scope, constraints, and checks. Acceptance
-covers both the requested result and non-breakage of its constraints.
-
-New durable Runs require an explicit plan, manifest v2, and an enforced
-checkpoint. Existing manifest v1 Runs remain readable and recoverable;
-`--legacy` is only an explicit migration/compatibility escape. Native runtime
-Goals and worker delegation require host support and authorization; foreground
-execution is the fallback. This controller loop runs without a scheduler.
-
-
-Completed planned targets preserve exact logs and a hashed source-input snapshot.
-Historical acceptance survives configured task archival and subsequent source
-edits; `currentVerification` reports whether today's inputs still match.
-Follow-up changes require their own current evidence. See the
-[planned execution contract](plugins/agent-harness/references/planned-execution.md#portable-evidence-and-historical-completion).
-
-## Why Agent Harness
-
-Agent Harness is for the moment after the human has set direction. The human
-still owns product judgment, authorization, and true pause conditions. Harness
-owns the repeatable execution mechanics inside the project adapter:
-
-- discover roadmap, milestone, spec, Goal, Task, and Run state;
-- turn a request such as `complete M5` into explicit completion items;
-- prepare Goals and execution orchestration instead of stopping at the next small spec;
-- record worker ownership, orchestration state, and candidate evidence while the host
-  schedules work when that capability is exposed;
-- bind prepared Runs to a Goal/Spec/orchestration manifest and protect state with atomic concurrent recording;
-- give explicitly `enforced` managed Runs an independent revision-safe
-  `checkpoint.json`; contract drift and uncertain external state fail closed,
-  while default-disabled Runs and fast paths gain no ceremony;
-- verify concrete evidence before accepting Task/Goal completion;
-- require `State Sync Notes` as part of Goal and Task completion;
-- keep Goal indexes, bounded status snapshots, Goals, Runs, and gates aligned;
-- inspect and archive active control state through a dry-run-first artifact
-  lifecycle, and prune local-only Runs only after durable sync and explicit action;
-- pause for real human gates such as unclear direction, credentials, paid APIs,
-  production access, destructive actions, or external side effects outside
-  accepted scope.
-- keep status-only legacy Runs inspectable but `unmanaged`, so they cannot
-  automatically complete Tasks or be pruned.
-
-The promise is not merely that agents write files. The promise is that coding
-agents stop losing the plot between roadmap, specification, implementation,
-verification, state sync, and handoff.
+Ordinary clear changes use the host directly. `host-direct-postflight` updates
+only existing state after direct work. Accepted Goal/Milestone control uses
+`durable-harness`, but does not create a Run.
 
 ## How It Works
 
-![Agent Harness product loop](docs/assets/readme/adapter-execution-model.svg)
+The host owns runtime outcomes, transient plans, sessions, resume, workers,
+terminals and full verification output. Harness owns the accepted target,
+dependencies, constraints, concise verification and bounded delivery state.
 
-The user-facing hierarchy is:
+A plan lives beside its target as `<target-filename>.plan.json`. It declares
+Goal/Task dependencies, ownership, acceptance mappings and verification
+commands. The controller calls `execute next`, implements and verifies in the
+host, records actual outcomes in acceptance items, then closes with:
 
-```text
-Roadmap -> Milestone -> Goal -> Task -> Run
+```bash
+node plugins/agent-harness/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "unit: 85 passed; integration: passed"
+node plugins/agent-harness/scripts/agent-harness.mjs milestone complete --cwd <project> --milestone <milestone> --verification "integration: passed; hard constraints checked"
 ```
 
-- A **Roadmap** carries longer-range direction.
-- A **Milestone** is a phase-level outcome and may require several Goals.
-- A **Goal** is the primary Harness work unit with scope and acceptance.
-- A **Task** is a concrete checklist or execution item inside a Goal.
-- A **Run** is one execution attempt and evidence record, not a thread.
-- A **Spec** constrains the Goal before execution; it is not a post-Run artifact.
+The CLI validates recorded acceptance; it does not run tests or infer success.
+It writes only the Goal/Milestone, task index and bounded status. There are no
+Run directories, DAGs, receipts, checkpoints, source hashes, copied logs or
+evidence seals. Later source edits never reopen completed targets; new changes
+are verified independently.
 
-### Spec and PRD
+## Why Agent Harness
 
-Agent Harness does not define PRD as a separate protocol concept. A Product
-Requirements Document usually explains the user problem, product value, and
-desired outcome; it can be one source for a Harness Spec.
+- Keeps a Milestone selected until all required Goals and stage checks finish.
+- Distinguishes local acceptance from whole-target delivery and constraints.
+- Treats worker output as candidate until the outcome owner verifies it.
+- Uses project adapters for paths, gates and project-specific boundaries.
+- Pauses only for genuine scope, authority, verification or product decisions.
+- Bounds current status and compacts old task entries without recording
+  execution history.
 
-`Spec` is the broader execution term. It means accepted scope that makes the
-Goal's boundaries, constraints, and acceptance conditions clear. A PRD may
-satisfy that need, may need technical or operational supplements, or may be
-irrelevant to non-product work. Harness therefore does not require a PRD and
-does not add PRD-specific paths, config, lifecycle state, or gates.
-
-Parent milestones stay open until their mapped items are satisfied. Accepting a
-source-spec item such as `M5-S0` cannot silently close the parent `M5` while
-implementation work remains.
-
-Canonical domain invariants bound durable control: configured path containment,
-Run/orchestration ownership, candidate-versus-accepted evidence, authoritative
-completion, and state sync. Ordinary clear change/build uses the current host
-directly; existing simple state gets postflight sync only; recovery, audit, milestone/orchestration,
-multi-worker, persistent state-sync, or high-risk work crosses the
-`harness-rule:durable-tier-boundary`. See the
-[Capability Matrix](docs/HARNESSES.md).
-
-## Architecture
-
-![Agent Harness adapter boundary](docs/assets/readme/adapter-model.svg)
-
-The same boundary as a live panel: any current host can take one of the three
-execution paths, and only durable work enters Plugin, Adapter, and Artifacts.
-Lane flips and the check counter on that panel are illustrative.
-[Open the live panel](docs/assets/readme/live-architecture/architecture.html)
-· [mp4](docs/assets/readme/live-architecture/architecture.mp4).
-
-Agent Harness separates stable protocol from local project facts:
-
-```text
-Plugin defines protocol. Adapter defines overrides. Artifacts record facts.
-```
-
-- The **plugin** ships workflow skills, protocol references, schemas,
-  templates, and deterministic CLI gates.
-- The **project adapter** declares artifact paths, boundaries, verification,
-  state-sync rules, work mode, and external-action policy.
-- The **project artifacts** record the roadmap, milestones, specs, Goals,
-  Tasks, Runs, gate results, and evidence.
-
-Adapter projects resolve artifact paths through `.harness/config.json`; plugin
-core does not embed downstream product names, ports, credentials, database
-rules, or production policy. The detailed path map lives in the
-[Project Contract](docs/project-contract.md#adapter-contract).
-
-### Adapter language policy
-
-The project adapter owns the machine-readable language preference:
-
-```json
-{
-  "language": {
-    "default": "zh-CN"
-  }
-}
-```
-
-Supported values are `auto`, `en`, and `zh-CN`. CLI language selection uses
-this precedence: `--lang`, `AGENT_HARNESS_LANG`, `language.default`, `LC_ALL`,
-`LC_MESSAGES`, then `LANG`; unresolved `auto` falls back to English.
-
-Current boundary: this setting localizes supported human-facing CLI messages.
-Deterministic artifacts created by `init`, `goal create`, and `run prepare`
-still use the English base templates and renderers. Agent responses should
-follow the user's language while preserving code, commands, paths, API names,
-skill names, model names, and Git commit messages in their original form. See
-[CLI Reference](docs/cli.md#language) and the
-[Project Contract](docs/project-contract.md#adapter-language-policy).
-
-### Commentary policy
-
-Projects can reduce redundant progress narration without hiding material
-signals:
-
-```json
-{
-  "communication": {
-    "commentary": "minimal"
-  }
-}
-```
-
-Supported values are `minimal`, `balanced`, and `audit`; omitted configuration
-defaults to `minimal`. The policy shapes Harness skill and generated-run
-guidance. It does not filter host messages or override host-required tool,
-safety, approval, or heartbeat updates. See the
-[Project Contract](docs/project-contract.md#commentary-policy).
+Legacy Run/checkpoint configuration is ignored during migration. Old files may
+remain as historical material, but they do not drive routing, completion,
+pruning or revalidation.
 
 ## Safety And Acceptance
 
-Harness treats worker, automation, inbox, and proposal output as candidate
-evidence until the control lane validates it. Completion requires concrete,
-inspectable evidence such as changed files, command summaries, Run records,
-gate records, or human review notes.
+All writes and acceptance references stay inside configured roots. Resolve
+local/worktree/ask before delegation. Do not commit, push, deploy or release
+without the required authority. Status is a bounded current projection, not a
+process log.
 
-Key boundaries:
-
-- A controller is the outcome owner and accepted-state owner. Foreground
-  implementation is prohibited only when the user or Goal explicitly says
-  `gate-only` or review-only.
-- Resolve work mode before thread creation, handoff, or delegation. An
-  unresolved `ask` result or authority conflict pauses for the user; thread
-  authority alone does not authorize a worktree.
-- Parallel writers require separate locked worktrees/cwds or recorded proof of
-  non-overlapping ownership; the host owns scheduling and concurrency.
-- Task/Goal is the accepted-state authority; Run retains evidence and status
-  remains a bounded projection.
-- `harness-rule:durable-tier-boundary` sends ordinary clear change/build to
-  the current host, limits existing simple state to postflight sync, and
-  reserves Harness ceremony for persistent control needs.
-- Status files are bounded current-state snapshots, not append-only history.
-- Newer conversation-confirmed direction is reconciled with stale artifacts
-  before execution continues.
-- Conditional plugin bootstrap is not enabled, so installed Harness skills do
-  not inject instructions into unrelated projects.
-
-The complete runtime surfaces, protocol anchors, and verification suites are in
-the [Capability Matrix](docs/HARNESSES.md).
+See [Project Contract](docs/project-contract.md),
+[Capability Matrix](docs/HARNESSES.md), and
+[Delivery Plan](plugins/agent-harness/references/planned-execution.md).
 
 ## Repository And Validation
 
-This repository is the Agent Harness source project and a local marketplace
-for Codex and Grok:
-
-- `.agents/plugins/marketplace.json` exposes the local Codex plugin.
-- `.grok-plugin/marketplace.json` exposes the same plugin to Grok.
-- `plugins/agent-harness/` contains the installable plugin.
-- `plugins/agent-harness/skills/` contains the four public workflow skills.
-- `plugins/agent-harness/references/` contains canonical protocols.
-- `plugins/agent-harness/schemas/` and `templates/` define project contracts.
-- `plugins/agent-harness/scripts/agent-harness.mjs` provides deterministic CLI
-  operations for agents and maintainers.
-- `evals/` contains project-neutral evaluation fixtures.
-
-The repository's own `harness/` and `.harness/` directories are development
-state for this project. They are not installed as plugin content. Downstream
-projects receive their own adapter artifacts only through adoption or import.
-
-For README, documentation, or plugin-surface changes, run:
+- `plugins/agent-harness/skills/`: four workflow skills.
+- `plugins/agent-harness/references/`: protocol references.
+- `plugins/agent-harness/schemas/` and `templates/`: delivery contracts.
+- `plugins/agent-harness/scripts/`: deterministic delivery-control CLI.
+- `evals/`: project-neutral behavior fixtures.
 
 ```bash
 git diff --check
@@ -335,19 +118,8 @@ npm run test:all
 npm run validate:plugin
 ```
 
-The CLI remains deterministic tooling rather than the primary first-use path.
-See the [CLI reference](docs/cli.md) for its command surface.
-
-## Evaluation
-
-The deterministic suite under [`evals/`](evals/) validates fixtures and trace
-contracts; it does not run a model or prove GPT-6 Astra activation. The separately
-authorized `npm run test:eval:live` lane uses ephemeral read-only Codex
-execution and requires runtime-reported model evidence.
-
-Project-neutral adoption examples cover new projects, existing adapter imports,
-fixed-contract compatibility, non-Harness projects, and messy realistic states:
-[Downstream Project Shapes](docs/examples/downstream-project-shapes.md).
+The external official plugin validator may be unavailable locally; use
+`npm run validate:plugin:local` as the separate portable integrity check.
 
 ## Documentation
 
@@ -356,23 +128,9 @@ fixed-contract compatibility, non-Harness projects, and messy realistic states:
 - [CLI Reference](docs/cli.md)
 - [Capability Matrix](docs/HARNESSES.md)
 - [Project Contract](docs/project-contract.md)
-- [Cybernetic Stability](docs/cybernetic-stability.md)
+- [Control Feedback](docs/cybernetic-stability.md)
 - [GitHub Presentation](docs/github-presentation.md)
-- [v0.13.0 Release Notes](docs/releases/v0.13.0.md)
+- [v0.14.0 Release Notes](docs/releases/v0.14.0.md)
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
-
-Agent Harness is inspired in part by b3ehive's controller-led approach, while
-keeping its own fixed/adapter contracts and project-neutral core.
-
-## Roadmap
-
-The protocol, CLI, and four skills now speak in host capabilities. Codex is
-the first host pack. The Cursor and Grok capability and result-packet maps
-live in `plugins/agent-harness/hosts/cursor/` and
-`plugins/agent-harness/hosts/grok/`. Do not describe this repository as
-fully multi-agent until a non-Codex host has walked `host-direct`,
-`host-direct-postflight`, and `durable-harness` with inspectable evidence.
-When those capabilities are missing, Harness should fall back to
-bounded foreground execution rather than pretend parallelism or isolation.

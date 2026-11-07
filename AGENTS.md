@@ -10,10 +10,10 @@ goal handoffs, and loop engineering.
 Agent Harness exists to reduce the human's task-routing burden after product
 direction, constraints, and true pause conditions are accepted. In downstream
 projects, the installed harness should turn accepted roadmap or milestone
-direction into explicit stage maps, executable goals, run orchestration, worker
-execution, verification, and state sync. Delivery is the primary outcome;
-evidence and process artifacts should be proportionate to verification, recovery,
-and explicit audit needs rather than becoming extra deliverables.
+direction into explicit stage maps, executable goals, verification, and state
+sync. The host owns sessions, resume, workers, terminals and execution detail.
+Delivery is the primary outcome; Harness records only the accepted result,
+concise verification, remaining gaps and true pause conditions.
 
 When developing this repository, preserve that promise: the harness should not
 stop at the first locally satisfiable artifact if the accepted user intent is a
@@ -34,17 +34,15 @@ checkable.
 ## File Contract
 
 - Fixed `contract: "fixed"` projects use `harness/tasks.md`,
-  `.harness/config.json`, `harness/status.md`,
-  `harness/goals/`, and `.harness/runs/`.
+  `.harness/config.json`, `harness/status.md`, and `harness/goals/`.
 - Adapter `contract: "adapter"` projects use `.harness/config.json` plus a
-  project adapter to declare task index, specs, goals, milestones, runs, gates,
+  project adapter to declare task index, specs, goals, milestones, gates,
   status, and deferred-register paths.
 - Plugin core defines protocol; project adapters define project-specific
-  overrides; documentation artifacts record project facts and execution
-  evidence.
-- New durable Runs require an explicit plan, manifest v2, and an enforced
-  checkpoint. Existing manifest v1 Runs remain readable and recoverable;
-  `--legacy` is reserved for explicit migration compatibility.
+  overrides; documentation artifacts record accepted outcomes and concise
+  verification. Legacy Run/checkpoint fields are ignored during migration.
+- The core does not create Runs, hash source files, copy logs, seal receipts,
+  or monitor code drift. Completed targets do not reopen because source changed.
 - Target Delivery Contracts own outcomes, global hard constraints, whole-target
   verification, delivery authority, and final reporting. Nodes inherit them and
   add only local scope, constraints, and checks.

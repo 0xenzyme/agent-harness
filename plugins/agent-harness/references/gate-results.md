@@ -1,16 +1,13 @@
 # Gate Results
 
-A gate result cites the accepted objective, candidate inputs, fresh verification,
-required checklist items, Run/orchestration ownership evidence, authoritative Task/Goal
-phase, and State Sync Notes. The accepted-state owner records `accepted`,
-`request-fix`, or `blocked` with concrete evidence.
+A gate result identifies the accepted objective, reviewed files, actual
+commands/results or manual decision, and any remaining risk. The outcome owner
+accepts it only after checking whole-target constraints and required checklist
+items.
 
-Apply the canonical invariants in `docs/HARNESSES.md`. Local tests do not prove
-whole-Milestone completion without accepted scope and state evidence. Runtime
-scheduling, delegation, concurrency, cancellation, and
-model selection are observations when exposed, not gate policy.
+Gates apply to Goal/Milestone completion, not direct work or lightweight
+postflight updates. They do not require a Run, receipt, hash, copied log,
+checkpoint or worker lifecycle record.
 
-Configured completion gates are durable Goal/Run gates. They do not apply to
-ordinary direct execution or lightweight postflight-only synchronization.
-Postflight cannot bypass a prepared enforced Run or close a durable Goal
-without its recorded gates.
+Later source changes do not invalidate an accepted gate. New changes receive
+their own relevant verification without comparing old snapshots.

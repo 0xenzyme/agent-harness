@@ -1,20 +1,12 @@
 # Milestone: {Name}
 
-For a planned Milestone, add `Execution Plan: <target-filename>.plan.json`
-beside this header and create that plan adjacent to the Milestone file.
-Once this Milestone is accepted as the execution target, keep it selected
-through all Goal closeouts. A missing plan means bind the Milestone plan;
-it does not turn listed Goals into separate execution targets.
+Execution Plan: <target-filename>.plan.json
 
 ## Current Status
 
-- Status:
-- Current gate:
-- Running threads:
+- Status: active
 - Next executable:
 - Deferred blockers:
-- Started:
-- Last updated:
 
 ## Objective
 
@@ -32,12 +24,10 @@ Out:
 
 ## Delivery Contract
 
-- Delivered outcome: `<whole-stage user-visible result>`
-- Global hard constraints: `<inherited by every Goal and Task>`
-- Whole-target verification: `<stage checks beyond individual Goal checks>`
+- Delivered outcome: `<whole-stage result>`
+- Global hard constraints: `<inherited by every Goal>`
+- Whole-target verification: `<integration beyond Goal checks>`
 - Delivery authority: `<allowed and forbidden external actions>`
-- Final report: result, key changes, stage and constraint verification, actual
-  delivery state, `Need user`, and `Remaining`.
 
 ## Required Specs
 
@@ -48,11 +38,6 @@ Out:
 | Goal | Status | Priority | Doc | Depends on | Gate |
 | --- | --- | --- | --- | --- | --- |
 
-When Doc rows are listed, the plan must contain exactly those Goal paths.
-The plan binding covers declarative row fields; Status is mutable as Goals
-complete. Stage checks are observed after the latest required Goal completion
-and their logs live inside the Milestone anchor Run.
-
 ## Milestone Completion Map
 
 - Item: `<required stage outcome>`
@@ -61,49 +46,17 @@ and their logs live inside the Milestone anchor Run.
   - Status: `pending`
   - Unblocker: `N/A`
 
-Every planned Goal maps to exactly one item in this section through its
-`milestoneItem` reference. Replace placeholders before plan validation.
-
-## Orchestration
-
-```text
-spec gate
--> execution gate
--> integration gate
--> milestone gate
-```
-
 ## Gates
 
-For a planned Milestone, Goal dependencies gate preparation and each Goal's
-Task dependencies gate execution. Complete every required Goal, check fresh
-evidence and synchronized state, then use `milestone complete` with the anchor
-Run's `checkpointRevision` from `execute next` as `--expected-revision`. A completed
-leaf or Run never closes this Milestone by itself.
-Milestone completion synchronizes `Current Status` and `Goal List`, records
-`Completion Evidence Hash`, and advances the anchor Run checkpoint revision.
-
-### Spec Gate
-
--
-
-### Execution Gate
-
--
-
-### Integration Gate
-
--
-
-### Milestone Gate
-
--
+Complete each Goal, verify the whole target and use
+`milestone complete --verification <actual-results>`. No Run, checkpoint,
+receipt or evidence hash is required.
 
 ## Deferred / Follow-up Register
 
 | Item | Reason deferred | Deferred to | Unblock condition | Owner / next gate |
 | --- | --- | --- | --- | --- |
 
-## Execution Log
+## State Sync Notes
 
--
+- Pending.

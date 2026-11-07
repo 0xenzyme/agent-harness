@@ -1,23 +1,15 @@
 # Controller Communication
 
-Controller means outcome owner and accepted-state owner; it does not imply
-`gate-only` or prohibit foreground implementation. Only explicit review-only
-or gate-only direction makes the controller non-editing.
+Controller means outcome owner, not necessarily a review-only role. It may
+implement unless the user explicitly requires `gate-only`.
 
-The controller communicates durable target, accepted scope, configured roots,
-Run/orchestration node, ownership, verification, stop conditions, accepted-state owner,
-authoritative phase, and state-sync obligations. It does not choose a default worker
-surface or pin model/effort.
+Communicate the accepted target, scope, configured roots, constraints,
+verification, delivery authority, pause conditions and remaining work. The host
+owns worker scheduling, model selection, cancellation and resume.
 
-The host owns scheduling, delegation, concurrency, cancellation, and
-model selection when those capabilities are exposed. For accepted long-running
-controller work, establish or reuse a runtime outcome and maintain multi-step
-work in the host transient plan. Harness records ready nodes, dependencies, ownership,
-verification, and candidate evidence. Executors return candidate evidence;
-only the accepted-state owner records accepted Goal, Task, Run, gate, and
-bounded status state.
+Candidate worker output must be verified against the whole target before
+acceptance. Update only the existing Goal/Milestone, task index and bounded
+status. Do not narrate process history into durable records.
 
-Use the canonical invariants defined in `docs/HARNESSES.md`. Report only
-material blockers, risks, decisions, failed verification, or state changes.
-Closeout must state concrete `Need user` and `Remaining` values without a fixed
-summary template.
+Report material blockers, risks, failed verification, decisions and delivered
+state. `Need user` is a genuine decision, not a routine request to continue.

@@ -11,7 +11,7 @@ on `.codex-plugin` or `agents/openai.yaml`.
 
 | Capability | Grok surface | Fallback |
 | --- | --- | --- |
-| `runtimeOutcome` | Not exposed. Session continuation and Plan mode `plan.md` are not outcome ids | Continue in the current session. Never invent a Goal id. Durable Runs record degraded provenance. |
+| `runtimeOutcome` | Not exposed. Session continuation and Plan mode `plan.md` are not outcome ids | Continue in the current session. Never invent a Goal id. |
 | `transientPlan` | `todo_write` when the session exposes it | Keep steps in the current session. Do not mirror every todo into Git. |
 | `delegation` | `spawn_subagent` when the session exposes it | Foreground execution in the current session. |
 | `isolation` | `spawn_subagent` with `isolation` set to `worktree` | Sequential writers only. |
@@ -33,8 +33,7 @@ Use the canonical paths `host-direct`, `host-direct-postflight`, and
 - Do not pass a host-specific starting checkout unless the current user
   explicitly requests that Git state.
 - Worker selection, concurrency, cancellation, and model/effort belong to the
-  Grok runtime. Harness records ready nodes, ownership, verification, and
-  candidate evidence.
+  Grok runtime. Harness records accepted outcomes and concise verification.
 - The `workflow` tool is not the Harness orchestration runner. Use it only when the user
   explicitly asks to run a workflow.
 - Do not register a default reviewer under `plugins/agent-harness/agents/`.
@@ -43,6 +42,6 @@ Use the canonical paths `host-direct`, `host-direct-postflight`, and
   Harness capabilities.
 - Marketplace install is optional through `.grok-plugin/marketplace.json`.
   `npm run validate:plugin` does not validate this pack.
-- Worker output must be recorded with `run node record` before dependents run.
+- Review worker output before accepting dependents; do not record a Run.
 - Map the Grok worker return onto the result packet in
   `hosts/grok/result-packet.md`.

@@ -1,42 +1,20 @@
 # Adapter Harness
 
-An adapter declares project-specific artifact roots, preflight, state-sync, and
-completion gates. Plugin core defines the durable protocol and remains
-project-neutral.
+An adapter declares project-specific task, status, Spec, Goal and Milestone
+paths, preflight, state-sync and completion gates. Core remains project-neutral.
 
-Completion gates are durable Goal/Run gates. Ordinary host-direct work and
-bounded postflight-only updates do not inherit them. A prepared enforced Run
-still requires its orchestration, checklist, gate, and evidence contract.
+All writes stay inside the configured project and target roots. Reject absolute
+or `..` paths and symlink escapes. Acceptance references stay inside configured
+Goal, Spec or Milestone roots.
 
-Before any write, resolve the configured project root and target root, reject
-absolute or `..` paths, then validate the nearest existing parent's realpath so
-symlinks cannot escape. Goal paths stay under `paths.goals`, specs under
-`paths.specs`, Run arguments under `paths.runs`, and orchestration artifacts under their
-Run.
+Legacy `paths.runs`, `paths.gateRecords`, `artifactPolicy.runs`,
+`artifactPolicy.retention` and `checkpoint` are ignored during migration. New
+configuration omits them. Host sessions, workers, resume and full logs are not
+Harness state.
 
-Canonical config writes `contract`, canonical `paths`, `artifactPolicy`,
-`worktree.defaultPolicy`, default-disabled `checkpoint.defaultPolicy`, optional
-finite `checkpoint.stages` and `checkpoint.adapterDimensions`,
-`gates.requiredForCompletion`, and
-`gates.blocking`.
-Read legacy aliases for one migration boundary and fail when old and new values
-conflict.
+Completion gates apply to accepted Goal/Milestone delivery, not ordinary direct
+work. Their evidence is a concise, concrete result such as reviewed files and
+commands/results, never a Run receipt or source snapshot.
 
-Durable Runs record orchestration ready state, ownership, verification,
-candidate evidence, and accepted gate/state-sync results. Scheduling and model
-selection belong to the host.
-
-An adapter may default selected new Goals to enforced checkpoints, but the Goal
-must persist the resolved policy. Core validates the checkpoint protocol and
-finite adapter dimension domains; adapters own the dimension names/values and
-must not store credentials, payloads, or downstream product rules in core.
-
-Runtime outcome owns the active long-running outcome and transient plan owns
-short-lived steps when those capabilities are exposed. Postflight sync updates
-only existing adapter-declared state and creates no lifecycle solely for
-bookkeeping.
-
-Artifact policy distinguishes bounded current state from retained history.
-Status is replaced, active Goal indexes retain only a configured recent-Done
-window, archives preserve displaced task blocks, and local-only Runs may be
-pruned only through an explicit dry-run-first command after durable state sync.
+Status is a bounded current projection. Task compaction archives old completed
+entries; it does not inspect old Runs or revalidate historical code.

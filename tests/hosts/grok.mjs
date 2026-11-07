@@ -47,8 +47,7 @@ for (const marker of [
 assert(hostPack.includes("plugins/agent-harness/agents/"), "Grok host pack must forbid a default plugin agent");
 
 const packet = read("plugins/agent-harness/hosts/grok/result-packet.md");
-assert(packet.includes("run node record"), "Grok result packet must record through the CLI");
-assert(packet.includes("--surface grok"), "Grok result packet must name the grok surface");
+assert(!packet.includes("run node record \\"), "Grok result packet must not recreate Run recording");
 assert(packet.includes("subagent_id"), "Grok result packet must use only an exposed subagent id");
 
 assert(!existsSync(join(repoRoot, "plugins/agent-harness/agents")), "Grok plugin agents directory must stay absent");

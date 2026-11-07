@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agent-harness.local/schemas/execution-plan.schema.json",
   "title": "Agent Harness execution plan",
-  "description": "Version 1 shape. For a Milestone with concrete Goal List Doc rows, plan validation requires exactly one planned Goal per listed Doc path. The target contract hashes declarative Goal List fields but excludes mutable Status cells.",
+  "description": "Delivery plan: target outcomes, dependencies, ownership and verification commands. It contains no execution history, content fingerprints or verification snapshots.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "target", "goals"],
@@ -10,7 +10,7 @@
     "version": { "const": 1 },
     "target": { "$ref": "#/$defs/target" },
     "goals": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/goal" } },
-    "verification": { "$ref": "#/$defs/checks", "description": "Required for Milestones. For a single Goal, every optional root check must be identical to a check assigned to one of that Goal's Tasks." }
+    "verification": { "$ref": "#/$defs/checks", "description": "Whole-target verification commands or manual review descriptions required for Milestones." }
   },
   "allOf": [
     {
@@ -41,12 +41,10 @@
     },
     "check": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "command", "inputs"],
+      "required": ["id", "command"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "command": { "type": "string", "minLength": 1 },
-        "inputs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
-        "exclude": { "$ref": "#/$defs/stringList", "description": "Explicit repo-relative descendants of inputs to omit, for example backend/.data. Cannot exclude a whole input." },
         "manual": { "type": "boolean" }
       }
     },

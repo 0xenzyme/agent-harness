@@ -1,6 +1,6 @@
 # Setup And Migration Safety
 
-Audit existing config, adapter docs, Goal index, status, Specs, Goals, Runs, and
+Audit existing config, adapter docs, Goal index, status, Specs, Goals, and
 mental-model paths before mutation. Preview imports with `--dry-run --json`,
 preserve existing artifacts, and never create a second Goal index.
 
@@ -11,5 +11,5 @@ the nearest existing parent's realpath before writing any file.
 
 `skills uninstall` removes recognized public skill copies and byte-identical
 protocol reference copies from `.agents/`. It does not delete Goal indexes,
-config, status, Specs, Goals, Runs, or other project data. Preview it with
+config, status, Specs, Goals, or other project data. Preview it with
 `--dry-run --json`.

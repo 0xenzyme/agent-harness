@@ -1,50 +1,11 @@
-# Worker Prompt Template
+# Worker Prompt
 
-Use only for a runtime-selected orchestration execution node.
+Work only inside the accepted scope and inherited constraints. The host owns
+scheduling, cancellation, session state and resume.
 
-## Identity
+Return changed files, a result summary, actual verification commands/results,
+known risks, remaining work and `Need user`. Do not update accepted Goal,
+Milestone, task-index or status state.
 
-- Controller: `{controller}`
-- Goal: `{goal}`
-- Run: `{run}`
-- orchestration node: `{node}`
-- Execution cwd: `{execution_cwd}`
-- Execution branch: `{execution_branch}`
-- Ownership: `{allowed_scope}`
-- Forbidden scope: `{forbidden_scope}`
-- Validation: `{validation}`
-- Stop conditions: `{stop_conditions}`
-- Node-specific hard constraints: `{node_constraints}`
-
-Inherit the target's complete Delivery Contract and global hard constraints.
-Do not repeat or replace them here; apply the constraints above only to this
-node. Verify both the requested node result and non-breakage of inherited and
-node-specific constraints.
-
-The host owns scheduling, delegation, concurrency, cancellation, and
-model selection. Harness records dependencies, ready state, ownership,
-verification, and candidate evidence.
-
-Use the active runtime outcome for the long-running result and the host
-transient plan for short-lived steps when those capabilities are exposed. Do
-not create a second repository Goal or mirror every plan transition.
-
-## Invariants
-
-- `harness-rule:path-containment`: stay inside the locked cwd and owned roots.
-- `harness-rule:run-dag-ownership`: do not start dependents; record node evidence.
-- `harness-rule:candidate-accepted-evidence`: return candidate evidence only.
-- `harness-rule:authoritative-completion-state`: Task/Goal owns accepted state;
-  Run output remains evidence and status remains a projection.
-- `harness-rule:state-sync-evidence`: return concrete State Sync Notes.
-- `harness-rule:bounded-status-snapshot`: do not append history to status.
-- `harness-rule:project-neutral-core`: keep downstream facts in adapters.
-- `harness-rule:durable-tier-boundary`: do not downgrade this durable Run.
-- `harness-rule:checkpoint-recovery`: when the manifest enforces a checkpoint,
-  act only from its current revision/next action and never retry a prohibited
-  action or bypass reconciliation/replan state.
-
-Return changed files, summary, validation, known risks, State Sync Notes,
-`Need user`, and `Remaining`. Do not update accepted Goal, Task, status, Run,
-or gate state; only the controller records accepted state. Do not start when
-this node's recorded dependencies are incomplete.
+Do not create receipts, copied logs, hashes, checkpoints or other process
+artifacts. The controller verifies the candidate result before acceptance.

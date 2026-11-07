@@ -39,9 +39,9 @@
     <rect x="578" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
     <text x="644" y="347" fill="#e2e8f0">Task</text>
     <rect x="728" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="794" y="347" fill="#e2e8f0">Run</text>
+    <text x="794" y="347" fill="#e2e8f0">Verify</text>
     <rect x="878" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
-    <text x="944" y="347" fill="#e2e8f0">Evidence</text>
+    <text x="944" y="347" fill="#e2e8f0">Deliver</text>
     <rect x="1028" y="304" width="132" height="72" rx="12" fill="#111827" stroke="#334155"/>
     <text x="1094" y="347" fill="#e2e8f0">State Sync</text>
   </g>
@@ -57,6 +57,6 @@
 
   <g fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="22" font-weight="520">
     <text x="132" y="452">accepted direction -> scoped execution -> verification -> state sync</text>
-    <text x="132" y="490">v0.13.0 / one-entry execution / durable evidence</text>
+    <text x="132" y="490">v0.14.0 / accepted outcomes / bounded delivery state</text>
   </g>
 </svg>

@@ -1,16 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.14.0 - 2026-11-07
 
-- New durable Runs require an explicit validated plan, manifest v2 and an enforced checkpoint; existing v1 Runs remain readable and `--legacy` is reserved for migration compatibility.
-- Propagate the target Delivery Contract and global hard constraints into every node prompt, with optional plan-level node constraints and whole-target verification expectations.
-- Rename Run DAG surfaces to orchestration and keep durable evidence proportionate to delivery, recovery and explicit audit needs.
+- Replace Run/DAG/checkpoint execution with host-owned sessions and Goal/Milestone delivery control.
+- Remove source/log hashes, copied logs, receipt sealing, code-drift monitoring and historical revalidation.
+- Accept concise actual verification summaries; later source edits never reopen completed targets.
+- Ignore legacy Run/checkpoint configuration during migration and keep old files out of routing and completion.
+- Preserve bounded task/status maintenance, containment and whole-target verification.
 - Added `skills uninstall` to remove installed public skill copies and byte-identical protocol references without deleting `harness/` or `.harness/` project data.
-- Preserve exact verification logs and seal completed source-input hashes for portable historical acceptance.
 - Resolve archived completed tasks through the configured archive without keeping terminal rows in the active index.
-- Add explicit verification exclusions, ignored-input checks, legacy `run seal` recovery and separate current-source freshness reporting.
-
-## Unreleased
 
 ## 0.13.0 - 2026-10-13
 

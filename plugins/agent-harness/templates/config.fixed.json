@@ -4,26 +4,18 @@
   "paths": {
     "tasks": "harness/tasks.md",
     "status": "harness/status.md",
-    "goals": "harness/goals",
-    "runs": ".harness/runs"
+    "goals": "harness/goals"
   },
   "language": {
     "default": "auto"
   },
   "artifactPolicy": {
-    "runs": "tracked",
     "durableEvidence": ["harness/status.md", "harness/goals"],
-    "retention": { "completedDays": 30, "blockedDays": 30, "keepLatest": 20 },
     "status": { "maxLines": 160 },
     "tasks": { "archive": "harness/tasks-archive.md", "keepDone": 10 }
   },
   "communication": {
     "commentary": "minimal"
-  },
-  "checkpoint": {
-    "defaultPolicy": "disabled",
-    "stages": [],
-    "adapterDimensions": {}
   },
   "worktree": {
     "defaultPolicy": "ask"

@@ -15,7 +15,6 @@ function excludes(path, needle) { assert(!read(path).includes(needle), `${path} 
 
 const invariants = [
   "harness-rule:path-containment",
-  "harness-rule:run-dag-ownership",
   "harness-rule:pre-delegation-work-mode",
   "harness-rule:candidate-accepted-evidence",
   "harness-rule:authoritative-completion-state",
@@ -23,7 +22,7 @@ const invariants = [
   "harness-rule:bounded-status-snapshot",
   "harness-rule:project-neutral-core",
   "harness-rule:durable-tier-boundary",
-  "harness-rule:checkpoint-recovery"
+  "harness-rule:host-owned-execution"
 ];
 
 function protocol() {
@@ -35,29 +34,21 @@ function protocol() {
   excludes(execute, "`mixed`");
   includes("plugins/agent-harness/references/route-entry-mapping.md", "Ordinary clear change/build requests use the current host directly");
   includes("plugins/agent-harness/references/model-routing.md", "not pin either by default");
-  includes("plugins/agent-harness/references/worker-runner-contract.md", "the host owns delegation");
+  includes("plugins/agent-harness/references/worker-runner-contract.md", "The host owns delegation");
   includes("plugins/agent-harness/references/host-execution.md", "host-direct-postflight");
   includes("plugins/agent-harness/references/host-execution.md", "host-direct");
   includes("plugins/agent-harness/references/host-capabilities.md", "runtimeOutcome");
   includes("plugins/agent-harness/references/host-capabilities.md", "resultPacket");
   includes("plugins/agent-harness/hosts/cursor/execution.md", "runtimeOutcome");
-  includes("plugins/agent-harness/hosts/cursor/result-packet.md", "run node record");
+  excludes("plugins/agent-harness/hosts/cursor/result-packet.md", "run node record \\");
   includes("plugins/agent-harness/hosts/grok/execution.md", "runtimeOutcome");
-  includes("plugins/agent-harness/hosts/grok/result-packet.md", "run node record");
+  excludes("plugins/agent-harness/hosts/grok/result-packet.md", "run node record \\");
   includes("plugins/agent-harness/references/codex-native-execution.md", "codex-direct-postflight");
-  includes("plugins/agent-harness/references/artifact-lifecycle.md", "reconciliation-required");
-  includes("plugins/agent-harness/templates/goal.md", "Checkpoint Policy: disabled");
-  includes("docs/cli.md", "run checkpoint update");
-  includes("docs/cli.zh-CN.md", "run checkpoint update");
-  includes(execute, "Controller means outcome owner and accepted-state owner");
-  includes(execute, "Authorization to create a session or worker is not authorization to create a worktree");
-  includes(execute, "Do not pass host-specific starting checkout or session state unless the");
-  includes(execute, "Workers return candidate evidence and State Sync Notes; only the controller");
-  includes(execute, "writes accepted Goal, Task, status, Run, or gate state");
-  includes(execute, "Do not apply durable gates");
-  includes("plugins/agent-harness/templates/worker-prompt.md", "only the controller records accepted state");
-  includes("plugins/agent-harness/templates/worker-prompt.md", "recorded dependencies are incomplete");
-  includes("plugins/agent-harness/references/gate-results.md", "Configured completion gates are durable Goal/Run gates");
+  includes("plugins/agent-harness/references/artifact-lifecycle.md", "host or CI");
+  includes(execute, "Controller");
+  includes(execute, "The host owns session history");
+  includes(execute, "Source edits after completion never reopen the target");
+  includes("plugins/agent-harness/references/gate-results.md", "Gates apply to Goal/Milestone completion");
   includes("plugins/agent-harness/scripts/agent-harness.mjs", "durableRequiredCompletionGates");
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", "gitMaintenanceSummary");
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", "deliveryStateSnapshot");
@@ -68,16 +59,19 @@ function protocol() {
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "explorer"');
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "cli-contract-worker"');
   excludes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "docs-skill-worker"');
-  includes("plugins/agent-harness/scripts/agent-harness.mjs", 'id: "execution"');
-  includes("plugins/agent-harness/scripts/agent-harness.mjs", 'dependencies: ["execution"]');
+  includes("plugins/agent-harness/scripts/agent-harness.mjs", "createDeliveryControl");
+  excludes("plugins/agent-harness/scripts/delivery-control.mjs", "createHash");
+  excludes("plugins/agent-harness/scripts/delivery-control.mjs", "currentVerification");
+  excludes("plugins/agent-harness/scripts/delivery-control.mjs", "changedInputs");
+  excludes("plugins/agent-harness/scripts/delivery-control.mjs", "logHash");
   assert(!existsSync(join(repoRoot, "plugins/agent-harness/templates/codex-agents/harness_explorer.toml")), "explorer template must be absent");
   assert(!existsSync(join(repoRoot, "plugins/agent-harness/templates/codex-agents/harness_implementer.toml")), "implementer template must be absent");
   const schema = json("plugins/agent-harness/schemas/config.schema.json");
   assert(schema.properties.gates.properties.requiredForCompletion && schema.properties.gates.properties.blocking, "completion gate fields must remain supported");
-  assert(schema.properties.artifactPolicy.properties.retention && schema.properties.artifactPolicy.properties.tasks, "artifact lifecycle policy must remain supported");
-  assert(schema.properties.checkpoint.properties.defaultPolicy && schema.properties.checkpoint.properties.stages && schema.properties.checkpoint.properties.adapterDimensions, "checkpoint policy, stage vocabulary, and adapter dimensions must remain supported");
+  assert(schema.properties.artifactPolicy.properties.tasks, "bounded task lifecycle must remain supported");
+  assert(schema.properties.checkpoint.description.includes("ignored"), "legacy checkpoint configuration must be ignored");
   const adapter = json("plugins/agent-harness/templates/config.adapter.json");
-  assert(adapter.worktree && adapter.artifactPolicy && adapter.checkpoint?.defaultPolicy === "disabled" && adapter.paths.ideaInbox === "harness/intake.md" && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must include the idea inbox and explicit default-disabled checkpoint policy while remaining slim and lifecycle-aware");
+  assert(adapter.worktree && adapter.artifactPolicy && !adapter.checkpoint && !adapter.paths.runs && adapter.paths.ideaInbox === "harness/intake.md" && !adapter.workMode && !adapter.loops && !adapter.lifecycle, "canonical adapter config must contain delivery state only");
   console.log(`Protocol checks passed (${invariants.length} domain invariants).`);
 }
 
@@ -99,7 +93,7 @@ function hostsGrok() {
   includes("plugins/agent-harness/hosts/grok/execution.md", "todo_write");
   includes("plugins/agent-harness/hosts/grok/execution.md", "spawn_subagent");
   includes("plugins/agent-harness/hosts/grok/execution.md", "worktree");
-  includes("plugins/agent-harness/hosts/grok/result-packet.md", "--surface grok");
+  includes("plugins/agent-harness/hosts/grok/result-packet.md", "subagent_id");
   assert(!existsSync(join(repoRoot, "plugins/agent-harness/agents")), "Grok plugin agents directory must stay absent");
   const marketplace = json(".grok-plugin/marketplace.json");
   assert(marketplace.name === "agent-harness-local", "Grok marketplace identity must remain agent-harness-local");
@@ -119,7 +113,7 @@ function presentation() {
   includes("CHANGELOG.md", `## ${version} -`);
   assert(Array.isArray(plugin.interface.defaultPrompt) && plugin.interface.defaultPrompt.every((item) => typeof item === "string"), "defaultPrompt must be a string array");
   assert(!existsSync(join(repoRoot, "README.en.md")), "English README must be README.md, not README.en.md");
-  const pkgDescription = "Adapter-driven control plane for coding-agent work: tasks, goals, run orchestration, gates, verification, and state sync.";
+  const pkgDescription = "Adapter-driven control plane for coding-agent work: goals, milestones, acceptance, verification summaries, and state sync.";
   assert(pkg.description === pkgDescription, "package.json description must match the GitHub presentation positioning line");
   includes("docs/github-presentation.md", pkgDescription);
   for (const file of ["README.md", "README.zh-CN.md"]) {
@@ -188,8 +182,8 @@ function regressions() {
   execFileSync(process.execPath, ["tests/regressions.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
 }
 
-function plannedExecution() {
-  execFileSync(process.execPath, ["tests/planned-execution.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
+function deliveryControl() {
+  execFileSync(process.execPath, ["--test", "tests/delivery-control.mjs"], { cwd: repoRoot, env: deterministicEnv, stdio: "inherit" });
 }
 
 const mode = process.argv[2] || "list";
@@ -197,9 +191,9 @@ if (mode === "protocol") protocol();
 else if (mode === "presentation") presentation();
 else if (mode === "hosts-codex") hostsCodex();
 else if (mode === "hosts-grok") hostsGrok();
-else if (mode === "all") { presentation(); protocol(); hostsCodex(); hostsGrok(); smoke(); regressions(); plannedExecution(); }
-else if (mode === "planned-execution") plannedExecution();
+else if (mode === "all") { presentation(); protocol(); hostsCodex(); hostsGrok(); smoke(); regressions(); deliveryControl(); }
+else if (mode === "delivery-control") deliveryControl();
 else if (mode === "smoke") smoke();
 else if (mode === "regressions") regressions();
-else if (mode === "list" || mode === "--list") console.log("presentation, protocol, hosts-codex, hosts-grok, smoke, regressions, planned-execution, all");
+else if (mode === "list" || mode === "--list") console.log("presentation, protocol, hosts-codex, hosts-grok, smoke, regressions, delivery-control, all");
 else throw new Error(`Unknown suite mode: ${mode}`);

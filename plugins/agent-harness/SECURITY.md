@@ -3,7 +3,7 @@
 ## Supported versions
 
 Security fixes land on the default branch for the latest release. The current
-release is 0.13.0. Older releases are not maintained on separate security
+release is 0.14.0. Older releases are not maintained on separate security
 branches.
 
 ## Reporting a vulnerability

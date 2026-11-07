@@ -1,29 +1,15 @@
 # Work Unit Model
 
-This model answers what one harness-managed unit of work is.
-
 ```text
-Goal with Tasks + status + spec + orchestration + run + gate
+Goal with Tasks + accepted scope + verification + delivery state
 ```
 
-## Components
-
 - goal:
-- tasks:
-- status:
-- spec:
-- orchestration:
-- run:
-- gate:
-- route explanation:
-- evidence:
+- tasks and dependencies:
+- global and local constraints:
+- acceptance:
+- verification:
+- bounded status:
 
-## Artifact Mapping
-
-- Goal index:
-- status file:
-- specs:
-- goals:
-- milestones and deferred registers:
-- run logs:
-- mental models:
+No Run, checkpoint, receipt, source snapshot or evidence seal is part of a work
+unit. Execution belongs to the host session.

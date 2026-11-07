@@ -1,8 +1,8 @@
 {
   "name": "agent-harness",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "private": true,
-  "description": "Adapter-driven control plane for coding-agent work: tasks, goals, run orchestration, gates, verification, and state sync.",
+  "description": "Adapter-driven control plane for coding-agent work: goals, milestones, acceptance, verification summaries, and state sync.",
   "type": "module",
   "bin": {
     "agent-harness": "./plugins/agent-harness/scripts/agent-harness.mjs"
@@ -10,6 +10,7 @@
   "scripts": {
     "doctor": "node plugins/agent-harness/scripts/agent-harness.mjs doctor",
     "deploy:local-plugin": "node tools/deploy-local-plugin.mjs",
+    "deploy:local-plugin:portable": "node tools/deploy-local-plugin.mjs --allow-portable-validation",
     "print-contract": "node plugins/agent-harness/scripts/agent-harness.mjs print-contract",
     "test:all": "node scripts/test-suites.mjs all",
     "test:routing-classification": "node evals/run-agent-harness-eval.mjs",
@@ -22,7 +23,7 @@
     "test:smoke": "node tests/smoke.mjs",
     "test:regressions": "node tests/regressions.mjs",
     "validate:plugin": "node tools/validate-plugin.mjs",
-    "test:planned-execution": "node tests/planned-execution.mjs",
+    "test:delivery-control": "node --test tests/delivery-control.mjs",
     "test:eval:development": "node evals/run-live-development.mjs",
     "validate:plugin:local": "node tools/validate-plugin-local.mjs"
   },

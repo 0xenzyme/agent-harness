@@ -2,8 +2,7 @@
 
 `harness-rule:bounded-status-snapshot`: this file is a bounded current-state
 snapshot, not an append-only history log. Replace current sections when syncing
-state; keep historical details in task entries, Goal files, run logs, and gate
-records.
+state; execution history belongs to the host session and CI.
 
 ## Focus
 
@@ -13,7 +12,7 @@ records.
 
 - Current phase:
 - Authoritative Task/Goal:
-- Active Run checkpoint reference (if enforced; do not duplicate revision/control state):
+- Host session / resume: owned by the current host, not duplicated here.
 - Projection updated:
 
 ## Verification

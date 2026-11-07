@@ -1,528 +1,73 @@
 # CLI Reference
 
-主要用户路径是让当前 coding agent 使用 `harness:*` workflow
-skills。CLI 是 agents、operators、diagnostics、scripted adoption 和 plugin
-maintainers 使用的确定性工具。
+CLI 是确定性交付控制工具。它不执行项目测试、调度 worker、监控源码变化或恢复 session。
 
-如果你想先了解中文接入流程、main control / worker 分工、goal/run/evidence
-边界，先读 [`install.zh-CN.md`](install.zh-CN.md)。本页只保留 CLI command
-reference。
-
-下面的例子使用 repo-local Node script path。如果环境里已经提供
-`agent-harness` binary，可以用同样的 subcommands 和 options 调用该 binary。
-
-## 验证命令
-
-[Agent Harness capability matrix](HARNESSES.md) 说明 protocol、smoke、eval
-和 plugin-validation suites 各自覆盖哪些 surface。
+## 接入与检查
 
 ```bash
-git diff --check
-npm run test:presentation
-npm run test:protocol
-npm run validate:plugin
-npm run test:smoke
+node plugins/agent-harness/scripts/agent-harness.mjs init --cwd <project> --contract adapter
+node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd <project>
+node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd <project> --dry-run --json
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd <project>
+node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd <project> --json
 ```
 
-对 goal-backed work，在准备或完成 run 前先验证 goal：
+`skills uninstall` 保留 `harness/`、`.harness/`、外来 skill 和修改过的 reference。`doctor` 检查交付状态路径，不采集 Git 遥测。
+
+`config inspect|validate|import`、`adapter inspect`、`worktree recommend`、`activation snippet`、`print-contract` 和 `intake idea` 保留设置、预览和路由职责。写入仍需相应显式选项。
+
+## Goal 与交付计划
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md
+node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd <project> --task "<task>" --spec <spec> --work-mode local
+node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd <project> --goal <goal>
+node plugins/agent-harness/scripts/agent-harness.mjs plan validate --cwd <project> --plan <target>.plan.json
+node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd <project> --goal <goal> --json
+node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd <project> --milestone <milestone> --json
 ```
 
-如果修改了 README、GitHub presentation、social preview、changelog 或
-release notes，运行 `npm run test:presentation`。如果修改了 eval
-documentation 或 eval fixtures，运行 `npm run test:eval`。如果需要同时跑
-presentation、protocol、smoke 和 regression coverage，运行
-`npm run test:all`；只跑 CLI hardening suite 时使用
-`npm run test:regressions`。
+相邻计划声明依赖、ownership、验收映射和 `{id, command, manual?}` 检查。旧 `inputs`／`exclude` 字段只被忽略，不计算 hash；新计划省略它们。
 
-`npm run test:eval` 是 deterministic eval，不测真实模型 activation。需要
-显式批准模型/成本后才能运行 live check：
+`execute next` 根据验收状态返回 `execute-node`、`verify-node`、`complete-goal`、`complete-milestone`、`need-user`、`reconcile`、`wait` 或 `done`。
+
+## 完成
+
+在 host 中实际实现并验证后，把简洁结果写入验收项，然后运行：
 
 ```bash
-AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:live -- --model gpt-6-astra --reasoning-effort high --output evals/results/live-gpt-6-astra.json
+node plugins/agent-harness/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "unit: 85 passed; build passed"
+node plugins/agent-harness/scripts/agent-harness.mjs milestone complete --cwd <project> --milestone <milestone> --verification "integration: passed; whole-target constraints checked"
 ```
 
-如果 Codex 没有报告 runtime model，live runner 会拒绝声称 GPT-6 Astra evidence。
+摘要必须包含每个所需检查 id 及实际结果。Goal 完成核对验收覆盖、必需 gate 和状态同步。Milestone 完成要求全部 Goal 加自身 whole-target 检查，不重复子 Goal 检查。
 
-## 初始化或导入项目
+写入仅限 Goal/Milestone、任务索引和有界状态。已完成 Goal 的重复完成保持幂等。不会创建 Run、receipt、manifest、checkpoint、日志副本、内容 hash 或证据封存。
 
-初始化 adapter-contract 下游项目：
+## 有界状态
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
-node plugins/agent-harness/scripts/agent-harness.mjs skills install --cwd /path/to/project
+node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd <project> --json
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts inspect --cwd <project> --json
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts compact --cwd <project> --json
+node plugins/agent-harness/scripts/agent-harness.mjs artifacts compact --cwd <project> --record --json
 ```
 
-`skills install` 把四个公开 skill 复制到 `.agents/skills/`，并把协议 references
-复制到 `.agents/references/`。用 `--dry-run --json` 预览。这是默认技能发现
-路径。Codex 和 Grok 的 marketplace 安装是可选项。
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs skills uninstall --cwd /path/to/project
-```
-
-`skills uninstall` 删除可识别的公开 skill 目录，以及字节仍与安装副本一致的
-协议 reference。`--dry-run` 和 `--json` 只预览。`harness/` 和 `.harness/`
-里的项目数据会保留，外来 skill 和已修改的 reference 也会保留。
-
-固定契约也支持同样的 `init` 选项：`--task-index` 设置任务文件，
-`--idea-inbox` 创建可选的 Markdown inbox；路径会写入 `.harness/config.json`
-并经过 containment 校验。
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract fixed --task-index docs/tasks.md --idea-inbox docs/intake.md
-```
-
-导入已经有 adapter 和 Goal index 的 adapter 项目，不创建第二个 Goal index：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --dry-run
-node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md
-```
-
-已有项目可以在 import 时覆盖 adapter artifact paths。使用 `--dry-run --json`
-先检查完整 proposed config：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs config import --cwd /path/to/project --task-index todolist.md --status docs/status.md --specs docs/specs --goals docs/goals --milestones docs/milestones --runs .harness/runs --gate-records .harness/runs --deferred-register docs/milestones --mental-model docs/mental-model.md --mental-model-index docs/mental-model.md --mental-models docs/mental-models --dry-run --json
-```
-
-如果项目已经有 `todolist.md`，`init --contract adapter` 会沿用它，不会再创
-建并行的 `harness/tasks.md`。真实执行 `config import` 会写入 machine
-config，并创建缺失的支持产物，例如配置的 status 文件和 runs 目录。
-
-## 检查项目
-
-检查下游项目：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
-```
-
-打印用于 `AGENTS.md` 的 project-scope activation snippet，不写文件：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs activation snippet --cwd /path/to/project
-```
-
-当前没有启用 plugin-level `SessionStart` bootstrap。本地验证显示，当前
-plugin validator 会拒绝 `.codex-plugin/plugin.json` 里的 `hooks` 字段；保持
-manifest hook-free 是当前边界，用来避免 Agent Harness 影响没有接入 harness
-的项目。
-
-查看解析后的 config 和 adapter 路径：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs config inspect --cwd /path/to/project --json
-node plugins/agent-harness/scripts/agent-harness.mjs config validate --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs adapter inspect --cwd /path/to/project --json
-```
-
-`config inspect` 还会报告实际生效的 `communication.commentary` policy、其
-configured/default 来源、`Report cadence` 与 `Notify on` contract。
-
-维护者可以打印 canonical fixed / adapter contract JSON（稳定、不翻译；不是
-用户首要入口）：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs print-contract
-node plugins/agent-harness/scripts/agent-harness.mjs print-contract --contract adapter
-```
-
-只读汇总当前状态并推荐下一步，不开始执行：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --json
-```
-
-`orient next` 会按 Goal state 选择路线。`P0` / `P1` / `P2` / `P3` 只表示
-priority，不是 Goal、Task 或 milestone 标识。`P0` / `P1` 的 `todo` 或
-`spec-draft` Goal 如果没有 spec，会推荐 shape / 确认 accepted scope，而不
-是输出不可执行的 `goal create`。带 spec 的 `spec-ready` Goal 会推荐
-`goal create --spec ...`；`goal-ready` Goal 会优先推荐已有 goal validation
-和 `run prepare`。
-
-## Intake And Maintenance
-
-预览一个新想法或新需求。预览只读；adapter 配置了 idea inbox 时，记录会写入
-未确认候选 inbox，不会修改 Goal index：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow"
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --json
-```
-
-用户明确确认后，才记录候选项。配置了 idea inbox 的 adapter 会写入该 inbox；未配置
-时才回退到支持的 markdown Goal index：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs intake idea --cwd /path/to/project --idea "Add a new import flow" --record --priority P2 --section Next
-```
-
-从配置的 Task/Goal state、bounded status 和 recent Run records 预览确定性的
-Goal/status maintenance：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --json
-```
-
-把保守的 maintenance snapshot 写入配置的 status 文件，并替换已有 snapshot
-section；只有当 completed run 提供精确证据且 Goal index 可安全写入时，才应用
-task 更新：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs maintain tasks --cwd /path/to/project --record
-```
-
-只读检查 bounded status、active/Done task、Run 数量/体积/phase，以及配置的
-durable-evidence 文档对 local-only Run 的引用。Run 统计区分 operational `active`、已知
-`terminal` 和旧格式/无效的 `unmanaged`；三种分类覆盖所有 inspected entry：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs artifacts inspect --cwd /path/to/project --json
-```
-
-先预览 task compaction；显式 `--record` 后，CLI 会先归档 exact task block，再
-替换 active index：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs artifacts compact --cwd /path/to/project --json
-node plugins/agent-harness/scripts/agent-harness.mjs artifacts compact --cwd /path/to/project --record --json
-```
-
-先预览 Run retention candidate。实际删除必须显式使用 `--apply`，并同时满足
-`local-only` policy、terminal state、retention 到期、path containment，以及 Goal
-已经引用该 Run 并保存 State Sync Notes：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs artifacts prune --cwd /path/to/project --json
-node plugins/agent-harness/scripts/agent-harness.mjs artifacts prune --cwd /path/to/project --apply --json
-```
-
-推荐当前任务应该继续使用当前 checkout、切到 worktree，还是先询问：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs worktree recommend --cwd /path/to/project --json
-```
+未指定 `--record` 时维护与检查只读。压缩只归档较早的已完成任务，不读取旧 Run 或比较源码。旧 Run 命令返回退役错误，旧文件不会被隐式删除。
 
 ## Language
 
-在 `.harness/config.json` 中设置 project adapter default：
+语言优先级为 `--lang`、`AGENT_HARNESS_LANG`、`language.default`、`LC_ALL`、`LC_MESSAGES`、`LANG`，最后为 English。基础模板使用 English；回复使用用户语言。
 
-```json
-{
-  "language": {
-    "default": "zh-CN"
-  }
-}
-```
-
-支持值为 `auto`、`en` 和 `zh-CN`。选择优先级是 `--lang`、
-`AGENT_HARNESS_LANG`、`language.default`、`LC_ALL`、`LC_MESSAGES`、`LANG`，
-最终 fallback 为英文。
-
-覆盖单次命令：
+## 验证
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project --lang zh-CN
+git diff --check
+npm run test:all
+npm run test:regressions
+npm run test:delivery-control
+npm run test:eval
+npm run validate:plugin
+npm run validate:plugin:local
 ```
 
-该设置只影响已经支持的 CLI messages。Goal、Spec、status、run packet 和其他
-generated artifact body 当前仍使用英文 templates/renderers；`--lang` 不会翻译
-这些文件。Deterministic CLI 的 `auto` 读取 process locale，不读取 Codex
-host conversation language。
-
-## Goals And Runs
-
-### 已确认计划的单入口执行
-
-`plan validate` 同时检查 Goal 合同和 adapter 必需 gate。计划内 Goal 使用显式
-映射，不按 batch 或 M 编号推导阶段。显式 blocked 的根 Milestone 会阻止 Run
-准备和 Task 启动。重复完成调用保持幂等；status 只投影当前目标，后续已接受
-工作不会让历史完成目标重新打开。
-
-版本化计划放在 Goal 或 Milestone 目标旁，路径为 `<target-filename>.plan.json`，
-目标文档用 `Execution Plan:` 引用。具体字段与候选回执见
-[planned execution reference](../plugins/agent-harness/references/planned-execution.md)。
-Milestone 内每个 Goal 引用 Milestone 旁的同一计划；独立 Goal 才引用自己
-旁边的计划。
-验证检查配置路径边界、重复或缺失 ID、环、
-acceptance/gate 覆盖率和两级依赖。Goal 依赖限制各 Goal 的 Run 准备；
-Task 依赖编译为 Run 编排，并限制节点执行。
-Milestone 的 `Goal List` 若列出具体 Doc 行，计划必须恰好覆盖这些 Goal 路径。
-目标合同哈希绑定 Goal 名称、Doc、priority、dependency 和 gate，排除可变
-Status cell。
-Goal 若列在 active Milestone 中，`execute next --goal` 默认返回指向该
-Milestone 的 `replan`，独立的 `run prepare --goal` 会被拒绝。先绑定
-Milestone 旁的总计划，随后持续使用 `execute next --milestone`，包括各 Goal
-收口之后。只有用户明确把已接受范围缩为单个 Goal，才对上述 Goal 命令加
-`--goal-slice`。Milestone 缺少计划是该 Milestone 的 `replan`，不需要用户再决策。
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs plan validate --cwd /path/to/project --plan harness/goals/example.md.plan.json --json
-node plugins/agent-harness/scripts/agent-harness.mjs plan inputs --cwd /path/to/project --plan harness/goals/example.md.plan.json --json
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/example.md --plan harness/goals/example.md.plan.json --dry-run --json
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/example.md --plan harness/goals/example.md.plan.json --json
-node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd /path/to/project --goal harness/goals/example.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd /path/to/project --milestone harness/milestones/example.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs run node inputs --cwd /path/to/project --run .harness/runs/example --node build --json
-```
-
-`execute next` 只针对选中的目标。稳定输出字段为字符串 `action`；
-对象 `target`（`{kind, path}`）；字符串 `goal`、`run`、`node`、`reason`
-（未选中时为空字符串）；整数或 null 的 `checkpointRevision`；数组
-`requiredEvidence`；字符串或 null 的 `needUser`。动作包括 `execute-node`、`wait`、
-`review-node`、`verify-node`、`sync`、`prepare-run`、`complete-goal`、
-`complete-milestone`、`reconcile`、`replan`、`need-user` 和 `done`。
-`done` 表示整个所选目标完成；`reconcile` 且 `needUser: null` 表示非用户
-阻塞；`need-user` 指向具体决策。带目标的 `orient next` 使用同一只读决策。
-`complete-milestone` 包含锚点 `run` 和 `checkpointRevision`。
-
-新的 durable Run 必须有显式计划，使用 manifest v2 和 enforced checkpoint。
-已有 manifest v1 Run 仍可读取和恢复；`run prepare --legacy` 只用于显式迁移兼容，
-不是 skill 的执行路径。计划内 `run node record` 的 `running`、`blocked`
-操作必须带 `--expected-revision`；node review 和 Goal completion 同样
-受 checkpoint revision 约束。每次修改前读取当前 revision。修改命令支持
-`--dry-run` 预览及 `--json` 输出。
-计划自身为 `version: 1`。`goals[].tasks[]` 声明
-`type: implementation|verification|human`、`ownership.read`、
-`ownership.write`、`{path, section, item}` acceptance 引用、可选的局部
-`constraints`，以及必填 `verification[]` 检查
-`{id, command, inputs, exclude?, manual?}`。所有 Task 自动继承目标
-Delivery Contract 和全局硬约束。新建计划内 Goal 可选
-`goal create --plan PATH`，默认使用 enforced checkpoint；已有 Goal
-准备计划内 Run 前须明确设定 `Checkpoint Policy: enforced`。
-单 Goal 目标可选的根 `verification`，每项都必须与某个 Task check 完全相同；
-Milestone 必须有根 `verification`。
-acceptance 覆盖也包括旧的 `Stage Completion Map` 与
-`Source Task Acceptance Map`，以及当前 checklist/gate；映射使用准确的
-item label。
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/example --node build --phase running --summary "Starting build" --expected-revision 0 --dry-run --json
-node plugins/agent-harness/scripts/agent-harness.mjs run node review --cwd /path/to/project --run .harness/runs/example --node build --evidence evidence/build.json --decision accepted --expected-revision 1 --json
-node plugins/agent-harness/scripts/agent-harness.mjs run sync --cwd /path/to/project --run .harness/runs/example --expected-revision 2 --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal complete --cwd /path/to/project --goal harness/goals/example.md --run .harness/runs/example --expected-revision 3 --json
-node plugins/agent-harness/scripts/agent-harness.mjs milestone complete --cwd /path/to/project --milestone harness/milestones/example.md --evidence evidence/milestone.json --expected-revision <checkpointRevision-from-execute-next> --json
-```
-
-节点回执写入 `<run>/agents/<node>/candidate.json`，只是候选 evidence。
-它包含 `version: 1`、绑定的 `target`、`goal`、`run`、`node`，以及
-`summary`、`changedFiles`、`stateSyncNotes`、`risks`、`remaining`、
-`needUser`、`executor`、`checks`。每项 check 记录 `id`、`command`、
-`exitCode`、`observedAt`、路径到哈希的 `inputs`、`log`、`logHash`；
-manual check 还需 `humanDecision`。验证后用 `run node inputs` 获取当前
-哈希。节点日志必须是该节点所属 Run 内的普通文件；检查时间不得早于 Run
-manifest 创建时间。Task 的 `ownership.write` 不得包含权威 Harness
-artifact。委派节点处于记录的 `running` 阶段时，可选字段
-`executor.thread` 必须等于记录的 worker 身份。审查核对真实 validation log 和当前验证输入的
-内容哈希。`accepted` 才释放 Task 依赖；`request-fix` 要求有界修复；
-`blocked` 记录故障。同一故障连续三次无进展时阻塞该 item，并继续其他
-ready work。worker 状态未知时，先通过 host 检查再重试。继续执行前用
-`run sync` 恢复待完成的项目同步；遇到用户中途修改则报告冲突，不覆盖。
-节点或 Run 完成不会自动关闭上级 Goal/Milestone。completion checks 拒绝
-pending requirement、过期证据、占位符、未完成依赖与未完成 sync。合同漂移
-需要 replacement Run，不改旧 manifest。Milestone completion 使用
-`execute next` 返回的锚点 Run 修订号作为 `--expected-revision`，并推进
-该 Run 的 checkpoint revision。
-主控运行必要检查并记录真实结果；CLI 只验证记录的回执与哈希。源码根目录
-`.` 的输入快照排除 `.git`、`node_modules`、配置的 Specs 和其他 Harness
-控制 artifact，包括 config、sync journal 与 project lock。
-Milestone completion 同步 `Current Status` 与 `Goal List`，记录
-`Completion Evidence Hash`，后续 `done` 再核对该哈希。fixed 项目的 Spec
-引用在未配置 `paths.specs` 时仍是项目内路径；可选 Milestone 根目录默认
-为 `harness/milestones/`。
-阶段验证日志必须位于同一个锚点 Run 内。阶段检查时间不得早于所有必需
-Goal Run 中最晚的完成时间（`completedAt`，旧记录回退 `updatedAt`）。
-显式标为 `blocked` 的 Goal 返回 `reconcile`，恢复前不能准备或执行。
-已满足的 human Task 若所有映射项都为 `satisfied` 且有具体 `Evidence`，
-返回 `verify-node`。主控核对既有批准记录，并把该决策写入回执
-`humanDecision`；记录缺失时才通过 `need-user` 提问。相同验证失败连续
-三次没有进展时，`reconcile` 的理由指出次数和失败摘要，`requiredEvidence`
-包含审查回执。
-
-
-用户可见术语主线是 `Roadmap -> Milestone -> Goal -> Task -> Run`。`Goal`
-是 Harness 的主要工作单位。`Task` 是 Goal 内部的 checklist 或 execution
-breakdown。`Run` 是一次执行尝试和 evidence record，不等于 host thread
-或 session。
-
-从配置的 Goal index 创建 goal handoff：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title"
-```
-
-`--task` 是兼容性的 Goal index storage lookup，底层字段仍是
-`taskIndex`。它创建的是 `Goal`，不会把 storage label 变成 Harness 的主要
-工作单位。
-
-默认情况下，adapter goal 应引用已确认的 spec：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/task-title.md
-```
-
-如果 adapter scope 已经被接受，但明确没有单独 spec，使用显式 spec-less 路径：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --allow-no-spec
-```
-
-不带 `--allow-no-spec` 时，adapter `goal create` 省略 `--spec` 仍会失败。
-Spec-less goal 不能降低安全要求：仍必须验证 `Scope`、`Non-Goals`、
-`Verification`、`Completion Conditions`、`Pause Conditions`、`Execution Role`
-和 authoritative state/evidence sections。
-
-准备 run 之前，列出、查看并验证 goals：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal list --cwd /path/to/project
-node plugins/agent-harness/scripts/agent-harness.mjs goal inspect --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
-node plugins/agent-harness/scripts/agent-harness.mjs goal validate --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --json
-```
-
-从 goal 准备 run packet：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd /path/to/project --goal harness/goals/YYYY-MM-DD-task-title.md --plan harness/goals/YYYY-MM-DD-task-title.md.plan.json
-```
-
-准备好的 run packet 会包含 `manifest.json`、`dag.json`、`dag.md` 和
-`agents/<node>/prompt.md`。`manifest.json` 绑定准备时的 Goal/Spec 执行合同与
-编排形状；准备后修改这些输入会被拒绝，必须重新准备 Run。Harness 记录 ready nodes、ownership、verification
-和 candidate evidence；host 负责 worker selection、delegation、
-concurrency 与 cancellation。`run prepare` 不启动 worker，也不固定 model/
-effort。Task/Goal 保持为 accepted-state authority；Run packet 保存 execution 和
-verification evidence，status 保持为 bounded projection。
-
-查看已准备的 run：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title
-node plugins/agent-harness/scripts/agent-harness.mjs run status --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
-```
-
-### Run checkpoint 与 recovery
-
-Checkpoint 默认关闭，不影响普通 managed Run 或 host-direct /
-host-direct-postflight 路径。Adapter 可以
-为新 Goal 提供默认值，Goal 仍会持久化最终 policy：
-
-```json
-{
-  "checkpoint": {
-    "defaultPolicy": "disabled",
-    "stages": ["diagnosis", "delivery"],
-    "adapterDimensions": {
-      "deliveryReadiness": ["pending", "ready"]
-    }
-  }
-}
-```
-
-也可以在创建 Goal 时显式启用：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs goal create --cwd /path/to/project --task "Task title" --spec harness/specs/accepted.md --checkpoint-policy enforced
-```
-
-`Checkpoint Stages` 会从 config 复制到新 Goal 并绑定进 immutable manifest；
-`currentStage` 与 `lastCompletedStage` 必须为 `null` 或属于该有限 vocabulary，
-因此它们只是 recovery labels，不会形成一套未声明的 stage 状态机。
-
-Enforced `run prepare` 会生成独立 `checkpoint.json`，manifest 只绑定 path、
-schema version 和 resolved policy，不 hash 可变 checkpoint 内容；`status.json`
-只保存 reference，不复制 revision/control state。查看和验证：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run validate --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
-node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint show --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
-node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint validate --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
-node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --json
-```
-
-Mutation 必须带刚读取的 `--expected-revision`，并在 Run lock 下 atomic write。
-示例：外部动作结果不确定时先进入 reconciliation，禁止 blind retry：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run checkpoint update --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --expected-revision 0 --control-state reconciliation-required --next-action "inspect authoritative deployment state" --pause-reason "deployment may have completed before state sync failed" --required-evidence '["authoritative deployment status"]' --prohibited-actions '["retry deployment"]' --reconciliation-required true --json
-```
-
-清除 reconciliation 必须同时提供 `--evidence-reference`、`--observed-at` 和
-`--observed-source`。Goal/Spec contract drift 时，旧 Run 只允许进入
-`replan-required`，准备并验证 replacement Run 后再写 `superseded`；不得重绑旧
-manifest。`completed` checkpoint 要求 编排已 terminal，但不会自动完成 Goal。
-多个 active checkpoint 会使 `orient next` 暂停选择，必须显式 `--run`。
-
-启动前先记录 node `running`，再记录结果。Node ID 按 task size 生成；先查看
-`run status --json`（或 `dag.json`）。当前默认 medium/large 编排使用
-`execution` 和 `verification`，第二个并发 writer 必须提供
-`--isolation-evidence`：
-以下是已有未计划旧 Run 的示例。准备这类 Run 必须显式使用迁移兼容参数
-`--legacy`；新的 skill 执行一律使用计划。计划内 `running` 和 `blocked`
-记录必须带 `--expected-revision`，如上所示。
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase running --summary "Starting accepted implementation"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node execution --phase completed --summary "Implementation evidence recorded" --verification "Focused checks passed"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node verification --phase running --summary "Starting verification"
-node plugins/agent-harness/scripts/agent-harness.mjs run node record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --node verification --phase blocked --summary "Blocked by a failed verification command"
-```
-
-记录 Run 结果；`run record` 本身不修改源码，也不执行 external action：
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Implemented and verified" --verification "npm test passed"
-node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase completed --summary "Gate accepted" --verification "npm test passed" --gate-evidence "Reviewed implementer output and run evidence"
-node plugins/agent-harness/scripts/agent-harness.mjs run record --cwd /path/to/project --run .harness/runs/YYYYMMDD-HHMMSS-task-title --phase blocked --summary "Blocked by missing credential"
-```
-
-`run record` 会刷新 `status.json` 和 Run log 中的 accepted Run evidence。
-Node 和 Run 记录使用排他的 Run lock 与原子 artifact 写入，并发记录不会产生
-半截 JSON 或覆盖同一个 log。
-completed Run 要求 verification、所有生成的 编排node（包括 advisory/small
-编排）均为 completed、required checklist items、durable gates，以及带有具体
-State Sync Notes 的 authoritative Task/Goal state。Goal 必须引用精确的 Run
-路径；blocked Goal 不能完成 Run。
-
-active `running` 或 `blocked` node 会阻止 completion；cancellation 或 supersession 是 cooperative
-controller signal，不是 worker runtime 已停止的证明。
-
-配置的 `gates.requiredForCompletion` 和 `gates.blocking` 只约束 durable
-Goal/Run completion。普通 host-direct 工作和轻量 postflight-only 状态更新不需要
-因此创建 Run。一旦 Run 已 prepared，不能用 postflight 表述绕过 编排、gate 或
-evidence。
-
-CLI 记录 durable state，不实现 host runtime outcome 或 transient plan。Skill
-在 host 暴露原生能力时，把长时间 controller 工作绑定到 runtime outcome 和
-transient plan。
-
-旧 Goal 和 Run 中的 delivery 字段在 `0.10.0` compatibility boundary 内仍可
-读取，但 current validation、completion、maintenance 和 status output 会忽略
-它们；新 artifact 不再生成这些字段。
-
-只有 `status.json` 的旧 Run 目录仍可被 inspect，但会标记为 `unmanaged`，不会
-自动把 Task 移到 Done，也不能通过 `artifacts prune --apply`。artifact policy 中的
-路径必须是仓库相对路径；required Harness 路径缺失时，`doctor` 返回非零退出码。
-
-
-### 可迁移证据与历史验收
-
-验证检查可声明 `exclude`，列出输入目录内要排除的具体路径，例如
-`{"id":"tests","command":"go test ./...","inputs":["backend"],"exclude":["backend/.data"]}`。
-不能排除整个 input。tracked 验收拒绝 Git ignored 输入，并把日志精确保存到
-`<run>/evidence/logs/<hash>.txt`。Goal 完成时在 `<run>/evidence/completion.json`
-封存输入 hash 和回执身份；tracked Run 必须保留这些文件。
-
-旧的 completed Run 先恢复原验证源码和日志，再运行
-`run seal --run PATH --expected-revision N [--dry-run] [--json]`。该命令验证原证据，
-保留原回执，并只推进一次 checkpoint。已封存的终态目标返回 `done`，同时给出
-`evidenceScope: historical` 和 `currentVerification: {status: matches|changed, changedInputs: [...]}`。
-历史完成不证明后续修改通过验证；后续工作使用独立 Goal 或 postflight 记录。
-执行中的工作与新依赖继续检查当前输入。完成任务可从配置的 `artifactPolicy.tasks.archive` 解析。
+外部官方验证器可通过 `--validator PATH` 或 `AGENT_HARNESS_PLUGIN_VALIDATOR` 指定。便携完整性检查是独立验证。

@@ -14,8 +14,6 @@
     "specs": "harness/specs",
     "goals": "harness/goals",
     "milestones": "harness/milestones",
-    "runs": ".harness/runs",
-    "gateRecords": ".harness/runs",
     "deferredRegister": "harness/milestones",
     "mentalModels": "harness/mental-models",
     "mentalModelIndex": "harness/mental-models/README.md"
@@ -24,19 +22,12 @@
     "default": "auto"
   },
   "artifactPolicy": {
-    "runs": "tracked",
     "durableEvidence": ["harness/status.md", "harness/goals", "harness/milestones"],
-    "retention": { "completedDays": 30, "blockedDays": 30, "keepLatest": 20 },
     "status": { "maxLines": 160 },
     "tasks": { "archive": "harness/tasks-archive.md", "keepDone": 10 }
   },
   "communication": {
     "commentary": "minimal"
-  },
-  "checkpoint": {
-    "defaultPolicy": "disabled",
-    "stages": [],
-    "adapterDimensions": {}
   },
   "worktree": {
     "defaultPolicy": "ask"

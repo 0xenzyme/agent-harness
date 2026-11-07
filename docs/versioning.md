@@ -49,6 +49,7 @@ Examples:
 0.10.0 -> 0.11.0 split host-neutral protocol from the Codex pack and added CLI-first skill install
 0.11.0 -> 0.12.0 added model-neutral runtime capability fallback and reduced default execution ceremony
 0.12.0 -> 0.13.0 added one-entry Goal and Milestone execution with manifest v2 plans
+0.13.0 -> 0.14.0 replaced Run/evidence control with host-owned execution and delivery state
 0.8.0 -> 0.8.1  fix wording or validation coverage for that blueprint line
 ```
 

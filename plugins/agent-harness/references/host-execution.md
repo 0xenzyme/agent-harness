@@ -1,86 +1,22 @@
 # Host Execution Bridge
 
-Harness complements the current coding-agent host; it does not replace it.
+Harness complements the coding-agent host; it does not replace its execution
+or recovery model.
 
-Read [Host Capabilities](host-capabilities.md) for the capability names. Read
-the current host pack under `hosts/<name>/execution.md` only for native tool
-names. Legacy path names `codex-direct` and `codex-direct-postflight` remain
-readable aliases for one migration window.
+- `host-direct`: ordinary clear work executes and verifies directly. Create no
+  Harness artifacts.
+- `host-direct-postflight`: for already tracked work, verify the result and
+  update existing Task/Goal/status records only.
+- `durable-harness`: accepted Goal/Milestone control uses a delivery plan and
+  concise acceptance state. It does not require a Run.
 
-## Three Execution Paths
+The host runtime outcome owns continuation. The transient host plan owns
+current steps. Sessions, conversation history, resume, workers, terminals and
+CI own execution detail and full verification output.
 
-Delivery comes first; evidence and state records support the result rather than
-becoming extra work by default.
+Harness owns the accepted target, dependencies, constraints, delivery state,
+concise verification summary and true pause conditions. Later source changes
+are normal and do not change target state. Verify the current change as needed,
+without comparing it to a previous snapshot.
 
-1. `host-direct`: ordinary clear, local, reversible work uses the current host
-   directly. Deliver the result and run its real verification. Do not invoke
-   Harness execution, create lifecycle artifacts, or copy logs and narratives
-   into repository evidence.
-2. `host-direct-postflight`: when simple work was already linked to an
-   existing Harness Task, Goal, status item, or Run, the host executes
-   normally and Harness performs one bounded verification and state-sync
-   closeout.
-3. `durable-harness`: recovery, audit, milestone acceptance, orchestration
-   dependencies, multiple workers, persistent state sync, or high-risk control
-   uses a repository Goal/Run and its proportionate evidence contract.
-
-An existing prepared enforced Run remains durable. It cannot be reclassified
-as postflight-only to bypass its orchestration, checklist, gates, or evidence.
-
-## Native Runtime Binding
-
-- Runtime outcome owns the current long-running outcome, success criteria, and
-  continuation. For accepted controller work such as "作为主控开发", "推进直到完成",
-  "不要停", or cross-turn continuation, establish or reuse a compatible
-  runtime outcome before execution when the host exposes `runtimeOutcome`.
-- Transient plan owns current steps and short-lived progress. Multi-step work
-  should use the host `transientPlan` capability when exposed.
-- Delegation, scheduling, concurrency, cancellation, and model/effort
-  selection belong to the host when `delegation` is available.
-- Repository Goal/Run owns cross-task recovery, durable dependencies and
-  ownership, acceptance evidence, and bounded state sync.
-
-Do not duplicate a compatible active runtime outcome. Do not mirror every
-transient-plan transition into Git. If a native capability is unavailable,
-continue in the current session; record degraded provenance only when an
-active durable Run requires it. Never invent runtime ids or state the host
-does not expose.
-
-For one-entry execution, both host capability and current authorization must
-permit a native runtime Goal or delegation. The controller loops over
-`execute next` until the selected Goal or Milestone is complete, implementing
-ready nodes in the foreground when delegation is unavailable or unauthorized.
-Keep the accepted Milestone as the target across child Goal closeouts. A missing
-Milestone plan calls for binding that plan; it does not narrow the target to a
-child Goal. `--goal-slice` requires explicit user direction to work on only one
-Goal listed in an active Milestone.
-It does not create a background scheduler or new visible chat. One-shot setup
-is permitted only when already authorized; activation never edits `AGENTS.md`
-automatically.
-
-## Controller Meaning
-
-Controller means outcome owner and accepted-state owner. It does not imply
-`gate-only` and does not prohibit foreground implementation. Use `gate-only`
-only when the user or accepted Goal explicitly says the controller only reviews
-or accepts evidence.
-
-## Postflight Sync
-
-Postflight sync updates existing state only. Record fresh verification, the
-observed result, and remaining gap. Do not
-create a Goal, Run, orchestration, gate, or status record solely for bookkeeping.
-Adapter completion gates apply to durable Goal/Run completion, not to ordinary
-direct work or lightweight postflight-only synchronization.
-
-## Conversation Routes
-
-Canonical values:
-
-- `current-session`: the current conversation owns execution in the locked cwd.
-- `delegated-worker`: hand off to a dedicated worker session before editing.
-- `isolated-worktree`: the current conversation may control a different locked
-  worktree only when explicitly approved.
-
-Legacy aliases remain readable: `current-thread`, `slot-thread`, and
-`remote-control-worktree`.
+Legacy names `codex-direct` and `codex-direct-postflight` remain readable.

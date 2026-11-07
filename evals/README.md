@@ -65,9 +65,8 @@ Skill-level cases live under `skills/agent-harness/`:
   this directory.
 - `behavior_trace_cases.yaml`: deterministic tool-call trace cases for
   read/event order, runtime Goal/Plan binding, direct and postflight paths,
-  forbidden mutation, worker evidence, degraded provenance, enforced-Run
-  protection, gate-only acceptance behavior, checkpoint reconciliation, and
-  contract-drift replacement without manifest rebinding.
+  forbidden mutation, worker evidence, host-owned resume, source changes after
+  completion, and whole-target acceptance.
 - `transcript_rubric.md`: 0-2 human/model scoring rubric for agent
   transcripts after deterministic checks pass.
 
@@ -121,15 +120,15 @@ model capacity and is never part of the default test suite.
 
 ## Live Development Execution
 
-Run the deterministic planned execution integration suite with:
+Run the deterministic delivery-control integration suite with:
 
 ```bash
-npm run test:planned-execution
+npm run test:delivery-control
 ```
 
-It uses temporary adapter projects, real Node verification for the completion
-path, and controlled failure receipts for repair and recovery contracts. It
-does not use a model.
+It uses temporary adapter projects, Goal/Milestone closeout, path containment
+and repeated source edits to prove completed targets stay done without hashing.
+It does not use a model.
 
 Inspect the development launcher without using a model:
 
@@ -147,8 +146,7 @@ AGENT_HARNESS_LIVE_EVAL=1 npm run test:eval:development -- --model MODEL --reaso
 `--case normal` runs one bounded Codex invocation. `human-gate` first checks a
 pause and then supplies explicit approval in a second invocation. `recovery`
 asks the first invocation to complete the whole Milestone, then sends a real
-process-group interrupt after the first Goal's Run and checkpoint are durably
-completed. It starts one fresh invocation against the persisted fixture with
+process-group interrupt after the first Goal is accepted. It starts one fresh invocation against the persisted fixture with
 an explicit resume input. A requested stop or an ordinary process exit does
 not count as an interruption. If the host cannot interrupt the process group,
 the case reports an environment limitation and fails. Neither variant tests
@@ -169,7 +167,7 @@ event detection. A truncated JSONL capture fails provenance and boundary
 scoring. Integration tests and an independent runner-owned oracle check
 actual source behavior. The final report validates the saved plan, checks
 `execute next --milestone` returns `done`, and runs `goal validate` and
-`run validate` for every Goal and Run. It also checks the bundled CLI, test
+Goal validation for every Goal. It also checks the bundled CLI, test
 files, configuration and fixture instructions against their starting digest.
 Every invocation records the requested model separately from the observed
 Codex host and runtime model. The observed model must appear in that

@@ -2,7 +2,7 @@
   {
     "id": "ah_behavior_orient_read_only",
     "skill": "harness:orient",
-    "scenario": "Orientation reads configured durable state without mutation.",
+    "scenario": "Orientation reads delivery state without mutation.",
     "user_request": "Inspect Harness state and tell me the next entry.",
     "trace": [
       { "type": "read", "target": ".harness/config.json" },
@@ -18,26 +18,25 @@
   {
     "id": "ah_behavior_execute_runtime_owned_candidate",
     "skill": "harness:execute",
-    "scenario": "A durable Run exposes ready ownership while runtime-selected execution returns candidate evidence.",
-    "user_request": "Execute this accepted durable Goal.",
+    "scenario": "Host-selected execution returns candidate evidence without a Run.",
+    "user_request": "Execute this accepted Goal.",
     "trace": [
       { "type": "read", "target": "harness/goals/accepted-goal.md" },
-      { "type": "read", "target": ".harness/runs/example/dag.json" },
-      { "type": "status_snapshot", "target": "ready DAG state", "markers": ["harness-rule:run-dag-ownership"], "fields": { "ready_nodes": ["worker"], "ownership": "accepted scope", "runtime_owns_scheduling": true } },
+      { "type": "status_snapshot", "target": "host-owned execution", "markers": ["harness-rule:host-owned-execution"], "fields": { "runtime_owns_scheduling": true } },
       { "type": "worker_result", "target": "runtime-selected result", "markers": ["harness-rule:candidate-accepted-evidence"], "fields": { "candidate_evidence": true, "implementer_output": "focused patch", "validation": "tests passed" } }
     ],
     "assertions": {
-      "required_ordered_reads": ["harness/goals/accepted-goal.md", ".harness/runs/example/dag.json"],
-      "forbidden_writes": ["harness/tasks.md", "harness/status.md"],
-      "forbidden_mutations": ["accepted-state-write", "runtime-scheduler-policy", "model-pin"],
+      "required_ordered_reads": ["harness/goals/accepted-goal.md"],
+      "forbidden_writes": [".harness/runs/**"],
+      "forbidden_mutations": ["run-prepare", "runtime-scheduler-policy", "model-pin"],
       "required_worker_evidence": { "candidate_evidence": true, "implementer_output": true, "validation": true }
     }
   },
   {
     "id": "ah_behavior_gate_acceptance_requires_evidence",
     "skill": "harness:execute",
-    "scenario": "Gate-only acceptance follows candidate verification and state-sync evidence.",
-    "user_request": "Accept the durable Run only if all evidence is complete.",
+    "scenario": "Acceptance requires verified outcomes and state sync.",
+    "user_request": "Accept the Goal only if all evidence is complete.",
     "trace": [
       { "type": "read", "target": "plugins/agent-harness/skills/execute/references/completion-evidence.md" },
       { "type": "worker_result", "target": "candidate result", "fields": { "candidate_evidence": true, "implementer_output": "patch", "validation": "test:all passed" } },
@@ -46,7 +45,7 @@
     ],
     "assertions": {
       "required_ordered_reads": ["plugins/agent-harness/skills/execute/references/completion-evidence.md"],
-      "forbidden_writes": [],
+      "forbidden_writes": [".harness/runs/**"],
       "forbidden_mutations": ["accept-without-verification"],
       "required_gate_only_acceptance_evidence": { "controller_acceptance": true, "implementer_output": true, "verification": true }
     }
@@ -54,40 +53,38 @@
   {
     "id": "ah_behavior_authoritative_completion",
     "skill": "harness:execute",
-    "scenario": "Task/Goal owns accepted completion while Run and status retain evidence and projection state.",
-    "user_request": "Record this verified Run and synchronize the accepted Task/Goal state.",
+    "scenario": "Goal owns accepted completion; status is a projection.",
+    "user_request": "Record this verified outcome and synchronize the Goal.",
     "trace": [
       { "type": "read", "target": "harness/goals/example.md" },
-      { "type": "read", "target": ".harness/runs/example/status.json" },
       { "type": "verification", "target": "accepted scope", "markers": ["harness-rule:authoritative-completion-state"], "fields": { "passed": true, "required_gates": "satisfied", "state_sync": "verified" } },
-      { "type": "state_transition", "target": "completed", "fields": { "accepted": true, "task_goal_authoritative": true, "run_is_evidence": true, "status_is_projection": true } }
+      { "type": "state_transition", "target": "completed", "fields": { "accepted": true, "task_goal_authoritative": true, "status_is_projection": true } }
     ],
     "assertions": {
-      "required_ordered_reads": ["harness/goals/example.md", ".harness/runs/example/status.json"],
-      "forbidden_writes": ["external/**"],
+      "required_ordered_reads": ["harness/goals/example.md"],
+      "forbidden_writes": ["external/**", ".harness/runs/**"],
       "forbidden_mutations": ["promote-run-as-authority", "promote-status-as-authority"]
     }
   },
   {
-    "id": "ah_behavior_path_containment_blocks_external_run",
+    "id": "ah_behavior_path_containment_blocks_external_goal",
     "skill": "harness:execute",
-    "scenario": "A Run argument outside configured paths.runs is rejected before mutation.",
-    "user_request": "Record this external Run path.",
+    "scenario": "An external Goal path is rejected before mutation.",
+    "user_request": "Complete this external Goal path.",
     "trace": [
       { "type": "read", "target": ".harness/config.json" },
-      { "type": "verification", "target": "configured Run root containment", "markers": ["harness-rule:path-containment"], "fields": { "passed": true, "external_write_count": 0 } },
-      { "type": "closeout", "target": "rejected external Run", "fields": { "candidate_evidence": true } }
+      { "type": "verification", "target": "configured Goal root containment", "markers": ["harness-rule:path-containment"], "fields": { "passed": true, "external_write_count": 0 } }
     ],
     "assertions": {
       "required_ordered_reads": [".harness/config.json"],
       "forbidden_writes": ["external/**"],
-      "forbidden_mutations": ["run-record", "accepted-state-write"]
+      "forbidden_mutations": ["goal-complete", "accepted-state-write"]
     }
   },
   {
     "id": "ah_behavior_controller_uses_runtime_goal_and_plan",
     "skill": "harness:execute",
-    "scenario": "Accepted long-running controller development binds the outcome to runtime outcome and transient work to the host plan capability.",
+    "scenario": "Long controller work uses native outcome and plan capabilities.",
     "user_request": "作为主控开发这个已接受的多阶段目标，推进直到完成。",
     "trace": [
       { "type": "read", "target": "harness/goals/accepted-goal.md" },
@@ -95,20 +92,16 @@
     ],
     "assertions": {
       "required_ordered_reads": ["harness/goals/accepted-goal.md"],
-      "required_ordered_events": [
-        { "type": "status_snapshot", "target": "runtime bridge" }
-      ],
-      "required_event_fields": [
-        { "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_outcome_active": true, "transient_plan_active": true } }
-      ],
-      "forbidden_writes": [],
+      "required_ordered_events": [{ "type": "status_snapshot", "target": "runtime bridge" }],
+      "required_event_fields": [{ "type": "status_snapshot", "target": "runtime bridge", "fields": { "controller_is_outcome_owner": true, "controller_may_implement": true, "runtime_outcome_active": true, "transient_plan_active": true } }],
+      "forbidden_writes": [".harness/runs/**"],
       "forbidden_mutations": ["model-pin", "runtime-scheduler-policy"]
     }
   },
   {
     "id": "ah_behavior_postflight_updates_existing_state_only",
     "skill": "harness:execute",
-    "scenario": "A simple completed change linked to an existing Task receives bounded postflight verification and sync without lifecycle creation.",
+    "scenario": "Simple tracked work receives bounded postflight sync.",
     "user_request": "这个小修改已经完成，验证后把已有 Harness Task 状态同步一下。",
     "trace": [
       { "type": "read", "target": "harness/tasks.md" },
@@ -119,14 +112,8 @@
     ],
     "assertions": {
       "required_ordered_reads": ["harness/tasks.md"],
-      "required_ordered_events": [
-        { "type": "verification", "target": "fresh postflight verification" },
-        { "type": "write", "target": "harness/tasks.md" },
-        { "type": "closeout", "target": "host-direct-postflight" }
-      ],
-      "required_event_fields": [
-        { "type": "closeout", "target": "host-direct-postflight", "fields": { "durable_gates_applied": false, "lifecycle_created": false } }
-      ],
+      "required_ordered_events": [{ "type": "verification", "target": "fresh postflight verification" }, { "type": "write", "target": "harness/tasks.md" }, { "type": "closeout", "target": "host-direct-postflight" }],
+      "required_event_fields": [{ "type": "closeout", "target": "host-direct-postflight", "fields": { "durable_gates_applied": false, "lifecycle_created": false } }],
       "forbidden_writes": ["harness/goals/**", ".harness/runs/**"],
       "forbidden_mutations": ["goal-create", "run-prepare", "gate-create"]
     }
@@ -134,120 +121,81 @@
   {
     "id": "ah_behavior_direct_work_creates_no_harness_state",
     "skill": "harness:orient",
-    "scenario": "Ordinary clear untracked work is routed to the current host without Harness execution or state creation.",
+    "scenario": "Ordinary work stays in the host.",
     "user_request": "修正这个明确的一行拼写错误并跑测试。",
-    "trace": [
-      { "type": "closeout", "target": "host-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }
-    ],
+    "trace": [{ "type": "closeout", "target": "host-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }],
     "assertions": {
       "required_ordered_reads": [],
-      "required_ordered_events": [
-        { "type": "closeout", "target": "host-direct" }
-      ],
-      "required_event_fields": [
-        { "type": "closeout", "target": "host-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }
-      ],
+      "required_ordered_events": [{ "type": "closeout", "target": "host-direct" }],
+      "required_event_fields": [{ "type": "closeout", "target": "host-direct", "fields": { "harness_execution": false, "lifecycle_created": false } }],
       "forbidden_writes": ["harness/**", ".harness/**"],
       "forbidden_mutations": ["goal-create", "run-prepare", "accepted-state-write"]
     }
   },
   {
-    "id": "ah_behavior_runtime_goal_fallback_is_bounded",
-    "skill": "harness:execute",
-    "scenario": "A durable Run continues in the current session when native runtime outcome is unavailable without inventing provenance.",
-    "user_request": "继续这个 durable Run；如果原生 runtime outcome 不可用就用当前会话完成。",
+    "id": "ah_behavior_source_drift_does_not_reopen",
+    "skill": "harness:orient",
+    "scenario": "Source edits after completion do not change accepted state.",
+    "user_request": "Review 后又改了很多文件，这个已完成 Goal 是否需要重开？",
     "trace": [
-      { "type": "read", "target": ".harness/runs/example/status.json" },
-      { "type": "control_notice", "target": "runtime outcome unavailable", "fields": { "fallback": "current-session", "invented_runtime_id": false, "durable_run_preserved": true } }
+      { "type": "read", "target": "harness/goals/completed.md" },
+      { "type": "status_snapshot", "target": "done", "markers": ["harness-rule:host-owned-execution"], "fields": { "source_drift_monitoring": false, "historical_reopened": false } }
     ],
     "assertions": {
-      "required_ordered_reads": [".harness/runs/example/status.json"],
-      "required_ordered_events": [
-        { "type": "control_notice", "target": "runtime outcome unavailable" }
-      ],
-      "required_event_fields": [
-        { "type": "control_notice", "target": "runtime outcome unavailable", "fields": { "fallback": "current-session", "invented_runtime_id": false, "durable_run_preserved": true } }
-      ],
-      "forbidden_writes": [],
-      "forbidden_mutations": ["fake-runtime-goal-id", "downgrade-to-postflight"]
+      "required_ordered_reads": ["harness/goals/completed.md"],
+      "forbidden_writes": [".harness/runs/**"],
+      "forbidden_mutations": ["hash-source", "seal-receipt", "reopen-goal"]
     }
   },
   {
-    "id": "ah_behavior_enforced_run_cannot_use_postflight_bypass",
+    "id": "ah_behavior_legacy_run_does_not_complete_task",
     "skill": "harness:execute",
-    "scenario": "An existing enforced Run keeps its DAG and durable gates even when the implementation step is small.",
-    "user_request": "这个改动很小，直接按 postflight 关闭现有 Run。",
+    "scenario": "A forged old Run cannot drive task completion.",
+    "user_request": "用这个旧 Run 状态把 Task 标为完成。",
     "trace": [
-      { "type": "read", "target": ".harness/runs/example/dag.json" },
-      { "type": "status_snapshot", "target": "enforced durable Run", "fields": { "enforced": true, "durable_gates_required": true } },
-      { "type": "closeout", "target": "postflight bypass rejected", "fields": { "run_preserved": true } }
+      { "type": "read", "target": "harness/tasks.md" },
+      { "type": "verification", "target": "current acceptance evidence", "fields": { "passed": false } },
+      { "type": "closeout", "target": "accepted outcome missing", "fields": { "legacy_run_authority": false } }
     ],
     "assertions": {
-      "required_ordered_reads": [".harness/runs/example/dag.json"],
-      "required_ordered_events": [
-        { "type": "status_snapshot", "target": "enforced durable Run" },
-        { "type": "closeout", "target": "postflight bypass rejected" }
-      ],
-      "required_event_fields": [
-        { "type": "status_snapshot", "target": "enforced durable Run", "fields": { "enforced": true, "durable_gates_required": true } }
-      ],
-      "forbidden_writes": [],
-      "forbidden_mutations": ["downgrade-to-postflight", "skip-dag", "skip-gates"]
+      "required_ordered_reads": ["harness/tasks.md"],
+      "forbidden_writes": ["harness/tasks.md", ".harness/runs/**"],
+      "forbidden_mutations": ["run-record", "accepted-state-write"]
     }
   },
   {
-    "id": "ah_behavior_checkpoint_reconciliation_blocks_retry",
+    "id": "ah_behavior_resume_belongs_to_host",
     "skill": "harness:execute",
-    "scenario": "An enforced checkpoint with uncertain external state permits authoritative inspection but not blind retry.",
-    "user_request": "恢复这个中断的部署 Run；上次命令可能成功，但 state sync 失败了。",
+    "scenario": "Session recovery is not duplicated into Harness.",
+    "user_request": "恢复刚才中断的工作。",
     "trace": [
-      { "type": "read", "target": ".harness/runs/example/manifest.json" },
-      { "type": "read", "target": ".harness/runs/example/checkpoint.json" },
-      { "type": "status_snapshot", "target": "reconciliation-required", "markers": ["harness-rule:checkpoint-recovery"], "fields": { "revision": 4, "sole_next_action": "inspect authoritative deployment state", "retry_permitted": false } },
-      { "type": "verification", "target": "authoritative deployment read-back", "fields": { "passed": true, "fresh": true, "observed_source": "deployment API" } },
-      { "type": "state_transition", "target": "checkpoint revision 5", "fields": { "expected_revision": 4, "atomic": true, "observation_recorded": true } }
+      { "type": "read", "target": "harness/goals/active.md" },
+      { "type": "status_snapshot", "target": "host session resume", "markers": ["harness-rule:host-owned-execution"], "fields": { "fallback": "current-session", "invented_runtime_id": false, "checkpoint_created": false } }
     ],
     "assertions": {
-      "required_ordered_reads": [".harness/runs/example/manifest.json", ".harness/runs/example/checkpoint.json"],
-      "required_ordered_events": [
-        { "type": "status_snapshot", "target": "reconciliation-required" },
-        { "type": "verification", "target": "authoritative deployment read-back" },
-        { "type": "state_transition", "target": "checkpoint revision 5" }
-      ],
-      "required_event_fields": [
-        { "type": "status_snapshot", "target": "reconciliation-required", "fields": { "revision": 4, "retry_permitted": false } },
-        { "type": "state_transition", "target": "checkpoint revision 5", "fields": { "expected_revision": 4, "atomic": true, "observation_recorded": true } }
-      ],
-      "forbidden_writes": ["external/deploy/**"],
-      "forbidden_mutations": ["retry-deploy-before-readback", "clear-reconciliation-without-evidence", "overwrite-stale-revision"]
+      "required_ordered_reads": ["harness/goals/active.md"],
+      "required_ordered_events": [{ "type": "status_snapshot", "target": "host session resume" }],
+      "required_event_fields": [{ "type": "status_snapshot", "target": "host session resume", "fields": { "fallback": "current-session", "invented_runtime_id": false, "checkpoint_created": false } }],
+      "forbidden_writes": [".harness/runs/**"],
+      "forbidden_mutations": ["checkpoint-create", "run-prepare"]
     }
   },
   {
-    "id": "ah_behavior_checkpoint_contract_drift_replaces_run",
+    "id": "ah_behavior_milestone_requires_whole_target",
     "skill": "harness:execute",
-    "scenario": "Goal contract drift quarantines the old Run and continues only through a validated replacement.",
-    "user_request": "需求合同已经接受修改，继续这个 prepared Run。",
+    "scenario": "A completed child Goal does not close its Milestone.",
+    "user_request": "一个 Goal 完成了，直接关闭整个 Milestone。",
     "trace": [
-      { "type": "read", "target": ".harness/runs/old/manifest.json" },
-      { "type": "verification", "target": "Goal/Spec contract hash mismatch", "markers": ["harness-rule:checkpoint-recovery"], "fields": { "passed": true, "old_manifest_rebind_allowed": false } },
-      { "type": "state_transition", "target": "old checkpoint replan-required", "fields": { "fail_closed": true } },
-      { "type": "read", "target": ".harness/runs/replacement/manifest.json" },
-      { "type": "verification", "target": "replacement Run contract", "fields": { "passed": true, "same_accepted_outcome": true } },
-      { "type": "state_transition", "target": "old checkpoint superseded", "fields": { "replacement_run": ".harness/runs/replacement", "historical_evidence_preserved": true } }
+      { "type": "read", "target": "harness/milestones/stage.md" },
+      { "type": "verification", "target": "whole-target integration", "fields": { "passed": true } },
+      { "type": "state_transition", "target": "Milestone completed", "fields": { "all_goals_accepted": true, "whole_target_verified": true } }
     ],
     "assertions": {
-      "required_ordered_reads": [".harness/runs/old/manifest.json", ".harness/runs/replacement/manifest.json"],
-      "required_ordered_events": [
-        { "type": "state_transition", "target": "old checkpoint replan-required" },
-        { "type": "verification", "target": "replacement Run contract" },
-        { "type": "state_transition", "target": "old checkpoint superseded" }
-      ],
-      "required_event_fields": [
-        { "type": "verification", "target": "Goal/Spec contract hash mismatch", "fields": { "old_manifest_rebind_allowed": false } },
-        { "type": "state_transition", "target": "old checkpoint superseded", "fields": { "replacement_run": ".harness/runs/replacement", "historical_evidence_preserved": true } }
-      ],
-      "forbidden_writes": [".harness/runs/old/manifest.json"],
-      "forbidden_mutations": ["manifest-rebind", "resume-old-run", "delete-old-evidence"]
+      "required_ordered_reads": ["harness/milestones/stage.md"],
+      "required_ordered_events": [{ "type": "verification", "target": "whole-target integration" }, { "type": "state_transition", "target": "Milestone completed" }],
+      "required_event_fields": [{ "type": "state_transition", "target": "Milestone completed", "fields": { "all_goals_accepted": true, "whole_target_verified": true } }],
+      "forbidden_writes": [".harness/runs/**"],
+      "forbidden_mutations": ["close-from-leaf-only"]
     }
   }
 ]

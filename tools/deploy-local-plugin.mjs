@@ -7,6 +7,12 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const args = process.argv.slice(2);
+const portableValidation = args.length === 1 && args[0] === "--allow-portable-validation";
+if (args.length && !portableValidation) {
+  console.error("Usage: node tools/deploy-local-plugin.mjs [--allow-portable-validation]\nThe explicit portable option runs validate:plugin:local when the official validator is unavailable; it does not replace official validation.");
+  process.exit(2);
+}
 const packageManifest = readJson(join(repoRoot, "package.json"));
 const pluginManifest = readJson(join(repoRoot, "plugins/agent-harness/.codex-plugin/plugin.json"));
 const marketplaceManifest = readJson(join(repoRoot, ".agents/plugins/marketplace.json"));
@@ -35,7 +41,7 @@ const pluginVersion = process.env.AGENT_HARNESS_PLUGIN_VERSION || pluginManifest
 const pluginSelector = process.env.AGENT_HARNESS_PLUGIN_SELECTOR || `${pluginName}@${marketplace}`;
 const codexHome = resolve(process.env.CODEX_HOME || join(homedir(), ".codex"));
 const cacheDir = resolve(codexHome, "plugins/cache", marketplace, pluginName, pluginVersion);
-const validationRoute = "validate:plugin";
+const validationRoute = portableValidation ? "validate:plugin:local" : "validate:plugin";
 const smokeRoute = "test:smoke";
 const smokeEnv = {
   AGENT_HARNESS_LANG: "en",
@@ -103,7 +109,7 @@ function assertCacheSentinels() {
   const sentinels = [
     {
       file: "skills/orient/SKILL.md",
-      text: "ordinary actions"
+      text: "Old Run files"
     },
     {
       file: "references/worker-runner-contract.md",
@@ -111,7 +117,11 @@ function assertCacheSentinels() {
     },
     {
       file: "templates/worker-prompt.md",
-      text: "harness-rule:candidate-accepted-evidence"
+      text: "Do not create receipts"
+    },
+    {
+      file: "scripts/delivery-control.mjs",
+      text: "Delivery control records outcomes, not execution history"
     }
   ];
 
@@ -140,7 +150,8 @@ function assertCacheSentinels() {
 }
 
 console.log(`Validating local plugin source (${validationRoute})...`);
-run(process.execPath, ["tools/validate-plugin.mjs"]);
+run(process.execPath, portableValidation ? ["tools/validate-plugin-local.mjs"] : ["tools/validate-plugin.mjs"]);
+if (portableValidation) console.warn("Using the explicitly selected portable integrity check. Official plugin validation has not passed.");
 console.log(`Running local smoke suite (${smokeRoute})...`);
 run(process.execPath, ["tests/smoke.mjs"], { env: smokeEnv });
 

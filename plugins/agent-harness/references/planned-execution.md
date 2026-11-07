@@ -1,289 +1,35 @@
-# Planned Execution Contract
+# Delivery Plan
 
-An accepted Goal or Milestone stores its version 1 execution plan beside its
-Markdown document as `<target-filename>.plan.json`. The document has a literal
-`Execution Plan: <repo-relative-plan-path>` line. Every Goal in a Milestone
-plan references that Milestone-adjacent plan; only a standalone single-Goal
-plan is adjacent to its Goal. [Execution plan schema](../schemas/execution-plan.schema.json)
-and [candidate receipt schema](../schemas/candidate-evidence.schema.json) give
-the JSON shapes. `plan validate` also checks configured roots, document items,
-coverage, unique IDs, missing dependencies, and cycles; JSON Schema alone
-cannot establish those repository facts.
+Harness controls accepted outcomes, not execution history. The host owns
+sessions, resume, workers, terminals, full logs and transient plans.
 
-The target's `Delivery Contract` names the delivered outcome, global hard
-constraints, whole-target verification, delivery authority, and final report.
-Every Task inherits those constraints. A Task may declare optional local
-`constraints`; it does not repeat or replace the target contract. Keep the plan
-minimal: use only independently owned or verifiable Tasks, and add a final
-verification Task when node checks cannot prove the complete result and its
-constraints. Node receipts go to the controller; the user receives one final
-result-first report rather than per-node narrative reports.
-When a Milestone `Goal List` contains concrete Doc rows, the plan must cover
-exactly those Goal paths once each. The bound target contract hashes Goal
-name, Doc, priority, dependency and gate fields; it excludes mutable Status
-cells, so Goal closeout can update Status without invalidating the plan.
-An active Milestone with a listed Goal remains the execution target. If its
-adjacent plan is absent, `execute next --milestone` returns `replan`; the
-controller binds that plan before running a child. `execute next --goal` and
-standalone `run prepare --goal` route back to the active Milestone by default,
-including when the child has its own plan. `--goal-slice` permits those Goal
-commands only when the user explicitly narrows the accepted scope to that Goal.
-After each Goal closes, query the Milestone target again until its stage checks
-and synchronized completion return `done`. Optional follow-up verification does
-not block a dependency-ready Goal.
-For a single-Goal target, optional root `verification` entries must each be
-identical to a check in that Goal's Task `verification`; the controller does
-not leave a final check unassigned. Milestone root `verification` is required.
-In fixed-contract projects, Spec references remain project-local when
-`paths.specs` is not configured; an explicit `paths.specs` constrains them to
-that root. The optional Milestone root can use `harness/milestones/` as its
-default. Neither path adds a required directory to fixed `init`.
+A plan is `<target>.plan.json` beside its Goal or Milestone. It declares:
 
-## Minimal single-Goal example
+- target and Goal dependencies;
+- Task ownership, acceptance references and scope constraints;
+- verification commands or manual review descriptions;
+- whole-target verification for a Milestone.
 
-Assume the configured Goal root is `harness/goals/`, the task index contains a
-matching source task, and `src/app.js` exists. Put this in
-`harness/goals/example.md` along with the normal Goal sections required by
-`goal validate`:
+Checks have `id`, `command` and optional `manual`. They do not have `inputs`,
+`exclude`, hashes, logs, timestamps or snapshots. Source edits never invalidate
+a completed Goal or Milestone. Review new edits on their own merits.
 
-```md
-# Goal: Example
+Use `execute next --goal <path>` or `--milestone <path>` to find the next
+accepted outcome. Work in the host, verify the result, and write concise
+evidence such as changed files plus commands/results into the existing
+acceptance item. Evidence must describe an outcome, not point to a Run receipt.
 
-Execution Plan: harness/goals/example.md.plan.json
-Checkpoint Policy: enforced
-Status: active.
-
-## Spec Acceptance Checklist
-
-- Item: app-loads
-  - Acceptance: The app parses successfully.
-  - Evidence: TBD
-  - Status: pending
-  - Unblocker: N/A
-```
-
-Put the following JSON in `harness/goals/example.md.plan.json`:
-
-```json
-{
-  "version": 1,
-  "target": { "kind": "goal", "path": "harness/goals/example.md" },
-  "goals": [
-    {
-      "id": "example",
-      "path": "harness/goals/example.md",
-      "dependsOn": [],
-      "tasks": [
-        {
-          "id": "build",
-          "label": "Implement and check the app",
-          "dependsOn": [],
-          "type": "implementation",
-          "ownership": { "read": ["src/app.js"], "write": ["src/app.js"] },
-          "acceptance": [
-            { "path": "harness/goals/example.md", "section": "Spec Acceptance Checklist", "item": "app-loads" }
-          ],
-          "verification": [
-            { "id": "syntax", "command": "node --check src/app.js", "inputs": ["src/app.js"] }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-The plan's `version` is 1; a Run prepared from it uses manifest v2 and an
-enforced checkpoint. `goal create --plan PATH` is the planned creation route
-and defaults its new Goal to enforced checkpointing. For an existing Goal,
-set `Checkpoint Policy: enforced` before `run prepare --plan`. New durable Runs
-require an explicit plan and manifest v2. Existing manifest v1 Runs remain
-readable and recoverable; `run prepare --legacy` is reserved for explicit
-migration/compatibility work and is not the skill's execution path.
-
-## Inputs and receipt
-
-Validate and prepare the plan, then ask for its current input hashes. The
-`inputs` commands are read-only and return check IDs, exact commands, and
-current SHA-256 hashes keyed by repo-relative input paths:
+Close an accepted Goal with:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs plan validate --cwd <project> --plan harness/goals/example.md.plan.json --json
-node plugins/agent-harness/scripts/agent-harness.mjs plan inputs --cwd <project> --plan harness/goals/example.md.plan.json --json
-node plugins/agent-harness/scripts/agent-harness.mjs run prepare --cwd <project> --goal harness/goals/example.md --plan harness/goals/example.md.plan.json --json
-node plugins/agent-harness/scripts/agent-harness.mjs run node inputs --cwd <project> --run <run-path> --node build --json
+node <plugin-root>/scripts/agent-harness.mjs goal complete --cwd <project> --goal <goal> --verification "npm test: 85 passed; build passed"
 ```
 
-After actually running `node --check src/app.js`, save its real output to a
-regular log file inside that same Run and record its exit code.
-Check and executor observation timestamps must be at or after the prepared
-Run manifest's `createdAt`.
-Write the candidate receipt to the
-Run's `agents/build/candidate.json`. Its shape is:
+When every Goal is complete, run the Milestone checks and use
+`milestone complete --verification <summary>`. These commands update only
+configured Goal, task-index and status records. They create no Run, DAG,
+receipt, checkpoint, copied log, content hash or evidence seal.
 
-```json
-{
-  "version": 1,
-  "target": { "kind": "goal", "path": "harness/goals/example.md" },
-  "goal": "harness/goals/example.md",
-  "run": "<run-path>",
-  "node": "build",
-  "summary": "Implemented and checked the app.",
-  "changedFiles": ["src/app.js"],
-  "stateSyncNotes": "Controller must synchronize the mapped item and Goal index after acceptance.",
-  "risks": [],
-  "remaining": [],
-  "needUser": null,
-  "executor": {
-    "status": "completed",
-    "observedAt": "<actual ISO timestamp>",
-    "observedSource": "current host foreground execution"
-  },
-  "checks": [
-    {
-      "id": "syntax",
-      "command": "node --check src/app.js",
-      "exitCode": 0,
-      "observedAt": "<actual ISO timestamp>",
-      "inputs": { "src/app.js": "<hash from run node inputs after verification>" },
-      "log": "<run-path>/logs/syntax.txt",
-      "logHash": "<SHA-256 of exact log bytes>"
-    }
-  ]
-}
-```
-
-Replace the bracketed values with observed values; the example makes no
-claim that a check ran. `checks[].id` and `command` must match the plan.
-Omit `executor.thread` for foreground work. If a delegated node was recorded
-as `running`, set `executor.thread` to exactly the recorded worker identity.
-`checks[].inputs` must equal the current `run node inputs` map exactly; the
-controller rehashes files during review and before initial completion. Each `logHash`
-must match the bytes at `log`, and the log must contain concrete evidence.
-The log must live inside the node's own bound Run, and its check's
-`observedAt` must be at or after that Run's manifest creation.
-Manual checks also record `humanDecision`. `changedFiles` must stay inside
-that Task's `ownership.write` and outside authoritative Harness artifacts.
-The plan's source `ownership.write` scope itself cannot include Goal, Spec,
-Milestone, Run, status, task index, or config artifacts.
-Input snapshots exclude `.git`, `node_modules`, configured control roots and
-files (including Specs, config, sync journal and project lock), status, and the
-task index. A root `.` input hashes the remaining source tree, so creating a
-sync journal or lock cannot invalidate its own verification hash. An input
-pointing directly at an excluded control artifact is rejected.
-For `accepted`, every required check has exit code zero, `remaining` is empty,
-and `needUser` is null. A failed check may support `request-fix` or `blocked`.
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run node review --cwd <project> --run <run-path> --node build --evidence <run-path>/agents/build/candidate.json --decision accepted --expected-revision <current-revision> --json
-```
-
-The controller copies the accepted receipt into a revisioned review artifact.
-Only that acceptance releases dependent Tasks. Planned `run node record`
-supports `running` and `blocked` with `--expected-revision`; `completed`
-cannot bypass review. Project sync resumes through `run sync --run <run-path>
---expected-revision <current-revision>` before more work. `execute next` then
-continues until the whole selected Goal or Milestone is `done`.
-
-The next-action enum is exactly `execute-node`, `wait`, `review-node`,
-`verify-node`, `sync`, `prepare-run`, `complete-goal`,
-`complete-milestone`, `reconcile`, `replan`, `need-user`, and `done`.
-`reconcile` with `needUser: null` identifies a non-user blocker. A
-`complete-milestone` action includes an anchor `run` and
-`checkpointRevision`; pass that revision as `--expected-revision` to
-`milestone complete`. Successful completion increments that Run's checkpoint
-revision.
-For a ready `human` Task, `execute next` checks every mapped acceptance item.
-If all are `satisfied` and have concrete `Evidence`, it returns `verify-node`
-so the controller can verify the existing accepted record and put that
-decision in the receipt's `humanDecision`. It does not ask the same question
-again. If the record is missing, `need-user` carries the concrete question.
-After three identical verification failures without progress, the blocked
-node returns `reconcile` with `needUser: null`, a reason naming the no-progress
-count and failure summary, and the review receipt in `requiredEvidence`.
-A Goal explicitly marked `blocked` also returns `reconcile` and cannot be
-prepared or executed until its accepted recovery changes that phase.
-
-For a Milestone plan, set `target.kind` to `milestone`, list its Goals with
-`dependsOn`, and give every Goal a `milestoneItem` reference into the target's
-`Milestone Completion Map`. Include a nonempty top-level `verification` array
-for stage checks. The Milestone map must cover every required item exactly
-once. Each Goal's Task acceptance references its Goal or referenced Spec.
-Goal dependencies gate Run preparation; Task dependencies gate node execution.
-Plan validation checks each Goal's structural contract and adapter-required
-gates before compilation. Planned Goals use explicit map items and do not
-inherit legacy batch or M-number phasing heuristics.
-Validation covers `Spec Acceptance Checklist`, `Required Gate Evidence`,
-`Milestone Completion Map`, legacy `Stage Completion Map`, and
-`Source Task Acceptance Map` entries on the Goal or referenced Spec. The
-last two use their declared item labels, without an M-number naming rule.
-The controller runs every necessary Task and stage check and saves the real
-logs and receipt. The CLI validates that recorded evidence; it does not run
-those commands. Milestone completion updates `Current Status` and `Goal List`,
-records `Completion Evidence Hash` for the accepted receipt, and increments
-the anchor Run checkpoint revision. Rechecking `done` verifies the receipt
-hash and stage evidence.
-Stage verification logs must be inside that same anchor Run. Stage check
-`observedAt` must be at or after the latest `completedAt` among all required
-Goal Runs (using a legacy `updatedAt` fallback where needed).
-An explicitly blocked root Milestone prevents new Runs and Task starts until
-its accepted state is recovered. A completed Run with an active Goal returns
-`complete-goal` rather than scheduling duplicate implementation. Repeated
-successful Goal or Milestone closeout is idempotent and preserves revision.
-The bounded status file follows the current target; later accepted work can
-replace its projection without reopening historical completed targets.
-
-## Portable evidence and historical completion
-
-Checks may declare `exclude: ["backend/.data"]`: explicit repo-relative descendants
-of an input, never a whole input. `.git` and `node_modules` are excluded at every
-level. Other ignored files are not silently skipped. In a Git project with
-tracked Runs, acceptance rejects Git-ignored verification files; narrow the
-inputs or declare exclusions for build output. Untracked source remains an
-input and must be included in the delivered change.
-
-Node review preserves exact UTF-8 log bytes at
-`<run>/evidence/logs/<sha256>.txt` and binds the original receipt paths to those
-copies in node review metadata. The candidate and revisioned receipt remain
-unchanged. Evidence Git attributes preserve exact bytes and treat raw logs as
-binary diffs so whitespace checks do not require altering evidence. Milestone
-closeout also preserves its stage logs. Tracked evidence
-paths must not be Git-ignored. No renaming or newline normalization of a copy
-can substitute for the receipt's exact log hash.
-
-Initial Goal closeout seals the accepted receipt identities, source input
-hashes, manifest hash and durable log bindings in `<run>/evidence/completion.json`.
-Run status binds that snapshot by SHA-256. `baseCommit` records the checkout's
-Git base when available; the observed input hashes identify the accepted
-working tree, including uncommitted changes, rather than claiming HEAD alone
-was tested. The snapshot contains hashes and evidence, not a source backup.
-
-Once the whole target is completed, validation verifies this historical
-snapshot, receipts, logs, gates and state sync without requiring later source
-to equal the old input hashes. `execute next` / `orient next` return `done`
-with `evidenceScope: historical` and `currentVerification.status: matches|changed`.
-`goal validate` and `run validate` expose the same distinction.
-`changedInputs` identifies later drift; `matches` means the input hashes match,
-not that checks were rerun. Follow-up edits need their own accepted Goal or
-bounded postflight record with current validation. Do not reuse historical
-acceptance as evidence for those edits. Active Runs, unfinished Milestones and
-new Goal dependencies continue to require fresh input hashes.
-
-Legacy completion is not silently trusted. Restore the originally verified
-source and logs, then run:
-
-```bash
-node plugins/agent-harness/scripts/agent-harness.mjs run seal --cwd <project> --run <run-path> --expected-revision <current-revision> --json
-```
-
-`run seal` validates existing completion against that source before adding a
-snapshot and durable log copies. It preserves original receipts, phases and
-completion timestamps, supports `--dry-run`, and advances the checkpoint once.
-Repeated sealing is idempotent. Missing or stale legacy evidence must be
-recovered or revalidated, not fabricated.
-
-Completed source tasks may move from the active index to the single configured
-`artifactPolicy.tasks.archive`. Validation requires an unambiguous done task
-with the same source title and, when present, a Doc identifying the Goal.
-An active-index row takes precedence, including a non-done or duplicate row.
-Archive lookup is for completion validation only and never schedules work.
+Legacy Run files may remain in old projects as historical material. They are
+not the execution authority, do not gate later edits, and do not require
+recovery, sealing or synchronization.

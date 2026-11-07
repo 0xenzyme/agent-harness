@@ -2,16 +2,8 @@
 
 Spec:
 Spec Policy:
-Checkpoint Policy: disabled
-Checkpoint Stages: []
 Status: active.
-
-For a standalone planned Goal, add `Execution Plan: <goal-filename>.plan.json`
-beside the header and create the plan adjacent to this Goal file. For a Goal
-inside a planned Milestone, use the same `Execution Plan:` path as its parent
-Milestone; that plan is adjacent to the Milestone file, not this Goal file.
-New durable Runs require a bound plan. Existing unplanned manifest v1 Runs
-remain readable and recoverable, but are not the new execution path.
+Execution Plan: <goal-filename>.plan.json
 
 ## Source Task
 
@@ -30,24 +22,12 @@ Use `ask` until cwd and ownership are confirmed.
 
 ## Execution Role
 
-Use `implementer`.
-
-- `gate-only`: verify candidate evidence and own accepted state; do not edit.
-- `implementer`: edit only accepted owned scope and return candidate evidence.
-
-Controller means outcome owner and accepted-state owner. It is `gate-only`
-only when review-only behavior is explicitly required.
+Use `implementer`; use `gate-only` only for explicit review-only direction.
 
 ## Host Execution
 
-- Runtime outcome: establish or reuse for accepted long-running controller work
-  when the host exposes `runtimeOutcome`.
-- Transient plan: use for current multi-step execution; do not mirror every update.
-- Runtime execution: the host owns scheduling and model choice when those
-  capabilities are exposed.
-- Repository Goal/Run: owns durable recovery, evidence, gates, and state sync.
-- Fallback: continue in the current session if outcome or plan capabilities are
-  not exposed; record degraded provenance only when this durable Run requires it.
+The host owns the runtime outcome, transient plan, session, resume, workers and
+full logs. This Goal owns accepted scope, verification and delivery state.
 
 ## Conversation Route
 
@@ -57,7 +37,6 @@ Use `current-session`.
 
 - Conversation lane: `current-session`
 - Controller thread: `current-session`
-- Accepted-state owner: `current-session`
 - Execution cwd: `TBD`
 - Execution branch: `TBD`
 - Execution slot: `N/A`
@@ -66,7 +45,6 @@ Use `current-session`.
 ## Durable Control Invariants
 
 - `harness-rule:path-containment`
-- `harness-rule:run-dag-ownership`
 - `harness-rule:pre-delegation-work-mode`
 - `harness-rule:candidate-accepted-evidence`
 - `harness-rule:authoritative-completion-state`
@@ -74,11 +52,7 @@ Use `current-session`.
 - `harness-rule:bounded-status-snapshot`
 - `harness-rule:project-neutral-core`
 - `harness-rule:durable-tier-boundary`
-- `harness-rule:checkpoint-recovery`
-
-The host owns scheduling, delegation, concurrency, cancellation, and
-model selection. Harness records ready nodes, dependencies, ownership,
-verification, candidate evidence, gates, and state sync.
+- `harness-rule:host-owned-execution`
 
 ## Spec Acceptance Checklist
 
@@ -88,10 +62,10 @@ verification, candidate evidence, gates, and state sync.
   - Status: `pending`
   - Unblocker: `N/A`
 
-## Required Gate Evidence
+Evidence names changed files and actual verification results. It never names
+hashes, copied logs, receipts or Run artifacts.
 
-These gates apply to durable completion for this Goal/Run. They do not govern
-ordinary direct or postflight-only work outside this durable lifecycle.
+## Required Gate Evidence
 
 - Gate: `<gate name>`
   - Required: `yes`
@@ -110,28 +84,29 @@ ordinary direct or postflight-only work outside this durable lifecycle.
 ## Delivery Contract
 
 - Delivered outcome: `<user-visible result>`
-- Global hard constraints: `<what every node must preserve>`
+- Global hard constraints: `<what every Task must preserve>`
 - Whole-target verification: `<how the complete result and constraints are checked>`
-- Delivery authority: `<allowed and forbidden commit, push, release, reply, or other external actions>`
-- Final report: result, key changes, whole-target and constraint verification,
-  actual delivery state, `Need user`, and `Remaining`.
+- Delivery authority: `<allowed and forbidden external actions>`
+- Final report: result, key changes, verification, actual delivery state,
+  `Need user`, and `Remaining`.
 
 ## Verification
 
--
+List actual commands or manual review steps. Do not declare source snapshots.
 
 ## Completion Conditions
 
-- Accepted scope, verification, required gates, and state sync are satisfied.
-- For a planned Goal, all required Tasks and accepted evidence are current;
-  `goal complete` finishes the whole Goal after the planned Run is synchronized.
-- Preserve exact logs and the completion snapshot with tracked Runs. Historical
-  acceptance does not verify subsequent source edits; record their own evidence.
-- Continue the controller loop without a pure continuation question while an
-  authorized next action remains. `done` requires whole-Goal completion.
+- Accepted scope and required gates are satisfied.
+- Actual verification and uncovered gaps are recorded concisely.
+- Existing Goal, task index and bounded status are synchronized.
+
+## State Sync Notes
+
+- Accepted-state records: `TBD`
+- Verification: `TBD`
+- Bounded status update: `TBD`
 
 ## Pause Conditions
 
-- Accepted scope conflicts with current repository facts or newer instructions.
-- Credentials, production, destructive work, or another external side effect is needed.
-- Evidence cannot validate the accepted objective.
+- Spec conflict, missing authority, credentials, paid APIs, destructive or
+  production action, unclear product direction, or a true user decision.

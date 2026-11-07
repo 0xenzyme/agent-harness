@@ -9,7 +9,7 @@ surface, and repository metadata aligned with shipped behavior.
 Use this description for the GitHub repository:
 
 ```text
-Adapter-driven control plane for coding-agent work: tasks, goals, run orchestration, gates, verification, and state sync.
+Adapter-driven control plane for coding-agent work: goals, milestones, acceptance, verification summaries, and state sync.
 ```
 
 ## Topics
@@ -40,7 +40,7 @@ The README first screen should communicate:
 
 - project identity: `Agent Harness`;
 - category: adapter-driven control plane for coding-agent work;
-- concrete flow: `roadmap -> milestone -> goal -> tasks -> run -> evidence -> state sync`;
+- concrete flow: `roadmap -> milestone -> goal -> tasks -> verification -> state sync`;
 - trust signals: version, Codex plugin, protocol checks, smoke checks, license;
 - routes to the capability matrix, changelog, release notes, and social preview.
 
@@ -88,12 +88,12 @@ Do not add Dependabot configuration.
 
 ## Release Surface
 
-The in-tree release surface for `0.13.0` is:
+The in-tree release surface for `0.14.0` is:
 
 - `CHANGELOG.md`
-- `docs/releases/v0.13.0.md`
+- `docs/releases/v0.14.0.md`
 
-The published Git tag and GitHub Release for this line are `v0.13.0`:
+This line replaces Run/evidence-centered control with host-owned execution
+and Goal/Milestone delivery. The previous published line is `v0.13.0`:
 <https://github.com/0xenzyme/agent-harness/releases/tag/v0.13.0>.
-The tag points at `c2db4f93eaba56f4c32a44d7ea3281f2551166e4`, the `0.13.0`
-ship commit. Later `main` commits stay unreleased until their own version.
+No Git tag or GitHub Release is implied by this source version bump.

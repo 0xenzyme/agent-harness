@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Reusable coding-agent harness for workflow-oriented project task control and adapter-driven execution. / 可复用项目任务控制与 adapter 执行工作流。",
   "author": {
     "name": "Agent Harness Maintainers"
@@ -19,7 +19,7 @@
   "interface": {
     "displayName": "Agent Harness",
     "shortDescription": "Orient, intake, initialize, and execute adapter-driven project work. / 定位、收集、初始化并执行 adapter 驱动的项目工作。",
-    "longDescription": "Agent Harness bridges host runtime outcome, transient plan, session, and worker execution with durable fixed/adapter project control: authoritative Task/Goal state, repository Run orchestration, postflight state sync, gates, and proportionate evidence. zh-CN fallback: Agent Harness 把 host 的 runtime outcome、transient plan、会话和 worker 执行连接到持久化 fixed / adapter 项目控制，包括权威 Task/Goal 状态、repository Run 编排、postflight 状态同步、gate 和按需保存的 evidence。",
+    "longDescription": "Agent Harness bridges host execution with accepted Goal/Milestone delivery: target scope, dependencies, concise verification, completion gates and bounded state sync. Host sessions, resume, workers and full logs stay outside Harness. zh-CN fallback: Agent Harness 连接宿主执行与 Goal/Milestone 交付，管理范围、依赖、简洁验证、验收 gate 和有界状态同步；session、resume、worker 和完整日志由宿主负责。",
     "developerName": "Agent Harness Maintainers",
     "category": "Productivity",
     "capabilities": [
@@ -27,7 +27,7 @@
       "Host runtime outcome and plan bridge",
       "Postflight state sync",
       "Goal handoff",
-      "Run preparation",
+      "Outcome acceptance",
       "Loop engineering"
     ],
     "websiteURL": "https://github.com/0xenzyme/agent-harness",

@@ -33,6 +33,6 @@ Use the canonical paths `host-direct`, `host-direct-postflight`, and
   scheduler or another visible chat for continuation.
 - Do not pass a host-specific starting checkout unless the current user
   explicitly requests that Git state.
-- Worker output must be recorded with `run node record` before dependents run.
+- Review worker output before accepting dependents; do not record a Run.
 - Map the Cursor worker return onto the result packet in
   `hosts/cursor/result-packet.md`.

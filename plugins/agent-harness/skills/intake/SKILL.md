@@ -34,7 +34,7 @@ node <plugin-root>/scripts/agent-harness.mjs intake idea --cwd <project> --idea 
 5. When an idea inbox is configured, `--record` appends the candidate there and
    leaves the accepted Goal index unchanged. Without an idea inbox, refuse
    unsupported table writes without changing the file. Do not promote a
-   candidate to accepted scope, create Spec/Goal/Run artifacts, or implement it.
+   candidate to accepted scope, create Spec/Goal artifacts, or implement it.
    An accepted ordinary change returns to the current host directly and may use bounded
    postflight sync for this already recorded Task; durable accepted work uses
    `harness:execute` before execution only when its tier boundary applies.

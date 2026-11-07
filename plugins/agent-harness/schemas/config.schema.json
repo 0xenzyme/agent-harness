@@ -98,11 +98,12 @@
           "minLength": 1
         },
         "runs": {
-          "description": "Declares whether Run artifacts are durable project records or local-only retention candidates.",
+          "description": "Legacy-only ignored execution-history path.",
           "type": "string",
           "minLength": 1
         },
         "gateRecords": {
+          "description": "Legacy-only ignored gate path; gates live in acceptance records.",
           "type": "string",
           "minLength": 1
         },
@@ -153,62 +154,25 @@
         }
       }
     },
-    "checkpoint": {
-      "description": "Default policy and adapter-owned finite value domains for managed Run checkpoints. Goals persist the resolved policy; omission remains disabled.",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "defaultPolicy": {
-          "type": "string",
-          "enum": ["disabled", "enforced"]
-        },
-        "stages": {
-          "description": "Optional project-neutral finite stage vocabulary copied into new Goals and bound by prepared manifests.",
-          "type": "array",
-          "maxItems": 50,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "adapterDimensions": {
-          "description": "Project-neutral dimension names mapped to finite allowed primitive values.",
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": ["string", "number", "boolean"]
-            }
-          }
-        }
-      }
-    },
     "artifactPolicy": {
-      "description": "Bounded control-state and Run retention policy. Commands remain preview-only unless --record or --apply is explicit.",
+      "description": "Bounded delivery-state policy. The host owns execution history and resume.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "runs": {
+          "description": "Legacy-only ignored retention setting.",
           "type": "string",
           "enum": ["tracked", "local-only"]
         },
+        "retention": {
+          "description": "Legacy-only ignored Run retention setting.",
+          "type": "object"
+        },
         "durableEvidence": {
-          "description": "Configured files or directories scanned for durable conclusions and Run references.",
+          "description": "Legacy declaration retained during config migration; new completion writes Goals and status only.",
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "uniqueItems": true
-        },
-        "retention": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "completedDays": { "type": "integer", "minimum": 0 },
-            "blockedDays": { "type": "integer", "minimum": 0 },
-            "keepLatest": { "type": "integer", "minimum": 0 }
-          }
         },
         "status": {
           "type": "object",
@@ -226,6 +190,10 @@
           }
         }
       }
+    },
+    "checkpoint": {
+      "description": "Legacy-only ignored checkpoint configuration. Host sessions own resume.",
+      "type": "object"
     },
     "worktree": {
       "type": "object",

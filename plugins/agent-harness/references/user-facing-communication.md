@@ -67,6 +67,6 @@ approval messages, safety notices, or progress heartbeats.
 ## Precedence
 
 Host system/developer instructions and current user instructions take
-precedence. Goal/Run packet overrides may make reporting more detailed inside
+precedence. Goal packet overrides may make reporting more detailed inside
 their scope. They must not claim that Harness can suppress commentary the host
 requires.

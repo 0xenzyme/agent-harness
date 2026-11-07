@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { closeSync, cpSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPlannedExecution } from "./planned-execution.mjs";
+import { createDeliveryControl } from "./delivery-control.mjs";
+import { createStateMaintenance } from "./state-maintenance.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const pluginRoot = resolve(dirname(__filename), "..");
@@ -22,8 +23,7 @@ const fixedContract = {
   taskIndex: "harness/tasks.md",
   config: configRelPath,
   status: "harness/status.md",
-  goals: "harness/goals",
-  runs: ".harness/runs"
+  goals: "harness/goals"
 };
 
 const adapterContract = {
@@ -36,8 +36,6 @@ const adapterContract = {
   specs: "harness/specs",
   goals: "harness/goals",
   milestones: "harness/milestones",
-  runs: ".harness/runs",
-  gateRecords: ".harness/runs",
   deferredRegister: "harness/milestones",
   mentalModels: "harness/mental-models",
   mentalModelIndex: "harness/mental-models/README.md"
@@ -70,33 +68,19 @@ const validAcceptanceMapStatuses = new Set(["pending", "satisfied", "deferred", 
 const validEvidenceItemStatuses = new Set(["pending", "satisfied", "deferred", "blocked"]);
 const validGoalStatuses = new Set(["active", "completed", "blocked"]);
 const placeholderEvidenceValues = new Set(["tbd", "n/a", "none", "not recorded", "pending", "-", "..."]);
-const recordableRunNodePhases = new Set(["running", "completed", "blocked"]);
 const validCommentaryPolicies = new Set(["minimal", "balanced", "audit"]);
-const validCheckpointPolicies = new Set(["disabled", "enforced"]);
-const checkpointSchemaVersion = 1;
-const validCheckpointControlStates = new Set([
-  "active",
-  "waiting",
-  "blocked",
-  "replan-required",
-  "reconciliation-required",
-  "superseded",
-  "completed"
-]);
-const terminalCheckpointControlStates = new Set(["superseded", "completed"]);
-const secretLikeCheckpointKey = /(?:secret|token|password|passwd|credential|private.?key|api.?key|authorization|cookie)/i;
-const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Run`, `Priority`, or `Spec`";
+const contextFocusIntentTargets = "`Milestone`, `Goal`, `Task`, `Priority`, or `Spec`";
 const contextFocusRoutingGuidance = `\`harness-rule:project-neutral-core\`: Normalize the durable target to ${contextFocusIntentTargets}; adapters own downstream paths and facts while plugin core remains project-neutral.`;
-const executeContextFocusGuidance = "`harness-rule:path-containment`: configured writes, Goal/Spec references, Run arguments, and orchestration artifacts stay inside configured roots after lexical and existing-parent realpath checks.";
-const authoritativeCompletionGuidance = "`harness-rule:authoritative-completion-state`: Task/Goal is the accepted-state authority with active, completed, or blocked phase; blocked is resumable and non-complete, Run stores evidence, and status is a bounded projection.";
-const cyberneticStabilityGuidance = "`harness-rule:state-sync-evidence`: durable completion includes verified State Sync Notes and synchronization of the configured Goal, Task, Run, gate, and bounded status records.";
+const executeContextFocusGuidance = "`harness-rule:path-containment`: configured writes and Goal/Spec references stay inside configured roots after lexical and existing-parent realpath checks.";
+const authoritativeCompletionGuidance = "`harness-rule:authoritative-completion-state`: Task/Goal is the accepted-state authority with active, completed, or blocked phase; blocked is resumable and non-complete, and status is a bounded projection.";
+const cyberneticStabilityGuidance = "`harness-rule:state-sync-evidence`: completion includes a concise verification summary and synchronization of the configured Goal, Task and bounded status records.";
 const degradedExecutionProvenanceGuidance = "`harness-rule:candidate-accepted-evidence`: execution and worker output remains candidate evidence until the accepted-state owner verifies and records it.";
-const controllerCancellationBoundaryGuidance = "`harness-rule:run-dag-ownership`: Harness records ready nodes, dependencies, ownership, verification, and candidate evidence; the host owns scheduling, delegation, concurrency, and cancellation.";
-const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; keep historical details in tasks, goals, runs, and gate records.";
+const controllerCancellationBoundaryGuidance = "`harness-rule:host-owned-execution`: Harness records accepted scope and outcomes; the host owns scheduling, delegation, concurrency, cancellation, and resume.";
+const boundedStatusSnapshotGuidance = "`harness-rule:bounded-status-snapshot`: The configured status file is a bounded current-state snapshot, not an append-only history log. Replace current status sections when syncing state; the host session owns execution history.";
 const boundedDirectExecutionGuidance = "`harness-rule:durable-tier-boundary`: ordinary clear change/build uses the current host directly; already tracked simple work may use one bounded postflight sync; Harness ceremony is reserved for recovery, audit, persistent state sync, milestones, orchestration, multiple workers, or high-risk control.";
-const checkpointRecoveryGuidance = "`harness-rule:checkpoint-recovery`: explicitly enforced managed Runs use an independent revision-safe checkpoint; contract drift and uncertain external state fail closed, while disabled and legacy paths keep existing behavior.";
+const hostOwnedExecutionGuidance = "`harness-rule:host-owned-execution`: sessions, resume, workers, terminals, logs and transient execution state belong to the host; Harness records only accepted outcomes and bounded delivery state.";
 const hostExecutionGuidance = "For accepted long-running controller work, establish or reuse a compatible runtime outcome and use the host transient plan for current multi-step progress when those capabilities are exposed. Controller means outcome owner and accepted-state owner; only explicit review-only or gate-only direction prohibits foreground implementation.";
-const postflightSyncGuidance = "Postflight sync verifies completed work and updates existing tracked state only. It creates no Goal, Run, orchestration, gate, or status artifact solely for bookkeeping, and durable completion gates do not apply unless a durable Goal/Run is being closed.";
+const postflightSyncGuidance = "Postflight sync verifies completed work and updates existing tracked state only. It creates no Goal, Run, orchestration, gate, or status artifact solely for bookkeeping. The host owns resume and execution history.";
 
 function commentaryPolicyDetails(config = {}) {
   const configured = config.communication?.commentary;
@@ -137,34 +121,17 @@ function parseArgs(argv) {
     "goal",
     "plan",
     "milestone",
-    "evidence",
-    "decision",
-    "executorState",
-    "executor-state",
     "idea",
-    "integrationRef",
-    "integration-ref",
-    "isolationEvidence",
-    "isolation-evidence",
     "lang",
     "contract",
     "mode",
     "deferredRegister",
     "deferred-register",
-    "phase",
     "priority",
-    "prUrl",
-    "pr-url",
     "projectName",
     "project-name",
-    "reviewUrl",
-    "review-url",
-    "releaseRef",
-    "release-ref",
     "gateRecords",
     "gate-records",
-    "mergeSha",
-    "merge-sha",
     "mentalModel",
     "mental-model",
     "mentalModelIndex",
@@ -172,7 +139,6 @@ function parseArgs(argv) {
     "mentalModels",
     "mental-models",
     "node",
-    "run",
     "section",
     "summary",
     "status",
@@ -182,47 +148,13 @@ function parseArgs(argv) {
     "idea-inbox",
     "milestones",
     "runs",
-    "surface",
     "spec",
     "taskIndex",
     "task-index",
     "task",
-    "thread",
     "verification",
     "workMode",
     "work-mode",
-    "adapterDimensions",
-    "adapter-dimensions",
-    "checkpointPolicy",
-    "checkpoint-policy",
-    "checkpointStages",
-    "checkpoint-stages",
-    "controlState",
-    "control-state",
-    "currentStage",
-    "current-stage",
-    "evidenceReference",
-    "evidence-reference",
-    "expectedRevision",
-    "expected-revision",
-    "lastCompletedStage",
-    "last-completed-stage",
-    "nextAction",
-    "next-action",
-    "observedAt",
-    "observed-at",
-    "observedSource",
-    "observed-source",
-    "pauseReason",
-    "pause-reason",
-    "replacementRun",
-    "replacement-run",
-    "requiredEvidence",
-    "required-evidence",
-    "prohibitedActions",
-    "prohibited-actions",
-    "reconciliationRequired",
-    "reconciliation-required"
   ]);
   const booleanOptions = new Set(["allowNoSpec", "allow-no-spec", "apply", "dryRun", "dry-run", "force", "goalSlice", "goal-slice", "help", "json", "legacy", "record"]);
 
@@ -349,12 +281,12 @@ function sleepSync(milliseconds) {
   Atomics.wait(new Int32Array(buffer), 0, 0, milliseconds);
 }
 
-function lockPathFor(runDir) {
-  return artifactPath(runDir, ".harness-record.lock", "Run record lock path");
+function lockPathFor(root) {
+  return artifactPath(root, ".harness-state.lock", "Delivery state lock path");
 }
 
-function withRunLock(runDir, callback) {
-  const lockPath = lockPathFor(runDir);
+function withStateLock(root, callback) {
+  const lockPath = lockPathFor(root);
   const startedAt = Date.now();
   const timeoutMs = 30_000;
   let acquired = false;
@@ -364,7 +296,7 @@ function withRunLock(runDir, callback) {
       try { existing = lstatSync(lockPath); } catch (error) { if (error?.code !== "ENOENT") throw error; }
       if (existing) {
         if (!existing.isDirectory()) {
-          throw new Error(`Run record lock is not a directory: ${lockPath}`);
+          throw new Error(`Delivery state lock is not a directory: ${lockPath}`);
         }
         if (Date.now() - existing.mtimeMs > timeoutMs) {
           rmSync(lockPath, { recursive: true, force: true });
@@ -376,7 +308,7 @@ function withRunLock(runDir, callback) {
     } catch (error) {
       if (error?.code !== "EEXIST") throw error;
       if (Date.now() - startedAt > timeoutMs) {
-        throw new Error(`Timed out waiting for Run record lock: ${displayPath(process.cwd(), runDir)}`);
+        throw new Error(`Timed out waiting for delivery state lock: ${displayPath(process.cwd(), root)}`);
       }
       sleepSync(10);
     }
@@ -414,7 +346,7 @@ function atomicWriteFile(path, content) {
       renameSync(temporaryPath, path);
     } catch (error) {
       // Windows cannot replace an existing file with renameSync. The caller
-      // holds the Run lock for mutable Run artifacts, so this fallback is safe.
+      // holds the project-state lock, so this fallback is safe.
       if (!(["EEXIST", "EPERM", "ENOTEMPTY"].includes(error?.code)) || !existsSync(path)) {
         throw error;
       }
@@ -431,13 +363,16 @@ function atomicWriteFile(path, content) {
   }
 }
 
+function readTemplate(name) {
+  return readFileSync(join(templateRoot, name), "utf8");
+}
+
 function writeExclusiveFile(path, content) {
   mkdirSync(dirname(path), { recursive: true });
-  const targetStat = (() => {
-    try { return lstatSync(path); } catch (error) { if (error?.code === "ENOENT") return null; throw error; }
-  })();
-  if (targetStat?.isSymbolicLink()) {
-    throw new Error(`Refusing to write through a symbolic link: ${path}`);
+  try {
+    if (lstatSync(path).isSymbolicLink()) throw new Error(`Refusing to write through a symbolic link: ${path}`);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
   }
   let fd = null;
   try {
@@ -447,10 +382,6 @@ function writeExclusiveFile(path, content) {
   } finally {
     if (fd !== null) closeSync(fd);
   }
-}
-
-function readTemplate(name) {
-  return readFileSync(join(templateRoot, name), "utf8");
 }
 
 function writeIfMissing(path, content, force = false) {
@@ -510,38 +441,24 @@ const messages = {
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
-  agent-harness orient next [--cwd PATH] [--run RUN_DIR|--goal PATH|--milestone PATH] [--json]
+  agent-harness orient next [--cwd PATH] [--goal PATH|--milestone PATH] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness artifacts inspect [--cwd PATH] [--json]
   agent-harness artifacts compact [--cwd PATH] [--record] [--json]
-  agent-harness artifacts prune [--cwd PATH] [--apply] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config validate [--cwd PATH] [--json]
-  agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
+  agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--checkpoint-stages JSON] [--plan PATH] [--dry-run] [--force] [--json]
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--plan PATH] [--dry-run] [--force] [--json]
   agent-harness goal list [--cwd PATH] [--json]
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness plan validate --plan PATH [--cwd PATH] [--json]
   agent-harness execute next --goal PATH|--milestone PATH [--goal-slice] [--cwd PATH] [--json]
-  agent-harness goal complete --goal PATH --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness milestone complete --milestone PATH --evidence PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run node review --run PATH --node ID --evidence PATH --decision accepted|request-fix|blocked --expected-revision N [--dry-run] [--json]
-  agent-harness run node inputs --run PATH --node ID [--json]
-  agent-harness plan inputs --plan PATH [--json]
-  agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run seal --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run prepare --goal <goal-file> [--plan PATH|--legacy] [--goal-slice] [--cwd PATH] [--dry-run] [--json]
-  agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
-  agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
-  agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
-  agent-harness run checkpoint update --run <run-dir> --expected-revision <n> [checkpoint fields] [--dry-run] [--json]
-  agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]
-  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--review-url <url>] [--integration-ref <ref>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
-  agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
+  agent-harness goal complete --goal PATH --verification <commands-and-results> [--dry-run] [--json]
+  agent-harness milestone complete --milestone PATH --verification <commands-and-results> [--dry-run] [--json]`,
     initDone: "Agent Harness initialized in {cwd}",
     initCreated: "Created: {files}",
     initNoChanges: "No files changed.",
@@ -570,38 +487,24 @@ const messages = {
   agent-harness doctor [--cwd PATH] [--lang CODE]
   agent-harness print-contract [--contract fixed|adapter]
   agent-harness activation snippet [--cwd PATH] [--json]
-  agent-harness orient next [--cwd PATH] [--run RUN_DIR|--goal PATH|--milestone PATH] [--json]
+  agent-harness orient next [--cwd PATH] [--goal PATH|--milestone PATH] [--json]
   agent-harness intake idea --idea <text> [--cwd PATH] [--priority P1|P2|P3] [--section Now|Next|Later] [--record] [--json]
   agent-harness maintain tasks [--cwd PATH] [--record] [--json]
   agent-harness artifacts inspect [--cwd PATH] [--json]
   agent-harness artifacts compact [--cwd PATH] [--record] [--json]
-  agent-harness artifacts prune [--cwd PATH] [--apply] [--json]
   agent-harness config inspect [--cwd PATH] [--json]
   agent-harness config validate [--cwd PATH] [--json]
-  agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--runs PATH] [--gate-records PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
+  agent-harness config import [--cwd PATH] [--task-index PATH] [--idea-inbox PATH] [--status PATH] [--specs PATH] [--goals PATH] [--milestones PATH] [--deferred-register PATH] [--mental-model PATH] [--mental-model-index PATH] [--mental-models PATH] [--dry-run] [--force] [--json]
   agent-harness adapter inspect [--cwd PATH] [--json]
   agent-harness worktree recommend [--cwd PATH] [--json] [--lang CODE]
-  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--checkpoint-stages JSON] [--plan PATH] [--dry-run] [--force] [--json]
+  agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--plan PATH] [--dry-run] [--force] [--json]
   agent-harness goal list [--cwd PATH] [--json]
   agent-harness goal inspect --goal <goal-file> [--cwd PATH] [--json]
   agent-harness goal validate --goal <goal-file> [--cwd PATH] [--json]
   agent-harness plan validate --plan PATH [--cwd PATH] [--json]
   agent-harness execute next --goal PATH|--milestone PATH [--goal-slice] [--cwd PATH] [--json]
-  agent-harness goal complete --goal PATH --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness milestone complete --milestone PATH --evidence PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run node review --run PATH --node ID --evidence PATH --decision accepted|request-fix|blocked --expected-revision N [--dry-run] [--json]
-  agent-harness run node inputs --run PATH --node ID [--json]
-  agent-harness plan inputs --plan PATH [--json]
-  agent-harness run sync --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run seal --run PATH --expected-revision N [--dry-run] [--json]
-  agent-harness run prepare --goal <goal-file> [--plan PATH|--legacy] [--goal-slice] [--cwd PATH] [--dry-run] [--json]
-  agent-harness run validate --run <run-dir> [--cwd PATH] [--json]
-  agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]
-  agent-harness run checkpoint validate --run <run-dir> [--cwd PATH] [--json]
-  agent-harness run checkpoint update --run <run-dir> --expected-revision <n> [checkpoint fields] [--dry-run] [--json]
-  agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]
-  agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--review-url <url>] [--integration-ref <ref>] [--pr-url <url>] [--merge-sha <sha>] [--release-ref <ref>] [--cwd PATH] [--json]
-  agent-harness run status --run <run-dir> [--cwd PATH] [--json]`,
+  agent-harness goal complete --goal PATH --verification <commands-and-results> [--dry-run] [--json]
+  agent-harness milestone complete --milestone PATH --verification <commands-and-results> [--dry-run] [--json]`,
     initDone: "Agent Harness 已初始化: {cwd}",
     initCreated: "已创建: {files}",
     initNoChanges: "没有文件变更。",
@@ -847,68 +750,8 @@ function isRelativeHarnessPath(value) {
     && !value.split(/[\\/]+/).includes("..");
 }
 
-function checkpointConfigErrors(config) {
-  const errors = [];
-  const checkpoint = config.checkpoint && typeof config.checkpoint === "object" && !Array.isArray(config.checkpoint)
-    ? config.checkpoint
-    : {};
-  if (checkpoint.defaultPolicy !== undefined && !validCheckpointPolicies.has(checkpoint.defaultPolicy)) {
-    errors.push("$.checkpoint.defaultPolicy must be disabled or enforced.");
-  }
-  errors.push(...checkpointStageVocabularyErrors(checkpoint.stages || [], "$.checkpoint.stages"));
-  const dimensions = checkpoint.adapterDimensions === undefined ? {} : checkpoint.adapterDimensions;
-  if (!dimensions || typeof dimensions !== "object" || Array.isArray(dimensions)) {
-    errors.push("$.checkpoint.adapterDimensions must be an object.");
-    return errors;
-  }
-  if (JSON.stringify(dimensions).length > 16_384) {
-    errors.push("$.checkpoint.adapterDimensions must stay below 16384 serialized characters.");
-  }
-  for (const [key, values] of Object.entries(dimensions)) {
-    if (!/^[A-Za-z][A-Za-z0-9._-]{0,63}$/.test(key) || secretLikeCheckpointKey.test(key)) {
-      errors.push(`$.checkpoint.adapterDimensions.${key} is unsafe or secret-like.`);
-      continue;
-    }
-    if (!Array.isArray(values) || !values.length || values.length > 50) {
-      errors.push(`$.checkpoint.adapterDimensions.${key} must contain 1-50 allowed primitive values.`);
-      continue;
-    }
-    const serialized = new Set();
-    for (const value of values) {
-      if (!["string", "number", "boolean"].includes(typeof value) || (typeof value === "number" && !Number.isFinite(value))) {
-        errors.push(`$.checkpoint.adapterDimensions.${key} values must be finite strings, numbers, or booleans.`);
-        break;
-      }
-      if (typeof value === "string" && value.length > 256) {
-        errors.push(`$.checkpoint.adapterDimensions.${key} string values must be at most 256 characters.`);
-        break;
-      }
-      serialized.add(JSON.stringify(value));
-    }
-    if (serialized.size !== values.length) {
-      errors.push(`$.checkpoint.adapterDimensions.${key} values must be unique.`);
-    }
-  }
-  return errors;
-}
-
-function checkpointStageVocabularyErrors(stages, label = "Checkpoint stages") {
-  const errors = [];
-  if (!Array.isArray(stages)) return [`${label} must be an array.`];
-  if (stages.length > 50) errors.push(`${label} must contain at most 50 items.`);
-  const unique = new Set();
-  for (const [index, stage] of stages.entries()) {
-    errors.push(...checkpointStringErrors(stage, `${label}[${index}]`, { maxLength: 128 }));
-    if (missingEvidence(stage) || secretLikeCheckpointKey.test(String(stage))) errors.push(`${label}[${index}] must be a concrete non-secret stage label.`);
-    unique.add(String(stage));
-  }
-  if (unique.size !== stages.length) errors.push(`${label} must contain unique items.`);
-  return errors;
-}
-
 function validateConfiguredPaths(config, contract) {
   const errors = [];
-  errors.push(...checkpointConfigErrors(config));
   const paths = config.paths || {};
   if (paths.tasks && paths.taskIndex && paths.tasks !== paths.taskIndex) {
     errors.push("$.paths.tasks and $.paths.taskIndex conflict; keep only canonical taskIndex output.");
@@ -979,7 +822,7 @@ function validateConfiguredPaths(config, contract) {
         }
       }
     }
-    for (const key of ["taskIndex", "status", "specs", "goals", "milestones", "runs"]) {
+    for (const key of ["taskIndex", "status", "specs", "goals", "milestones"]) {
       if (!paths[key]) {
         errors.push(`$.paths.${key} is required for adapter contract.`);
       }
@@ -987,7 +830,7 @@ function validateConfiguredPaths(config, contract) {
   }
 
   if (contract === "fixed") {
-    for (const key of ["status", "goals", "runs"]) {
+    for (const key of ["status", "goals"]) {
       if (!paths[key]) {
         errors.push(`$.paths.${key} is required for fixed contract.`);
       }
@@ -1125,8 +968,8 @@ function buildAdapterConfigPayload(projectName, discovery = {}) {
   payload.paths.specs = discovery.specs || payload.paths.specs || adapterContract.specs;
   payload.paths.goals = discovery.goals || payload.paths.goals || adapterContract.goals;
   payload.paths.milestones = discovery.milestones || payload.paths.milestones || adapterContract.milestones;
-  payload.paths.runs = discovery.runs || payload.paths.runs || adapterContract.runs;
-  payload.paths.gateRecords = discovery.gateRecords || payload.paths.gateRecords || payload.paths.runs || adapterContract.gateRecords;
+  delete payload.paths.runs;
+  delete payload.paths.gateRecords;
   payload.paths.deferredRegister = discovery.deferredRegister || payload.paths.deferredRegister || payload.paths.milestones || adapterContract.deferredRegister;
   payload.paths.mentalModels = discovery.mentalModels || payload.paths.mentalModels || adapterContract.mentalModels;
   if (discovery.mentalModel) {
@@ -1179,8 +1022,6 @@ function resolvedAdapterPaths(config, activeConfigRelPath = configRelPath) {
     specs: paths.specs || adapterContract.specs,
     goals: paths.goals || adapterContract.goals,
     milestones: paths.milestones || adapterContract.milestones,
-    runs: paths.runs || adapterContract.runs,
-    gateRecords: paths.gateRecords || paths.runs || adapterContract.gateRecords,
     deferredRegister: paths.deferredRegister || paths.milestones || adapterContract.deferredRegister,
     mentalModels: paths.mentalModels || adapterContract.mentalModels,
     mentalModelIndex,
@@ -1223,8 +1064,7 @@ function resolveHarnessContext(cwd) {
         resolvedPaths.status,
         resolvedPaths.specs,
         resolvedPaths.goals,
-        resolvedPaths.milestones,
-        resolvedPaths.runs
+        resolvedPaths.milestones
       ]);
     const optionalPaths = uniqueList(configSource === "discovered"
       ? [
@@ -1233,15 +1073,12 @@ function resolveHarnessContext(cwd) {
         resolvedPaths.specs,
         resolvedPaths.goals,
         resolvedPaths.milestones,
-        resolvedPaths.runs,
-        resolvedPaths.gateRecords,
         resolvedPaths.deferredRegister,
         resolvedPaths.mentalModels,
         resolvedPaths.mentalModelIndex,
         resolvedPaths.ideaInbox
       ]
       : [
-        resolvedPaths.gateRecords,
         resolvedPaths.deferredRegister,
         resolvedPaths.mentalModels,
         resolvedPaths.mentalModelIndex,
@@ -1270,8 +1107,7 @@ function resolveHarnessContext(cwd) {
     status: paths.status || fixedContract.status,
     goals: paths.goals || fixedContract.goals,
     specs: paths.specs || "",
-    milestones: paths.milestones || "harness/milestones",
-    runs: paths.runs || fixedContract.runs
+    milestones: paths.milestones || "harness/milestones"
   };
 
   return {
@@ -1287,8 +1123,7 @@ function resolveHarnessContext(cwd) {
       resolvedPaths.tasks,
       resolvedPaths.config,
       resolvedPaths.status,
-      resolvedPaths.goals,
-      resolvedPaths.runs
+      resolvedPaths.goals
     ]),
     optionalPaths: uniqueList([resolvedPaths.ideaInbox])
   };
@@ -1306,8 +1141,7 @@ function fixedPathsFromConfig(config, activeConfigRelPath = configRelPath) {
     status: paths.status || fixedContract.status,
     goals: paths.goals || fixedContract.goals,
     specs: paths.specs || "",
-    milestones: paths.milestones || "harness/milestones",
-    runs: paths.runs || fixedContract.runs
+    milestones: paths.milestones || "harness/milestones"
   };
 }
 
@@ -1323,8 +1157,6 @@ function renderAdapterTemplate(paths) {
     .replace("- Specs: `harness/specs/`", `- Specs: \`${paths.specs}/\``)
     .replace("- Goals: `harness/goals/`", `- Goals: \`${paths.goals}/\``)
     .replace("- Milestones: `harness/milestones/`", `- Milestones: \`${paths.milestones}/\``)
-    .replace("- Runs / logs: `.harness/runs/`", `- Runs / logs: \`${paths.runs}/\``)
-    .replace("- Gate records: `.harness/runs/`", `- Gate records: \`${paths.gateRecords}/\``)
     .replace("- Deferred register: `harness/milestones/`", `- Deferred register: \`${paths.deferredRegister}/\``)
     .replace("- Mental models: `harness/mental-models/`", `- Mental models: \`${paths.mentalModels}/\``)
     .replace("- Mental model index: `harness/mental-models/README.md`", `- Mental model index: \`${paths.mentalModelIndex}\``);
@@ -1373,7 +1205,7 @@ function ensureImportSupportArtifacts(cwd, paths, created) {
   if (paths.ideaInbox && writeIfMissing(configuredPath(cwd, paths.ideaInbox, "Idea inbox path"), readTemplate("intake.md"))) {
     created.push(paths.ideaInbox);
   }
-  for (const dir of [paths.specs, paths.goals, paths.milestones, paths.runs, paths.mentalModels]) {
+  for (const dir of [paths.specs, paths.goals, paths.milestones, paths.mentalModels]) {
     ensureDir(cwd, dir, created);
   }
   ensureMentalModelArtifacts(cwd, paths, created);
@@ -1445,10 +1277,10 @@ function initPlan(args, cwd, projectName) {
 
 function validateWritablePlan(cwd, mode, paths) {
   const files = [paths.taskIndex, paths.config, paths.status, paths.ideaInbox];
-  const dirs = [paths.goals, paths.runs];
+  const dirs = [paths.goals];
   if (mode === "adapter") {
     files.push(paths.adapterDocs, paths.mentalModelIndex, paths.ideaInbox);
-    dirs.push(paths.specs, paths.milestones, paths.gateRecords, paths.deferredRegister, paths.mentalModels);
+    dirs.push(paths.specs, paths.milestones, paths.deferredRegister, paths.mentalModels);
   }
   for (const path of uniqueList(files.filter(Boolean))) configuredPath(cwd, path, "Writable file path");
   for (const path of uniqueList(dirs.filter(Boolean))) configuredPath(cwd, path, "Writable directory path");
@@ -1502,8 +1334,8 @@ function init(args) {
   }
 
   const dirs = mode === "adapter"
-    ? [paths.specs, paths.goals, paths.milestones, paths.runs, paths.mentalModels]
-    : [paths.goals, paths.runs];
+    ? [paths.specs, paths.goals, paths.milestones, paths.mentalModels]
+    : [paths.goals];
   for (const dir of dirs) {
     mkdirSync(configuredPath(cwd, dir, "Harness directory"), { recursive: true });
   }
@@ -1615,7 +1447,7 @@ function isHarnessSkillCopy(dest, name) {
   const frontmatter = skillFrontmatter(text);
   const nameMatch = frontmatter.match(/^name:\s*(\S+)\s*$/m);
   if (!nameMatch || nameMatch[1] !== name) return false;
-  return /Agent Harness|\bHarness\b/.test(frontmatter);
+  return /Agent Harness|\bHarness\b/i.test(frontmatter);
 }
 
 function listRegularFiles(rootDir) {
@@ -1803,7 +1635,6 @@ function configImport(args) {
       paths.specs,
       paths.goals,
       paths.milestones,
-      paths.runs,
       paths.mentalModels,
       paths.ideaInbox,
       ...mentalModelArtifactPaths(paths)
@@ -2114,7 +1945,7 @@ If \`${configPath}\` exists, read it before substantial project work.
 ${adapterPath ? `- For \`contract: "adapter"\`, read the project adapter at \`${adapterPath}\` before goal, run, or implementation work.\n` : ""}- Read the configured task index at \`${taskIndex}\` and status file at \`${statusPath}\` before choosing or executing tasks.
 ${ideaInbox ? `- For intake capture, use the configured idea inbox at \`${ideaInbox}\`; inbox entries are unaccepted candidates.\n` : ""}
 ${specsPath ? `- Read relevant specs under \`${specsPath}\` and goals under \`${goalsPath}\` before implementation.\n` : `- Read relevant goals under \`${goalsPath}\` before implementation.\n`}- For orientation or next-action requests, summarize current status and task state first; do not start implementation unless the user asks.
-- Use \`agent-harness doctor --cwd .\`, \`agent-harness orient next --cwd .\`, \`agent-harness goal create --cwd . --task "<task>"\`, and, after binding the minimal plan, \`agent-harness plan validate --cwd . --plan <target-file>.plan.json\` and \`agent-harness run prepare --cwd . --goal <goal-file> --plan <target-file>.plan.json\` when they fit the task. New durable Runs require an explicit plan; do not use \`--legacy\` except for migration compatibility.
+- Use \`agent-harness doctor --cwd .\`, \`agent-harness orient next --cwd .\`, \`agent-harness goal create --cwd . --task "<task>"\`, \`agent-harness plan validate --cwd . --plan <target-file>.plan.json\`, and \`agent-harness execute next --cwd . --goal <goal-file>\` when they fit the task. Execute in the host; do not create Runs, hashes or copied logs.
 - Preserve existing project instructions. Pause before product-direction decisions, \`AGENTS.md\` changes, credentials, paid APIs, production access, destructive operations, branch/worktree changes, delivery steps above the active goal policy, deploy, release, daemons, watchers, or background automation.
 `;
 }
@@ -2277,8 +2108,8 @@ function recommendationForTask(task, context, reason) {
       return {
         ...base,
         route: "goal-ready",
-        startPrompt: `Validate the existing goal and its minimal execution plan for: ${task.title}`,
-        goalCommand: `agent-harness goal validate --cwd . --goal ${shellQuote(existingGoalPath)} && agent-harness plan validate --cwd . --plan ${shellQuote(`${existingGoalPath}.plan.json`)} && agent-harness run prepare --cwd . --goal ${shellQuote(existingGoalPath)} --plan ${shellQuote(`${existingGoalPath}.plan.json`)}`
+        startPrompt: `Validate the existing goal and its delivery plan for: ${task.title}`,
+        goalCommand: `agent-harness goal validate --cwd . --goal ${shellQuote(existingGoalPath)} && agent-harness plan validate --cwd . --plan ${shellQuote(`${existingGoalPath}.plan.json`)} && agent-harness execute next --cwd . --goal ${shellQuote(existingGoalPath)}`
       };
     }
     return {
@@ -2378,57 +2209,6 @@ function firstLines(value, limit = 6) {
     .slice(0, limit);
 }
 
-function checkpointOrientationCandidates(cwd, context, selectedRun = "") {
-  const runsRoot = configuredOptionalPath(cwd, context.paths.runs, "Runs root");
-  if (!runsRoot || !existsSync(runsRoot)) return [];
-  const entries = selectedRun
-    ? [{ name: basename(configuredRunDir(cwd, context, selectedRun)), isDirectory: () => true }]
-    : readdirSync(runsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.isSymbolicLink() && !entry.name.startsWith("."));
-  const candidates = [];
-  for (const entry of entries) {
-    const runDir = assertContainedPath(runsRoot, join(runsRoot, entry.name), "Run directory");
-    const statusPath = artifactPath(runDir, "status.json", "Run status path");
-    const manifestPath = artifactPath(runDir, "manifest.json", "Run manifest path");
-    if (!existsSync(statusPath) || !existsSync(manifestPath)) continue;
-    let status = null;
-    let manifest = null;
-    try {
-      status = JSON.parse(readFileSync(statusPath, "utf8"));
-      manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    } catch {
-      continue;
-    }
-    if (checkpointDeclaration(manifest).policy !== "enforced") continue;
-    const state = readRunCheckpoint({ cwd, context, runDir, status, manifest, requireTerminalConsistency: true });
-    const checkpoint = state.checkpoint;
-    if (!selectedRun && checkpoint && terminalCheckpointControlStates.has(checkpoint.controlState)) continue;
-    let contractError = "";
-    try {
-      const goalContext = runGoalContext(cwd, context, status);
-      contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag: readExecutionDag(runDir) });
-    } catch (error) {
-      contractError = error.message;
-    }
-    candidates.push({
-      run: displayPath(cwd, runDir),
-      goalPath: status.goalPath || manifest.goalPath || "",
-      revision: checkpoint?.revision ?? null,
-      controlState: checkpoint?.controlState || "invalid",
-      currentStage: checkpoint?.currentStage ?? null,
-      lastCompletedStage: checkpoint?.lastCompletedStage ?? null,
-      nextAction: checkpoint?.nextAction || "repair or reconcile the invalid checkpoint",
-      userDecision: ["blocked", "replan-required"].includes(checkpoint?.controlState) ? checkpoint?.pauseReason || "review the pause reason" : "none",
-      pauseReason: checkpoint?.pauseReason || null,
-      prohibitedActions: checkpoint?.prohibitedActions || [],
-      requiredEvidence: checkpoint?.requiredEvidence || [],
-      adapterDimensions: checkpoint?.adapterDimensions || {},
-      consistent: state.errors.length === 0 && !contractError,
-      errors: [...state.errors, ...(contractError ? [contractError] : [])]
-    });
-  }
-  return candidates.sort((a, b) => a.run.localeCompare(b.run));
-}
-
 function orientationPayload(args) {
   const cwd = targetCwd(args);
   const context = resolveHarnessContext(cwd);
@@ -2469,42 +2249,6 @@ function orientationPayload(args) {
       goalCommand: ""
     };
 
-  const checkpointCandidates = checkpointOrientationCandidates(cwd, context, args.run || "");
-  const checkpointAmbiguous = checkpointCandidates.length > 1;
-  const checkpointRecovery = {
-    selected: Boolean(args.run),
-    candidateCount: checkpointCandidates.length,
-    ambiguous: checkpointAmbiguous,
-    candidates: checkpointCandidates,
-    active: checkpointCandidates.length === 1 ? checkpointCandidates[0] : null
-  };
-  if (checkpointAmbiguous) {
-    recommendation = {
-      title: "",
-      taskState: "blocked",
-      priority: "",
-      spec: "",
-      goal: "",
-      reason: "multiple active enforced checkpoints require explicit Run selection",
-      route: "checkpoint-ambiguity",
-      startPrompt: "select one Run with --run before resuming",
-      goalCommand: ""
-    };
-  } else if (checkpointRecovery.active) {
-    const active = checkpointRecovery.active;
-    recommendation = {
-      title: `Resume checkpointed Run ${active.run}`,
-      taskState: active.controlState,
-      priority: "",
-      spec: "",
-      goal: active.goalPath,
-      reason: active.consistent ? "one enforced managed Run has a recoverable checkpoint" : "the enforced checkpoint requires repair or reconciliation before execution",
-      route: "checkpoint-recovery",
-      startPrompt: active.nextAction,
-      goalCommand: ""
-    };
-  }
-
   return {
     cwd,
     contract: context.contract,
@@ -2528,7 +2272,6 @@ function orientationPayload(args) {
       inProgress: inProgress.map(taskSummary),
       done: done.slice(0, 5).map(taskSummary)
     },
-    checkpointRecovery,
     recommendation,
     confirmation: {
       canContinueWithoutConfirmation: [
@@ -2562,29 +2305,6 @@ function orientNext(args) {
 
   if (args.json) {
     console.log(JSON.stringify(payload, null, 2));
-    return;
-  }
-
-  if (payload.checkpointRecovery.ambiguous) {
-    console.log("Agent Harness checkpoint recovery");
-    console.log("Multiple active enforced checkpoints were found; no Run was selected.");
-    payload.checkpointRecovery.candidates.forEach((candidate) => console.log(`- ${candidate.run}: revision ${candidate.revision ?? "invalid"}, state ${candidate.controlState}`));
-    console.log("Next action: rerun orient next with --run <run-dir>.");
-    return;
-  }
-  if (payload.checkpointRecovery.active) {
-    const active = payload.checkpointRecovery.active;
-    console.log("Agent Harness checkpoint recovery");
-    console.log(`Run: ${active.run}`);
-    console.log(`Checkpoint revision: ${active.revision ?? "invalid"}`);
-    console.log(`Control state: ${active.controlState}`);
-    console.log(`Current stage: ${active.currentStage || "none"}`);
-    console.log(`Last completed stage: ${active.lastCompletedStage || "none"}`);
-    console.log(`Next action: ${active.nextAction}`);
-    console.log(`User decision: ${active.userDecision}`);
-    console.log(`Pause reason: ${active.pauseReason || "none"}`);
-    console.log(`Prohibited actions: ${active.prohibitedActions.join(", ") || "none"}`);
-    console.log(`Consistency: ${active.consistent ? "ok" : active.errors.join("; ")}`);
     return;
   }
 
@@ -3019,73 +2739,6 @@ function intakeIdea(args) {
   }
 }
 
-function readRecentRuns(cwd, runsRelPath, limit = Number.POSITIVE_INFINITY) {
-  const runsAbs = configuredOptionalPath(cwd, runsRelPath, "Runs path");
-  if (!runsAbs || !existsSync(runsAbs)) {
-    return [];
-  }
-
-  return readdirSync(runsAbs, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
-    .map((entry) => entry.name)
-    .sort()
-    .reverse()
-    .slice(0, limit)
-    .map((name) => {
-      const runAbs = assertContainedPath(runsAbs, join(runsAbs, name), "Run artifact path");
-      const runDir = displayPath(cwd, runAbs);
-      const statusPath = artifactPath(runAbs, "status.json", "Run status path");
-      if (!existsSync(statusPath)) {
-        return {
-          runDir,
-          phase: "missing-status",
-          goalPath: "",
-          updatedAt: "",
-          summary: "",
-          verificationSummary: "",
-          managed: false
-        };
-      }
-      try {
-        const status = JSON.parse(readFileSync(statusPath, "utf8"));
-        return {
-          runDir,
-          phase: status.phase || "unknown",
-          goalPath: status.goalPath || "",
-          updatedAt: status.updatedAt || status.createdAt || "",
-          summary: status.summary || "",
-          verificationSummary: status.verificationSummary || "",
-          managed: runManifestState(runAbs, status).managed
-        };
-      } catch (error) {
-        return {
-          runDir,
-          phase: "invalid-status",
-          goalPath: "",
-          updatedAt: "",
-          summary: `Could not parse status.json: ${error.message}`,
-          verificationSummary: "",
-          managed: false
-        };
-      }
-    });
-}
-
-function withoutLegacyDeliveryFields(status) {
-  const current = { ...status };
-  for (const field of [
-    "deliveryState",
-    "deliveryPolicy",
-    "startHead",
-    "startBranch",
-    "startUpstream",
-    "startDirtyState"
-  ]) {
-    delete current[field];
-  }
-  return current;
-}
-
 function stripTaskPriority(value) {
   return String(value || "").replace(/^P\d+\s+/i, "").trim();
 }
@@ -3107,147 +2760,6 @@ function goalSourceTask(content) {
     path: match[1],
     title: stripTaskPriority(match[2])
   };
-}
-
-function taskCompletionActions(cwd, tasks, runs, taskIndexContent, goalsRelPath, runsRelPath) {
-  if (!taskIndexContent) {
-    return [];
-  }
-
-  const canRecord = !isTableTaskIndex(taskIndexContent);
-  const activeTasks = tasks.filter((task) => !isDoneTask(task));
-  const actions = [];
-  for (const run of runs) {
-    if (run.phase !== "completed" || !run.goalPath || !run.managed) {
-      continue;
-    }
-    if (!managedRunEvidence(cwd, run, runsRelPath || fixedContract.runs, { requireCompletedDag: true }).ok) {
-      continue;
-    }
-    let goalPath = "";
-    try {
-      const goalsRoot = configuredPath(cwd, goalsRelPath || fixedContract.goals, "Goals root");
-      goalPath = assertContainedPath(goalsRoot, resolveProjectPath(cwd, run.goalPath), "Run Goal path");
-    } catch {
-      continue;
-    }
-    if (!goalPath || !existsSync(goalPath)) {
-      continue;
-    }
-    const source = goalSourceTask(readFileSync(goalPath, "utf8"));
-    if (!source.title) {
-      continue;
-    }
-    const match = activeTasks.find((task) => normalizedTaskTitle(task.title) === normalizedTaskTitle(source.title));
-    if (!match || actions.some((action) => action.task.line === match.line)) {
-      continue;
-    }
-    actions.push({
-      kind: "task-completion",
-      action: "move-to-done",
-      title: match.title,
-      evidence: `completed run ${run.runDir}`,
-      canRecord,
-      task: match
-    });
-  }
-  return actions;
-}
-
-function maintenancePayload(args) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  const taskIndex = context.paths.taskIndex || context.paths.tasks;
-  const statusPath = context.paths.status;
-  const runsPath = context.paths.runs;
-  const taskIndexAbs = configuredOptionalPath(cwd, taskIndex, "Task index path");
-  const statusAbs = configuredOptionalPath(cwd, statusPath, "Status path");
-  const taskIndexContent = taskIndexAbs && existsSync(taskIndexAbs) ? readFileSync(taskIndexAbs, "utf8") : "";
-  const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
-  const tasks = taskIndexContent ? parseTasks(taskIndexContent) : [];
-  const recentRuns = readRecentRuns(cwd, runsPath);
-  const completionActions = taskCompletionActions(cwd, tasks, recentRuns, taskIndexContent, context.paths.goals, runsPath);
-  const actions = [
-    {
-      kind: "status-snapshot",
-      action: "update-status",
-      title: "Record maintenance snapshot in configured status file",
-      evidence: "task index, bounded status, and recent run records",
-      canRecord: Boolean(statusPath)
-    },
-    ...completionActions
-  ];
-
-  return {
-    cwd,
-    contract: context.contract,
-    writesFiles: false,
-    paths: {
-      taskIndex,
-      status: statusPath,
-      runs: runsPath
-    },
-    tasks: {
-      exists: Boolean(taskIndexContent),
-      tableBased: Boolean(taskIndexContent && isTableTaskIndex(taskIndexContent)),
-      total: tasks.length,
-      ready: tasks.filter(isReadyTask).map(taskSummary),
-      inProgress: tasks.filter(isInProgressTask).map(taskSummary),
-      blocked: tasks.filter(isBlockedTask).map(taskSummary),
-      done: tasks.filter(isDoneTask).slice(0, 5).map(taskSummary)
-    },
-    status: {
-      exists: Boolean(statusContent),
-      focus: statusFocus(statusContent)
-    },
-    runs: {
-      exists: Boolean(runsPath && existsSync(configuredOptionalPath(cwd, runsPath, "Runs path"))),
-      recent: recentRuns
-    },
-    proposed: {
-      actions
-    },
-    record: {
-      requested: Boolean(args.record),
-      statusWritten: false,
-      taskIndexWritten: false,
-      taskIndexRefused: false,
-      taskIndexRefusalReason: ""
-    },
-    warnings: context.warnings
-  };
-}
-
-function formatRunSummary(run) {
-  const parts = [
-    run.phase,
-    run.goalPath ? `goal=${run.goalPath}` : "",
-    run.summary ? `summary=${run.summary}` : ""
-  ].filter(Boolean);
-  return `${run.runDir}${parts.length ? ` (${parts.join(", ")})` : ""}`;
-}
-
-function maintenanceSnapshot(payload) {
-  const runs = payload.runs.recent.length
-    ? payload.runs.recent.slice(0, 5).map((run) => `  - ${formatRunSummary(run)}`).join("\n")
-    : "  - none detected";
-  const actions = payload.proposed.actions.length
-    ? payload.proposed.actions.map((action) => `  - ${action.action}: ${action.title || action.evidence}`).join("\n")
-    : "  - none";
-
-  return `- Generated: ${new Date().toISOString()}
-- Task index: \`${payload.paths.taskIndex || "not configured"}\`
-- Status file: \`${payload.paths.status || "not configured"}\`
-- Runs: \`${payload.paths.runs || "not configured"}\`
-- Ready tasks: ${payload.tasks.ready.length}
-- In-progress tasks: ${payload.tasks.inProgress.length}
-- Blocked tasks: ${payload.tasks.blocked.length}
-- Recent runs:
-${runs}
-- Proposed sync actions:
-${actions}
-- Record result: statusWritten=${payload.record.statusWritten ? "yes" : "no"}; taskIndexWritten=${payload.record.taskIndexWritten ? "yes" : "no"}${payload.record.taskIndexRefused ? `; taskIndexRefused=${payload.record.taskIndexRefusalReason}` : ""}
-`;
 }
 
 function replaceMarkdownSection(content, title, body) {
@@ -3286,543 +2798,12 @@ function taskBlockRange(linesValue, task) {
   return { start, end };
 }
 
-function moveTaskToDone(content, task) {
-  const sourceLines = content.split(/\r?\n/);
-  const range = taskBlockRange(sourceLines, task);
-  const block = sourceLines.slice(range.start, range.end);
-  if (!block.length || !/^- \[ \]\s+/.test(block[0])) {
-    return content;
-  }
-  block[0] = block[0].replace(/^- \[ \]/, "- [x]");
-  const remaining = [
-    ...sourceLines.slice(0, range.start),
-    ...sourceLines.slice(range.end)
-  ].join("\n");
-  return appendTaskToSection(remaining, "Done", `${block.join("\n")}\n`);
-}
-
-function recordMaintenance(payload) {
-  const statusPath = payload.paths.status;
-  if (!statusPath) {
-    throw new Error("Status path is not configured.");
-  }
-  const statusAbs = configuredPath(payload.cwd, statusPath, "Status path");
-  const statusContent = existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "# Project Status\n";
-
-  const taskCompletions = payload.proposed.actions.filter((action) => action.kind === "task-completion");
-  if (taskCompletions.length) {
-    if (payload.tasks.tableBased) {
-      payload.record.taskIndexRefused = true;
-      payload.record.taskIndexRefusalReason = "table-based task index";
-    } else if (payload.paths.taskIndex) {
-      const taskIndexAbs = configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path");
-      let taskContent = readFileSync(taskIndexAbs, "utf8");
-      // Move lower lines first. Removing a task block shifts only lines below
-      // it, so every prepared line reference remains valid for this pass.
-      for (const action of [...taskCompletions].sort((a, b) => b.task.line - a.task.line)) {
-        taskContent = moveTaskToDone(taskContent, action.task);
-      }
-      atomicWriteFile(taskIndexAbs, taskContent);
-      payload.record.taskIndexWritten = true;
-      payload.writesFiles = true;
-    }
-  }
-
-  payload.record.statusWritten = true;
-  payload.writesFiles = true;
-  atomicWriteFile(statusAbs, replaceMarkdownSection(statusContent, "Maintenance Snapshot", maintenanceSnapshot(payload)));
-}
-
-function maintainTasks(args) {
-  const payload = maintenancePayload(args);
-  if (args.record) {
-    recordMaintenance(payload);
-  }
-
-  if (args.json) {
-    console.log(JSON.stringify(payload, null, 2));
-    return;
-  }
-
-  console.log("Agent Harness task maintenance");
-  console.log(`Task index: ${payload.paths.taskIndex || "not configured"}`);
-  console.log(`Status file: ${payload.paths.status || "not configured"}`);
-  console.log(`Runs: ${payload.paths.runs || "not configured"}`);
-  console.log(`Writes files: ${payload.writesFiles ? "yes" : "no"}`);
-  console.log("");
-  console.log("Harness state:");
-  console.log(`- source=task index, status snapshot, and configured Run artifacts`);
-  console.log("Recent runs:");
-  if (payload.runs.recent.length) {
-    console.log(payload.runs.recent.map((run) => `- ${formatRunSummary(run)}`).join("\n"));
-  } else {
-    console.log("- none detected");
-  }
-  console.log("Proposed sync actions:");
-  if (payload.proposed.actions.length) {
-    console.log(payload.proposed.actions.map((action) => `- ${action.action}: ${action.title || action.evidence}`).join("\n"));
-  } else {
-    console.log("- none");
-  }
-  console.log("Record:");
-  console.log(`- requested=${payload.record.requested ? "yes" : "no"}; statusWritten=${payload.record.statusWritten ? "yes" : "no"}; taskIndexWritten=${payload.record.taskIndexWritten ? "yes" : "no"}`);
-  if (payload.record.taskIndexRefused) {
-    console.log(`- taskIndexRefused=${payload.record.taskIndexRefusalReason}`);
-  }
-}
-
-const terminalArtifactRunPhases = new Set(["completed", "blocked"]);
-const unmanagedArtifactRunPhases = new Set(["legacy-file", "missing-status", "invalid-status", "unknown"]);
-
-function resolvedArtifactPolicy(context) {
-  const configured = context.config?.artifactPolicy || {};
-  const retention = configured.retention || {};
-  const status = configured.status || {};
-  const tasks = configured.tasks || {};
-  return {
-    runs: configured.runs || "tracked",
-    durableEvidence: uniqueList(configured.durableEvidence || []),
-    retention: {
-      completedDays: retention.completedDays ?? 30,
-      blockedDays: retention.blockedDays ?? 30,
-      keepLatest: retention.keepLatest ?? 20
-    },
-    status: { maxLines: status.maxLines ?? 160 },
-    tasks: {
-      archive: tasks.archive || "",
-      keepDone: tasks.keepDone ?? 10
-    },
-    source: context.config?.artifactPolicy ? "configured" : "default"
-  };
-}
-
-function recursiveArtifactStats(root) {
-  const result = { files: 0, directories: 0, bytes: 0 };
-  if (!existsSync(root)) return result;
-  const stack = [root];
-  while (stack.length) {
-    const current = stack.pop();
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const path = join(current, entry.name);
-      if (entry.isSymbolicLink()) {
-        result.files += 1;
-      } else if (entry.isDirectory()) {
-        result.directories += 1;
-        stack.push(path);
-      } else if (entry.isFile()) {
-        result.files += 1;
-        result.bytes += statSync(path).size;
-      }
-    }
-  }
-  return result;
-}
-
-function artifactRunState(cwd, runsRelPath, entry, context) {
-  const runDir = join(runsRelPath, entry.name);
-  const absolute = configuredPath(cwd, runDir, "Run artifact");
-  const stats = entry.isDirectory()
-    ? recursiveArtifactStats(absolute)
-    : { files: entry.isFile() ? 1 : 0, directories: 0, bytes: entry.isFile() ? statSync(absolute).size : 0 };
-  const statusPath = entry.isDirectory() ? join(absolute, "status.json") : "";
-  let phase = entry.isFile() && entry.name.endsWith(".md") ? "legacy-file" : "missing-status";
-  let goalPath = "";
-  let updatedAt = "";
-  let statusError = "";
-  let managed = false;
-  let manifestError = "";
-  let checkpointPolicy = "disabled";
-  let checkpointControlState = "";
-  let checkpointError = "";
-  if (statusPath && existsSync(statusPath)) {
-    try {
-      const status = JSON.parse(readFileSync(statusPath, "utf8"));
-      phase = status.phase || status.status || "unknown";
-      goalPath = status.goalPath || "";
-      updatedAt = status.updatedAt || status.createdAt || "";
-      const manifestState = runManifestState(absolute, status);
-      managed = manifestState.managed;
-      manifestError = manifestState.error;
-      if (manifestState.manifest) {
-        checkpointPolicy = checkpointDeclaration(manifestState.manifest).policy || "disabled";
-        if (checkpointPolicy === "enforced") {
-          const checkpointState = readRunCheckpoint({ cwd, context, runDir: absolute, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
-          checkpointControlState = checkpointState.checkpoint?.controlState || "invalid";
-          checkpointError = checkpointState.errors.join("; ");
-        }
-      }
-    } catch (error) {
-      phase = "invalid-status";
-      statusError = error.message;
-    }
-  }
-  const parsedUpdated = Date.parse(updatedAt);
-  const checkpointProtected = checkpointPolicy === "enforced"
-    && (checkpointError || !terminalCheckpointControlStates.has(checkpointControlState));
-  const terminal = terminalArtifactRunPhases.has(phase) && !checkpointProtected;
-  const unmanaged = unmanagedArtifactRunPhases.has(phase);
-  return {
-    name: entry.name,
-    runDir,
-    phase,
-    classification: terminal ? "terminal" : checkpointProtected ? "active" : unmanaged ? "unmanaged" : "active",
-    terminal,
-    unmanaged,
-    managed,
-    goalPath,
-    updatedAt,
-    updatedMs: Number.isFinite(parsedUpdated) ? parsedUpdated : lstatSync(absolute).mtimeMs,
-    ...stats,
-    statusError,
-    manifestError,
-    checkpointPolicy,
-    checkpointControlState,
-    checkpointError
-  };
-}
-
-function durableEvidenceFiles(cwd, evidencePaths) {
-  const files = [];
-  const visit = (absolute) => {
-    if (!existsSync(absolute)) return;
-    const stat = lstatSync(absolute);
-    if (stat.isSymbolicLink()) return;
-    if (stat.isFile()) {
-      if (/\.(?:md|mdx|txt|json|ya?ml)$/i.test(absolute)) files.push(absolute);
-      return;
-    }
-    if (!stat.isDirectory()) return;
-    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
-      if (!entry.isSymbolicLink()) visit(join(absolute, entry.name));
-    }
-  };
-  for (const relPath of evidencePaths || []) {
-    visit(configuredPath(cwd, relPath, "Durable evidence path"));
-  }
-  return uniqueList(files);
-}
-
-function durableEvidenceRunReferences(cwd, evidencePaths, runsRelPath) {
-  if (!runsRelPath) return { files: [], references: [], error: "Runs path is not configured." };
-  const normalizedRunsPath = normalizePathReference(runsRelPath);
-  const prefix = `${normalizedRunsPath.replace(/\/+$/g, "")}/`;
-  const pattern = new RegExp(escapeRegExp(prefix) + "[^\\s\\)\\]\\},;:]+", "g");
-  const files = [];
-  const references = new Set();
-  for (const absolute of durableEvidenceFiles(cwd, evidencePaths)) {
-    let content = "";
-    try {
-      content = readFileSync(absolute, "utf8");
-    } catch {
-      continue;
-    }
-    const normalizedContent = normalizePathReference(content);
-    if (!normalizedContent.includes(prefix)) continue;
-    files.push(displayPath(cwd, absolute));
-    for (const match of normalizedContent.matchAll(pattern)) references.add(match[0].replace(/[.`]+$/g, ""));
-  }
-  return { files: files.sort(), references: [...references].sort(), error: "" };
-}
-
-function taskLifecycleIssues(content, tasks) {
-  const issues = [];
-  const sectionCounts = new Map();
-  for (const match of content.matchAll(/^##\s+(.+?)\s*$/gm)) {
-    const key = normalized(match[1]);
-    sectionCounts.set(key, (sectionCounts.get(key) || 0) + 1);
-  }
-  for (const [section, count] of sectionCounts.entries()) {
-    if (["now", "next", "later", "blocked", "done"].includes(section) && count > 1) {
-      issues.push({ kind: "duplicate-section", section, count });
-    }
-  }
-  for (const task of tasks) {
-    const explicit = detailValue(task, "Status").toLowerCase();
-    const canonical = canonicalTaskState(task);
-    const explicitDone = ["done", "cancelled", "closed"].some((value) => explicit === value || explicit.startsWith(`${value} `) || explicit.startsWith(`${value}(`));
-    const explicitBlocked = ["blocked", "paused"].some((value) => explicit === value || explicit.startsWith(`${value}-`) || explicit.startsWith(`${value} `));
-    if (!task.done && explicitDone) issues.push({ kind: "unchecked-terminal-task", line: task.line, title: task.title, status: explicit });
-    if (task.done && ["todo", "spec-draft", "spec-ready", "goal-ready", "doing", "review", "blocked", "paused", "watching", "signal", "triage", "action-needed"].includes(canonical)) {
-      issues.push({ kind: "checked-nonterminal-task", line: task.line, title: task.title, status: explicit });
-    }
-    if (normalized(task.section) === "now" && (task.done || explicitDone)) issues.push({ kind: "terminal-task-in-active-section", line: task.line, title: task.title });
-    if (normalized(task.section) !== "blocked" && explicitBlocked) issues.push({ kind: "blocked-task-outside-blocked-section", line: task.line, title: task.title, section: task.section });
-  }
-  return issues;
-}
-
-function artifactInspectionPayload(args) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  const policy = resolvedArtifactPolicy(context);
-  const taskIndex = context.paths.taskIndex || context.paths.tasks;
-  const statusPath = context.paths.status;
-  const runsPath = context.paths.runs;
-  const taskAbs = taskIndex ? configuredPath(cwd, taskIndex, "Task index path") : "";
-  const statusAbs = statusPath ? configuredPath(cwd, statusPath, "Status path") : "";
-  const runsAbs = runsPath ? configuredPath(cwd, runsPath, "Runs path") : "";
-  const taskContent = taskAbs && existsSync(taskAbs) ? readFileSync(taskAbs, "utf8") : "";
-  const statusContent = statusAbs && existsSync(statusAbs) ? readFileSync(statusAbs, "utf8") : "";
-  const tasks = taskContent ? parseTasks(taskContent) : [];
-  const runItems = runsAbs && existsSync(runsAbs)
-    ? readdirSync(runsAbs, { withFileTypes: true })
-      .filter((entry) => !entry.name.startsWith(".") && !entry.isSymbolicLink())
-      .map((entry) => artifactRunState(cwd, runsPath, entry, context))
-      .sort((a, b) => b.updatedMs - a.updatedMs || a.name.localeCompare(b.name))
-    : [];
-  const totals = runItems.reduce((total, run) => ({
-    files: total.files + run.files,
-    directories: total.directories + run.directories + 1,
-    bytes: total.bytes + run.bytes
-  }), { files: 0, directories: 0, bytes: 0 });
-  const references = durableEvidenceRunReferences(cwd, policy.durableEvidence, runsPath);
-  const statusLines = statusContent ? statusContent.split(/\r?\n/).length : 0;
-  return {
-    cwd,
-    contract: context.contract,
-    writesFiles: false,
-    paths: { taskIndex, status: statusPath, goals: context.paths.goals || fixedContract.goals, runs: runsPath },
-    policy,
-    status: { exists: Boolean(statusContent), lines: statusLines, maxLines: policy.status.maxLines, overLimit: statusLines > policy.status.maxLines },
-    tasks: {
-      exists: Boolean(taskContent),
-      total: tasks.length,
-      active: tasks.filter((task) => !isDoneTask(task)).length,
-      done: tasks.filter(isDoneTask).length,
-      keepDone: policy.tasks.keepDone,
-      archive: policy.tasks.archive,
-      issues: taskLifecycleIssues(taskContent, tasks)
-    },
-    runs: {
-      exists: Boolean(runsAbs && existsSync(runsAbs)),
-      entries: runItems.length,
-      active: runItems.filter((run) => run.classification === "active").length,
-      terminal: runItems.filter((run) => run.terminal).length,
-      unmanaged: runItems.filter((run) => run.unmanaged).length,
-      managed: runItems.filter((run) => run.managed).length,
-      totals,
-      items: runItems
-    },
-    references,
-    warnings: [
-      ...context.warnings,
-      ...(policy.runs === "local-only" && references.files.length ? [`${references.files.length} durable evidence files reference local-only Run artifacts.`] : []),
-      ...(statusLines > policy.status.maxLines ? [`Status snapshot has ${statusLines} lines; configured maximum is ${policy.status.maxLines}.`] : [])
-    ]
-  };
-}
-
-function taskArchiveCandidates(payload) {
-  if (!payload.tasks.exists || !payload.policy.tasks.archive) return [];
-  const content = readFileSync(configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path"), "utf8");
-  const recency = (task) => {
-    const dates = [...taskSearchText(task).matchAll(/20\d{2}-?\d{2}-?\d{2}/g)]
-      .map((match) => Number(match[0].replace(/-/g, "")))
-      .filter(Number.isFinite);
-    return dates.length ? Math.max(...dates) : 0;
-  };
-  return parseTasks(content)
-    .filter(isDoneTask)
-    .sort((a, b) => recency(b) - recency(a) || b.line - a.line)
-    .slice(payload.policy.tasks.keepDone)
-    .sort((a, b) => a.line - b.line);
-}
-
-function taskBlocksForArchive(content, candidates) {
-  const lines = content.split(/\r?\n/);
-  return candidates.map((task) => {
-    const range = taskBlockRange(lines, task);
-    return { task, range, block: lines.slice(range.start, range.end).join("\n").trimEnd() };
-  });
-}
-
-function removeArchivedTaskBlocks(content, blocks) {
-  const lines = content.split(/\r?\n/);
-  for (const item of [...blocks].sort((a, b) => b.range.start - a.range.start)) lines.splice(item.range.start, item.range.end - item.range.start);
-  return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd()}\n`;
-}
-
-function artifactCompactPayload(args) {
-  const payload = artifactInspectionPayload(args);
-  const taskContent = payload.tasks.exists ? readFileSync(configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path"), "utf8") : "";
-  const candidates = taskArchiveCandidates(payload);
-  return {
-    ...payload,
-    compact: {
-      requested: Boolean(args.record),
-      supported: Boolean(taskContent && payload.policy.tasks.archive && !isTableTaskIndex(taskContent)),
-      archive: payload.policy.tasks.archive,
-      keepDone: payload.policy.tasks.keepDone,
-      candidates: candidates.map(taskSummary),
-      archived: 0,
-      taskIndexWritten: false,
-      archiveWritten: false,
-      refusalReason: ""
-    }
-  };
-}
-
-function recordArtifactCompaction(payload) {
-  if (!payload.compact.supported) {
-    payload.compact.refusalReason = "Task index is missing, table-based, or no archive path is configured.";
-    return;
-  }
-  if (!payload.compact.candidates.length) return;
-  const taskAbs = configuredPath(payload.cwd, payload.paths.taskIndex, "Task index path");
-  const archiveAbs = configuredPath(payload.cwd, payload.compact.archive, "Task archive path");
-  if (taskAbs === archiveAbs) throw new Error("Task archive path must differ from the active task index.");
-  const content = readFileSync(taskAbs, "utf8");
-  const blocks = taskBlocksForArchive(content, taskArchiveCandidates(payload));
-  if (!blocks.length || blocks.some((item) => !item.block.startsWith("- ["))) throw new Error("Refusing compaction because exact task blocks could not be preserved.");
-  const existingArchive = existsSync(archiveAbs) ? readFileSync(archiveAbs, "utf8") : "# Harness Task Archive\n\nCompleted task records moved from the bounded active task index.\n";
-  const uniqueBlocks = blocks.filter((item) => !existingArchive.includes(item.block));
-  const section = uniqueBlocks.length ? `\n\n## Archived ${todayStamp()}\n\n${uniqueBlocks.map((item) => item.block).join("\n\n")}\n` : "";
-  mkdirSync(dirname(archiveAbs), { recursive: true });
-  atomicWriteFile(archiveAbs, `${existingArchive.trimEnd()}${section || "\n"}`);
-  payload.compact.archiveWritten = true;
-  atomicWriteFile(taskAbs, removeArchivedTaskBlocks(content, blocks));
-  payload.compact.taskIndexWritten = true;
-  payload.compact.archived = blocks.length;
-  payload.writesFiles = true;
-}
-
-function durableRunEvidence(cwd, run, goalsRelPath, runsRelPath) {
-  const executionEvidence = managedRunEvidence(cwd, run, runsRelPath || fixedContract.runs, {
-    requireCompletedDag: run.phase === "completed"
-  });
-  if (!executionEvidence.ok) return executionEvidence;
-  if (!run.goalPath) return { ok: false, reason: "Run has no goalPath." };
-  let goalAbs = "";
-  try {
-    const goalsRoot = configuredPath(cwd, goalsRelPath, "Goals root");
-    goalAbs = assertContainedPath(goalsRoot, resolve(cwd, run.goalPath), "Run Goal path");
-  } catch (error) {
-    return { ok: false, reason: error.message };
-  }
-  if (!existsSync(goalAbs)) return { ok: false, reason: `Goal does not exist: ${run.goalPath}` };
-  const goal = readFileSync(goalAbs, "utf8");
-  if (canonicalGoalStatus(extractStatusLine(goal)) === "blocked") {
-    return { ok: false, reason: "Goal is blocked and cannot be treated as completed Run evidence." };
-  }
-  if (!containsExactPathReference(goal, run.runDir)) return { ok: false, reason: "Goal does not reference this Run." };
-  const stateSyncErrors = stateSyncNotesValidationErrors(stateSyncNotesDetails(goal), { completed: true });
-  if (stateSyncErrors.length) return { ok: false, reason: stateSyncErrors[0] };
-  return { ok: true, reason: "Goal references the Run and contains State Sync Notes." };
-}
-
-function artifactPrunePayload(args) {
-  const payload = artifactInspectionPayload(args);
-  const terminal = payload.runs.items.filter((run) => run.terminal);
-  const retainedLatest = new Set(terminal.slice(0, payload.policy.retention.keepLatest).map((run) => run.runDir));
-  const assessed = payload.runs.items.map((run) => {
-    const ageDays = Math.max(0, (Date.now() - run.updatedMs) / 86400000);
-    const threshold = run.phase === "blocked" ? payload.policy.retention.blockedDays : payload.policy.retention.completedDays;
-    const evidence = durableRunEvidence(payload.cwd, run, payload.paths.goals, payload.paths.runs);
-    const reasons = [];
-    if (payload.policy.runs !== "local-only") reasons.push("Run policy is not local-only.");
-    if (!run.terminal) reasons.push(`Run phase is ${run.phase}, not terminal.`);
-    if (!run.managed) reasons.push("Run lacks a prepared manifest and is unmanaged.");
-    if (retainedLatest.has(run.runDir)) reasons.push("Protected by keepLatest.");
-    if (ageDays < threshold) reasons.push(`Age ${ageDays.toFixed(1)}d is below ${threshold}d retention.`);
-    if (!evidence.ok) reasons.push(evidence.reason);
-    return { ...run, ageDays: Number(ageDays.toFixed(2)), retentionDays: threshold, durableEvidence: evidence, eligible: reasons.length === 0, reasons };
-  });
-  const candidates = assessed.filter((run) => run.eligible);
-  return {
-    ...payload,
-    prune: {
-      requested: Boolean(args.apply),
-      mode: args.apply ? "apply" : "preview",
-      candidates,
-      retained: assessed.filter((run) => !run.eligible),
-      deleted: [],
-      bytesEligible: candidates.reduce((sum, run) => sum + run.bytes, 0)
-    }
-  };
-}
-
-function applyArtifactPrune(payload) {
-  if (payload.policy.runs !== "local-only") throw new Error("Refusing prune --apply unless artifactPolicy.runs is local-only.");
-  const runsRoot = configuredPath(payload.cwd, payload.paths.runs, "Runs path");
-  for (const run of payload.prune.candidates) {
-    const target = artifactPath(runsRoot, run.name, "Prune candidate");
-    if (dirname(target) !== runsRoot || !existsSync(target)) throw new Error(`Refusing non-child or missing prune candidate: ${run.runDir}`);
-    rmSync(target, { recursive: true, force: false });
-    payload.prune.deleted.push(run.runDir);
-  }
-  payload.writesFiles = payload.prune.deleted.length > 0;
-}
-
-function printArtifactSummary(payload, action) {
-  console.log(`Agent Harness artifact ${action}`);
-  console.log(`Policy: runs=${payload.policy.runs}; source=${payload.policy.source}`);
-  console.log(`Status: ${payload.status.lines}/${payload.status.maxLines} lines${payload.status.overLimit ? " (over limit)" : ""}`);
-  console.log(`Tasks: total=${payload.tasks.total}; active=${payload.tasks.active}; done=${payload.tasks.done}; issues=${payload.tasks.issues.length}`);
-  console.log(`Runs: entries=${payload.runs.entries}; files=${payload.runs.totals.files}; bytes=${payload.runs.totals.bytes}; terminal=${payload.runs.terminal}; active=${payload.runs.active}; managed=${payload.runs.managed}; unmanaged=${payload.runs.unmanaged}`);
-  console.log(`Durable evidence Run references: files=${payload.references.files.length}; unique=${payload.references.references.length}`);
-}
-
-function artifactsInspect(args) {
-  const payload = artifactInspectionPayload(args);
-  if (args.json) return console.log(JSON.stringify(payload, null, 2));
-  printArtifactSummary(payload, "inspection");
-}
-
-function artifactsCompact(args) {
-  const payload = artifactCompactPayload(args);
-  if (args.record) recordArtifactCompaction(payload);
-  if (args.json) return console.log(JSON.stringify(payload, null, 2));
-  printArtifactSummary(payload, "compaction");
-  console.log(`Compaction: mode=${args.record ? "record" : "preview"}; candidates=${payload.compact.candidates.length}; archived=${payload.compact.archived}`);
-}
-
-function artifactsPrune(args) {
-  const payload = artifactPrunePayload(args);
-  if (args.apply) applyArtifactPrune(payload);
-  if (args.json) return console.log(JSON.stringify(payload, null, 2));
-  printArtifactSummary(payload, "prune");
-  console.log(`Prune: mode=${payload.prune.mode}; eligible=${payload.prune.candidates.length}; deleted=${payload.prune.deleted.length}; bytesEligible=${payload.prune.bytesEligible}`);
-}
-
 function todayStamp(date = new Date()) {
   return [
     date.getFullYear(),
     String(date.getMonth() + 1).padStart(2, "0"),
     String(date.getDate()).padStart(2, "0")
   ].join("-");
-}
-
-function runTimestamp(date = new Date()) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0")
-  ].join("") + "-" + [
-    String(date.getHours()).padStart(2, "0"),
-    String(date.getMinutes()).padStart(2, "0"),
-    String(date.getSeconds()).padStart(2, "0")
-  ].join("");
-}
-
-function writeUniqueRunLog(logsDir, phase, content) {
-  const stem = `${runTimestamp()}-${phase}`;
-  for (let suffix = 1; suffix < 10_000; suffix += 1) {
-    const name = `${stem}${suffix === 1 ? "" : `-${suffix}`}.md`;
-    const candidate = artifactPath(logsDir, name, "Run log path");
-    let existing = null;
-    try { existing = lstatSync(candidate); } catch (error) { if (error?.code !== "ENOENT") throw error; }
-    if (existing?.isSymbolicLink()) {
-      throw new Error(`Refusing to write a Run log through a symbolic link: ${candidate}`);
-    }
-    try {
-      writeExclusiveFile(candidate, content);
-      return candidate;
-    } catch (error) {
-      if (error?.code === "EEXIST") continue;
-      throw error;
-    }
-  }
-  throw new Error(`Could not allocate a unique Run log path in ${logsDir}`);
 }
 
 function slugify(value) {
@@ -4117,7 +3098,7 @@ ${items}
 `;
 }
 
-function buildGoalContent({ task, context, specPath, workMode, checkpointPolicy, checkpointStages, planPath = "", allowNoSpec = false }) {
+function buildGoalContent({ task, context, specPath, workMode, planPath = "", allowNoSpec = false }) {
   const heading = titleCase(task.title);
   const paths = context.paths;
   const taskIndexPath = paths.taskIndex || paths.tasks;
@@ -4134,8 +3115,6 @@ function buildGoalContent({ task, context, specPath, workMode, checkpointPolicy,
   const docValue = detailValue(task, "Doc");
   const linkedDocs = extractLinkedDocPaths(docValue);
   const selectedWorkMode = workMode || "ask";
-  const selectedCheckpointPolicy = checkpointPolicy || context.config.checkpoint?.defaultPolicy || "disabled";
-  const selectedCheckpointStages = checkpointStages || context.config.checkpoint?.stages || [];
   const stateSyncPathList = stateSyncPaths(context);
   const readFirst = uniqueList([
     "AGENTS.md",
@@ -4180,8 +3159,7 @@ function buildGoalContent({ task, context, specPath, workMode, checkpointPolicy,
   return `# Goal: ${heading}
 
 Spec: ${spec}
-${planPath ? `Execution Plan: ${planPath}\n` : ""}${specPolicyLine}Checkpoint Policy: ${selectedCheckpointPolicy}
-Checkpoint Stages: ${JSON.stringify(selectedCheckpointStages)}
+${planPath ? `Execution Plan: ${planPath}\n` : ""}${specPolicyLine}
 Status: ${statusLine}
 
 ## Source Task
@@ -4211,8 +3189,8 @@ Use \`implementer\`.
 - ${hostExecutionGuidance}
 - Runtime outcome owns the current outcome and continuation; transient plan owns short-lived steps.
 - The host owns scheduling, concurrency, cancellation, and model/effort selection when those capabilities are exposed.
-- Repository Goal/Run owns cross-task recovery, durable dependencies, evidence, gates, and state sync.
-- If native outcome or plan is unavailable, continue in the current session and record degraded provenance only when this durable Run requires it. Never invent runtime identifiers.
+- The Goal owns accepted scope, dependencies, concise verification and state sync.
+- If native outcome or plan is unavailable, continue in the current session. Never invent runtime identifiers.
 
 ## Conversation Route
 
@@ -4231,11 +3209,9 @@ Use \`current-session\`.
 - Execution slot: \`N/A\`
 - Remote-control worktree: \`no\`
 
-## Execution Orchestration
+## Execution
 
-Use \`run prepare\` to generate \`dag.json\`, \`dag.md\`, and per-node
-\`agents/<node>/prompt.md\` files. The host owns worker selection,
-delegation, concurrency, and cancellation; Harness records ownership and evidence.
+Work in the host session. Record verified outcomes, not execution history.
 
 ## Context Focus Routing
 
@@ -4248,11 +3224,11 @@ ${cyberneticStabilityGuidance}
 ${stageCompletionMapSection}
 ## State Sync Notes
 
-Record concrete accepted-state updates, Run evidence, and bounded status
-synchronization before marking this Goal/Run completed.
+Record accepted-state updates, concise verification and bounded status
+synchronization before marking this Goal completed.
 
 - Accepted-state records: \`TBD\`
-- Run evidence: \`TBD\`
+- Verification: \`TBD\`
 - Bounded status update: \`TBD\`
 
 ## Spec Acceptance Checklist
@@ -4264,7 +3240,7 @@ items are satisfied.
 
 ## Required Gate Evidence
 
-These gates apply only to durable Goal/Run completion. ${postflightSyncGuidance}
+These gates apply only to Goal completion. ${postflightSyncGuidance}
 
 ${requiredGateLines}
 
@@ -4321,27 +3297,14 @@ function goalCreate(args) {
   const paths = context.paths;
   const taskQuery = args.task;
   if (!taskQuery) {
-    throw new Error("Usage: agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--checkpoint-policy disabled|enforced] [--dry-run]");
+    throw new Error("Usage: agent-harness goal create --task <title-or-id> [--cwd PATH] [--spec PATH] [--allow-no-spec] [--work-mode local|worktree|ask] [--dry-run]");
   }
   if (args.workMode && !validWorkModes.has(args.workMode)) {
     throw new Error(`Invalid --work-mode: ${args.workMode}`);
   }
-  if (args.checkpointPolicy && !validCheckpointPolicies.has(args.checkpointPolicy)) {
-    throw new Error(`Invalid --checkpoint-policy: ${args.checkpointPolicy}`);
-  }
-  const resolvedCheckpointPolicy = args.checkpointPolicy || (args.plan ? "enforced" : context.config.checkpoint?.defaultPolicy || "disabled");
   if (args.plan) {
     configuredPath(cwd, args.plan, "Execution plan");
-    if (resolvedCheckpointPolicy !== "enforced") throw new Error("Planned Goals require enforced checkpoint policy.");
   }
-  if (!validCheckpointPolicies.has(resolvedCheckpointPolicy)) {
-    throw new Error(`Invalid checkpoint.defaultPolicy: ${resolvedCheckpointPolicy}`);
-  }
-  const resolvedCheckpointStages = args.checkpointStages === undefined
-    ? context.config.checkpoint?.stages || []
-    : parseCheckpointJsonOption(args.checkpointStages, "--checkpoint-stages", "array");
-  const checkpointStageErrors = checkpointStageVocabularyErrors(resolvedCheckpointStages);
-  if (checkpointStageErrors.length) throw new Error(`Invalid checkpoint stages:\n- ${checkpointStageErrors.join("\n- ")}`);
   if (context.mode === "adapter" && !args.spec && !args.allowNoSpec) {
     throw new Error("Adapter goal creation requires --spec <spec-path> unless --allow-no-spec is explicitly set.");
   }
@@ -4368,8 +3331,6 @@ function goalCreate(args) {
     specPath: args.spec,
     planPath: args.plan || "",
     workMode: args.workMode,
-    checkpointPolicy: resolvedCheckpointPolicy,
-    checkpointStages: resolvedCheckpointStages,
     allowNoSpec: Boolean(args.allowNoSpec)
   });
 
@@ -4413,23 +3374,6 @@ function canonicalGoalStatus(value) {
 function extractSpecPolicyRaw(content) {
   const match = content.match(/^Spec Policy:\s+`?([^\n`]+)`?\s*$/m);
   return match ? match[1].trim().toLowerCase() : "";
-}
-
-function extractCheckpointPolicyRaw(content) {
-  const match = content.match(/^Checkpoint Policy:\s+`?([^\n`]+)`?\s*$/m);
-  return match ? match[1].trim().toLowerCase() : "disabled";
-}
-
-function checkpointStageDetails(content) {
-  const match = content.match(/^Checkpoint Stages:\s+(.+?)\s*$/m);
-  if (!match) return { values: [], error: "" };
-  try {
-    const values = JSON.parse(match[1].trim());
-    const errors = checkpointStageVocabularyErrors(values);
-    return { values: Array.isArray(values) ? values : [], error: errors.join("; ") };
-  } catch (error) {
-    return { values: [], error: `Checkpoint Stages must be valid JSON: ${error.message}` };
-  }
 }
 
 function missingSpecValue(value) {
@@ -5009,6 +3953,14 @@ function sectionHasManualVerification(section) {
   return /\b(manual|human|review|evidence|document|not automated|cannot be automated)\b/i.test(section);
 }
 
+function extractVerificationCommands(section) {
+  const commands = [];
+  for (const match of String(section || "").matchAll(/```(?:bash|sh)?\n([\s\S]*?)```/g)) {
+    commands.push(...match[1].split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith("#")));
+  }
+  return commands;
+}
+
 function goalMetadata(cwd, goalPath) {
   const content = readFileIfExists(goalPath);
   const spec = extractInlinePath(content, "Spec");
@@ -5025,16 +3977,12 @@ function goalMetadata(cwd, goalPath) {
   const specChecklist = specAcceptanceChecklistDetails(content, specContent);
   const gateEvidence = gateEvidenceDetails(content, specContent);
   const stateSyncNotes = stateSyncNotesDetails(content);
-  const checkpointStages = checkpointStageDetails(content);
 
   return {
     path: displayPath(cwd, goalPath),
     title: goalTitle(content, goalPath),
     status: extractStatusLine(content),
     specPolicy: extractSpecPolicyRaw(content),
-    checkpointPolicy: extractCheckpointPolicyRaw(content),
-    checkpointStages: checkpointStages.values,
-    checkpointStagesError: checkpointStages.error,
     spec,
     specPath: specInProject && specAbs ? displayPath(cwd, specAbs) : spec,
     specExists,
@@ -5127,10 +4075,6 @@ function validateGoal(cwd, goalPath, { checkCompletion = true } = {}) {
   if (metadata.specPolicy && !allowNoSpec) {
     errors.push(`Spec Policy must be allow-no-spec when present; found ${metadata.specPolicy}.`);
   }
-  if (!validCheckpointPolicies.has(metadata.checkpointPolicy)) {
-    errors.push(`Checkpoint Policy must use disabled or enforced; found ${metadata.checkpointPolicy || "(missing)"}.`);
-  }
-  if (metadata.checkpointStagesError) errors.push(metadata.checkpointStagesError);
   if (missingSpecValue(spec)) {
     if (!allowNoSpec) {
       errors.push("Spec must point to a repo-local spec file, not TBD, unless Spec Policy is allow-no-spec.");
@@ -5330,7 +4274,9 @@ function goalInspect(args) {
 }
 
 function goalEvidenceErrors(cwd, context, goalRef, { skipSync = false, additionalGates = [] } = {}) {
-  const { goalContent, specContent } = runGoalContext(cwd, context, { goalPath: goalRef });
+  const goalContent = readFileSync(configuredPath(cwd, goalRef), "utf8");
+  const metadata = goalMetadata(cwd, configuredPath(cwd, goalRef));
+  const specContent = metadata.specExists ? readFileSync(join(cwd, metadata.specPath), "utf8") : "";
   const errors = [];
   const maps = [
     ["Source Task Acceptance Map", acceptanceMapValidationErrors(acceptanceMapDetails(goalContent, specContent), { completed: true })],
@@ -5361,13 +4307,10 @@ function goalValidate(args) {
 
   const goalPath = assertContainedPath(configuredPath(cwd, context.paths.goals, "Goals root"), resolve(cwd, args.goal), "Goal path");
   const validation = validateGoal(cwd, goalPath);
-  const goalText = validation.ok ? readFileSync(goalPath, "utf8") : "";
-  const completionRun = extractInlinePath(goalText, "Completion Run");
   const payload = {
     ok: validation.ok,
     errors: validation.errors,
     warnings: validation.warnings,
-    ...(validation.ok && canonicalGoalStatus(validation.metadata.status) === "completed" && completionRun && extractInlinePath(goalText, "Execution Plan") ? planned.runScope(cwd, context, completionRun) : {}),
     goal: validation.metadata
   };
 
@@ -5375,8 +4318,6 @@ function goalValidate(args) {
     console.log(JSON.stringify(payload, null, 2));
   } else {
     console.log(`Goal validation: ${validation.ok ? "ok" : "failed"}`);
-    if (payload.evidenceScope) console.log(`Evidence scope: ${payload.evidenceScope}`);
-    if (payload.currentVerification) console.log(`Current verification inputs: ${payload.currentVerification.status}`);
     for (const error of validation.errors) {
       console.log(`- ${error}`);
     }
@@ -5413,2278 +4354,6 @@ function extractInlinePath(content, label) {
   return match ? match[1].trim() : "";
 }
 
-function extractWorkMode(goalContent, cwd) {
-  const section = extractSection(goalContent, "Work Mode Recommendation");
-  const match = section.match(/Use\s+`(local|worktree|ask)`/i);
-  if (match) {
-    return match[1].toLowerCase();
-  }
-
-  const config = loadProjectConfig(cwd);
-  if (config.worktree?.defaultPolicy && config.workMode?.defaultPolicy
-      && config.worktree.defaultPolicy !== config.workMode.defaultPolicy) {
-    throw new Error(`Conflicting config aliases: worktree.defaultPolicy=${config.worktree.defaultPolicy} and workMode.defaultPolicy=${config.workMode.defaultPolicy}.`);
-  }
-  return config.worktree?.defaultPolicy || config.workMode?.defaultPolicy || "ask";
-}
-
-function countSectionBullets(section) {
-  if (!section) {
-    return 0;
-  }
-  return section.split(/\r?\n/).filter((line) => /^- /.test(line)).length;
-}
-
-function countNumberedItems(section) {
-  if (!section) {
-    return 0;
-  }
-  return section.split(/\r?\n/).filter((line) => /^\d+\.\s+/.test(line)).length;
-}
-
-function classifyTask(goalContent, workMode) {
-  if (workMode === "ask") {
-    return "ask";
-  }
-
-  const scopeCount = countSectionBullets(extractSection(goalContent, "Scope"));
-  const readFirstCount = countNumberedItems(extractSection(goalContent, "Read First"));
-
-  if (scopeCount <= 3 && readFirstCount <= 5) {
-    return "small";
-  }
-  if (scopeCount <= 9 && readFirstCount <= 12) {
-    return "medium";
-  }
-  return "large";
-}
-
-function buildDagNode({ id, label, mode, dependencies = [], ownership, expectedOutput, stopConditions }) {
-  return {
-    id,
-    label,
-    mode,
-    dependencies,
-    ownership,
-    expectedOutput,
-    stopConditions,
-    prompt: `agents/${id}/prompt.md`,
-    status: `agents/${id}/status.json`,
-    result: `agents/${id}/result.md`
-  };
-}
-
-function defaultDagNodes(taskSize, executionRole) {
-  if (taskSize === "ask") {
-    return [
-      buildDagNode({
-        id: "controller-decision",
-        label: "Controller Decision",
-        mode: "gate-only",
-        ownership: "scope, product direction, credentials, destructive actions, and file ownership decision",
-        expectedOutput: "decision request or approved execution route",
-        stopConditions: "any unresolved cost, risk, product, production, or ownership decision"
-      })
-    ];
-  }
-
-  if (taskSize === "small") {
-    if (executionRole === "gate-only") {
-      return [
-        buildDagNode({
-          id: "worker",
-          label: "Worker Subagent",
-          mode: "write",
-          ownership: "the accepted goal scope in an isolated worker subagent; the controller remains gate-only",
-          expectedOutput: "focused patch, verification summary, changed files, and state-sync notes for controller review",
-          stopConditions: "scope growth, unclear ownership, credentials, destructive commands, production access, or missing verification"
-        })
-      ];
-    }
-    return [
-      buildDagNode({
-        id: "main-agent",
-        label: "Main Agent",
-        mode: "implementer",
-        ownership: "the accepted goal scope in the current foreground context",
-        expectedOutput: "focused patch, verification summary, and state-sync notes",
-        stopConditions: "scope growth, unclear ownership, credentials, destructive commands, or production access"
-      })
-    ];
-  }
-
-  return [
-    buildDagNode({
-      id: "execution",
-      label: "Runtime Execution",
-      mode: executionRole === "gate-only" ? "write" : "implementer",
-      ownership: executionRole === "gate-only"
-        ? "runtime-selected implementation inside the accepted goal scope; the controller remains review-only"
-        : "accepted goal scope in the current host; runtime outcome and transient plan own short-lived execution",
-      expectedOutput: "focused implementation evidence, changed files, verification summary, and state-sync notes",
-      stopConditions: "scope conflict, unclear ownership, credentials, destructive commands, production access, or unauthorized delivery"
-    }),
-    buildDagNode({
-      id: "verification",
-      label: "Verification",
-      mode: "read/execute",
-      dependencies: ["execution"],
-      ownership: "fresh deterministic validation, durable acceptance evidence, and residual-risk reporting",
-      expectedOutput: "pass/fail summary, command evidence, state-sync evidence, and unresolved risks",
-      stopConditions: "failing verification that needs a product or scope decision"
-    })
-  ];
-}
-
-function dagEdges(nodes) {
-  const edges = [];
-  for (const node of nodes) {
-    for (const dependency of node.dependencies || []) {
-      edges.push({ from: dependency, to: node.id });
-    }
-  }
-  return edges;
-}
-
-function dagParallelLayers(nodes) {
-  const remaining = new Map(nodes.map((node) => [node.id, new Set(node.dependencies || [])]));
-  const completed = new Set();
-  const layers = [];
-
-  while (remaining.size) {
-    const ready = [...remaining.entries()]
-      .filter(([, dependencies]) => [...dependencies].every((dependency) => completed.has(dependency)))
-      .map(([id]) => id)
-      .sort();
-    if (!ready.length) {
-      return [];
-    }
-    layers.push(ready);
-    for (const id of ready) {
-      remaining.delete(id);
-      completed.add(id);
-    }
-  }
-
-  return layers;
-}
-
-function buildExecutionDag({ cwd, goalPath, taskSize, workMode, executionRole, communication }) {
-  const nodes = defaultDagNodes(taskSize, executionRole);
-  return {
-    version: 1,
-    goalPath: displayPath(cwd, goalPath),
-    taskSize,
-    workMode,
-    executionRole,
-    communication,
-    enforcement: taskSize === "medium" || taskSize === "large" ? "required-before-run-completion" : "advisory",
-    launchPolicy: "runtime-dispatched",
-    runtimeOwnership: "the host owns scheduling, delegation, concurrency, cancellation, and model selection; Harness records dependencies, ownership, verification, and candidate evidence",
-    parallelSafety: {
-      requirement: "parallel writers require separate locked worktrees/cwds; otherwise concurrent nodes must be read-only or have proven non-overlapping file ownership"
-    },
-    nodes,
-    edges: dagEdges(nodes),
-    parallelLayers: dagParallelLayers(nodes)
-  };
-}
-
-function nodeStatusPath(runDir, node) {
-  return artifactPath(runDir, node.status, `orchestration node '${node.id}' status`);
-}
-
-function readNodeStatus(runDir, node) {
-  const statusPath = nodeStatusPath(runDir, node);
-  if (!existsSync(statusPath)) {
-    return {
-      node: node.id,
-      phase: "prepared"
-    };
-  }
-  return JSON.parse(readFileSync(statusPath, "utf8"));
-}
-
-const validRunNodePhases = new Set(["prepared", "running", "completed", "blocked"]);
-const reservedRunArtifactPaths = new Set([
-  "run.md",
-  "prompt.md",
-  "subagents.md",
-  "dag.md",
-  "dag.json",
-  "manifest.json",
-  "status.json",
-  "logs",
-  "agents"
-]);
-
-function normalizedArtifactReference(value) {
-  return normalizePathReference(value).toLowerCase();
-}
-
-function validateExecutionDagDefinition(runDir, dag) {
-  if (!dag || typeof dag !== "object" || Array.isArray(dag)) {
-    throw new Error("orchestration must be an object.");
-  }
-  if (!Array.isArray(dag.nodes)) throw new Error("orchestration nodes must be an array.");
-  const ids = new Set();
-  const paths = new Map();
-  const nodeById = new Map();
-  for (const node of dag.nodes) {
-    if (!node || typeof node.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(node.id)) {
-      throw new Error("Every orchestration node requires a unique safe id.");
-    }
-    if (ids.has(node.id)) throw new Error(`orchestration contains duplicate node id: ${node.id}`);
-    ids.add(node.id);
-    nodeById.set(node.id, node);
-    if (!Array.isArray(node.dependencies) || new Set(node.dependencies).size !== node.dependencies.length) {
-      throw new Error(`orchestration node '${node.id}' dependencies must be a unique array.`);
-    }
-    for (const dependency of node.dependencies) {
-      if (typeof dependency !== "string" || !ids.has(dependency)) {
-        // Dependency may refer to a node listed later; defer the existence check.
-        if (typeof dependency !== "string") throw new Error(`orchestration node '${node.id}' has an invalid dependency.`);
-      }
-    }
-    for (const key of ["prompt", "status", "result"]) {
-      if (typeof node[key] !== "string" || !node[key].trim()) {
-        throw new Error(`orchestration node '${node.id}' requires a ${key} path.`);
-      }
-      const absolute = artifactPath(runDir, node[key], `orchestration node '${node.id}' ${key}`);
-      const reference = normalizedArtifactReference(node[key]);
-      if (reservedRunArtifactPaths.has(reference) || reference.startsWith("logs/")) {
-        throw new Error(`orchestration node '${node.id}' ${key} collides with a reserved Run artifact: ${node[key]}`);
-      }
-      const existing = paths.get(reference);
-      if (existing && existing !== `${node.id}:${key}`) {
-        throw new Error(`orchestration artifact path is reused by ${existing} and ${node.id}:${key}: ${node[key]}`);
-      }
-      paths.set(reference, `${node.id}:${key}`);
-      // Resolve now so an existing symlink or parent escape fails before any write.
-      void absolute;
-    }
-  }
-
-  for (const node of dag.nodes) {
-    for (const dependency of node.dependencies) {
-      if (!nodeById.has(dependency)) {
-        throw new Error(`orchestration node '${node.id}' depends on unknown node '${dependency}'.`);
-      }
-    }
-  }
-
-  const visiting = new Set();
-  const visited = new Set();
-  const visit = (id) => {
-    if (visiting.has(id)) throw new Error(`orchestration dependency cycle detected at '${id}'.`);
-    if (visited.has(id)) return;
-    visiting.add(id);
-    for (const dependency of nodeById.get(id).dependencies) visit(dependency);
-    visiting.delete(id);
-    visited.add(id);
-  };
-  for (const id of ids) visit(id);
-}
-
-function executionDagSnapshot(dag, runDir) {
-  const nodeStatuses = Object.create(null);
-  const completed = [];
-  const blocked = [];
-  const running = [];
-  const ready = [];
-  const waiting = [];
-
-  for (const node of dag.nodes) {
-    const status = readNodeStatus(runDir, node);
-    const phase = status.phase || "prepared";
-    if (!validRunNodePhases.has(phase)) {
-      throw new Error(`orchestration node '${node.id}' has invalid phase: ${phase}.`);
-    }
-    if (status.node && status.node !== node.id) {
-      throw new Error(`orchestration node status mismatch: expected '${node.id}', found '${status.node}'.`);
-    }
-    nodeStatuses[node.id] = {
-      phase,
-      ownership: node.ownership || "",
-      verification: status.verificationSummary || "",
-      candidateEvidence: status.result || node.result || "",
-      thread: status.thread || "",
-      surface: status.surface || "",
-      isolationEvidence: status.isolationEvidence || ""
-    };
-    if (phase === "completed") {
-      completed.push(node.id);
-    } else if (phase === "blocked") {
-      blocked.push(node.id);
-    } else if (phase === "running") {
-      running.push(node.id);
-    }
-  }
-
-  const completedSet = new Set(completed);
-  const blockedSet = new Set(blocked);
-  for (const node of dag.nodes) {
-    const phase = nodeStatuses[node.id].phase;
-    if (phase !== "prepared") {
-      continue;
-    }
-    const dependencies = node.dependencies || [];
-    const hasBlockedDependency = dependencies.some((dependency) => blockedSet.has(dependency));
-    const dependenciesComplete = dependencies.every((dependency) => completedSet.has(dependency));
-    if (dependenciesComplete && !hasBlockedDependency) {
-      ready.push(node.id);
-    } else {
-      waiting.push(node.id);
-    }
-  }
-
-  return {
-    version: dag.version,
-    dag: "dag.json",
-    agentsDir: "agents",
-    enforcement: dag.enforcement,
-    enforced: dag.enforcement === "required-before-run-completion",
-    communication: dag.communication || commentaryPolicyDetails(),
-    launchPolicy: dag.launchPolicy,
-    runtimeOwnership: dag.runtimeOwnership,
-    parallelSafety: dag.parallelSafety || {
-      requirement: "record explicit isolation evidence before parallel launch"
-    },
-    nodeCount: dag.nodes.length,
-    parallelLayers: dag.parallelLayers,
-    readyNodes: ready,
-    runningNodes: running,
-    waitingNodes: waiting,
-    completedNodes: completed,
-    blockedNodes: blocked,
-    allNodesCompleted: completed.length === dag.nodes.length,
-    nodeStatus: nodeStatuses
-  };
-}
-
-function readExecutionDag(runDir) {
-  const dagPath = artifactPath(runDir, "dag.json", "orchestration path");
-  if (!existsSync(dagPath)) {
-    return null;
-  }
-  const dag = JSON.parse(readFileSync(dagPath, "utf8"));
-  validateExecutionDagDefinition(runDir, dag);
-  return dag;
-}
-
-const runManifestVersion = 1;
-
-function hashText(value) {
-  return createHash("sha256").update(String(value), "utf8").digest("hex");
-}
-
-function contractText(value) {
-  return oneLine(value);
-}
-
-function immutableEvidenceItems(details, key) {
-  return details.items.map((item) => {
-    const label = key === "task" ? item.task : item.label;
-    return {
-      label: contractText(label),
-      acceptance: contractText(item.acceptance),
-      required: contractText(item.required)
-    };
-  });
-}
-
-function goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { includeCheckpointPolicy = true, plannedRun = false } = {}) {
-  const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
-  const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
-  const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
-  const gateEvidence = gateEvidenceDetails(goalContent, specContent);
-  const sourceTask = goalSourceTask(goalContent);
-  const executionContextLock = executionContextLockDetails(goalContent);
-  const immutableSections = [
-    "Source Task",
-    "Read First",
-    "Work Mode Recommendation",
-    "Execution Role",
-    "Conversation Route",
-    "Scope",
-    "Non-Goals",
-    ...(plannedRun && extractSection(goalContent, "Delivery Contract").trim() ? ["Delivery Contract"] : []),
-    "Verification",
-    "Completion Conditions",
-    "Pause Conditions"
-  ];
-  return {
-    version: runManifestVersion,
-    goalPath: normalizePathReference(displayPath(cwd, goalPath)),
-    title: contractText(goalTitle(goalContent, goalPath)),
-    spec: normalizePathReference(specRel),
-    specHash: specContent ? hashText(plannedRun ? planned.immutableDocument(specContent) : specContent) : "",
-    sourceTask: {
-      path: normalizePathReference(sourceTask.path),
-      title: contractText(sourceTask.title)
-    },
-    values: {
-      ...(plannedRun ? { executionPlan: extractInlinePath(goalContent, "Execution Plan") } : {}),
-      workMode: extractGoalWorkModeRaw(goalContent),
-      executionRole: extractGoalExecutionRoleRaw(goalContent),
-      conversationRoute: extractConversationRouteRaw(goalContent),
-      ...(includeCheckpointPolicy ? { checkpointPolicy: extractCheckpointPolicyRaw(goalContent) } : {}),
-      ...(includeCheckpointPolicy ? { checkpointStages: checkpointStageDetails(goalContent).values } : {}),
-      executionContextLock: {
-        conversationLane: contractText(executionContextLock.conversationLane),
-        controllerThread: contractText(executionContextLock.controllerThread),
-        executionCwd: contractText(executionContextLock.executionCwd),
-        executionBranch: contractText(executionContextLock.executionBranch),
-        executionSlot: contractText(executionContextLock.executionSlot),
-        remoteControlWorktree: contractText(executionContextLock.remoteControlWorktree)
-      },
-      sections: Object.fromEntries(immutableSections.map((title) => [title, contractText(extractSection(goalContent, title))]))
-    },
-    acceptanceMap: {
-      required: acceptanceMap.required,
-      items: immutableEvidenceItems(acceptanceMap, "task")
-    },
-    milestoneCompletionMap: {
-      required: stageCompletionMap.required,
-      requiredLabels: stageCompletionMap.requiredLabels.map(contractText),
-      items: immutableEvidenceItems(stageCompletionMap, "label")
-    },
-    specAcceptanceChecklist: {
-      source: specChecklist.source,
-      items: immutableEvidenceItems(specChecklist, "label")
-    },
-    requiredGateEvidence: {
-      source: gateEvidence.source,
-      items: immutableEvidenceItems(gateEvidence, "label")
-    },
-    requiredGates: durableRequiredCompletionGates(context)
-  };
-}
-
-function dagManifestProjection(dag) {
-  return {
-    version: dag.version,
-    goalPath: normalizePathReference(dag.goalPath),
-    taskSize: dag.taskSize,
-    workMode: dag.workMode,
-    executionRole: dag.executionRole,
-    enforcement: dag.enforcement,
-    launchPolicy: dag.launchPolicy,
-    nodes: dag.nodes.map((node) => ({
-      id: node.id,
-      label: node.label,
-      mode: node.mode,
-      dependencies: node.dependencies,
-      prompt: normalizePathReference(node.prompt),
-      status: normalizePathReference(node.status),
-      result: normalizePathReference(node.result)
-    }))
-  };
-}
-
-function buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specContent, context, dag, createdAt }) {
-  const dagText = readFileSync(artifactPath(runDir, "dag.json", "orchestration path"), "utf8");
-  const manifestVersion = dag.executionPlan ? 2 : runManifestVersion;
-  const goalContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { plannedRun: manifestVersion === 2 });
-  const checkpointPolicy = extractCheckpointPolicyRaw(goalContent);
-  const checkpointStages = checkpointStageDetails(goalContent).values;
-  return {
-    manifestVersion,
-    ...(dag.executionPlan ? { executionPlan: dag.executionPlan } : {}),
-    createdAt,
-    runDir: normalizePathReference(displayPath(cwd, runDir)),
-    goalPath: normalizePathReference(displayPath(cwd, goalPath)),
-    goalContractHash: hashText(JSON.stringify(goalContract)),
-    goalContract,
-    checkpoint: {
-      policy: checkpointPolicy,
-      path: checkpointPolicy === "enforced" ? "checkpoint.json" : "",
-      schemaVersion: checkpointPolicy === "enforced" ? checkpointSchemaVersion : null,
-      stages: checkpointStages
-    },
-    dag: {
-      path: "dag.json",
-      sha256: hashText(dagText),
-      projection: dagManifestProjection(dag)
-    }
-  };
-}
-
-function buildInitialCheckpoint({ cwd, runDir, goalPath, dag, createdAt }) {
-  const ready = executionDagSnapshot(dag, runDir).readyNodes;
-  return {
-    schemaVersion: checkpointSchemaVersion,
-    revision: 0,
-    createdAt,
-    updatedAt: createdAt,
-    runDir: normalizePathReference(displayPath(cwd, runDir)),
-    goalPath: normalizePathReference(displayPath(cwd, goalPath)),
-    manifestRef: "manifest.json",
-    controlState: "active",
-    currentStage: null,
-    lastCompletedStage: null,
-    nextAction: ready.length === 1 ? `execute ready orchestration node: ${ready[0]}` : "inspect the prepared Run orchestration",
-    pauseReason: null,
-    reconciliationRequired: false,
-    requiredEvidence: [],
-    prohibitedActions: [],
-    replacementRun: null,
-    adapterDimensions: {}
-  };
-}
-
-function runManifestState(runDir, status = {}) {
-  const manifestPath = artifactPath(runDir, "manifest.json", "Run manifest path");
-  if (!existsSync(manifestPath)) {
-    return { managed: false, manifest: null, error: "Run manifest is missing." };
-  }
-  try {
-    const manifestText = readFileSync(manifestPath, "utf8");
-    const manifest = JSON.parse(manifestText);
-    if (![1, 2].includes(manifest.manifestVersion)) {
-      return { managed: false, manifest, error: "Run manifest version is unsupported." };
-    }
-    if (status.manifest !== "manifest.json" || status.manifestVersion !== manifest.manifestVersion) {
-      return { managed: false, manifest, error: "status.json is not bound to manifest.json." };
-    }
-    if (normalizePathReference(manifest.goalPath) !== normalizePathReference(status.goalPath)) {
-      return { managed: false, manifest, error: "Run manifest and status.json reference different Goals." };
-    }
-    if (normalizePathReference(manifest.runDir) !== normalizePathReference(status.runDir)) {
-      return { managed: false, manifest, error: "Run manifest and status.json reference different Runs." };
-    }
-    if (status.manifestSha256 && hashText(manifestText) !== status.manifestSha256) {
-      return { managed: false, manifest, error: "manifest.json does not match status.json binding." };
-    }
-    if (!manifest.goalContractHash || !manifest.dag?.sha256 || !manifest.dag?.projection) {
-      return { managed: false, manifest, error: "Run manifest is incomplete." };
-    }
-    if (manifest.goalContract && hashText(JSON.stringify(manifest.goalContract)) !== manifest.goalContractHash) {
-      return { managed: false, manifest, error: "Run manifest Goal contract hash is invalid." };
-    }
-    if (manifest.manifestVersion === 2 && (!manifest.executionPlan || manifest.checkpoint?.policy !== "enforced")) {
-      return { managed: false, manifest, error: "Planned manifest requires executionPlan and enforced checkpoint." };
-    }
-    const checkpoint = checkpointDeclaration(manifest);
-    if (!validCheckpointPolicies.has(checkpoint.policy)) {
-      return { managed: false, manifest, error: "Run manifest checkpoint policy is invalid." };
-    }
-    const checkpointStageErrors = checkpointStageVocabularyErrors(checkpoint.stages, "Run manifest checkpoint stages");
-    if (checkpointStageErrors.length) {
-      return { managed: false, manifest, error: checkpointStageErrors.join("; ") };
-    }
-    if (checkpoint.policy === "enforced") {
-      if (checkpoint.path !== "checkpoint.json" || checkpoint.schemaVersion !== checkpointSchemaVersion) {
-        return { managed: false, manifest, error: "Run manifest checkpoint binding is invalid or unsupported." };
-      }
-      if (status.checkpointPolicy !== "enforced" || status.checkpoint !== checkpoint.path
-          || !Array.isArray(status.files) || !status.files.includes(checkpoint.path)) {
-        return { managed: false, manifest, error: "status.json is not bound to the enforced checkpoint." };
-      }
-      const checkpointPath = artifactPath(runDir, checkpoint.path, "Run checkpoint path");
-      if (!existsSync(checkpointPath)) {
-        return { managed: false, manifest, error: "Enforced checkpoint.json is missing." };
-      }
-    } else if (!checkpoint.legacy && (status.checkpointPolicy !== "disabled" || status.checkpoint)) {
-      return { managed: false, manifest, error: "status.json conflicts with disabled checkpoint policy." };
-    }
-    if (Array.isArray(status.files) && status.files.includes("dag.json")) {
-      const dagPath = artifactPath(runDir, "dag.json", "orchestration path");
-      if (!existsSync(dagPath) || hashText(readFileSync(dagPath, "utf8")) !== manifest.dag.sha256) {
-        return { managed: false, manifest, error: "Run manifest does not match dag.json." };
-      }
-    }
-    return { managed: true, manifest, error: "" };
-  } catch (error) {
-    return { managed: false, manifest: null, error: `Could not parse manifest.json: ${error.message}` };
-  }
-}
-
-function managedRunEvidence(cwd, run, runsRelPath, { requireCompletedDag = false } = {}) {
-  if (!run.managed) return { ok: false, reason: "Run lacks a prepared manifest and is unmanaged." };
-  let runAbs = "";
-  try {
-    const runsRoot = configuredPath(cwd, runsRelPath, "Runs root");
-    runAbs = assertContainedPath(runsRoot, resolve(cwd, run.runDir), "Run artifact path");
-  } catch (error) {
-    return { ok: false, reason: error.message };
-  }
-  const statusPath = artifactPath(runAbs, "status.json", "Run status path");
-  if (!existsSync(statusPath)) return { ok: false, reason: "Run status.json is missing." };
-  let status = null;
-  try {
-    status = JSON.parse(readFileSync(statusPath, "utf8"));
-  } catch (error) {
-    return { ok: false, reason: `Could not parse Run status.json: ${error.message}` };
-  }
-  if ((status.phase || status.status || "") !== run.phase) {
-    return { ok: false, reason: "Run status phase changed after inspection." };
-  }
-  const manifestState = runManifestState(runAbs, status);
-  if (!manifestState.managed) return { ok: false, reason: manifestState.error };
-  if (checkpointDeclaration(manifestState.manifest).policy === "enforced") {
-    const context = resolveHarnessContext(cwd);
-    const checkpointState = readRunCheckpoint({ cwd, context, runDir: runAbs, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
-    if (checkpointState.errors.length) return { ok: false, reason: `Checkpoint recovery evidence is invalid: ${checkpointState.errors.join("; ")}` };
-    if (!terminalCheckpointControlStates.has(checkpointState.checkpoint.controlState)) {
-      return { ok: false, reason: `Checkpoint controlState '${checkpointState.checkpoint.controlState}' is nonterminal and must not be pruned.` };
-    }
-  }
-  if (!Array.isArray(status.files) || !status.files.includes("dag.json")) {
-    return { ok: true, reason: "Managed migration Run has a bound manifest." };
-  }
-  let dag = null;
-  try {
-    dag = readExecutionDag(runAbs);
-  } catch (error) {
-    return { ok: false, reason: error.message };
-  }
-  if (!dag) return { ok: false, reason: "Managed Run is missing dag.json." };
-  let dagState = null;
-  try {
-    dagState = executionDagSnapshot(dag, runAbs);
-  } catch (error) {
-    return { ok: false, reason: error.message };
-  }
-  if (requireCompletedDag) {
-    if (!dagState.allNodesCompleted || dagState.runningNodes.length || dagState.blockedNodes.length) {
-      return { ok: false, reason: "Run orchestration is not fully completed." };
-    }
-    for (const node of dag.nodes) {
-      const nodeStatus = readNodeStatus(runAbs, node);
-      if (nodeStatus.phase !== "completed" || missingEvidence(nodeStatus.verificationSummary)) {
-        return { ok: false, reason: `Run orchestration node '${node.id}' lacks completed verification evidence.` };
-      }
-      if (!existsSync(artifactPath(runAbs, node.result, `orchestration node '${node.id}' result`))) {
-        return { ok: false, reason: `Run orchestration node '${node.id}' result evidence is missing.` };
-      }
-    }
-    if (missingEvidence(status.verificationSummary)) {
-      return { ok: false, reason: "Completed Run verification evidence is missing." };
-    }
-  }
-  return { ok: true, reason: "Managed Run manifest and execution evidence are valid." };
-}
-
-function assertPreparedRunContract({ cwd, context, runDir, status, goalPath, goalContent, specRel, specContent, dag }) {
-  if (!dag) {
-    throw new Error("Completed Runs require a readable execution orchestration (dag.json).");
-  }
-  const state = runManifestState(runDir, status);
-  if (!state.managed) {
-    throw new Error(`Run is not a managed prepared Run: ${state.error}`);
-  }
-  const manifest = state.manifest;
-  if (normalizePathReference(status.runDir) !== normalizePathReference(displayPath(cwd, runDir))) {
-    throw new Error("status.json runDir does not match the requested Run directory.");
-  }
-  if (normalizePathReference(manifest.goalPath) !== normalizePathReference(displayPath(cwd, goalPath))) {
-    throw new Error("Run manifest and current Goal path do not match.");
-  }
-  const includeCheckpointPolicy = Object.prototype.hasOwnProperty.call(manifest.goalContract?.values || {}, "checkpointPolicy");
-  const currentContract = goalExecutionContract(cwd, goalPath, goalContent, specRel, specContent, context, { includeCheckpointPolicy, plannedRun: manifest.manifestVersion === 2 });
-  if (hashText(JSON.stringify(currentContract)) !== manifest.goalContractHash) {
-    throw new Error("Goal or Spec execution contract changed after Run preparation; prepare a new Run.");
-  }
-  const dagText = readFileSync(artifactPath(runDir, "dag.json", "orchestration path"), "utf8");
-  if (hashText(dagText) !== manifest.dag.sha256) {
-    throw new Error("dag.json changed after Run preparation; prepare a new Run.");
-  }
-  if (hashText(JSON.stringify(dagManifestProjection(dag))) !== hashText(JSON.stringify(manifest.dag.projection))) {
-    throw new Error("orchestration execution contract changed after Run preparation; prepare a new Run.");
-  }
-  planned.validateBinding(cwd, context, manifest);
-  return manifest;
-}
-
-function formatNodeList(values) {
-  return values.length ? values.map((value) => `\`${value}\``).join(", ") : "`none`";
-}
-
-function buildDagMarkdown({ cwd, runDir, dag }) {
-  const relRunDir = displayPath(cwd, runDir);
-  const nodeRows = dag.nodes
-    .map((node) => `| \`${node.id}\` | ${node.mode} | ${formatNodeList(node.dependencies || [])} | \`${node.prompt}\` |`)
-    .join("\n");
-  const layers = dag.parallelLayers
-    .map((layer, index) => `${index + 1}. ${formatNodeList(layer)}`)
-    .join("\n");
-
-  return `# Execution Orchestration
-
-Run: \`${relRunDir}\`
-Launch policy: \`${dag.launchPolicy}\`
-Enforcement: \`${dag.enforcement}\`
-
-## Runtime Ownership
-
-- Commentary policy: \`${dag.communication.commentary}\`
-- Report cadence: \`${dag.communication.reportCadence}\`
-- Notify on: ${dag.communication.notifyOn}
-- Runtime: ${dag.runtimeOwnership}
-- Parallel safety: ${dag.parallelSafety.requirement}
-- Degraded provenance: ${degradedExecutionProvenanceGuidance}
-- Cancellation boundary: ${controllerCancellationBoundaryGuidance}
-
-## Nodes
-
-| Node | Mode | Depends on | Prompt |
-| --- | --- | --- | --- |
-${nodeRows}
-
-## Parallel Layers
-
-${layers || "No valid layers; inspect `dag.json` before execution."}
-
-## Controller Rules
-
-- Dispatch only nodes listed as ready by \`run status --json\`; the runtime owns scheduling and delegation.
-- Concurrent writers require recorded isolation evidence: separate locked
-  worktrees/cwds or proven non-overlapping ownership.
-${dag.executionPlan ? "- Query `execute next` for the whole planned target. Record starts with `run node record` and review candidate JSON with `run node review --decision accepted` using the current checkpoint revision before launching dependents. `run node record --phase completed` cannot accept planned work." : "- Use `agent-harness run node record` for each worker result before launching dependent nodes."}
-- Read \`plugins/agent-harness/references/worker-runner-contract.md\` before launching or accepting worker output.
-- Treat worker output as candidate evidence until the controller validates scope, verification, State Sync Notes, and required gates.
-- Do not present runtime cancellation or supersession as accepted evidence; unresolved or late output remains candidate evidence.
-`;
-}
-
-function buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }) {
-  const relRunDir = displayPath(cwd, runDir);
-  const relGoal = displayPath(cwd, goalPath);
-  const dependencies = node.dependencies?.length ? node.dependencies.join(", ") : "none";
-  const contractPaths = [...new Set([dag.executionPlan?.target?.path ? resolve(cwd, dag.executionPlan.target.path) : goalPath, goalPath])];
-  const deliveryContract = contractPaths
-    .filter(path => existsSync(path))
-    .map(path => extractSection(readFileSync(path, "utf8"), "Delivery Contract").trim())
-    .filter(Boolean)
-    .join("\n\n") || "Read the accepted Goal, Spec, and Milestone delivery contracts and preserve every global hard constraint.";
-  const nodeConstraints = node.task?.constraints?.length
-    ? node.task.constraints.map(item => `- ${item}`).join("\n")
-    : "None beyond the inherited Delivery Contract.";
-
-  return `# Agent Node Prompt: ${node.label}
-
-Run: \`${relRunDir}\`
-Goal: \`${relGoal}\`
-orchestration node: \`${node.id}\`
-Depends on: \`${dependencies}\`
-Mode: \`${node.mode}\`
-Commentary policy: \`${dag.communication.commentary}\`
-
-You are an execution worker for one orchestration node, not the controller thread.
-Your output is candidate evidence only. The controller is the only lane that
-may accept state, update accepted Goal, Task, status, run, or gate records, or mark work
-complete.
-
-## Read First
-
-1. \`${relGoal}\`
-2. \`${relRunDir}/run.md\`
-3. \`${relRunDir}/dag.md\`
-4. \`${relRunDir}/prompt.md\`
-5. \`plugins/agent-harness/references/worker-runner-contract.md\`
-6. \`plugins/agent-harness/templates/worker-prompt.md\`
-
-## Ownership
-
-${node.ownership}
-
-## Inherited Delivery Contract
-
-${deliveryContract}
-
-Apply every global hard constraint; do not replace them with the node contract.
-
-## Node-Specific Hard Constraints
-
-${nodeConstraints}
-
-Verify both the requested node result and non-breakage of inherited and
-node-specific constraints. Return only a compact candidate result to the
-controller, not a separate user-facing delivery report.
-
-## Expected Output
-
-${node.expectedOutput}
-
-## Stop Conditions
-
-${node.stopConditions}
-
-## Context Focus
-
-- ${contextFocusRoutingGuidance}
-- ${executeContextFocusGuidance}
-- ${authoritativeCompletionGuidance}
-
-## Runtime Policy
-
-- Commentary: ${dag.communication.guidance}
-- Report cadence: \`${dag.communication.reportCadence}\`
-- Notify on: ${dag.communication.notifyOn}
-- Worker selection, delegation, concurrency, cancellation, and model selection belong to the host.
-- Concurrent writers require a separate locked worktree/cwd or recorded proof of non-overlapping ownership.
-- ${degradedExecutionProvenanceGuidance}
-- ${controllerCancellationBoundaryGuidance}
-- ${boundedStatusSnapshotGuidance}
-- Do not launch dependent nodes yourself.
-- Do not update accepted Goal, Task, status, Run, or gate state.
-- Do not mark work complete; return candidate evidence for controller acceptance.
-- Return State Sync Notes as part of Goal/Task Done: name the Goal, Task, status, or run records that should change, the suggested state, and the evidence. These notes remain candidate evidence until the accepted-state owner records them.
-- Do not deploy, publish, start a daemon, use credentials, use paid APIs, touch production, or perform destructive operations unless the accepted scope and controller explicitly authorize it.
-
-## Return Contract
-
-${node.task ? `Return a version-1 candidate JSON at ${relRunDir}/${node.candidate} using the planned-execution receipt contract. Required checks: ${JSON.stringify(node.task.verification)}. Capture current inputs with agent-harness run node inputs --run ${relRunDir} --node ${node.id} --json. Save command logs under this Run, hash them, and include target, goal, run, node, changedFiles, checks, executor observation, stateSyncNotes, risks, remaining and needUser. Only the controller runs necessary checks and calls run node review with an expected revision. Do not call run node record --phase completed.` : ""}
-
-Return an Execution Result Packet:
-
-\`\`\`text
-Execution Result Packet
-
-Goal:
-Session:
-Node: ${node.id}
-Status:
-State change:
-Changed files:
-Summary:
-Validation:
-Known risks:
-State Sync Notes:
-Need user:
-Remaining:
-Needs review:
-Controller notified:
-Worktree:
-Actual model:
-Actual reasoning effort:
-Degraded provenance:
-Gate self-check:
-Deferred items:
-\`\`\`
-`;
-}
-
-function writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag, createdAt }) {
-  atomicWriteFile(artifactPath(runDir, "dag.json", "orchestration path"), `${JSON.stringify(dag, null, 2)}\n`);
-  atomicWriteFile(artifactPath(runDir, "dag.md", "orchestration documentation path"), buildDagMarkdown({ cwd, runDir, dag }));
-
-  for (const node of dag.nodes) {
-    const agentDir = artifactPath(runDir, join("agents", node.id), `orchestration node '${node.id}' directory`);
-    mkdirSync(agentDir, { recursive: true });
-    atomicWriteFile(artifactPath(runDir, node.prompt, `orchestration node '${node.id}' prompt`), buildAgentPromptMarkdown({ cwd, runDir, goalPath, dag, node }));
-    atomicWriteFile(nodeStatusPath(runDir, node), `${JSON.stringify({
-      node: node.id,
-      label: node.label,
-      phase: "prepared",
-      createdAt,
-      updatedAt: createdAt,
-      dependencies: node.dependencies || [],
-      mode: node.mode,
-      prompt: node.prompt,
-      result: node.result
-    }, null, 2)}\n`);
-  }
-}
-
-function extractVerificationCommands(verificationSection) {
-  const commands = [];
-  const fencePattern = /```(?:bash|sh)?\n([\s\S]*?)```/g;
-  for (const match of verificationSection.matchAll(fencePattern)) {
-    const block = match[1]
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("#"));
-    commands.push(...block);
-  }
-  return commands;
-}
-
-function runSlugFromGoal(goalPath) {
-  const base = basename(goalPath, extname(goalPath));
-  return slugify(base.replace(/^\d{4}-\d{2}-\d{2}-/, ""));
-}
-
-function createRunDirectory(runsRoot, basePath) {
-  mkdirSync(runsRoot, { recursive: true });
-  for (let index = 1; index < 100; index += 1) {
-    const candidate = index === 1 ? basePath : `${basePath}-${index}`;
-    try {
-      mkdirSync(candidate);
-      return candidate;
-    } catch (error) {
-      if (error?.code !== "EEXIST") throw error;
-    }
-  }
-  throw new Error(`Could not create an available Run directory for ${basePath}`);
-}
-
-function buildRunMarkdown({
-  context,
-  createdAt,
-  cwd,
-  goalPath,
-  goalContent,
-  runDir,
-  taskSize,
-  workMode,
-  executionRole,
-  conversationRoute,
-  executionContextLock,
-  acceptanceMap,
-  stageCompletionMap,
-  specChecklist,
-  gateEvidence,
-  requiredGates
-}) {
-  const relGoal = displayPath(cwd, goalPath);
-  const relRunDir = displayPath(cwd, runDir);
-  const stateSyncPathList = stateSyncPaths(context);
-  const adapterPath = context.paths.adapterDocs || "";
-  const adapterRequirements = adapterRequirementLists(context);
-  const spec = extractInlinePath(goalContent, "Spec") || "Not specified";
-  const specPolicy = extractSpecPolicyRaw(goalContent);
-  const specDisplay = missingSpecValue(spec) && specPolicy === "allow-no-spec" ? "none (allow-no-spec)" : spec;
-  const specCheckpoint = missingSpecValue(spec) && specPolicy === "allow-no-spec"
-    ? `Read \`${relGoal}\`; no separate spec is declared, so the goal's Scope, Non-Goals, Verification, Completion Conditions, and Pause Conditions are authoritative.`
-    : `Read \`${relGoal}\` and its referenced spec before editing.`;
-  const sourceTask = extractSection(goalContent, "Source Task") || "Not specified";
-  const verification = extractSection(goalContent, "Verification") || "No explicit verification section was found in the goal.";
-  const adapterRequirementLines = context.mode === "adapter"
-    ? [
-      adapterPath ? `Read \`${adapterPath}\` before editing.` : "",
-      "Apply project adapter boundaries for credentials, paid calls, production, Admin CLI, DB, destructive actions, review requests, integration, deploys, and releases.",
-      ...adapterRequirements.preflight.map((item) => `Preflight: ${item}`),
-      ...adapterRequirements.stateSync.map((item) => `State sync: ${item}`)
-    ].filter(Boolean)
-    : [];
-
-  return `# Agent Harness Run
-
-Created: ${createdAt}
-Phase: prepared
-Goal: \`${relGoal}\`
-Spec: \`${specDisplay}\`
-Run directory: \`${relRunDir}\`
-Prepared contract: \`manifest.json\` binds this Goal/Spec and orchestration; changes after preparation require a new Run.
-Harness contract: \`${context.contract}\`
-Commentary policy: \`${context.communication.commentary}\` (\`${context.communication.source}\`)
-Report cadence: \`${context.communication.reportCadence}\`
-Notify on: ${context.communication.notifyOn}
-Work mode: \`${workMode}\`
-Execution role: \`${executionRole}\`
-Conversation route: \`${conversationRoute || "not-recorded"}\`
-Conversation lane: \`${executionContextLock.conversationLane || "not-recorded"}\`
-Controller thread: \`${executionContextLock.controllerThread || "not-recorded"}\`
-Execution cwd: \`${executionContextLock.executionCwd || cwd}\`
-Execution branch: \`${executionContextLock.executionBranch || "not-recorded"}\`
-Execution slot: \`${executionContextLock.executionSlot || "not-recorded"}\`
-Remote-control worktree: \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`
-Task size: \`${taskSize}\`
-Acceptance map required: \`${acceptanceMap.required ? "yes" : "no"}\`
-Acceptance map items: \`${acceptanceMap.items.length}\`
-Milestone completion map required: \`${stageCompletionMap.required ? "yes" : "no"}\`
-Milestone completion map items: \`${stageCompletionMap.items.length}\`
-Milestone completion required items: \`${stageCompletionMap.requiredLabels.length ? stageCompletionMap.requiredLabels.join(", ") : "none"}\`
-Spec checklist items: \`${specChecklist.items.length}\`
-Required gates: \`${requiredGates.length ? requiredGates.join(", ") : "none"}\`
-Required gate evidence items: \`${gateEvidence.items.length}\`
-
-## Source Task
-
-${sourceTask}
-
-## Manual Checkpoints
-
-1. ${specCheckpoint}
-2. Confirm the goal's Scope, Non-Goals, Completion Conditions, and Pause Conditions still apply.
-3. Confirm the execution role. Controller means outcome and accepted-state owner; only explicit \`gate-only\` direction makes it review-only. In \`gate-only\`, cite implementer output and gate evidence before accepting completion.
-4. Do not bypass this prepared durable Run with ordinary direct execution.
-5. ${hostExecutionGuidance} Runtime outcome owns the outcome; transient plan owns short-lived steps. Do not mirror every plan transition into Git.
-6. ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
-7. Apply the configured Commentary Policy: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
-8. ${cyberneticStabilityGuidance}
-9. ${authoritativeCompletionGuidance}
-10. ${degradedExecutionProvenanceGuidance}
-11. ${controllerCancellationBoundaryGuidance}
-12. Confirm the active conversation route and current \`pwd\` / branch match the Execution Context Lock before editing.
-13. If the route is \`isolated-worktree\` or legacy \`remote-control-worktree\`, use the locked execution cwd explicitly and do not patch the control lane.
-14. If an acceptance map is required, update every map item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-15. If a milestone completion map is required, update every milestone item with concrete evidence and \`Status: satisfied\` before recording a completed run.
-16. If the goal has \`Spec Acceptance Checklist\` items, update required items with concrete evidence and \`Status: satisfied\` before recording a completed run.
-17. Adapter completion gates are durable-only. For this prepared Run, update \`Required Gate Evidence\` with concrete evidence and \`Status: satisfied\` before recording completion.
-18. Use \`dag.json\` and \`dag.md\` as the controller-gated execution order. Launch only ready nodes; parallel workers require recorded isolation evidence.
-19. Give ready node packets to the host and record ownership, verification, and candidate evidence.
-20. Record each worker result with \`agent-harness run node record\` before launching dependent nodes.
-21. Run the verification commands from the goal.
-22. Treat State Sync Notes as part of Goal/Task Done. Every executor must name the Goal, Task, status, or run records that should change, the suggested state, and the evidence; accepted-state writes still belong only to the authorized accepted-state owner.
-23. Completed State Sync Notes must reference this exact Run path: \`${relRunDir}\`.
-24. ${boundedStatusSnapshotGuidance}
-25. Close out with explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` when no true pause trigger or follow-up remains; do not ask broad confirmation questions.
-26. Record any command output summaries or follow-ups under this run directory.
-27. Update configured state records (${formatInlinePathList(stateSyncPathList)}) after completion when the project adapter requires state sync.
-
-${adapterRequirementLines.length ? `## Project Adapter Requirements\n\n${formatBulletList(adapterRequirementLines)}\n\n` : ""}
-## Verification
-
-${verification}
-
-## Boundaries
-
-- This prepared run packet does not start a host session, create a daemon, deploy, publish, or perform external side effects by itself.
-- ${postflightSyncGuidance} This prepared enforced Run is not postflight-only and remains authoritative.
-- Direct execution can skip spec/goal/run/worker ceremony for ordinary clear local work when no existing Harness Goal/Run or tracked sync obligation applies; verification, \`Need user\`, and \`Remaining\` still apply.
-- ${boundedDirectExecutionGuidance} This prepared Run remains authoritative.
-- Cybernetic stability closeout must identify the target, observed state, gap closed, remaining gap, feedback quality, and any stability/saturation pause trigger.
-- The packet provides dependencies and evidence boundaries, not a scheduler or worker-selection policy.
-- Stop if the goal conflicts with repository instructions, production constraints, or newer user instructions.
-`;
-}
-
-function buildPromptMarkdown({ context, cwd, goalPath, goalContent }) {
-  const relGoal = displayPath(cwd, goalPath);
-  const spec = extractInlinePath(goalContent, "Spec") || "the spec referenced by the goal";
-  const specPolicy = extractSpecPolicyRaw(goalContent);
-  const readGoalInstruction = missingSpecValue(spec) && specPolicy === "allow-no-spec"
-    ? `Read \`${relGoal}\` before making edits; this goal uses \`Spec Policy: allow-no-spec\`, so its Scope, Non-Goals, Verification, Completion Conditions, and Pause Conditions are authoritative.`
-    : `Read \`${relGoal}\` and \`${spec}\` before making edits.`;
-  const stateSyncPathList = stateSyncPaths(context);
-  const adapterPath = context.paths.adapterDocs || "";
-  const executionRole = extractGoalExecutionRoleRaw(goalContent) || "missing";
-  const conversationRoute = extractConversationRouteRaw(goalContent) || "not-recorded";
-  const executionContextLock = executionContextLockDetails(goalContent);
-
-  return `# Goal Execution Prompt
-
-In \`${cwd}\`, execute this goal:
-
-\`${relGoal}\`
-
-Requirements:
-
-- ${readGoalInstruction}
-- Apply Commentary Policy \`${context.communication.commentary}\`: ${context.communication.guidance} Report cadence: \`${context.communication.reportCadence}\`. Notify on: ${context.communication.notifyOn}.
-- ${context.mode === "adapter" && adapterPath ? `Read \`${adapterPath}\` and apply its project-specific hard boundaries, preflight requirements, and state-sync rules.` : "Follow the repository instructions and configured harness paths."}
-- Follow the goal's Scope, Non-Goals, Work Mode Recommendation, Verification, Completion Conditions, and Pause Conditions.
-- Follow the goal's Execution Role: \`${executionRole}\`.
-- Controller means outcome owner and accepted-state owner. It may implement foreground work unless Execution Role is explicitly \`gate-only\`.
-- If Execution Role is \`gate-only\`, keep the current session review-only; the host decides whether and how to delegate implementation.
-- ${hostExecutionGuidance}
-${extractInlinePath(goalContent, "Execution Plan") ? `- Own the complete accepted target from ${extractInlinePath(goalContent, "Execution Plan")}. Repeatedly query agent-harness execute next with --goal or --milestone for the plan root; do not stop at one node or child Goal. Review candidates with fresh checks and expected revisions, close all required Goals, validate the stage and synchronize the Milestone. Wait on host executors and inspect unknown liveness before restarting. Continue other ready work while one item is blocked. Three identical failed repairs with no changed inputs require a concrete no-progress record. Finish only on done, a true blocker with no remaining executable work, or an explicit user pause; ordinary failed checks require repair. Reuse accepted product and delivery authorization. Host-native sustained execution owns continuation and waking; install no scheduler.` : ""}
-- Runtime outcome owns the current outcome and continuation; transient plan owns short-lived steps. Reuse compatible active state and never invent runtime ids.
-- ${boundedDirectExecutionGuidance} The supplied Goal/Run remains authoritative and must not be downgraded.
-- ${checkpointRecoveryGuidance} Read \`checkpoint.json\` before acting when the prepared manifest enables it, and never retry an action listed in \`prohibitedActions\`.
-- ${contextFocusRoutingGuidance} ${executeContextFocusGuidance}
-- ${authoritativeCompletionGuidance}
-- ${cyberneticStabilityGuidance}
-- ${degradedExecutionProvenanceGuidance}
-- ${controllerCancellationBoundaryGuidance}
-- Follow the goal's Conversation Route: \`${conversationRoute}\`.
-- Confirm Execution Context Lock before editing: lane \`${executionContextLock.conversationLane || "not-recorded"}\`, cwd \`${executionContextLock.executionCwd || cwd}\`, branch \`${executionContextLock.executionBranch || "not-recorded"}\`, remote-control worktree \`${executionContextLock.remoteControlWorktree || "not-recorded"}\`.
-- Treat implementation output as candidate evidence until required checklist and gate evidence is satisfied and accepted by the control lane.
-- Treat State Sync Notes as part of Goal/Task Done. Executors must provide them; the accepted-state owner verifies them before recording accepted Goal, Task, status, run, or gate state.
-- ${boundedStatusSnapshotGuidance}
-- Do not close if feedback quality is weak, stale, delayed, or advisory; verify, re-orient, ask, or pause when the remaining gap is not shrinking or the loop is saturated.
-- Final user-facing closeout must include explicit \`Need user\` and \`Remaining\` values. Use \`Need user: None\` and \`Remaining: None\` for routine closeouts with no true pause trigger or follow-up instead of asking broad confirmation questions.
-- Do not deploy, publish, start a daemon, or automatically launch additional host sessions unless the accepted scope and controller explicitly authorize it.
-- After implementation, run the goal's verification commands, produce State Sync Notes, and update configured state records (${formatInlinePathList(stateSyncPathList)}) when the project adapter requires state sync. Status-file updates must replace bounded snapshot sections instead of appending historical focus logs.
-
-## Goal Content
-
-~~~md
-${goalContent.trimEnd()}
-~~~
-`;
-}
-
-function recommendedSubagentTasks(taskSize, executionRole) {
-  if (taskSize === "ask") {
-    return `Recommended for this run: \`ask\`.
-
-Do not split work yet. Pause for the user when product direction, production access, destructive operations, or file ownership is unclear.`;
-  }
-
-  return `Recommended for this run: \`${taskSize}\`.
-
-Use the active runtime outcome for the outcome and the host transient plan for current steps.
-The runtime may keep work in the foreground or delegate it. Harness does not
-prescribe explorer/implementer/reviewer workers. If delegation occurs, record
-only durable dependencies, ownership, verification, and candidate evidence.
-The controller may implement unless its accepted role is explicitly
-\`gate-only\`.`;
-}
-
-function buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }) {
-  const relGoal = displayPath(cwd, goalPath);
-
-  return `# Subagent Split Guidance
-
-Goal: \`${relGoal}\`
-
-## Policy
-
-- Treat \`dag.json\` as the source of execution order. This file explains how to
-  split work; it does not override orchestration dependencies or controller gates.
-- This prepared Run is durable and must not be downgraded to ordinary direct execution.
-- ${cyberneticStabilityGuidance}
-- \`small\`: the runtime may keep implementer work in the current lane or delegate it; gate-only remains read-only.
-- \`medium\` and \`large\`: use the host transient plan for short-lived steps; delegate only
-  when the runtime finds it useful or durable ownership requires it.
-- \`ask\`: pause before splitting when the work involves production, destructive actions, credentials, paid APIs, product direction, or unclear file ownership.
-
-Every subagent task must include context, goal path, read/write scope, file ownership, expected output, and stop conditions. Subagents must not revert user changes or edits owned by another agent.
-
-${recommendedSubagentTasks(taskSize, executionRole)}
-`;
-}
-
-function runPrepare(args) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  const paths = context.paths;
-  if (!args.goal) {
-    throw new Error("Usage: agent-harness run prepare --goal <goal-file> [--cwd PATH]");
-  }
-
-  const goalsRoot = configuredPath(cwd, paths.goals, "Goals root");
-  const goalPath = assertContainedPath(goalsRoot, resolve(cwd, args.goal), "Goal path");
-  if (!existsSync(goalPath)) {
-    throw new Error(`Goal file not found: ${args.goal}`);
-  }
-
-  const validation = validateGoal(cwd, goalPath);
-  if (!validation.ok) {
-    throw new Error(`Goal validation failed:\n${validation.errors.map((error) => `- ${error}`).join("\n")}`);
-  }
-
-  const goalContent = readFileSync(goalPath, "utf8");
-  const planReference = args.plan || extractInlinePath(goalContent, "Execution Plan");
-  if (args.legacy && planReference) throw new Error("--legacy cannot be combined with an execution plan.");
-  if (!args.legacy && !planReference) {
-    throw new Error("New durable Runs require an explicit execution plan and manifest v2. Bind <goal-file>.plan.json, validate it, and retry with --plan. Existing manifest v1 Runs remain readable and recoverable; use --legacy only for explicit migration compatibility.");
-  }
-  if (planReference && !args._projectLockHeld && !args.dryRun) {
-    const controlRoot = dirname(configuredPath(cwd, context.paths.config || ".harness/config.json", "Project config"));
-    return withRunLock(controlRoot, () => runPrepare({ ...args, _projectLockHeld: true }));
-  }
-  const specRel = extractInlinePath(goalContent, "Spec");
-  const specsRoot = paths.specs ? configuredPath(cwd, paths.specs, "Specs root") : cwd;
-  const specAbs = missingSpecValue(specRel)
-    ? ""
-    : assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Spec path");
-  const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
-  const createdAt = new Date().toISOString();
-  const workMode = extractWorkMode(goalContent, cwd);
-  const executionRole = extractGoalExecutionRoleRaw(goalContent);
-  const conversationRoute = extractConversationRouteRaw(goalContent);
-  const executionContextLock = executionContextLockDetails(goalContent);
-  const acceptanceMap = acceptanceMapDetails(goalContent, specContent);
-  const stageCompletionMap = stageCompletionMapDetails(goalContent, specContent);
-  const specChecklist = specAcceptanceChecklistDetails(goalContent, specContent);
-  const gateEvidence = gateEvidenceDetails(goalContent, specContent);
-  const requiredGates = durableRequiredCompletionGates(context);
-  const taskSize = classifyTask(goalContent, workMode);
-  const loadedPlan = planned.resolvePlan(cwd, context, displayPath(cwd, goalPath), args.plan || "");
-  if (loadedPlan?.plan.target.kind !== "milestone") planned.assertStandaloneScope(cwd, context, displayPath(cwd, goalPath).replaceAll("\\", "/"), args);
-  if (loadedPlan) {
-    const journal = join(dirname(configuredPath(cwd, context.paths.config || ".harness/config.json")), "execution-sync.json");
-    if (existsSync(journal)) throw new Error("Resume project synchronization before preparing another Run.");
-    planned.prepareDependencies(cwd, context, goalPath, loadedPlan);
-  }
-  const executionDag = loadedPlan ? planned.compile(cwd, goalPath, loadedPlan, context.communication, workMode, executionRole) : buildExecutionDag({
-    cwd,
-    goalPath,
-    taskSize,
-    workMode,
-    executionRole,
-    communication: context.communication
-  });
-  const runSlug = runSlugFromGoal(goalPath);
-  const runsRoot = configuredPath(cwd, paths.runs, "Runs root");
-  const baseRunPath = assertContainedPath(runsRoot, join(runsRoot, `${runTimestamp()}-${runSlug}`), "Run directory");
-  if (args.dryRun) {
-    validateExecutionDagDefinition(baseRunPath, executionDag);
-    const preview = { ok: true, dryRun: true, goal: displayPath(cwd, goalPath), run: displayPath(cwd, baseRunPath), manifestVersion: loadedPlan ? 2 : 1, dag: executionDag };
-    console.log(args.json ? JSON.stringify(preview, null, 2) : `Would prepare Run: ${preview.run}`);
-    return;
-  }
-  validateExecutionDagDefinition(baseRunPath, executionDag);
-  const runDir = createRunDirectory(runsRoot, baseRunPath);
-  const checkpointPolicy = extractCheckpointPolicyRaw(goalContent);
-  const files = ["run.md", "prompt.md", "subagents.md", "dag.md", "dag.json", "manifest.json", "agents", "status.json"];
-  if (checkpointPolicy === "enforced") files.push("checkpoint.json");
-  const logsDir = artifactPath(runDir, "logs", "Run logs path");
-
-  mkdirSync(logsDir, { recursive: true });
-  writeExecutionDagArtifacts({ cwd, runDir, goalPath, dag: executionDag, createdAt });
-  atomicWriteFile(artifactPath(runDir, "run.md", "Run document path"), buildRunMarkdown({
-    context,
-    createdAt,
-    cwd,
-    goalPath,
-    goalContent,
-    runDir,
-    taskSize,
-    workMode,
-    executionRole,
-    communication: context.communication,
-    conversationRoute,
-    executionContextLock,
-    acceptanceMap,
-    stageCompletionMap,
-    specChecklist,
-    gateEvidence,
-    requiredGates
-  }));
-  atomicWriteFile(artifactPath(runDir, "prompt.md", "Run prompt path"), buildPromptMarkdown({ context, cwd, goalPath, goalContent }));
-  atomicWriteFile(artifactPath(runDir, "subagents.md", "Run guidance path"), buildSubagentsMarkdown({ cwd, goalPath, taskSize, executionRole }));
-  const manifest = buildRunManifest({ cwd, runDir, goalPath, goalContent, specRel, specContent, context, dag: executionDag, createdAt });
-  const manifestText = `${JSON.stringify(manifest, null, 2)}\n`;
-  atomicWriteFile(artifactPath(runDir, "manifest.json", "Run manifest path"), manifestText);
-  if (checkpointPolicy === "enforced") {
-    const checkpoint = buildInitialCheckpoint({ cwd, runDir, goalPath, dag: executionDag, createdAt });
-    atomicWriteFile(artifactPath(runDir, "checkpoint.json", "Run checkpoint path"), `${JSON.stringify(checkpoint, null, 2)}\n`);
-  }
-  const executionDagState = executionDagSnapshot(executionDag, runDir);
-  atomicWriteFile(artifactPath(runDir, "status.json", "Run status path"), `${JSON.stringify({
-    harnessContract: context.contract,
-    phase: "prepared",
-    createdAt,
-    updatedAt: createdAt,
-    cwd,
-    goalPath: normalizePathReference(displayPath(cwd, goalPath)),
-    runDir: displayPath(cwd, runDir),
-    workMode,
-    executionRole,
-    communication: context.communication,
-    conversationRoute,
-    executionContextLock: {
-      conversationLane: executionContextLock.conversationLane,
-      controllerThread: executionContextLock.controllerThread,
-      executionCwd: executionContextLock.executionCwd || cwd,
-      executionBranch: executionContextLock.executionBranch,
-      executionSlot: executionContextLock.executionSlot,
-      remoteControlWorktree: executionContextLock.remoteControlWorktree
-    },
-    acceptanceMapRequired: acceptanceMap.required,
-    acceptanceMapSource: acceptanceMap.source,
-    acceptanceMapItemCount: acceptanceMap.items.length,
-    milestoneCompletionMapRequired: stageCompletionMap.required,
-    milestoneCompletionMapSource: stageCompletionMap.source,
-    milestoneCompletionMapItemCount: stageCompletionMap.items.length,
-    milestoneCompletionMapRequiredLabels: stageCompletionMap.requiredLabels,
-    stageCompletionMapRequired: stageCompletionMap.required,
-    stageCompletionMapSource: stageCompletionMap.source,
-    stageCompletionMapItemCount: stageCompletionMap.items.length,
-    stageCompletionMapRequiredLabels: stageCompletionMap.requiredLabels,
-    specAcceptanceChecklistSource: specChecklist.source,
-    specAcceptanceChecklistItemCount: specChecklist.items.length,
-    requiredGates,
-    requiredGateEvidenceSource: gateEvidence.source,
-    requiredGateEvidenceItemCount: gateEvidence.items.length,
-    taskSize,
-    files,
-    manifest: "manifest.json",
-    manifestVersion: manifest.manifestVersion,
-    manifestSha256: hashText(manifestText),
-    checkpointPolicy,
-    checkpoint: checkpointPolicy === "enforced" ? "checkpoint.json" : "",
-    logs: "logs/",
-    executionDag: executionDagState,
-    verificationCommands: extractVerificationCommands(extractSection(goalContent, "Verification"))
-  }, null, 2)}\n`);
-
-  if (args.json) { console.log(JSON.stringify({ ok: true, run: displayPath(cwd, runDir), goal: displayPath(cwd, goalPath), manifestVersion: manifest.manifestVersion, checkpointRevision: checkpointPolicy === "enforced" ? 0 : null, readyNodes: executionDagState.readyNodes }, null, 2)); return; }
-  console.log(`Prepared run packet: ${displayPath(cwd, runDir)}`);
-  console.log(`Prompt: ${displayPath(cwd, join(runDir, "prompt.md"))}`);
-  console.log(`orchestration: ${displayPath(cwd, join(runDir, "dag.md"))}`);
-  console.log(`Ready nodes: ${executionDagState.readyNodes.join(", ") || "none"}`);
-  console.log("Next: hand ready nodes to the host; record ownership, verification, and candidate evidence in this Run.");
-}
-
-const recordableRunPhases = new Set(["completed", "blocked"]);
-
-function configuredRunDir(cwd, context, value) {
-  const runsRoot = configuredPath(cwd, context.paths.runs, "Runs root");
-  const runDir = assertContainedPath(runsRoot, resolve(cwd, value), "Run directory");
-  if (runDir === runsRoot) throw new Error("Run directory must name a child of the configured runs root.");
-  return runDir;
-}
-
-function runGoalContext(cwd, context, status, { requireGoal = true } = {}) {
-  const goalsRoot = configuredPath(cwd, context.paths.goals || fixedContract.goals, "Goals root");
-  const goalPath = status.goalPath
-    ? assertContainedPath(goalsRoot, resolveProjectPath(cwd, status.goalPath), "Run Goal path")
-    : "";
-  const goalContent = goalPath && existsSync(goalPath) ? readFileSync(goalPath, "utf8") : "";
-  if (requireGoal && (!goalPath || !goalContent)) {
-    throw new Error("Run requires a readable Goal referenced by status.json.");
-  }
-  const specRel = goalContent ? extractInlinePath(goalContent, "Spec") : "";
-  const specsRoot = context.paths.specs ? configuredPath(cwd, context.paths.specs, "Specs root") : cwd;
-  const specAbs = missingSpecValue(specRel)
-    ? ""
-    : assertContainedPath(specsRoot, resolveProjectPath(cwd, specRel), "Goal Spec path");
-  const specContent = specAbs && existsSync(specAbs) ? readFileSync(specAbs, "utf8") : "";
-  return { goalPath, goalContent, specRel, specAbs, specContent };
-}
-
-function checkpointDeclaration(manifest = {}) {
-  if (!manifest.checkpoint) {
-    return { policy: "disabled", path: "", schemaVersion: null, stages: [], legacy: true };
-  }
-  return {
-    policy: manifest.checkpoint.policy || "",
-    path: manifest.checkpoint.path || "",
-    schemaVersion: manifest.checkpoint.schemaVersion ?? null,
-    stages: manifest.checkpoint.stages || [],
-    legacy: false
-  };
-}
-
-function checkpointArtifactPath(runDir, manifest) {
-  const declaration = checkpointDeclaration(manifest);
-  if (declaration.policy !== "enforced") return "";
-  if (declaration.path !== "checkpoint.json") {
-    throw new Error(`Enforced checkpoint path must be checkpoint.json; found ${declaration.path || "(missing)"}.`);
-  }
-  return artifactPath(runDir, declaration.path, "Run checkpoint path");
-}
-
-function checkpointStringErrors(value, label, { nullable = false, maxLength = 1000 } = {}) {
-  if (value === null && nullable) return [];
-  if (typeof value !== "string") return [`${label} must be ${nullable ? "a string or null" : "a string"}.`];
-  if (value.length > maxLength) return [`${label} must be at most ${maxLength} characters.`];
-  if (/\p{Cc}/u.test(value)) return [`${label} must not contain control characters.`];
-  return [];
-}
-
-function checkpointEvidenceErrors(items) {
-  const errors = [];
-  if (!Array.isArray(items)) return ["requiredEvidence must be an array."];
-  if (items.length > 50 || JSON.stringify(items).length > 16_384) {
-    errors.push("requiredEvidence must contain at most 50 bounded entries and stay below 16384 serialized characters.");
-  }
-  for (const [index, item] of items.entries()) {
-    if (typeof item === "string") {
-      errors.push(...checkpointStringErrors(item, `requiredEvidence[${index}]`, { maxLength: 500 }));
-      if (missingEvidence(item)) errors.push(`requiredEvidence[${index}] must contain concrete evidence.`);
-      continue;
-    }
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      errors.push(`requiredEvidence[${index}] must be a string or observation object.`);
-      continue;
-    }
-    const unexpected = Object.keys(item).filter((key) => !["reference", "observedAt", "observedSource"].includes(key));
-    if (unexpected.length) errors.push(`requiredEvidence[${index}] has unsupported fields: ${unexpected.join(", ")}.`);
-    for (const key of ["reference", "observedAt", "observedSource"]) {
-      errors.push(...checkpointStringErrors(item[key], `requiredEvidence[${index}].${key}`, { maxLength: 500 }));
-      if (missingEvidence(item[key])) errors.push(`requiredEvidence[${index}].${key} must contain concrete evidence.`);
-    }
-    if (item.observedAt && !Number.isFinite(Date.parse(item.observedAt))) {
-      errors.push(`requiredEvidence[${index}].observedAt must be a valid timestamp.`);
-    }
-  }
-  return errors;
-}
-
-function checkpointAdapterDimensionErrors(dimensions, context) {
-  const errors = [];
-  if (!dimensions || typeof dimensions !== "object" || Array.isArray(dimensions)) {
-    return ["adapterDimensions must be an object."];
-  }
-  if (JSON.stringify(dimensions).length > 16_384) {
-    errors.push("adapterDimensions must stay below 16384 serialized characters.");
-  }
-  const domains = context?.config?.checkpoint?.adapterDimensions || {};
-  for (const [key, value] of Object.entries(dimensions)) {
-    if (!/^[A-Za-z][A-Za-z0-9._-]{0,63}$/.test(key) || secretLikeCheckpointKey.test(key)) {
-      errors.push(`adapterDimensions.${key} is unsafe or secret-like.`);
-      continue;
-    }
-    if (!Object.prototype.hasOwnProperty.call(domains, key) || !Array.isArray(domains[key])) {
-      errors.push(`adapterDimensions.${key} is not declared by the project adapter.`);
-      continue;
-    }
-    if (!domains[key].some((allowed) => JSON.stringify(allowed) === JSON.stringify(value))) {
-      errors.push(`adapterDimensions.${key} is outside the adapter-declared value domain.`);
-    }
-  }
-  return errors;
-}
-
-function checkpointCoreErrors({ cwd, runDir, status, manifest, checkpoint, context, requireTerminalConsistency = false }) {
-  const errors = [];
-  const declaration = checkpointDeclaration(manifest);
-  if (declaration.policy !== "enforced") return ["Run checkpoint policy is not enforced."];
-  if (declaration.path !== "checkpoint.json" || declaration.schemaVersion !== checkpointSchemaVersion) {
-    errors.push("Manifest checkpoint binding is invalid or unsupported.");
-  }
-  errors.push(...checkpointStageVocabularyErrors(declaration.stages, "Manifest checkpoint stages"));
-  if (status.checkpoint !== declaration.path || status.checkpointPolicy !== "enforced") {
-    errors.push("status.json is not bound to the enforced checkpoint declaration.");
-  }
-  if (!checkpoint || typeof checkpoint !== "object" || Array.isArray(checkpoint)) return [...errors, "checkpoint.json must contain an object."];
-  const allowedFields = new Set([
-    "schemaVersion", "revision", "createdAt", "updatedAt", "runDir", "goalPath",
-    "manifestRef", "controlState", "currentStage", "lastCompletedStage",
-    "nextAction", "pauseReason", "reconciliationRequired", "requiredEvidence",
-    "prohibitedActions", "replacementRun", "adapterDimensions"
-  ]);
-  const unexpectedFields = Object.keys(checkpoint).filter((key) => !allowedFields.has(key));
-  if (unexpectedFields.length) errors.push(`checkpoint.json has unsupported fields: ${unexpectedFields.join(", ")}.`);
-  if (Object.keys(checkpoint).some((key) => secretLikeCheckpointKey.test(key))) errors.push("checkpoint.json must not contain secret-like top-level fields.");
-  if (JSON.stringify(checkpoint).length > 65_536) errors.push("checkpoint.json must stay below 65536 serialized characters.");
-  if (checkpoint.schemaVersion !== checkpointSchemaVersion) errors.push("checkpoint schemaVersion is unsupported.");
-  if (!Number.isInteger(checkpoint.revision) || checkpoint.revision < 0) errors.push("checkpoint revision must be a non-negative integer.");
-  for (const key of ["createdAt", "updatedAt"]) {
-    if (typeof checkpoint[key] !== "string" || !Number.isFinite(Date.parse(checkpoint[key]))) errors.push(`checkpoint ${key} must be a valid timestamp.`);
-  }
-  if (normalizePathReference(checkpoint.runDir) !== normalizePathReference(displayPath(cwd, runDir))) errors.push("checkpoint runDir does not match the requested Run.");
-  if (normalizePathReference(checkpoint.goalPath) !== normalizePathReference(status.goalPath)
-      || normalizePathReference(checkpoint.goalPath) !== normalizePathReference(manifest.goalPath)) errors.push("checkpoint Goal binding does not match manifest/status.");
-  if (checkpoint.manifestRef !== "manifest.json") errors.push("checkpoint manifestRef must be manifest.json.");
-  if (!validCheckpointControlStates.has(checkpoint.controlState)) errors.push(`checkpoint controlState is invalid: ${checkpoint.controlState || "(missing)"}.`);
-  errors.push(...checkpointStringErrors(checkpoint.currentStage, "currentStage", { nullable: true, maxLength: 128 }));
-  errors.push(...checkpointStringErrors(checkpoint.lastCompletedStage, "lastCompletedStage", { nullable: true, maxLength: 128 }));
-  if (checkpoint.currentStage !== null && !declaration.stages.includes(checkpoint.currentStage)) errors.push("currentStage must be null or belong to the manifest-bound checkpoint stage vocabulary.");
-  if (checkpoint.lastCompletedStage !== null && !declaration.stages.includes(checkpoint.lastCompletedStage)) errors.push("lastCompletedStage must be null or belong to the manifest-bound checkpoint stage vocabulary.");
-  errors.push(...checkpointStringErrors(checkpoint.nextAction, "nextAction", { maxLength: 1000 }));
-  errors.push(...checkpointStringErrors(checkpoint.pauseReason, "pauseReason", { nullable: true, maxLength: 1000 }));
-  if (typeof checkpoint.reconciliationRequired !== "boolean") errors.push("reconciliationRequired must be boolean.");
-  if (checkpoint.reconciliationRequired !== (checkpoint.controlState === "reconciliation-required")) errors.push("reconciliationRequired must be true exactly when controlState is reconciliation-required.");
-  errors.push(...checkpointEvidenceErrors(checkpoint.requiredEvidence));
-  if (!Array.isArray(checkpoint.prohibitedActions) || checkpoint.prohibitedActions.length > 50) {
-    errors.push("prohibitedActions must be an array with at most 50 items.");
-  } else {
-    checkpoint.prohibitedActions.forEach((item, index) => {
-      errors.push(...checkpointStringErrors(item, `prohibitedActions[${index}]`, { maxLength: 500 }));
-      if (missingEvidence(item)) errors.push(`prohibitedActions[${index}] must name a concrete prohibited action.`);
-    });
-  }
-  errors.push(...checkpointStringErrors(checkpoint.replacementRun, "replacementRun", { nullable: true, maxLength: 500 }));
-  errors.push(...checkpointAdapterDimensionErrors(checkpoint.adapterDimensions, context));
-  if (["blocked", "replan-required", "reconciliation-required"].includes(checkpoint.controlState) && missingEvidence(checkpoint.pauseReason)) {
-    errors.push(`${checkpoint.controlState} requires a concrete pauseReason.`);
-  }
-  if (checkpoint.controlState === "reconciliation-required") {
-    if (missingEvidence(checkpoint.nextAction) || !/(inspect|reconcil|verify|read|query|检查|核对|验证|查询)/i.test(checkpoint.nextAction)) errors.push("reconciliation-required nextAction must explicitly inspect or reconcile authoritative state.");
-    if (!checkpoint.prohibitedActions?.length) errors.push("reconciliation-required requires at least one prohibited action.");
-  }
-  if (checkpoint.controlState === "superseded" && missingEvidence(checkpoint.replacementRun)) errors.push("superseded requires replacementRun.");
-  if (checkpoint.controlState !== "superseded" && checkpoint.replacementRun !== null) errors.push("replacementRun must be null unless controlState is superseded.");
-  if (requireTerminalConsistency && checkpoint.controlState === "completed") {
-    const dag = readExecutionDag(runDir);
-    const dagState = dag ? executionDagSnapshot(dag, runDir) : null;
-    if (!dagState?.allNodesCompleted || dagState.runningNodes.length || dagState.blockedNodes.length) errors.push("completed checkpoint requires a terminal completed Run orchestration.");
-  }
-  return errors;
-}
-
-function readRunCheckpoint({ cwd, context, runDir, status, manifest, requireTerminalConsistency = false }) {
-  const declaration = checkpointDeclaration(manifest);
-  if (declaration.policy !== "enforced") {
-    return { policy: declaration.policy || "disabled", enabled: false, checkpoint: null, path: "", errors: [] };
-  }
-  let path = "";
-  try {
-    path = checkpointArtifactPath(runDir, manifest);
-  } catch (error) {
-    return { policy: declaration.policy, enabled: true, checkpoint: null, path: "", errors: [error.message] };
-  }
-  if (!existsSync(path)) return { policy: declaration.policy, enabled: true, checkpoint: null, path, errors: ["checkpoint.json is missing."] };
-  let checkpoint = null;
-  try {
-    checkpoint = JSON.parse(readFileSync(path, "utf8"));
-  } catch (error) {
-    return { policy: declaration.policy, enabled: true, checkpoint: null, path, errors: [`Could not parse checkpoint.json: ${error.message}`] };
-  }
-  return {
-    policy: declaration.policy,
-    enabled: true,
-    checkpoint,
-    path,
-    errors: checkpointCoreErrors({ cwd, runDir, status, manifest, checkpoint, context, requireTerminalConsistency })
-  };
-}
-
-function preparedRunContractError({ cwd, context, runDir, status, goalContext, dag }) {
-  try {
-    assertPreparedRunContract({
-      cwd,
-      context,
-      runDir,
-      status,
-      goalPath: goalContext.goalPath,
-      goalContent: goalContext.goalContent,
-      specRel: goalContext.specRel,
-      specContent: goalContext.specContent,
-      dag
-    });
-    return "";
-  } catch (error) {
-    return error.message;
-  }
-}
-
-function runValidationPayload(args) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  if (!args.run) throw new Error("Usage: agent-harness run validate --run <run-dir> [--cwd PATH] [--json]");
-  const runDir = configuredRunDir(cwd, context, args.run);
-  const errors = [];
-  const statusPath = artifactPath(runDir, "status.json", "Run status path");
-  if (!existsSync(statusPath)) throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
-  let status = null;
-  try { status = JSON.parse(readFileSync(statusPath, "utf8")); } catch (error) { throw new Error(`Could not parse status.json: ${error.message}`); }
-  const expectedFiles = status.files || ["run.md", "prompt.md", "subagents.md", "status.json"];
-  const missingFiles = expectedFiles.filter((file) => !existsSync(artifactPath(runDir, file, "Run artifact path")));
-  if (missingFiles.length) errors.push(`Missing Run artifacts: ${missingFiles.join(", ")}.`);
-  const manifestState = runManifestState(runDir, status);
-  if (!manifestState.managed) errors.push(manifestState.error || "Run is unmanaged.");
-  let checkpoint = { policy: "disabled", enabled: false, checkpoint: null, path: "", errors: [] };
-  let contractError = "";
-  let expectedContractDrift = false;
-  if (manifestState.managed) {
-    const dag = readExecutionDag(runDir);
-    const goalContext = runGoalContext(cwd, context, status);
-    contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag });
-    checkpoint = readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
-    errors.push(...checkpoint.errors);
-    if (contractError && checkpoint.checkpoint?.controlState === "superseded"
-        && /(?:Goal or Spec execution contract|Execution plan or target contract) changed after Run preparation/.test(contractError)) {
-      const replacementErrors = replacementRunErrors({
-        cwd,
-        context,
-        runDir,
-        manifest: manifestState.manifest,
-        replacementRun: checkpoint.checkpoint.replacementRun
-      });
-      if (replacementErrors.length) errors.push(...replacementErrors);
-      else expectedContractDrift = true;
-    } else if (contractError) {
-      errors.push(contractError);
-    }
-  }
-  if (status.phase === "completed" && !expectedContractDrift) {
-    errors.push(...goalEvidenceErrors(cwd, context, status.goalPath, { additionalGates: status.requiredGates || [] }));
-    if (manifestState.manifest?.manifestVersion === 2) errors.push(...planned.completionErrors(cwd, context, status.goalPath, normalizePathReference(displayPath(cwd, runDir))));
-  }
-  return {
-    ok: errors.length === 0,
-    run: displayPath(cwd, runDir),
-    phase: status.phase || status.status || "unknown",
-    errors,
-    ...(errors.length === 0 && status.phase === "completed" && manifestState.manifest?.manifestVersion === 2 ? planned.runScope(cwd, context, normalizePathReference(displayPath(cwd, runDir))) : {}),
-    manifest: { managed: manifestState.managed, error: manifestState.error },
-    contract: { ok: !contractError || expectedContractDrift, expectedDrift: expectedContractDrift, error: contractError },
-    checkpoint: {
-      policy: checkpoint.policy,
-      enabled: checkpoint.enabled,
-      path: checkpoint.path ? displayPath(cwd, checkpoint.path) : "",
-      revision: checkpoint.checkpoint?.revision ?? null,
-      controlState: checkpoint.checkpoint?.controlState || "",
-      nextAction: checkpoint.checkpoint?.nextAction || "",
-      errors: checkpoint.errors
-    }
-  };
-}
-
-function printValidationPayload(payload, args) {
-  if (args.json) console.log(JSON.stringify(payload, null, 2));
-  else {
-    console.log(`Run: ${payload.run}`);
-    console.log(`Valid: ${payload.ok ? "yes" : "no"}`);
-    if (payload.evidenceScope) console.log(`Evidence scope: ${payload.evidenceScope}`);
-    if (payload.currentVerification) console.log(`Current verification inputs: ${payload.currentVerification.status}`);
-    console.log(`Checkpoint policy: ${payload.checkpoint.policy}`);
-    if (payload.checkpoint.enabled) {
-      console.log(`Checkpoint revision: ${payload.checkpoint.revision}`);
-      console.log(`Control state: ${payload.checkpoint.controlState}`);
-      console.log(`Next action: ${payload.checkpoint.nextAction}`);
-    }
-    if (payload.errors.length) payload.errors.forEach((error) => console.log(`- ${error}`));
-  }
-  if (!payload.ok) process.exitCode = 1;
-}
-
-function runValidate(args) {
-  printValidationPayload(runValidationPayload(args), args);
-}
-
-function checkpointShowPayload(args, { validateContract = false } = {}) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  if (!args.run) throw new Error("Usage: agent-harness run checkpoint show --run <run-dir> [--cwd PATH] [--json]");
-  const runDir = configuredRunDir(cwd, context, args.run);
-  const statusPath = artifactPath(runDir, "status.json", "Run status path");
-  if (!existsSync(statusPath)) throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
-  const status = JSON.parse(readFileSync(statusPath, "utf8"));
-  const manifestState = runManifestState(runDir, status);
-  if (!manifestState.managed) throw new Error(`Run is not a managed prepared Run: ${manifestState.error}`);
-  const state = readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest, requireTerminalConsistency: true });
-  if (!state.enabled) throw new Error("Run checkpoint policy is disabled; no checkpoint authority exists.");
-  let contractError = "";
-  let expectedContractDrift = false;
-  if (validateContract) {
-    const goalContext = runGoalContext(cwd, context, status);
-    contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag: readExecutionDag(runDir) });
-    if (contractError && state.checkpoint?.controlState === "superseded"
-        && /(?:Goal or Spec execution contract|Execution plan or target contract) changed after Run preparation/.test(contractError)) {
-      const replacementErrors = replacementRunErrors({ cwd, context, runDir, manifest: manifestState.manifest, replacementRun: state.checkpoint.replacementRun });
-      if (!replacementErrors.length) expectedContractDrift = true;
-      else state.errors.push(...replacementErrors);
-    }
-  }
-  return {
-    ok: state.errors.length === 0 && (!contractError || expectedContractDrift),
-    run: displayPath(cwd, runDir),
-    path: displayPath(cwd, state.path),
-    policy: state.policy,
-    checkpoint: state.checkpoint,
-    contract: { ok: !contractError || expectedContractDrift, expectedDrift: expectedContractDrift, error: contractError },
-    errors: [...state.errors, ...(contractError && !expectedContractDrift ? [contractError] : [])]
-  };
-}
-
-function runCheckpointShow(args) {
-  const payload = checkpointShowPayload(args);
-  if (args.json) console.log(JSON.stringify(payload, null, 2));
-  else {
-    console.log(`Run: ${payload.run}`);
-    console.log(`Checkpoint: ${payload.path}`);
-    console.log(`Revision: ${payload.checkpoint?.revision ?? "invalid"}`);
-    console.log(`Control state: ${payload.checkpoint?.controlState || "invalid"}`);
-    console.log(`Next action: ${payload.checkpoint?.nextAction || "not recorded"}`);
-    console.log(`Pause reason: ${payload.checkpoint?.pauseReason || "none"}`);
-    console.log(`Prohibited actions: ${payload.checkpoint?.prohibitedActions?.join(", ") || "none"}`);
-  }
-}
-
-function runCheckpointValidate(args) {
-  const payload = checkpointShowPayload(args, { validateContract: true });
-  if (args.json) console.log(JSON.stringify(payload, null, 2));
-  else {
-    console.log(`Run: ${payload.run}`);
-    console.log(`Checkpoint valid: ${payload.ok ? "yes" : "no"}`);
-    if (payload.errors.length) payload.errors.forEach((error) => console.log(`- ${error}`));
-  }
-  if (!payload.ok) process.exitCode = 1;
-}
-
-function parseCheckpointJsonOption(value, label, expectedType) {
-  if (value === undefined) return undefined;
-  let parsed = null;
-  try { parsed = JSON.parse(value); } catch (error) { throw new Error(`${label} must be valid JSON: ${error.message}`); }
-  if (expectedType === "array" && !Array.isArray(parsed)) throw new Error(`${label} must be a JSON array.`);
-  if (expectedType === "object" && (!parsed || typeof parsed !== "object" || Array.isArray(parsed))) throw new Error(`${label} must be a JSON object.`);
-  return parsed;
-}
-
-function parseNullableCheckpointValue(value) {
-  return value === undefined ? undefined : String(value).trim().toLowerCase() === "null" ? null : value;
-}
-
-function parseCheckpointBoolean(value, label) {
-  if (value === undefined) return undefined;
-  if (value === "true") return true;
-  if (value === "false") return false;
-  throw new Error(`${label} must be true or false.`);
-}
-
-function checkpointTransitionAllowed(from, to) {
-  if (from === to) return true;
-  const transitions = {
-    active: new Set(["waiting", "blocked", "replan-required", "reconciliation-required", "completed"]),
-    waiting: new Set(["active", "blocked", "replan-required", "reconciliation-required", "completed"]),
-    blocked: new Set(["active", "waiting", "replan-required", "reconciliation-required", "completed"]),
-    "reconciliation-required": new Set(["active", "waiting", "blocked", "replan-required"]),
-    "replan-required": new Set(["superseded"]),
-    superseded: new Set(),
-    completed: new Set()
-  };
-  return Boolean(transitions[from]?.has(to));
-}
-
-function replacementRunErrors({ cwd, context, runDir, manifest, replacementRun }) {
-  const errors = [];
-  if (!replacementRun) return ["superseded requires a replacement Run path."];
-  let replacementDir = "";
-  try { replacementDir = configuredRunDir(cwd, context, replacementRun); } catch (error) { return [error.message]; }
-  if (replacementDir === runDir) return ["replacement Run must differ from the superseded Run."];
-  const statusPath = artifactPath(replacementDir, "status.json", "Replacement Run status path");
-  if (!existsSync(statusPath)) return ["replacement Run status.json is missing."];
-  const replacementStatus = JSON.parse(readFileSync(statusPath, "utf8"));
-  const replacementManifestState = runManifestState(replacementDir, replacementStatus);
-  if (!replacementManifestState.managed) return [`Replacement Run is not a valid managed Run: ${replacementManifestState.error}`];
-  const replacementDeclaration = checkpointDeclaration(replacementManifestState.manifest);
-  if (replacementDeclaration.policy !== "enforced") errors.push("Replacement Run must retain enforced checkpoint policy.");
-  const currentSource = manifest.goalContract?.sourceTask || {};
-  const replacementSource = replacementManifestState.manifest.goalContract?.sourceTask || {};
-  const sameGoal = normalizePathReference(manifest.goalPath) === normalizePathReference(replacementManifestState.manifest.goalPath);
-  const sameSource = currentSource.path && replacementSource.path
-    && normalizePathReference(currentSource.path) === normalizePathReference(replacementSource.path)
-    && oneLine(currentSource.title) === oneLine(replacementSource.title);
-  if (!sameGoal && !sameSource) errors.push("Replacement Run is not bound to the same accepted Goal/source outcome.");
-  const goalContext = runGoalContext(cwd, context, replacementStatus);
-  const contractError = preparedRunContractError({ cwd, context, runDir: replacementDir, status: replacementStatus, goalContext, dag: readExecutionDag(replacementDir) });
-  if (contractError) errors.push(`Replacement Run validation failed: ${contractError}`);
-  return errors;
-}
-
-function runCheckpointUpdate(args) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  if (!args.run) throw new Error("Usage: agent-harness run checkpoint update --run <run-dir> --expected-revision <n> [checkpoint fields]");
-  const expectedRevision = Number(args.expectedRevision);
-  if (!Number.isInteger(expectedRevision) || expectedRevision < 0 || String(expectedRevision) !== String(args.expectedRevision)) {
-    throw new Error("--expected-revision must be a non-negative integer.");
-  }
-  const runDir = configuredRunDir(cwd, context, args.run);
-  const initialStatus = JSON.parse(readFileSync(artifactPath(runDir, "status.json"), "utf8"));
-  if (initialStatus.manifestVersion === 2 && !args._projectLockHeld && !args.dryRun) {
-    const controlRoot = dirname(configuredPath(cwd, context.paths.config || ".harness/config.json", "Project config"));
-    if (existsSync(join(controlRoot, "execution-sync.json"))) throw new Error("Resume project synchronization before checkpoint mutation.");
-    return withRunLock(controlRoot, () => runCheckpointUpdate({ ...args, _projectLockHeld: true }));
-  }
-  return withRunLock(runDir, () => {
-    const statusPath = artifactPath(runDir, "status.json", "Run status path");
-    if (!existsSync(statusPath)) throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
-    const status = JSON.parse(readFileSync(statusPath, "utf8"));
-    if (status.manifestVersion === 2 && existsSync(join(dirname(configuredPath(cwd, context.paths.config || ".harness/config.json")), "execution-sync.json"))) throw new Error("Resume project synchronization before checkpoint mutation.");
-    const manifestState = runManifestState(runDir, status);
-    if (!manifestState.managed) throw new Error(`Run is not a managed prepared Run: ${manifestState.error}`);
-    const state = readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest });
-    if (!state.enabled) throw new Error("Run checkpoint policy is disabled; mutation is not allowed.");
-    if (state.errors.length) throw new Error(`Checkpoint validation failed:\n- ${state.errors.join("\n- ")}`);
-    const current = state.checkpoint;
-    if (current.revision !== expectedRevision) throw new Error(`Stale checkpoint revision: expected ${expectedRevision}, current ${current.revision}. Run checkpoint show/orient before retrying.`);
-
-    const next = structuredClone(current);
-    const suppliedFields = [];
-    const assign = (key, value) => { if (value !== undefined) { next[key] = value; suppliedFields.push(key); } };
-    assign("controlState", args.controlState);
-    assign("currentStage", parseNullableCheckpointValue(args.currentStage));
-    assign("lastCompletedStage", parseNullableCheckpointValue(args.lastCompletedStage));
-    assign("nextAction", args.nextAction);
-    assign("pauseReason", parseNullableCheckpointValue(args.pauseReason));
-    assign("requiredEvidence", parseCheckpointJsonOption(args.requiredEvidence, "--required-evidence", "array"));
-    assign("prohibitedActions", parseCheckpointJsonOption(args.prohibitedActions, "--prohibited-actions", "array"));
-    assign("replacementRun", parseNullableCheckpointValue(args.replacementRun));
-    assign("adapterDimensions", parseCheckpointJsonOption(args.adapterDimensions, "--adapter-dimensions", "object"));
-    const requestedReconciliation = parseCheckpointBoolean(args.reconciliationRequired, "--reconciliation-required");
-    if (requestedReconciliation !== undefined) suppliedFields.push("reconciliationRequired");
-    if (!suppliedFields.length && !args.evidenceReference) throw new Error("Checkpoint update requires at least one changed field.");
-    if (!validCheckpointControlStates.has(next.controlState)) throw new Error(`Invalid --control-state: ${next.controlState || "(missing)"}.`);
-    if (!checkpointTransitionAllowed(current.controlState, next.controlState)) throw new Error(`Illegal checkpoint transition: ${current.controlState} -> ${next.controlState}.`);
-    next.reconciliationRequired = next.controlState === "reconciliation-required";
-    if (requestedReconciliation !== undefined && requestedReconciliation !== next.reconciliationRequired) {
-      throw new Error("--reconciliation-required must match the requested control state.");
-    }
-    if (current.controlState === "reconciliation-required" && next.controlState !== "reconciliation-required") {
-      if ([args.evidenceReference, args.observedAt, args.observedSource].some((value) => missingEvidence(value))) {
-        throw new Error("Clearing reconciliation requires --evidence-reference, --observed-at, and --observed-source.");
-      }
-      if (!Number.isFinite(Date.parse(args.observedAt))) throw new Error("--observed-at must be a valid timestamp.");
-      next.requiredEvidence = [...next.requiredEvidence, {
-        reference: args.evidenceReference,
-        observedAt: args.observedAt,
-        observedSource: args.observedSource
-      }];
-    } else if (args.evidenceReference || args.observedAt || args.observedSource) {
-      throw new Error("Observation fields are only valid when clearing reconciliation-required state.");
-    }
-
-    const goalContext = runGoalContext(cwd, context, status);
-    const contractError = preparedRunContractError({ cwd, context, runDir, status, goalContext, dag: readExecutionDag(runDir) });
-    const restrictedRecovery = /(?:Goal or Spec execution contract|Execution plan or target contract) changed after Run preparation/.test(contractError)
-      && ["replan-required", "superseded"].includes(next.controlState);
-    if (contractError && !restrictedRecovery) throw new Error(contractError);
-    if (next.controlState === "superseded") {
-      const replacementErrors = replacementRunErrors({ cwd, context, runDir, manifest: manifestState.manifest, replacementRun: next.replacementRun });
-      if (replacementErrors.length) throw new Error(`Replacement Run validation failed:\n- ${replacementErrors.join("\n- ")}`);
-    }
-    next.revision = current.revision + 1;
-    next.updatedAt = new Date().toISOString();
-    const nextErrors = checkpointCoreErrors({ cwd, runDir, status, manifest: manifestState.manifest, checkpoint: next, context, requireTerminalConsistency: true });
-    if (nextErrors.length) throw new Error(`Checkpoint update is invalid:\n- ${nextErrors.join("\n- ")}`);
-    const payload = {
-      ok: true,
-      dryRun: Boolean(args.dryRun),
-      run: displayPath(cwd, runDir),
-      path: displayPath(cwd, state.path),
-      previousRevision: current.revision,
-      revision: next.revision,
-      controlState: next.controlState,
-      nextAction: next.nextAction,
-      contractDrift: Boolean(contractError),
-      checkpoint: next
-    };
-    if (!args.dryRun) atomicWriteFile(state.path, `${JSON.stringify(next, null, 2)}\n`);
-    if (args.json) console.log(JSON.stringify(payload, null, 2));
-    else {
-      console.log(`${args.dryRun ? "Would update" : "Updated"} checkpoint: ${payload.path}`);
-      console.log(`Revision: ${payload.previousRevision} -> ${payload.revision}`);
-      console.log(`Control state: ${payload.controlState}`);
-      console.log(`Next action: ${payload.nextAction}`);
-    }
-    return payload;
-  });
-}
-
-function assertCheckpointAllowsRunMutation({ cwd, context, runDir, status, manifest, action, phase }) {
-  const declaration = checkpointDeclaration(manifest);
-  if (declaration.policy !== "enforced") return;
-  const state = readRunCheckpoint({ cwd, context, runDir, status, manifest });
-  if (state.errors.length) throw new Error(`Checkpoint validation failed:\n- ${state.errors.join("\n- ")}`);
-  const controlState = state.checkpoint.controlState;
-  const allowed = action === "node"
-    ? phase === "running"
-      ? new Set(["active"])
-      : phase === "completed"
-        ? new Set(["active", "waiting"])
-        : new Set(["blocked", "replan-required", "reconciliation-required"])
-    : phase === "completed"
-      ? new Set(["completed"])
-      : new Set(["blocked", "replan-required", "reconciliation-required"]);
-  if (!allowed.has(controlState)) {
-    throw new Error(`Checkpoint controlState '${controlState}' does not allow Run ${action} phase '${phase}'. Update checkpoint recovery state first.`);
-  }
-}
-
-function runNodeRecord(args) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  if (!args.run || !args.node) {
-    throw new Error("Usage: agent-harness run node record --run <run-dir> --node <node-id> --phase running|completed|blocked --summary <text> [--verification <text>] [--thread <thread-id>] [--surface <surface>] [--isolation-evidence <text>] [--cwd PATH] [--json]");
-  }
-  if (!recordableRunNodePhases.has(args.phase)) {
-    throw new Error(`Invalid --phase: ${args.phase || "(missing)"}`);
-  }
-  if (missingEvidence(args.summary)) {
-    throw new Error("Missing --summary <text>");
-  }
-  if (args.phase === "completed" && missingEvidence(args.verification)) {
-    throw new Error("Completed orchestration nodes require --verification evidence.");
-  }
-
-  const runDir = configuredRunDir(cwd, context, args.run);
-  const plannedStatus = JSON.parse(readFileSync(artifactPath(runDir, "status.json"), "utf8"));
-  if (plannedStatus.manifestVersion === 2) return planned.plannedRecord(args);
-  if (!args._runLockHeld) {
-    return withRunLock(runDir, () => runNodeRecord({ ...args, _runLockHeld: true }));
-  }
-  const runStatusPath = artifactPath(runDir, "status.json", "Run status path");
-  if (!existsSync(runStatusPath)) {
-    throw new Error(`Missing ${displayPath(cwd, runStatusPath)}`);
-  }
-  const dag = readExecutionDag(runDir);
-  if (!dag) {
-    throw new Error(`Missing ${displayPath(cwd, join(runDir, "dag.json"))}`);
-  }
-  const node = dag.nodes.find((candidate) => candidate.id === args.node);
-  if (!node) {
-    throw new Error(`Unknown orchestration node: ${args.node}`);
-  }
-
-  const before = executionDagSnapshot(dag, runDir);
-  const dependencies = node.dependencies || [];
-  const incompleteDependencies = dependencies.filter((dependency) => !before.completedNodes.includes(dependency));
-  if ((args.phase === "running" || args.phase === "completed") && incompleteDependencies.length) {
-    throw new Error(`Execution Orchestration node '${node.id}' cannot ${args.phase === "running" ? "start" : "complete"} before dependencies: ${incompleteDependencies.join(", ")}`);
-  }
-  if (args.phase === "running" && !before.readyNodes.includes(node.id)) {
-    throw new Error(`Execution Orchestration node '${node.id}' is not ready to start.`);
-  }
-  if (args.phase === "running" && before.runningNodes.length && missingEvidence(args.isolationEvidence)) {
-    throw new Error(`Starting orchestration node '${node.id}' while ${before.runningNodes.join(", ")} is running requires --isolation-evidence <separate-worktree-or-non-overlap-proof>.`);
-  }
-
-  const runStatus = JSON.parse(readFileSync(runStatusPath, "utf8"));
-  const goalContext = runGoalContext(cwd, context, runStatus);
-  const preparedManifest = assertPreparedRunContract({
-    cwd,
-    context,
-    runDir,
-    status: runStatus,
-    goalPath: goalContext.goalPath,
-    goalContent: goalContext.goalContent,
-    specRel: goalContext.specRel,
-    specContent: goalContext.specContent,
-    dag
-  });
-  assertCheckpointAllowsRunMutation({ cwd, context, runDir, status: runStatus, manifest: preparedManifest, action: "node", phase: args.phase });
-  const now = new Date().toISOString();
-  const previousNodeStatus = readNodeStatus(runDir, node);
-  const currentRunPhase = runStatus.phase || runStatus.status || "";
-  if (currentRunPhase === "completed") {
-    throw new Error("Completed Runs cannot record additional orchestration node transitions.");
-  }
-  if (previousNodeStatus.phase === "completed" && args.phase !== "completed") {
-    throw new Error(`Completed orchestration node '${node.id}' cannot move back to ${args.phase}.`);
-  }
-  const nodeStatus = {
-    ...previousNodeStatus,
-    node: node.id,
-    label: node.label,
-    phase: args.phase,
-    updatedAt: now,
-    summary: args.summary,
-    verificationSummary: args.verification || "",
-    thread: args.thread || previousNodeStatus.thread || "",
-    surface: args.surface || previousNodeStatus.surface || "",
-    isolationEvidence: args.isolationEvidence || previousNodeStatus.isolationEvidence || "sequential",
-    result: node.result
-  };
-  const resultPath = artifactPath(runDir, node.result, `orchestration node '${node.id}' result`);
-  const resultContent = `# orchestration Node ${titleCase(args.phase)}: ${node.id}
-
-Updated: ${now}
-Run: \`${displayPath(cwd, runDir)}\`
-Node: \`${node.id}\`
-Thread: \`${nodeStatus.thread || "Not recorded."}\`
-Surface: \`${nodeStatus.surface || "Not recorded."}\`
-Parallel isolation: \`${nodeStatus.isolationEvidence}\`
-
-## Summary
-
-${args.summary}
-
-## Verification
-
-${args.verification || "Not recorded."}
-`;
-
-  atomicWriteFile(nodeStatusPath(runDir, node), `${JSON.stringify(nodeStatus, null, 2)}\n`);
-  atomicWriteFile(resultPath, resultContent);
-
-  const nextDagState = executionDagSnapshot(dag, runDir);
-  const runPhase = nextDagState.blockedNodes.length
-    ? "blocked"
-    : nextDagState.allNodesCompleted
-      ? "ready-for-gate"
-      : "running";
-  const nextRunStatus = {
-    ...runStatus,
-    phase: runPhase,
-    updatedAt: now,
-    executionDag: nextDagState
-  };
-  atomicWriteFile(runStatusPath, `${JSON.stringify(nextRunStatus, null, 2)}\n`);
-
-  const payload = {
-    run: displayPath(cwd, runDir),
-    node: node.id,
-    status: displayPath(cwd, nodeStatusPath(runDir, node)),
-    result: displayPath(cwd, resultPath),
-    phase: args.phase,
-    readyNodes: nextDagState.readyNodes,
-    completedNodes: nextDagState.completedNodes,
-    blockedNodes: nextDagState.blockedNodes,
-    runPhase
-  };
-
-  if (args.json) {
-    console.log(JSON.stringify(payload, null, 2));
-    return;
-  }
-
-  console.log(`Recorded orchestration node ${args.phase}: ${node.id}`);
-  console.log(`Status: ${displayPath(cwd, nodeStatusPath(runDir, node))}`);
-  console.log(`Result: ${displayPath(cwd, resultPath)}`);
-  console.log(`Ready nodes: ${nextDagState.readyNodes.join(", ") || "none"}`);
-}
-
-function runRecord(args) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  if (!args.run) {
-    throw new Error("Usage: agent-harness run record --run <run-dir> --phase completed|blocked --summary <text> [--verification <text>] [--gate-evidence <text>] [--cwd PATH] [--json]");
-  }
-  if (!recordableRunPhases.has(args.phase)) {
-    throw new Error(`Invalid --phase: ${args.phase || "(missing)"}`);
-  }
-  if (missingEvidence(args.summary)) {
-    throw new Error("Missing --summary <text>");
-  }
-
-  const runDir = configuredRunDir(cwd, context, args.run);
-  const plannedStatus = JSON.parse(readFileSync(artifactPath(runDir, "status.json"), "utf8"));
-  if (plannedStatus.manifestVersion === 2) return planned.recordRun(args);
-  if (!args._runLockHeld) {
-    return withRunLock(runDir, () => runRecord({ ...args, _runLockHeld: true }));
-  }
-  const statusPath = artifactPath(runDir, "status.json", "Run status path");
-  if (!existsSync(statusPath)) {
-    throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
-  }
-
-  const now = new Date().toISOString();
-  const status = JSON.parse(readFileSync(statusPath, "utf8"));
-  const executionRole = status.executionRole || "unknown";
-  const currentRunPhase = status.phase || status.status || "";
-  if (currentRunPhase === "completed" && args.phase !== "completed") {
-    throw new Error("Completed Runs cannot move back to blocked or another non-complete phase.");
-  }
-  if (args.phase === "completed" && missingEvidence(args.verification)) {
-    throw new Error("Completed runs require --verification evidence.");
-  }
-  if (args.phase === "completed" && executionRole === "gate-only" && missingEvidence(args.gateEvidence)) {
-    throw new Error("Completed gate-only runs require --gate-evidence describing implementer output and acceptance evidence.");
-  }
-  const dag = readExecutionDag(runDir);
-  const dagState = dag ? executionDagSnapshot(dag, runDir) : null;
-  const statusGoalContext = runGoalContext(cwd, context, status, { requireGoal: args.phase === "completed" });
-  const { goalPath, goalContent, specRel, specContent } = statusGoalContext;
-  if (args.phase === "completed") {
-    const preparedManifest = assertPreparedRunContract({
-      cwd,
-      context,
-      runDir,
-      status,
-      goalPath,
-      goalContent,
-      specRel,
-      specContent,
-      dag
-    });
-    assertCheckpointAllowsRunMutation({ cwd, context, runDir, status, manifest: preparedManifest, action: "run", phase: args.phase });
-    const goalStatus = canonicalGoalStatus(extractStatusLine(goalContent));
-    if (goalStatus === "blocked") {
-      throw new Error("Blocked Goals cannot complete a Run; update the accepted Goal state first.");
-    }
-    if (!validGoalStatuses.has(goalStatus)) {
-      throw new Error(`Completed Runs require a valid Goal Status; found ${extractStatusLine(goalContent) || "(missing)"}.`);
-    }
-  }
-  if (args.phase === "blocked") {
-    const manifestState = runManifestState(runDir, status);
-    if (manifestState.managed) {
-      assertCheckpointAllowsRunMutation({ cwd, context, runDir, status, manifest: manifestState.manifest, action: "run", phase: args.phase });
-    }
-  }
-  if (args.phase === "completed") {
-    if (!dag || !dagState) {
-      throw new Error("Completed Runs require a readable execution orchestration (dag.json).");
-    }
-    if (!dag.nodes.length) {
-      throw new Error("Completed Runs require an execution orchestration with at least one node.");
-    }
-    if (dagState.runningNodes.length || dagState.blockedNodes.length || !dagState.allNodesCompleted) {
-      throw new Error(`Completed Runs require every execution orchestration node to be completed; running: ${dagState.runningNodes.join(", ") || "none"}, blocked: ${dagState.blockedNodes.join(", ") || "none"}, ready: ${dagState.readyNodes.join(", ") || "none"}, waiting: ${dagState.waitingNodes.join(", ") || "none"}.`);
-    }
-    const incompleteEvidenceNodes = dag.nodes.filter((node) => {
-      const nodeStatus = readNodeStatus(runDir, node);
-      return nodeStatus.phase === "completed"
-        && (missingEvidence(nodeStatus.verificationSummary) || !existsSync(nodeStatusPath(runDir, node)) || !existsSync(artifactPath(runDir, node.result, `orchestration node '${node.id}' result`)));
-    });
-    if (incompleteEvidenceNodes.length) {
-      throw new Error(`Completed Runs require verification and result evidence for every completed orchestration node; missing: ${incompleteEvidenceNodes.map((node) => node.id).join(", ")}.`);
-    }
-    if (dag.goalPath && normalizePathReference(dag.goalPath) !== normalizePathReference(status.goalPath)) {
-      throw new Error("Completed Runs require dag.json and status.json to reference the same Goal.");
-    }
-  }
-  if (args.phase === "completed" && (!goalPath || !goalContent)) {
-    throw new Error("Completed Runs require a readable Goal referenced by status.json.");
-  }
-  const goalExecutionRole = goalContent ? extractGoalExecutionRoleRaw(goalContent) : "";
-  if (args.phase === "completed" && (executionRole === "gate-only" || goalExecutionRole === "gate-only") && missingEvidence(args.gateEvidence)) {
-    throw new Error("Completed gate-only runs require --gate-evidence describing implementer output and acceptance evidence.");
-  }
-  if (args.phase === "completed") {
-    if (status.acceptanceMapRequired && (!goalPath || !existsSync(goalPath))) {
-      throw new Error("Completed batch runs require a readable goal with Source Task Acceptance Map evidence.");
-    }
-    const milestoneCompletionRequired = Boolean(status.milestoneCompletionMapRequired || status.stageCompletionMapRequired);
-    if (milestoneCompletionRequired && (!goalPath || !existsSync(goalPath))) {
-      throw new Error("Completed milestone runs require a readable goal with Milestone Completion Map evidence.");
-    }
-    const completeErrors = goalEvidenceErrors(cwd, context, displayPath(cwd, goalPath), { additionalGates: status.requiredGates || [] });
-    if (completeErrors.length) throw new Error(completeErrors.join("\n"));
-    if (!containsExactPathReference(goalContent, displayPath(cwd, runDir))) {
-      throw new Error(`State Sync Notes validation failed: Goal must reference this Run exactly: ${displayPath(cwd, runDir)}.`);
-    }
-  }
-  const nextStatus = {
-    ...withoutLegacyDeliveryFields(status),
-    phase: args.phase,
-    updatedAt: now,
-    summary: args.summary,
-    verificationSummary: args.verification || status.verificationSummary || "",
-    gateEvidence: args.gateEvidence || status.gateEvidence || "",
-    executionDag: dagState || status.executionDag
-  };
-  for (const field of ["reviewUrl", "integrationRef", "prUrl", "mergeSha", "releaseRef"]) {
-    if (args[field] || status[field]) {
-      nextStatus[field] = args[field] || status[field];
-    }
-  }
-  const logsDir = artifactPath(runDir, "logs", "Run logs path");
-  mkdirSync(logsDir, { recursive: true });
-  const logContent = `# Run ${titleCase(args.phase)} Summary
-
-Updated: ${now}
-Run: \`${displayPath(cwd, runDir)}\`
-Goal: \`${status.goalPath || "unknown"}\`
-
-## Summary
-
-${args.summary}
-
-## Verification
-
-${args.verification || "Not recorded."}
-
-## Gate Evidence
-
-${args.gateEvidence || "Not recorded."}
-
-## Delivery References
-
-- Review URL: ${nextStatus.reviewUrl || "Not recorded."}
-- Integration reference: ${nextStatus.integrationRef || "Not recorded."}
-- Pull request: ${nextStatus.prUrl || "Not recorded."}
-- Merge SHA: ${nextStatus.mergeSha || "Not recorded."}
-- Release reference: ${nextStatus.releaseRef || "Not recorded."}
-
-## Acceptance
-
-- Phase: \`${args.phase}\`
-- Verification evidence: \`${args.verification ? "recorded" : "not recorded"}\`
-- Gate evidence: \`${args.gateEvidence ? "recorded" : "not recorded"}\`
-`;
-
-  const logPath = writeUniqueRunLog(logsDir, args.phase, logContent);
-  atomicWriteFile(statusPath, `${JSON.stringify(nextStatus, null, 2)}\n`);
-
-  const payload = {
-    run: displayPath(cwd, runDir),
-    status: displayPath(cwd, statusPath),
-    log: displayPath(cwd, logPath),
-    phase: args.phase,
-    summary: args.summary,
-    verificationSummary: nextStatus.verificationSummary,
-    gateEvidence: nextStatus.gateEvidence
-  };
-
-  if (args.json) {
-    console.log(JSON.stringify(payload, null, 2));
-    return;
-  }
-
-  console.log(`Recorded run ${args.phase}: ${displayPath(cwd, runDir)}`);
-  console.log(`Status: ${displayPath(cwd, statusPath)}`);
-  console.log(`Log: ${displayPath(cwd, logPath)}`);
-}
-
-function runStatus(args) {
-  const cwd = targetCwd(args);
-  const context = resolveHarnessContext(cwd);
-  if (!args.run) {
-    throw new Error("Usage: agent-harness run status --run <run-dir> [--cwd PATH]");
-  }
-
-  const runDir = configuredRunDir(cwd, context, args.run);
-  const statusPath = artifactPath(runDir, "status.json", "Run status path");
-  if (!existsSync(statusPath)) {
-    throw new Error(`Missing ${displayPath(cwd, statusPath)}`);
-  }
-
-  const status = JSON.parse(readFileSync(statusPath, "utf8"));
-  const expectedFiles = status.files || ["run.md", "prompt.md", "subagents.md", "status.json"];
-  const missing = expectedFiles.filter((file) => !existsSync(artifactPath(runDir, file, "Run artifact path")));
-  const manifestState = runManifestState(runDir, status);
-  const dag = readExecutionDag(runDir);
-  const dagState = dag ? executionDagSnapshot(dag, runDir) : status.executionDag || null;
-  const checkpointState = manifestState.managed
-    ? readRunCheckpoint({ cwd, context, runDir, status, manifest: manifestState.manifest })
-    : { policy: status.checkpointPolicy || "disabled", enabled: false, checkpoint: null, errors: [] };
-
-  const payload = {
-    run: displayPath(cwd, runDir),
-    phase: status.phase || "unknown",
-    goalPath: status.goalPath || "unknown",
-    workMode: status.workMode || "unknown",
-    executionRole: status.executionRole || "unknown",
-    conversationRoute: status.conversationRoute || "unknown",
-    executionContextLock: status.executionContextLock || null,
-    milestoneCompletionMap: {
-      required: Boolean(status.milestoneCompletionMapRequired || status.stageCompletionMapRequired),
-      source: status.milestoneCompletionMapSource || status.stageCompletionMapSource || "",
-      itemCount: status.milestoneCompletionMapItemCount || status.stageCompletionMapItemCount || 0,
-      requiredLabels: status.milestoneCompletionMapRequiredLabels || status.stageCompletionMapRequiredLabels || []
-    },
-    stageCompletionMap: {
-      required: Boolean(status.stageCompletionMapRequired || status.milestoneCompletionMapRequired),
-      source: status.stageCompletionMapSource || status.milestoneCompletionMapSource || "",
-      itemCount: status.stageCompletionMapItemCount || status.milestoneCompletionMapItemCount || 0,
-      requiredLabels: status.stageCompletionMapRequiredLabels || status.milestoneCompletionMapRequiredLabels || []
-    },
-    taskSize: status.taskSize || "unknown",
-    updatedAt: status.updatedAt || "unknown",
-    references: {
-      reviewUrl: status.reviewUrl || "",
-      integrationRef: status.integrationRef || "",
-      prUrl: status.prUrl || "",
-      mergeSha: status.mergeSha || "",
-      releaseRef: status.releaseRef || ""
-    },
-    files: {
-      expected: expectedFiles,
-      missing
-    },
-    manifest: {
-      managed: manifestState.managed,
-      error: manifestState.error
-    },
-    checkpoint: {
-      policy: checkpointState.policy,
-      enabled: checkpointState.enabled,
-      revision: checkpointState.checkpoint?.revision ?? null,
-      controlState: checkpointState.checkpoint?.controlState || "",
-      nextAction: checkpointState.checkpoint?.nextAction || "",
-      errors: checkpointState.errors
-    },
-    executionDag: dagState
-  };
-
-  if (args.json) {
-    console.log(JSON.stringify(payload, null, 2));
-    return;
-  }
-
-  console.log(`Run: ${displayPath(cwd, runDir)}`);
-  console.log(`Phase: ${status.phase || "unknown"}`);
-  console.log(`Goal: ${status.goalPath || "unknown"}`);
-  console.log(`Work mode: ${status.workMode || "unknown"}`);
-  console.log(`Execution role: ${status.executionRole || "unknown"}`);
-  console.log(`Conversation route: ${status.conversationRoute || "unknown"}`);
-  if (status.executionContextLock) {
-    console.log(`Execution cwd: ${status.executionContextLock.executionCwd || "unknown"}`);
-    console.log(`Execution branch: ${status.executionContextLock.executionBranch || "unknown"}`);
-    console.log(`Conversation lane: ${status.executionContextLock.conversationLane || "unknown"}`);
-  }
-  console.log(`Task size: ${status.taskSize || "unknown"}`);
-  console.log(`Updated: ${status.updatedAt || "unknown"}`);
-  console.log(`Files: ${missing.length ? `missing ${missing.join(", ")}` : "ok"}`);
-  console.log(`Checkpoint policy: ${checkpointState.policy}`);
-  if (checkpointState.enabled) {
-    console.log(`Checkpoint revision: ${checkpointState.checkpoint?.revision ?? "invalid"}`);
-    console.log(`Checkpoint control state: ${checkpointState.checkpoint?.controlState || "invalid"}`);
-    console.log(`Checkpoint next action: ${checkpointState.checkpoint?.nextAction || "not recorded"}`);
-  }
-  if (dagState) {
-    console.log(`orchestration enforcement: ${dagState.enforcement || "unknown"}`);
-    console.log(`Ready nodes: ${dagState.readyNodes.join(", ") || "none"}`);
-    console.log(`Running nodes: ${dagState.runningNodes.join(", ") || "none"}`);
-    console.log(`Waiting nodes: ${dagState.waitingNodes.join(", ") || "none"}`);
-    console.log(`Completed nodes: ${dagState.completedNodes.join(", ") || "none"}`);
-    console.log(`Blocked nodes: ${dagState.blockedNodes.join(", ") || "none"}`);
-  }
-}
-
 function usage(lang = "en") {
   console.log(t(lang, "usage"));
 }
@@ -7715,13 +4384,13 @@ function main() {
     } else if (command === "intake" && subcommand === "idea") {
       intakeIdea(args);
     } else if (command === "maintain" && subcommand === "tasks") {
-      maintainTasks(args);
+      stateMaintenance.maintain(args);
     } else if (command === "artifacts" && subcommand === "inspect") {
-      artifactsInspect(args);
+      stateMaintenance.inspect(args);
     } else if (command === "artifacts" && subcommand === "compact") {
-      artifactsCompact(args);
+      stateMaintenance.compact(args);
     } else if (command === "artifacts" && subcommand === "prune") {
-      artifactsPrune(args);
+      throw new Error("Run pruning is outside delivery control. Preserve old files or remove an explicitly selected local directory through normal project maintenance.");
     } else if (command === "config" && subcommand === "inspect") {
       configInspect(args);
     } else if (command === "config" && subcommand === "validate") {
@@ -7734,22 +4403,14 @@ function main() {
       worktreeRecommend(args);
     } else if (command === "plan" && subcommand === "validate") {
       planned.planValidate(args);
-    } else if (command === "plan" && subcommand === "inputs") {
-      planned.inputs(args);
     } else if (command === "execute" && subcommand === "next") {
       planned.next(args);
     } else if (command === "goal" && subcommand === "complete") {
       planned.goalComplete(args);
     } else if (command === "milestone" && subcommand === "complete") {
       planned.milestoneComplete(args);
-    } else if (command === "run" && subcommand === "sync") {
-      planned.sync(args);
-    } else if (command === "run" && subcommand === "seal") {
-      planned.sealRun(args);
     } else if (command === "run" && subcommand === "node" && args._[2] === "review") {
-      planned.nodeReview(args);
-    } else if (command === "run" && subcommand === "node" && args._[2] === "inputs") {
-      planned.inputs(args);
+      throw new Error("Legacy Run review is retired. Execute and verify in the host, record the verified acceptance outcome, then use goal complete --verification.");
     } else if (command === "goal" && subcommand === "create") {
       goalCreate(args);
     } else if (command === "goal" && subcommand === "list") {
@@ -7759,21 +4420,9 @@ function main() {
     } else if (command === "goal" && subcommand === "validate") {
       goalValidate(args);
     } else if (command === "run" && subcommand === "prepare") {
-      runPrepare(args);
-    } else if (command === "run" && subcommand === "validate") {
-      runValidate(args);
-    } else if (command === "run" && subcommand === "checkpoint" && args._[2] === "show") {
-      runCheckpointShow(args);
-    } else if (command === "run" && subcommand === "checkpoint" && args._[2] === "validate") {
-      runCheckpointValidate(args);
-    } else if (command === "run" && subcommand === "checkpoint" && args._[2] === "update") {
-      runCheckpointUpdate(args);
-    } else if (command === "run" && subcommand === "node" && args._[2] === "record") {
-      runNodeRecord(args);
-    } else if (command === "run" && subcommand === "record") {
-      runRecord(args);
-    } else if (command === "run" && subcommand === "status") {
-      runStatus(args);
+      throw new Error("Run preparation is retired. Use the host session and execute next --goal or --milestone.");
+    } else if (command === "run") {
+      throw new Error("Run execution records are retired. The host owns session and resume; use execute next and Goal/Milestone completion with --verification.");
     } else {
       usage(args.language);
       process.exitCode = 1;
@@ -7784,14 +4433,17 @@ function main() {
   }
 }
 
-const planned = createPlannedExecution({
+const planned = createDeliveryControl({
   configuredPath, targetCwd, resolveHarnessContext, displayPath, assertContainedPath, isPathInside,
-  artifactPath, extractInlinePath, extractSection, parseEvidenceItems, cleanMapValue,
-  goalMetadata, validateGoal, canonicalGoalStatus, extractStatusLine, dagParallelLayers, configuredRunDir,
-  runManifestState, readExecutionDag, readRunCheckpoint, runGoalContext, assertPreparedRunContract,
-  readNodeStatus, executionDagSnapshot, extractCheckpointPolicyRaw, goalEvidenceErrors,
-  goalSourceTask, parseTasks, normalizedTaskTitle, isDoneTask, withRunLock, atomicWriteFile,
+  extractInlinePath, extractSection, parseEvidenceItems, cleanMapValue,
+  goalMetadata, validateGoal, canonicalGoalStatus, extractStatusLine, goalEvidenceErrors,
+  goalSourceTask, parseTasks, normalizedTaskTitle, isDoneTask, withStateLock, atomicWriteFile,
   replaceMarkdownSection, missingEvidence
+});
+
+const stateMaintenance = createStateMaintenance({
+  targetCwd, resolveHarnessContext, configuredPath, parseTasks, isDoneTask,
+  atomicWriteFile, replaceMarkdownSection
 });
 
 main();

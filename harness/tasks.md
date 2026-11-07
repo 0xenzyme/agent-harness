@@ -9,6 +9,15 @@
 
 ## Done
 
+- [x] P0 Replace Run/evidence control with host-owned execution and Goal/Milestone delivery.
+  - Type: development/docs
+  - Status: completed
+  - Source: User identified hash/code-drift monitoring and Run recording as inconsistent with the accepted lightweight design.
+  - Completed: Removed Run preparation, DAGs, checkpoints, receipts, source/log hashes, evidence sealing and historical revalidation from the core.
+  - Completed: Added Goal/Milestone delivery control with concise verification, acceptance dependencies, bounded state sync and legacy-field read compatibility.
+  - Verification: `npm run test:all`, `npm run test:eval`, `npm run validate:plugin:local`, live-development dry-run and `git diff --check` passed. M1.5 read-only check remains done after source edits. Official validator script is unavailable.
+  - Delivery: version `0.14.0`; local plugin cache refreshed with explicit portable validation. Official validator unavailable. No downstream mutation or GitHub Release.
+
 - [x] P0 Ship Agent Harness `0.13.0` in tree.
   - Type: release
   - Status: completed

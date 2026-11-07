@@ -37,8 +37,7 @@ Conversation-route aliases:
 - Do not pass `startingState` unless the current user explicitly requests that
   specific existing Git state.
 - Worker selection, concurrency, cancellation, and model/effort belong to the
-  Codex runtime. Harness records ready nodes, ownership, verification, and
-  candidate evidence.
+  Codex runtime. Harness records accepted outcomes and concise verification.
 - The optional `templates/codex-agents/harness_reviewer.toml` is a read-only
   advanced reviewer and inherits the parent model and effort.
 - Install via Codex marketplace remains valid for this host. Project skill
