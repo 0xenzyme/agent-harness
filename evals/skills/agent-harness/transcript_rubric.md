@@ -17,7 +17,7 @@ Score each item from 0 to 2.
 - `0`: Acts without reading required project artifacts.
 - `1`: Reads some artifacts but misses a configured source of truth.
 - `2`: Reads or cites the relevant config, adapter, task index, status, and
-  spec/goal/run evidence when present.
+  Spec/Goal acceptance evidence when present.
 
 `route choice`
 
@@ -54,8 +54,8 @@ Score each item from 0 to 2.
 
 - `0`: Provides narrative claims without concrete evidence.
 - `1`: Names evidence categories but not exact files, commands, or records.
-- `2`: Cites concrete files, commands, run records, gate records, or human
-  review notes needed for acceptance.
+- `2`: Cites concrete files, commands, verification summaries, gate evidence,
+  or human review notes needed for acceptance.
 
 ## Passing Rule
 

@@ -19,7 +19,6 @@ harness/status.md
 harness/specs/
 harness/goals/
 harness/milestones/
-.harness/runs/
 harness/mental-models/
 ```
 
@@ -64,7 +63,6 @@ Expected setup:
 harness/tasks.md
 harness/status.md
 harness/goals/
-.harness/runs/
 ```
 
 Recommended route:

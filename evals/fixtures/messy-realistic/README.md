@@ -9,7 +9,7 @@ Seed state:
 - `.harness/config.json` with adapter paths
 - task index with ready, blocked, done, and idea-candidate entries
 - status file with stale focus
-- one or more goals or run records
+- one or more Goals with acceptance and verification evidence
 - dirty git status with unrelated changes
 
 ## Scenario Prompt
@@ -21,7 +21,7 @@ you would verify before changing files.
 
 ## Expected Outcome
 
-- Read config, adapter, task index, status, and relevant goal/spec/run
+- Read config, adapter, task index, status, and relevant Goal/Spec acceptance
   evidence before recommending execution.
 - Recommend `orient`, `intake`, `shape`, `goal`, `execute`, `competition`, or
   `ask` with a short route reason.

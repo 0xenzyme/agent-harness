@@ -67,8 +67,9 @@ A version bump should happen only after:
 - Goal/status records are synced;
 - `package.json` and `plugins/agent-harness/.codex-plugin/plugin.json` versions
   match;
-- `npm run validate:plugin` passes;
-- `npm run test:smoke` passes;
+- `npm run test:all` and `npm run validate:plugin:local` pass;
+- `npm run validate:plugin` passes when the official validator is available;
+  a missing validator is reported as an environment limitation, not a pass;
 - user-facing docs mention only shipped behavior;
 - fresh-thread skill discoverability is checked when skills are added, removed,
   or renamed.

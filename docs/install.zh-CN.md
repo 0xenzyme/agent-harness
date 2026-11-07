@@ -20,8 +20,8 @@ Grok pack。
 从本仓库 checkout：
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
 ```
 
@@ -98,13 +98,12 @@ reasoning effort。
 
 ```bash
 grok plugin marketplace add /path/to/agent-harness
-grok plugin install harness --trust
+grok plugin install /path/to/agent-harness/plugins/agent-harness --trust
 ```
 
 仓库 metadata 在 `.grok-plugin/marketplace.json` 声明 marketplace identity
-`agent-harness-local`。注册只会添加 marketplace。
-`grok plugin install harness --trust` 才会从 `./plugins/agent-harness` 安装
-plugin。
+`agent-harness-local`。注册只会添加 marketplace。第二条命令从插件源目录安装；
+当前 Grok CLI 这里接受源路径，而不是 marketplace 中的 plugin 名称。
 
 Grok 专有的能力名称只写在
 `plugins/agent-harness/hosts/grok/execution.md`。Grok 没有 runtime outcome。

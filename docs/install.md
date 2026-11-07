@@ -22,8 +22,8 @@ protocol. `npm run test:hosts-grok` checks the Grok pack.
 From this checkout:
 
 ```bash
-node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs init --cwd /path/to/project --contract adapter
+node plugins/agent-harness/scripts/agent-harness.mjs doctor --cwd /path/to/project
 node plugins/agent-harness/scripts/agent-harness.mjs orient next --cwd /path/to/project
 ```
 
@@ -105,13 +105,14 @@ For a local checkout:
 
 ```bash
 grok plugin marketplace add /path/to/agent-harness
-grok plugin install harness --trust
+grok plugin install /path/to/agent-harness/plugins/agent-harness --trust
 ```
 
 The repository metadata declares the marketplace identity
 `agent-harness-local` in `.grok-plugin/marketplace.json`. Registration only
-adds the marketplace. `grok plugin install harness --trust` installs the
-plugin from `./plugins/agent-harness`.
+adds the marketplace. The second command installs from the plugin source
+directory; the current Grok CLI takes a source path here, not the marketplace
+plugin name.
 
 Grok-specific capability names live in
 `plugins/agent-harness/hosts/grok/execution.md`. Grok does not expose a runtime

@@ -36,7 +36,9 @@ checks `{id, command, manual?}`. Legacy `inputs` and `exclude` fields are
 ignored without hashing. New plans omit them.
 
 `execute next` returns `execute-node`, `verify-node`, `complete-goal`,
-`complete-milestone`, `need-user`, `reconcile`, `wait` or `done` as applicable.
+`complete-milestone`, `need-user`, `replan`, `reconcile`, `sync`, `wait` or
+`done` as applicable. `replan` requests a valid bound plan, `reconcile` repairs
+accepted delivery state, and `sync` restores the bounded status projection.
 It evaluates accepted outcomes, not execution history.
 
 ## Completion

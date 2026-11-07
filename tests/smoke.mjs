@@ -147,6 +147,16 @@ try {
   assert(existsSync(join(temp, ".agents/skills/custom/SKILL.md")), "repeated skills uninstall must still leave unrelated skills");
   assert(readFileSync(join(temp, ".harness/config.json"), "utf8") === configBeforeUninstall, "repeated skills uninstall must leave config data");
 
+  const cleanInstall = mkdtempSync(join(tmpdir(), "agent-harness-clean-uninstall-"));
+  try {
+    run(["init", "--cwd", cleanInstall, "--contract", "adapter"]);
+    run(["skills", "install", "--cwd", cleanInstall]);
+    run(["skills", "uninstall", "--cwd", cleanInstall]);
+    assert(!existsSync(join(cleanInstall, ".agents/skills")), "clean uninstall must remove the empty skills directory");
+    assert(!existsSync(join(cleanInstall, ".agents/references")), "clean uninstall must remove the empty references directory");
+    assert(existsSync(join(cleanInstall, ".harness/config.json")), "clean uninstall must preserve project data");
+  } finally { rmSync(cleanInstall, { recursive: true, force: true }); }
+
   assert(canonicalConfig.worktree?.defaultPolicy === "ask" && !canonicalConfig.workMode, "canonical config must write worktree, not legacy workMode");
   assert(canonicalConfig.artifactPolicy?.tasks && !canonicalConfig.artifactPolicy?.retention && !canonicalConfig.checkpoint, "canonical config must bound delivery state without Run retention or checkpoints");
   assert(!canonicalConfig.loops && !canonicalConfig.lifecycle && !canonicalConfig.gates?.enabled && !canonicalConfig.gates?.optional, "removed config fields must not be emitted");

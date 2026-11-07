@@ -23,7 +23,7 @@ body:
     id: version
     attributes:
       label: Agent Harness version
-      placeholder: "0.13.0"
+      placeholder: "0.14.0"
     validations:
       required: true
   - type: dropdown

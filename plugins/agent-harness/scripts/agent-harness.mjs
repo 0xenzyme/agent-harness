@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { closeSync, cpSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, cpSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1528,7 +1528,7 @@ function removeEmptyInstallDir(projectRoot, relPath) {
   const stat = lstatSync(located.dest);
   if (stat.isSymbolicLink() || !stat.isDirectory() || readdirSync(located.dest).length > 0) return;
   assertContainedPath(projectRoot, located.dest, "Skill uninstall directory");
-  rmSync(located.dest, { recursive: false });
+  rmdirSync(located.dest);
 }
 
 function skillsUninstall(args) {

@@ -28,7 +28,7 @@ node plugins/agent-harness/scripts/agent-harness.mjs execute next --cwd <project
 
 相邻计划声明依赖、ownership、验收映射和 `{id, command, manual?}` 检查。旧 `inputs`／`exclude` 字段只被忽略，不计算 hash；新计划省略它们。
 
-`execute next` 根据验收状态返回 `execute-node`、`verify-node`、`complete-goal`、`complete-milestone`、`need-user`、`reconcile`、`wait` 或 `done`。
+`execute next` 根据验收状态返回 `execute-node`、`verify-node`、`complete-goal`、`complete-milestone`、`need-user`、`replan`、`reconcile`、`sync`、`wait` 或 `done`。`replan` 要求补齐有效的绑定计划，`reconcile` 修复已接受的交付状态，`sync` 恢复有界状态投影。
 
 ## 完成
 
